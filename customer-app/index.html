@@ -38,8 +38,8 @@ button{cursor:pointer}
 .entry-screen{position:fixed;inset:0;background:linear-gradient(135deg,var(--pink-dark) 0%,var(--pink) 45%,var(--pink-mid) 100%);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;transition:opacity .4s,visibility .4s}
 .entry-screen.hidden{opacity:0;visibility:hidden;pointer-events:none}
 .entry-box{background:var(--surface);border-radius:var(--radius);padding:32px 24px;width:100%;max-width:380px;box-shadow:var(--shadow-lg);text-align:center}
-.entry-logo{margin-bottom:12px}
-.entry-logo img{max-width:180px;height:auto;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.1));mix-blend-mode:multiply}
+.entry-logo{margin-bottom:12px;background:linear-gradient(135deg,var(--pink-dark) 0%,var(--pink) 45%,var(--pink-mid) 100%);border-radius:var(--radius-sm);padding:12px;display:inline-block}
+.entry-logo img{max-width:180px;height:auto;mix-blend-mode:multiply;vertical-align:middle}
 .entry-subtitle{font-size:14px;color:var(--text2);margin-bottom:20px;font-weight:500}
 .lang-row{display:flex;gap:8px;margin-bottom:16px;justify-content:center}
 .lang-btn{padding:8px 20px;border:2px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font-size:13px;font-weight:600;color:var(--text2);transition:all .15s}
@@ -59,9 +59,9 @@ button{cursor:pointer}
 /* ─── FORM SCREEN ───────────────────────────── */
 .form-screen{display:none;max-width:480px;margin:0 auto;padding:16px 16px 100px}
 .form-screen.active{display:block}
-.form-header{text-align:center;padding:20px 0 12px}
-.form-header img{max-width:140px;height:auto;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.1));mix-blend-mode:multiply}
-.form-header h2{font-size:16px;font-weight:600;color:var(--text);margin-top:8px}
+.form-header{background:linear-gradient(135deg,var(--pink-dark) 0%,var(--pink) 45%,var(--pink-mid) 100%);border-radius:var(--radius);padding:20px 16px 12px;text-align:center}
+.form-header img{max-width:140px;height:auto;mix-blend-mode:multiply}
+.form-header h2{font-size:16px;font-weight:600;color:#fff;margin-top:8px}
 .progress-wrap{background:var(--surface);border-radius:var(--radius-pill);height:6px;margin:16px 0;overflow:hidden;box-shadow:var(--shadow-sm)}
 .progress-bar{height:100%;background:linear-gradient(90deg,var(--pink),var(--pink-mid));border-radius:var(--radius-pill);transition:width .3s ease;width:0}
 .section{background:var(--surface);border-radius:var(--radius);padding:20px 16px;margin-bottom:16px;box-shadow:var(--shadow-sm)}
