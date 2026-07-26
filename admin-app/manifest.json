@@ -8,7 +8,7 @@
   "theme_color": "#c2185b",
   "orientation": "portrait",
   "icons": [
-    { "src": "home-icon.jpg", "sizes": "any", "type": "image/jpeg", "purpose": "any" },
-    { "src": "home-icon.jpg", "sizes": "any", "type": "image/jpeg", "purpose": "maskable" }
+    { "src": "home-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "home-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
