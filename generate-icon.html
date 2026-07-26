@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Generate Square Logo</title>
+<style>
+body{font-family:sans-serif;max-width:600px;margin:40px auto;padding:20px;background:#1a1a2e;color:#fff}
+h1{font-size:18px;margin-bottom:20px}
+canvas{border:1px solid #555;display:block;margin:20px 0;background:#fff}
+.btn{background:#c2185b;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin:8px 4px}
+.btn:hover{opacity:0.9}
+label{display:block;margin:10px 0 4px;font-size:13px;color:#ccc}
+input[type=range]{width:100%}
+.info{font-size:12px;color:#999;margin-top:16px}
+</style>
+</head>
+<body>
+<h2>নিতুবাবুচির পোর্টফোলিও — Square Icon Generator</h2>
+<p style="font-size:13px;color:#aaa">Upload your logo → Adjust padding → Download 512x512 square icon</p>
+
+<input type="file" id="fileInput" accept="image/*">
+<label>Background Color: <input type="color" id="bgColor" value="#ffffff"></label>
+<label>Padding: <span id="padVal">15</span>% <input type="range" id="padding" min="0" max="40" value="15"></label>
+
+<canvas id="canvas" width="512" height="512"></canvas>
+
+<button class="btn" onclick="download('logo-512.png')">Download 512x512</button>
+<button class="btn" onclick="download('icon-192.png', 192)">Download 192x192</button>
+
+<p class="info">Tip: Use white (#ffffff) background for best results. The logo will be centered with padding to prevent stretching.</p>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let img = null;
+
+document.getElementById('fileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    img = new Image();
+    img.onload = () => draw();
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('padding').addEventListener('input', e => {
+  document.getElementById('padVal').textContent = e.target.value;
+  if (img) draw();
+});
+document.getElementById('bgColor').addEventListener('input', () => { if (img) draw(); });
+
+function draw() {
+  const pad = parseInt(document.getElementById('padding').value) / 100;
+  const bg = document.getElementById('bgColor').value;
+  const size = 512;
+  const area = size * (1 - pad * 2);
+
+  ctx.clearRect(0, 0, size, size);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, size, size);
+
+  const scale = Math.min(area / img.width, area / img.height);
+  const w = img.width * scale;
+  const h = img.height * scale;
+  const x = (size - w) / 2;
+  const y = (size - h) / 2;
+
+  ctx.drawImage(img, x, y, w, h);
+}
+
+function download(name, size) {
+  if (size && size !== 512) {
+    const tmp = document.createElement('canvas');
+    tmp.width = size; tmp.height = size;
+    tmp.getContext('2d').drawImage(canvas, 0, 0, size, size);
+    const link = document.createElement('a');
+    link.download = name;
+    link.href = tmp.toDataURL('image/png');
+    link.click();
+  } else {
+    const link = document.createElement('a');
+    link.download = name || 'logo-512.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+}
+</script>
+</body>
+</html>
