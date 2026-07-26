@@ -86,6 +86,17 @@ button{cursor:pointer}
 .surprise-note{background:var(--red-light);border:1px solid #ef9a9a;border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;color:var(--red);margin-top:8px;display:none}
 .surprise-note.show{display:block}
 
+/* Payment info box */
+.payment-info-box{background:var(--blue-light);border:1.5px solid #90caf9;border-radius:var(--radius-sm);padding:14px;margin-top:10px;margin-bottom:4px}
+.payment-info-header{font-size:13px;font-weight:700;color:var(--blue);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.payment-info-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(21,101,192,0.1)}
+.payment-info-row:last-child{border-bottom:none}
+.payment-info-label{font-size:12px;color:var(--text2);font-weight:500}
+.payment-info-value{font-size:13px;color:var(--text);font-weight:600;display:flex;align-items:center;gap:6px}
+.copy-btn{background:var(--blue);color:#fff;border:none;border-radius:var(--radius-xs);padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .14s}
+.copy-btn:active{background:var(--pink)}
+.copy-btn.copied{background:var(--green)}
+
 /* Success */
 .success-screen{display:none;text-align:center;padding:40px 20px;max-width:400px;margin:0 auto}
 .success-screen.active{display:block}
@@ -152,16 +163,16 @@ button{cursor:pointer}
         <label data-bn="কেকের ওজন *" data-en="Cake Weight *">কেকের ওজন *</label>
         <select id="f-weight">
           <option value="" data-bn="নির্বাচন করুন" data-en="Select">নির্বাচন করুন</option>
-          <option value="1 lb">1 পাউন্ড</option>
-          <option value="1.5 lb">1.5 পাউন্ড</option>
-          <option value="2 lb">2 পাউন্ড</option>
-          <option value="2.5 lb">2.5 পাউন্ড</option>
-          <option value="3 lb">3 পাউন্ড</option>
-          <option value="3.5 lb">3.5 পাউন্ড</option>
-          <option value="4 lb">4 পাউন্ড</option>
-          <option value="5 lb">5 পাউন্ড</option>
-          <option value="6 lb">6 পাউন্ড</option>
-          <option value="Custom" data-bn="কাস্টম" data-en="Custom">কাস্টম</option>
+          <option value="1 lb">1 পাউন্ড (1 lb)</option>
+          <option value="1.5 lb">1.5 পাউন্ড (1.5 lb)</option>
+          <option value="2 lb">2 পাউন্ড (2 lb)</option>
+          <option value="2.5 lb">2.5 পাউন্ড (2.5 lb)</option>
+          <option value="3 lb">3 পাউন্ড (3 lb)</option>
+          <option value="3.5 lb">3.5 পাউন্ড (3.5 lb)</option>
+          <option value="4 lb">4 পাউন্ড (4 lb)</option>
+          <option value="5 lb">5 পাউন্ড (5 lb)</option>
+          <option value="6 lb">6 পাউন্ড (6 lb)</option>
+          <option value="Custom" data-bn="কাস্টম" data-en="Custom">কাস্টম (Custom)</option>
         </select>
       </div>
     </div>
@@ -169,24 +180,22 @@ button{cursor:pointer}
       <label data-bn="কেকের ফ্লেভার *" data-en="Cake Flavor *">কেকের ফ্লেভার *</label>
       <select id="f-flavour">
         <option value="" data-bn="নির্বাচন করুন" data-en="Select">নির্বাচন করুন</option>
-        <option>Chocolate Sponge</option>
-        <option>Vanilla Sponge</option>
-        <option>Vanilla with Whipped Cream</option>
-        <option>Red Velvet</option>
-        <option>Black Forest</option>
-        <option>White Forest</option>
-        <option>Lemon Cake</option>
-        <option>Orange Cake</option>
-        <option>Strawberry Cake</option>
-        <option>Blueberry Cake</option>
-        <option>Malai Cake</option>
-        <option>Butterscotch</option>
-        <option>Special Vanilla</option>
-        <option>Chocolate Mudcake</option>
-        <option>Double Chocolate</option>
-        <option>Choco Truffle</option>
-        <option>Mango Mousse</option>
-        <option>Custom</option>
+        <option value="ভ্যানিলা স্পঞ্জ">ভ্যানিলা স্পঞ্জ (Vanilla Sponge)</option>
+        <option value="চকলেট স্পঞ্জ">চকলেট স্পঞ্জ (Chocolate Sponge)</option>
+        <option value="ডাবল লেয়ারড চকলেট">ডাবল লেয়ারড চকলেট (Double Layered Chocolate)</option>
+        <option value="ব্ল্যাক ফরেস্ট">ব্ল্যাক ফরেস্ট (Black Forest)</option>
+        <option value="হোয়াইট ফরেস্ট">হোয়াইট ফরেস্ট (White Forest)</option>
+        <option value="লেমন কেক">লেমন কেক (Lemon Cake)</option>
+        <option value="অরেঞ্জ কেক">অরেঞ্জ কেক (Orange Cake)</option>
+        <option value="স্ট্রবেরি কেক">স্ট্রবেরি কেক (Strawberry Cake)</option>
+        <option value="ব্লুবেরি কেক">ব্লুবেরি কেক (Blueberry Cake)</option>
+        <option value="মালাই কেক">মালাই কেক (Malai Cake)</option>
+        <option value="বাটারস্কচ কেক">বাটারস্কচ কেক (Butterscotch Cake)</option>
+        <option value="স্পেশাল ভ্যানিলা">স্পেশাল ভ্যানিলা (Special Vanilla)</option>
+        <option value="চকলেট মাডকেক">চকলেট মাডকেক (Chocolate Mudcake)</option>
+        <option value="রেড ভেলভেট">রেড ভেলভেট (Red Velvet)</option>
+        <option value="ক্রিমচিজ ফ্রস্টিং কেক">ক্রিমচিজ ফ্রস্টিং কেক (Cream Cheese Frosting Cake)</option>
+        <option value="কাস্টম" data-bn="কাস্টম" data-en="Custom">কাস্টম (Custom)</option>
       </select>
     </div>
     <div class="field">
@@ -250,14 +259,19 @@ button{cursor:pointer}
     <div class="section-title">💳 <span data-bn="পেমেন্ট" data-en="Payment">পেমেন্ট</span></div>
     <div class="field">
       <label data-bn="পেমেন্ট পদ্ধতি *" data-en="Payment Method *">পেমেন্ট পদ্ধতি *</label>
-      <select id="f-payment-method" onchange="calcPayment()">
+      <select id="f-payment-method" onchange="calcPayment();showPaymentInfo()">
         <option value="" data-bn="নির্বাচন করুন" data-en="Select">নির্বাচন করুন</option>
         <option value="cash">💵 <span data-bn="নগদ / হাতে (কোনো চার্জ নেই)" data-en="Cash (No Charge)">নগদ / হাতে (কোনো চার্জ নেই)</span></option>
         <option value="bkash">📱 bKash (1.85%)</option>
         <option value="nagad">📱 Nagad (1.49%)</option>
-        <option value="rocket">🚀 Rocket (1.80%)</option>
-        <option value="bank">🏦 <span data-bn="ব্যাংক ট্রান্সফার (কোনো চার্জ নেই)" data-en="Bank Transfer (No Charge)">ব্যাংক ট্রান্সফার (কোনো চার্জ নেই)</span></option>
+        <option value="bank">🏦 <span data-bn="ব্যাংক ট্রান্সফার (NPSB)" data-en="Bank Transfer (NPSB)">ব্যাংক ট্রান্সফার (NPSB)</span></option>
       </select>
+    </div>
+
+    <!-- Payment Info Box -->
+    <div class="payment-info-box" id="payment-info-box" style="display:none">
+      <div class="payment-info-header" id="payment-info-header"></div>
+      <div class="payment-info-body" id="payment-info-body"></div>
     </div>
 
     <div class="field">
@@ -439,7 +453,6 @@ function calcPayment() {
   switch (method) {
     case 'bkash': rate = 0.0185; label = '+ bKash চার্জ (1.85%)'; break;
     case 'nagad': rate = 0.0149; label = '+ Nagad চার্জ (1.49%)'; break;
-    case 'rocket': rate = 0.0180; label = '+ Rocket চার্জ (1.80%)'; break;
     default: rate = 0; label = '';
   }
 
@@ -535,7 +548,6 @@ function submitOrder() {
   switch (method) {
     case 'bkash': rate = 0.0185; break;
     case 'nagad': rate = 0.0149; break;
-    case 'rocket': rate = 0.0180; break;
   }
   const charge = rate > 0 ? +(advance * rate).toFixed(2) : 0;
 
@@ -645,6 +657,96 @@ function showLoading(on) {
 function setMinDate() {
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('f-date').setAttribute('min', today);
+}
+
+// ─── Payment Info ─────────────────────────
+function showPaymentInfo() {
+  const method = document.getElementById('f-payment-method').value;
+  const box = document.getElementById('payment-info-box');
+  const header = document.getElementById('payment-info-header');
+  const body = document.getElementById('payment-info-body');
+  const bn = lang === 'bn';
+
+  if (!method || method === 'cash') { box.style.display = 'none'; return; }
+
+  let html = '';
+  if (method === 'bkash' || method === 'nagad') {
+    const name = method === 'bkash' ? 'bKash' : 'Nagad';
+    html = `
+      <div class="payment-info-header">📱 ${name} পেমেন্ট তথ্য</div>
+      <div class="payment-info-row">
+        <span class="payment-info-label">${bn?'নম্বর':'Number'}</span>
+        <span class="payment-info-value">01521400475 <button class="copy-btn" onclick="copyText('01521400475',this)">কপি</button></span>
+      </div>
+      <div class="payment-info-row">
+        <span class="payment-info-label">${bn?'রেজিস্ট্রেশন নাম':'Registration Name'}</span>
+        <span class="payment-info-value">Nasrin Akter <button class="copy-btn" onclick="copyText('Nasrin Akter',this)">কপি</button></span>
+      </div>
+      <div class="payment-info-row">
+        <span class="payment-info-label">${bn?'পদ্ধতি':'Method'}</span>
+        <span class="payment-info-value">${bn?'সেন্ড মানি (Send Money)':'Send Money'}</span>
+      </div>
+      <div style="background:#fff3e0;border:1px solid #ffcc80;border-radius:var(--radius-xs);padding:8px 10px;font-size:11px;color:var(--amber);margin-top:8px">
+        ${bn?'⚠️ পেমেন্ট করার পর শেষ ৩ ডিজিট অবশ্যই জানাতে হবে।':'⚠️ After payment, you must share the last 3 digits.'}
+      </div>
+    `;
+  } else if (method === 'bank') {
+    html = `
+      <div class="payment-info-header">🏦 ব্যাংক পেমেন্ট তথ্য (NPSB)</div>
+      <div class="payment-info-row">
+        <span class="payment-info-label">${bn?'অ্যাকাউন্ট নম্বর':'Account Number'}</span>
+        <span class="payment-info-value">0210165544851 <button class="copy-btn" onclick="copyText('0210165544851',this)">কপি</button></span>
+      </div>
+      <div class="payment-info-row">
+        <span class="payment-info-label">${bn?'ব্যাংক':'Bank'}</span>
+        <span class="payment-info-value">IFIC Bank</span>
+      </div>
+      <div class="payment-info-row">
+        <span class="payment-info-label">${bn?'শাখা':'Branch'}</span>
+        <span class="payment-info-value">${bn?'আমানবাজার সাব-শাখা':'Amanbazar Sub-branch'}</span>
+      </div>
+      <div class="payment-info-row">
+        <span class="payment-info-label">Routing Number</span>
+        <span class="payment-info-value">120 153 224 <button class="copy-btn" onclick="copyText('120153224',this)">কপি</button></span>
+      </div>
+      <div class="payment-info-row">
+        <span class="payment-info-label">Swift Code</span>
+        <span class="payment-info-value">IFICBDDH <button class="copy-btn" onclick="copyText('IFICBDDH',this)">কপি</button></span>
+      </div>
+      <div class="payment-info-row">
+        <span class="payment-info-label">${bn?'অ্যাকাউন্ট হোল্ডার':'Account Holder'}</span>
+        <span class="payment-info-value">Sabrina Akter Bhuiyan <button class="copy-btn" onclick="copyText('Sabrina Akter Bhuiyan',this)">কপি</button></span>
+      </div>
+      <div class="payment-info-row">
+        <span class="payment-info-label">${bn?'যোগাযোগ':'Contact'}</span>
+        <span class="payment-info-value">01521400475 <button class="copy-btn" onclick="copyText('01521400475',this)">কপি</button></span>
+      </div>
+      <div style="background:#fff3e0;border:1px solid #ffcc80;border-radius:var(--radius-xs);padding:8px 10px;font-size:11px;color:var(--amber);margin-top:8px">
+        ${bn?'⚠️ শুধুমাত্র NPSB পেমেন্ট গ্রহণযোগ্য।':'⚠️ Only NPSB transfers are accepted.'}
+      </div>
+    `;
+  }
+
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+
+function copyText(text, btn) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = lang === 'bn' ? 'কপি হয়েছে!' : 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'কপি'; btn.classList.remove('copied'); }, 1500);
+    });
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    btn.textContent = lang === 'bn' ? 'কপি হয়েছে!' : 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'কপি'; btn.classList.remove('copied'); }, 1500);
+  }
 }
 
 // ─── Init ───────────────────────────────────

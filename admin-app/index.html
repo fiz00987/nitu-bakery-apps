@@ -1777,24 +1777,22 @@ select:focus {
           <div class="field">
             <label>ফ্লেভার</label>
             <select id="f-flavour">
-              <option>Chocolate Sponge</option>
-              <option>Vanilla Sponge</option>
-              <option>Vanilla with Whipped Cream</option>
-              <option>Red Velvet</option>
-              <option>Black Forest</option>
-              <option>White Forest</option>
-              <option>Lemon Cake</option>
-              <option>Orange Cake</option>
-              <option>Strawberry Cake</option>
-              <option>Blueberry Cake</option>
-              <option>Malai Cake</option>
-              <option>Butterscotch</option>
-              <option>Special Vanilla</option>
-              <option>Chocolate Mudcake</option>
-              <option>Double Chocolate</option>
-              <option>Choco Truffle</option>
-              <option>Mango Mousse</option>
-              <option>Custom</option>
+              <option>ভ্যানিলা স্পঞ্জ (Vanilla Sponge)</option>
+              <option>চকলেট স্পঞ্জ (Chocolate Sponge)</option>
+              <option>ডাবল লেয়ারড চকলেট (Double Layered Chocolate)</option>
+              <option>ব্ল্যাক ফরেস্ট (Black Forest)</option>
+              <option>হোয়াইট ফরেস্ট (White Forest)</option>
+              <option>লেমন কেক (Lemon Cake)</option>
+              <option>অরেঞ্জ কেক (Orange Cake)</option>
+              <option>স্ট্রবেরি কেক (Strawberry Cake)</option>
+              <option>ব্লুবেরি কেক (Blueberry Cake)</option>
+              <option>মালাই কেক (Malai Cake)</option>
+              <option>বাটারস্কচ কেক (Butterscotch Cake)</option>
+              <option>স্পেশাল ভ্যানিলা (Special Vanilla)</option>
+              <option>চকলেট মাডকেক (Chocolate Mudcake)</option>
+              <option>রেড ভেলভেট (Red Velvet)</option>
+              <option>ক্রিমচিজ ফ্রস্টিং কেক (Cream Cheese Frosting Cake)</option>
+              <option>কাস্টম (Custom)</option>
             </select>
           </div>
         </div>
@@ -1878,8 +1876,7 @@ select:focus {
             <option value="cash">💵 নগদ / হাতে (No Charge)</option>
             <option value="bkash">📱 bKash (Cash Out ~1.85%)</option>
             <option value="nagad">📱 Nagad (Cash Out ~1.49%)</option>
-            <option value="rocket">🚀 Rocket (Cash Out ~1.80%)</option>
-            <option value="bank">🏦 Bank Transfer (No Charge)</option>
+            <option value="bank">🏦 Bank Transfer — NPSB (No Charge)</option>
           </select>
         </div>
 
@@ -2023,7 +2020,6 @@ const App = (() => {
   // bKash Cash Out charge rate (agent cash out ≈ 1.85%)
   const BKASH_RATE = 0.0185;
   const NAGAD_RATE = 0.0149;
-  const ROCKET_RATE = 0.0180;
 
   // Payment calculator state
   let paymentApproved = false;
@@ -3269,10 +3265,6 @@ const App = (() => {
         chargeRate = 0.0149;
         chargeLabel = '+ Nagad চার্জ (1.49%)';
         break;
-      case 'rocket':
-        chargeRate = 0.0180;
-        chargeLabel = '+ Rocket চার্জ (1.80%)';
-        break;
       default:
         chargeRate = 0;
         chargeLabel = '+ চার্জ';
@@ -3309,7 +3301,6 @@ const App = (() => {
     switch(method) {
       case 'bkash': chargeRate = 0.0185; break;
       case 'nagad': chargeRate = 0.0149; break;
-      case 'rocket': chargeRate = 0.0180; break;
     }
 
     const charge = chargeRate > 0 ? +(cakePrice * chargeRate).toFixed(2) : 0;
