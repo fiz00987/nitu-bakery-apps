@@ -586,17 +586,28 @@ function showSuccess(order) {
   document.getElementById('form-screen').classList.remove('active');
   document.getElementById('success-screen').classList.add('active');
 
+  const bn = lang === 'bn';
   const summary = document.getElementById('order-summary');
   summary.innerHTML = `
-    <div class="row"><span>${lang==='bn'?'নাম':'Name'}</span><span>${esc(order.name)}</span></div>
-    <div class="row"><span>${lang==='bn'?'ফোন':'Phone'}</span><span>${esc(order.phone)}</span></div>
-    <div class="row"><span>${lang==='bn'?'কেক':'Cake'}</span><span>${esc(order.weight)} — ${esc(order.flavour)}</span></div>
-    ${order.writing ? `<div class="row"><span>${lang==='bn'?'লেখা':'Writing'}</span><span>${esc(order.writing)}</span></div>` : ''}
-    <div class="row"><span>${lang==='bn'?'তারিখ':'Date'}</span><span>${esc(order.date)} ${order.time ? '· '+esc(order.time) : ''}</span></div>
-    <div class="row"><span>${lang==='bn'?'ঠিকানা':'Address'}</span><span>${esc(order.address)}</span></div>
-    <div class="row"><span>${lang==='bn'?'পেমেন্ট':'Payment'}</span><span>${esc(order.paymentMethod)} — ৳${order.advance}</span></div>
-    ${order.advanceCharge > 0 ? `<div class="row"><span>${lang==='bn'?'চার্জ':'Charge'}</span><span>৳${order.advanceCharge}</span></div>` : ''}
-    <div class="row"><span>${lang==='bn'?'মোট পেমেন্ট':'Total Paid'}</span><span style="color:var(--pink);font-weight:700">৳${order.advanceTotal}</span></div>
+    <div class="row"><span>${bn?'নাম':'Name'}</span><span>${esc(order.name)}</span></div>
+    <div class="row"><span>${bn?'ফোন':'Phone'}</span><span>${esc(order.phone)}</span></div>
+    <div class="row"><span>${bn?'কেক':'Cake'}</span><span>${esc(order.weight)} — ${esc(order.flavour)}</span></div>
+    ${order.writing ? `<div class="row"><span>${bn?'লেখা':'Writing'}</span><span>${esc(order.writing)}</span></div>` : ''}
+    <div class="row"><span>${bn?'তারিখ':'Date'}</span><span>${esc(order.date)} ${order.time ? '· '+esc(order.time) : ''}</span></div>
+    <div class="row"><span>${bn?'ঠিকানা':'Address'}</span><span>${esc(order.address)}</span></div>
+    <div class="row"><span>${bn?'পেমেন্ট পদ্ধতি':'Payment Method'}</span><span>${esc(order.paymentMethod)}</span></div>
+
+    <div style="border-top:2px solid var(--pink);margin:10px 0 6px;padding-top:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--pink);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">${bn?'পেমেন্ট বিবরণ':'Payment Breakdown'}</div>
+    </div>
+    <div class="row"><span>${bn?'আপনার অগ্রিম':'Your Advance'}</span><span>৳${order.advance}</span></div>
+    ${order.advanceCharge > 0 ? `<div class="row"><span>${bn?'পেমেন্ট চার্জ':'Payment Charge'}</span><span>৳${order.advanceCharge}</span></div>` : ''}
+    <div class="row" style="border-bottom:2px solid var(--border)"><span style="font-weight:600;color:var(--text)">${bn?'মোট পরিশোধ':'Total Paid'}</span><span style="color:var(--green);font-weight:800;font-size:15px">৳${order.advanceTotal}</span></div>
+
+    <div style="margin-top:10px">
+      <div class="row"><span>${bn?'বাকি বকেয়া':'Due Amount'}</span><span style="color:var(--amber);font-weight:700">${bn?'অ্যাডমিন কনফার্ম করবেন':'To be confirmed by admin'}</span></div>
+    </div>
+    ${order.surprise === 'yes' ? `<div style="background:var(--red-light);border:1px solid #ef9a9a;border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;color:var(--red);margin-top:8px">${bn?'🎁 সারপ্রাইজ কেক — ১০০% অগ্রিম প্রাপ্ত':'🎁 Surprise Cake — 100% advance received'}</div>` : ''}
   `;
 }
 
