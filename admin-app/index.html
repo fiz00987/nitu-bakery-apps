@@ -2440,6 +2440,7 @@ const App = (() => {
 
     <div class="card-actions">
       <button class="card-btn btn-srs"   onclick="event.stopPropagation(); App.copySrsMessage('${fk}')">📋 SRS কপি</button>
+      <button class="card-btn btn-dup"   onclick="event.stopPropagation(); App.copyManualForm('${fk}')">📝 ম্যানুয়াল ফর্ম</button>
       ${waLink ? `<button class="card-btn btn-wa" onclick="event.stopPropagation(); window.open('${waLink}','_blank')">💬 WhatsApp</button>` : ''}
       ${waPhone ? `<button class="card-btn btn-call" onclick="event.stopPropagation(); window.open('tel:${waPhone}')">${tr('call')}</button>` : ''}
       <button class="card-btn btn-edit"  onclick="event.stopPropagation(); App.openModal('${fk}')">✏️ এডিট</button>
@@ -2751,6 +2752,66 @@ const App = (() => {
     } else {
       fallbackCopy(msg);
     }
+  };
+
+  // ─── Manual Form Copy ───────────────────────────────────────
+  const buildManualForm = o => {
+    const d = o.date ? fmtDate(o.date) : '';
+    const t = o.time || '';
+    const dateStr = o.date ? new Date(o.date + 'T00:00:00').getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][new Date(o.date + 'T00:00:00').getMonth()] : '';
+    const name = o.name || '';
+    const weight = o.weight || '';
+    const flavour = o.flavour || '';
+    const size = o.size || '';
+    const design = o.design || '';
+    const writing = o.writing || '';
+    const address = o.address || '';
+    const time = t || 'সময় নির্ধারিত নয়';
+    const receiverPhone = o.receiverPhone || o.receiver || '';
+    const trx = o.paynote || o.trx || '';
+    const total = o.total || 0;
+    const deliveryCharge = o.deliveryPaid === 'unpaid' && o.deliveryAmount ? o.deliveryAmount : 0;
+    const paidStr = deliveryCharge > 0
+      ? `${total} ফুল পেইড (dC ${deliveryCharge} included)`
+      : `${total} ফুল পেইড`;
+
+    let msg = `🔴${dateStr}- ${name}\n\n`;
+    msg += `${weight} ${flavour}\n\n`;
+    if (size) msg += `Size- ${size}\n\n`;
+    if (design) msg += `Design- ${design}\n\n`;
+    if (writing && writing !== 'NO WRITING') msg += `Writing - ${writing}\n\n`;
+    msg += `♦️অর্ডার কনফার্ম করতে নিচের তথ্যগুলো অবশ্যই দিতে হবে।\n\n`;
+    msg += `◾আপনার নামঃ ${name}\n\n`;
+    msg += `◾ডেলিভারি পয়েন্টঃ ${address}\n\n`;
+    msg += `◾ডেলিভারির তারিখ এবং সময়ঃ ${d} — ${time}\n\n`;
+    msg += `◾রিসিভার এর ফোন নাম্বারঃ ${receiverPhone}\n\n`;
+    msg += `◾বিকাশ করে থাকলে লাস্ট ৩ডিজিটঃ ${trx || 'check transaction id please'}\n\n\n`;
+    msg += paidStr;
+    return msg;
+  };
+
+  const copyManualForm = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) return;
+    const msg = buildManualForm(o);
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(msg)
+        .then(() => showToast('✅ ম্যানুয়াল ফর্ম কপি হয়েছে!'))
+        .catch(() => fallbackCopyManual(msg));
+    } else {
+      fallbackCopyManual(msg);
+    }
+  };
+
+  const fallbackCopyManual = text => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    try { document.execCommand('copy'); showToast('✅ ম্যানুয়াল ফর্ম কপি হয়েছে!'); }
+    catch { alert(`মেসেজ:\n\n${text}`); }
+    document.body.removeChild(ta);
   };
 
   const fallbackCopy = text => {
@@ -3337,6 +3398,7 @@ const App = (() => {
     confirmStatusChange,
     updateNotes,
     copySrsMessage,
+    copyManualForm,
     duplicateOrder,
     showConfirm,
     closeConfirm,
