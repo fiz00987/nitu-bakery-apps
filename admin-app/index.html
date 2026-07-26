@@ -7,9 +7,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#c2185b">
-<title>🎂 নিতুর বেকারি — অর্ডার ম্যানেজার</title>
+<title>নিতুবাবুচির পোর্টফোলিও — অর্ডার ম্যানেজার</title>
 <link rel="icon" type="image/png" href="logo.png">
 <link rel="apple-touch-icon" href="logo.png">
+<link rel="manifest" href="manifest.json">
+<meta name="application-name" content="নিতুবাবুচির পোর্টফোলিও">
+<meta name="apple-mobile-web-app-title" content="নিতুবাবুচির পোর্টফোলিও">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1611,7 +1614,7 @@ select:focus {
 <div class="login-screen" id="login-screen">
   <div class="login-box">
     <div class="login-logo">
-      <img src="logo.png" alt="নিতুর বেকারি">
+      <img src="logo.png" alt="নিতুবাবুচির পোর্টফোলিও">
     </div>
     <h1 class="login-title">অর্ডার ম্যানেজার</h1>
     <p class="login-subtitle" id="login-subtitle">লগইন করুন</p>
@@ -1640,7 +1643,7 @@ select:focus {
 <header class="topbar" role="banner">
   <div class="topbar-row1">
     <div class="topbar-brand">
-      <img src="logo.png" alt="নিতুর বেকারি">
+      <img src="logo.png" alt="নিতুবাবুচির পোর্টফোলিও">
       <div class="topbar-brand-text">
         <h1 data-i18n="brand">অর্ডার ম্যানেজার</h1>
         <p id="last-sync-text" data-i18n="connecting">ক্লাউডে সংযুক্ত হচ্ছে...</p>
@@ -2653,7 +2656,7 @@ const App = (() => {
     document.getElementById('s-week').textContent  = wc;
 
     const n = orders.length;
-    document.title = `🎂 নিতুর বেকারি (${n} অর্ডার)`;
+    document.title = `🎂 নিতুবাবুচির পোর্টফোলিও (${n} অর্ডার)`;
   };
 
   const render = () => {
@@ -3464,7 +3467,7 @@ const App = (() => {
       notifEnabled = (perm === 'granted');
       updateBellUI();
       if (perm === 'granted') {
-        new Notification('🎂 নিতুর বেকারি', { body: 'নোটিফিকেশন চালু হয়েছে! প্রতিদিন রিমাইন্ড পাবেন।', tag: 'nitu-welcome' });
+        new Notification('🎂 নিতুবাবুচির পোর্টফোলিও', { body: 'নোটিফিকেশন চালু হয়েছে! প্রতিদিন রিমাইন্ড পাবেন।', tag: 'nitu-welcome' });
       }
     });
   }
@@ -3500,7 +3503,7 @@ const App = (() => {
       updateBellUI();
       if (perm === 'granted') {
         alert('🔔 নোটিফিকেশন চালু হয়েছে!');
-        new Notification('🎂 নিতুর বেকারি', { body: 'নোটিফিকেশন সফলভাবে চালু হয়েছে!', tag: 'nitu-test' });
+        new Notification('🎂 নিতুবাবুচির পোর্টফোলিও', { body: 'নোটিফিকেশন সফলভাবে চালু হয়েছে!', tag: 'nitu-test' });
       }
     });
   };
@@ -3537,8 +3540,8 @@ const App = (() => {
   // ─── Scheduled daily reminders (2x/day) ────────────────────────
   var REMINDER_HOURS = [9, 18]; // 9 AM and 6 PM
   var REMINDER_MESSAGES = [
-    { title: '🎂 নিতুর বেকারি — দৈনিক রিমাইন্ডার', body: 'আজকের অর্ডার চেক করুন এবং পেমেন্ট হিসাব মিলিয়ে নিন!' },
-    { title: '🧁 নিতুর বেকারি — সন্ধ্যার রিমাইন্ডার', body: 'আজকের ডেলিভারি শেষ হয়েছে কি? পেন্ডিং অর্ডার দেখুন!' }
+    { title: '🎂 নিতুবাবুচির পোর্টফোলিও — দৈনিক রিমাইন্ডার', body: 'আজকের অর্ডার চেক করুন এবং পেমেন্ট হিসাব মিলিয়ে নিন!' },
+    { title: '🧁 নিতুবাবুচির পোর্টফোলিও — সন্ধ্যার রিমাইন্ডার', body: 'আজকের ডেলিভারি শেষ হয়েছে কি? পেন্ডিং অর্ডার দেখুন!' }
   ];
 
   function checkScheduledReminders() {

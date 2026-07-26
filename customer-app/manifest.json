@@ -1,0 +1,14 @@
+{
+  "name": "নিতুবাবুচির পোর্টফোলিও",
+  "short_name": "নিতুবাবুচির পোর্টফোলিও",
+  "description": "নিতুবাবুচির পোর্টফোলিও — অর্ডার ফর্ম",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#c2185b",
+  "theme_color": "#c2185b",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "logo.png", "sizes": "any", "type": "image/png", "purpose": "any" },
+    { "src": "logo.png", "sizes": "any", "type": "image/png", "purpose": "maskable" }
+  ]
+}
