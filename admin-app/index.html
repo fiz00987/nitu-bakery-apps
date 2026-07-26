@@ -1,0 +1,3512 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#c2185b">
+<title>🎂 নিতুর বেকারি — অর্ডার ম্যানেজার</title>
+<link rel="icon" type="image/png" href="logo.png">
+<link rel="apple-touch-icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* =============================================
+   ROOT DESIGN TOKENS
+   ============================================= */
+:root {
+  /* Brand palette */
+  --pink:          #c2185b;
+  --pink-dark:     #880e4f;
+  --pink-mid:      #e91e8c;
+  --pink-light:    #fce4ec;
+  --pink-soft:     #f8bbd9;
+  --pink-glow:     rgba(194,24,91,0.18);
+
+  /* Semantic */
+  --green:         #2e7d32;
+  --green-light:   #e8f5e9;
+  --green-mid:     #43a047;
+  --amber:         #e65100;
+  --amber-light:   #fff3e0;
+  --red:           #c62828;
+  --red-light:     #ffebee;
+  --blue:          #1565c0;
+  --blue-light:    #e3f2fd;
+  --purple:        #6a1b9a;
+  --purple-light:  #f3e5f5;
+
+  /* Neutrals */
+  --text:          #1a1a2e;
+  --text2:         #555577;
+  --text3:         #9999bb;
+  --border:        #e8e8f0;
+  --border-focus:  var(--pink);
+  --surface:       #ffffff;
+  --surface2:      #f7f7fb;
+  --bg:            #f3f3f8;
+  --divider:       rgba(0,0,0,0.06);
+
+  /* Shape */
+  --radius:        14px;
+  --radius-sm:     9px;
+  --radius-xs:     6px;
+  --radius-pill:   999px;
+
+  /* Shadows */
+  --shadow-sm:  0 1px 4px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04);
+  --shadow-md:  0 4px 18px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-pink: 0 4px 20px rgba(194,24,91,0.35);
+
+  /* Transitions */
+  --ease:        cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast:   140ms;
+  --dur-base:   220ms;
+  --dur-slow:   350ms;
+
+  /* Topbar height (used for sticky offset) */
+  --topbar-h: 112px;
+  --tabs-h:   44px;
+}
+
+/* =============================================
+   RESET & BASE
+   ============================================= */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html { scroll-behavior: smooth; }
+
+/* Language-aware typography */
+body[data-lang="bn"] {
+  font-family: 'Hind Siliguri', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+body[data-lang="en"] {
+  font-family: 'Poppins', 'Hind Siliguri', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  font-family: 'Poppins', 'Hind Siliguri', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  background-image: url('https://images.unsplash.com/photo-1517433670267-08bbd4be890f?w=1200&q=60');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-blend-mode: overlay;
+  color: var(--text);
+  min-height: 100vh;
+  padding-bottom: 96px;
+  overscroll-behavior-y: contain;
+  -webkit-font-smoothing: antialiased;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(243,243,248,0.88);
+  z-index: -1;
+  pointer-events: none;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+button { cursor: pointer; }
+
+/* =============================================
+   UTILITY
+   ============================================= */
+.hidden { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* =============================================
+   TOPBAR
+   ============================================= */
+.topbar {
+  background: linear-gradient(135deg, var(--pink-dark) 0%, var(--pink) 45%, var(--pink-mid) 100%);
+  padding: 14px 16px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 16px rgba(136,14,79,0.3);
+}
+
+.topbar-row1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.topbar-brand img {
+  height: 38px;
+  width: auto;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.2));
+  flex-shrink: 0;
+}
+.topbar-brand-text {
+  display: flex;
+  flex-direction: column;
+}
+.topbar-brand h1 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.2;
+  letter-spacing: -0.2px;
+}
+.topbar-brand p {
+  font-size: 10px;
+  color: rgba(255,255,255,0.65);
+  margin-top: 1px;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Notification bell button */
+.notif-bell-btn {
+  position: relative;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.28);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  color: #fff;
+  transition: background var(--dur-fast), transform var(--dur-fast);
+  flex-shrink: 0;
+}
+.notif-bell-btn:hover { background: rgba(255,255,255,0.25); }
+.notif-bell-btn:active { transform: scale(0.92); }
+.notif-bell-btn.active {
+  background: rgba(76,175,80,0.35);
+  border-color: rgba(76,175,80,0.6);
+}
+.notif-bell-btn.denied {
+  opacity: 0.5;
+}
+.notif-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: var(--red);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  line-height: 1;
+}
+.notif-badge.hidden { display: none; }
+
+@keyframes bellRing {
+  0%, 100% { transform: rotate(0deg); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-14deg); }
+  45% { transform: rotate(10deg); }
+  60% { transform: rotate(-10deg); }
+  75% { transform: rotate(4deg); }
+}
+.notif-bell-btn.ringing { animation: bellRing 0.6s ease; }
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  transition: background var(--dur-fast);
+}
+.status-pill.error { background: rgba(255,255,255,0.1); border-color: rgba(255,100,100,0.5); }
+
+/* Language toggle */
+.lang-toggle {
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.28);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.lang-toggle button {
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+  line-height: 1;
+}
+.lang-toggle button.active {
+  background: #fff;
+  color: var(--pink);
+}
+
+.sync-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #69f0ae;
+  flex-shrink: 0;
+  transition: background var(--dur-base);
+}
+.sync-dot.error { background: #ff6b6b; }
+.sync-dot.syncing {
+  background: #ffd54f;
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.13);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--dur-fast);
+  text-align: center;
+  text-decoration: none;
+  -webkit-appearance: none;
+}
+.action-btn:hover { background: rgba(255,255,255,0.22); }
+.action-btn:active { background: rgba(255,255,255,0.32); transform: scale(0.97); }
+
+/* =============================================
+   SEARCH BAR
+   ============================================= */
+.search-wrap {
+  padding: 10px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  box-shadow: 0 1px 0 var(--divider);
+}
+
+.search-box {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-icon {
+  position: absolute;
+  left: 11px;
+  font-size: 14px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+.search-input {
+  width: 100%;
+  font-size: 13px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 34px 9px 32px;
+  background: var(--surface2);
+  color: var(--text);
+  transition: border-color var(--dur-fast), background var(--dur-fast), box-shadow var(--dur-fast);
+}
+.search-input:focus {
+  outline: none;
+  border-color: var(--pink);
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--pink-glow);
+}
+.search-clear {
+  position: absolute;
+  right: 8px;
+  background: var(--text3);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 18px; height: 18px;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  transition: opacity var(--dur-fast);
+  pointer-events: none;
+}
+.search-clear.visible { opacity: 1; pointer-events: all; }
+
+.filter-select {
+  font-size: 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 8px;
+  background: var(--surface2);
+  color: var(--text);
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: border-color var(--dur-fast);
+  min-width: 90px;
+}
+.filter-select:focus { outline: none; border-color: var(--pink); }
+
+/* =============================================
+   SUMMARY CARDS
+   ============================================= */
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.sum-card {
+  padding: 12px 8px 10px;
+  text-align: center;
+  cursor: pointer;
+  border-right: 1px solid var(--border);
+  transition: background var(--dur-fast);
+  position: relative;
+  overflow: hidden;
+}
+.sum-card:last-child { border-right: none; }
+.sum-card:active { background: var(--surface2); }
+.sum-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 50%;
+  transform: translateX(-50%) scaleX(0);
+  width: 32px; height: 2.5px;
+  background: var(--pink);
+  border-radius: 2px;
+  transition: transform var(--dur-base) var(--ease-smooth);
+}
+.sum-card.active::after { transform: translateX(-50%) scaleX(1); }
+
+.sum-num {
+  font-size: 23px;
+  font-weight: 800;
+  color: var(--pink);
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+.sum-lbl {
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 3px;
+  line-height: 1.3;
+  font-weight: 500;
+}
+
+/* =============================================
+   TABS
+   ============================================= */
+.tabs {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: 90;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.tabs::-webkit-scrollbar { display: none; }
+
+.tab {
+  flex: 1;
+  min-width: 64px;
+  padding: 11px 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  border: none;
+  background: none;
+  color: var(--text2);
+  cursor: pointer;
+  border-bottom: 2.5px solid transparent;
+  white-space: nowrap;
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+  position: relative;
+}
+.tab .tab-count {
+  display: inline-block;
+  background: var(--surface2);
+  color: var(--text3);
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: var(--radius-pill);
+  margin-left: 4px;
+  vertical-align: middle;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.tab.active {
+  color: var(--pink);
+  border-bottom-color: var(--pink);
+  font-weight: 700;
+}
+.tab.active .tab-count {
+  background: var(--pink-light);
+  color: var(--pink);
+}
+
+/* =============================================
+   SECTIONS & VIEWS
+   ============================================= */
+.section { padding: 14px; }
+.revenue-section { padding: 14px; }
+
+.day-group { margin-bottom: 24px; }
+.day-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 0 2px;
+}
+.day-label-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.day-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-today    { background: var(--red); box-shadow: 0 0 6px rgba(198,40,40,0.5); }
+.dot-tomorrow { background: var(--amber); }
+.dot-later    { background: var(--blue); }
+.day-count {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text3);
+  background: var(--surface2);
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+}
+
+/* =============================================
+   ORDER CARDS
+   ============================================= */
+.card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: border-color var(--dur-base) var(--ease-smooth),
+              box-shadow var(--dur-base) var(--ease-smooth),
+              transform var(--dur-fast);
+  animation: card-in 280ms var(--ease) both;
+}
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.card:active { transform: scale(0.995); }
+.card.expanded {
+  border-color: var(--pink);
+  box-shadow: 0 3px 18px var(--pink-glow);
+}
+.card.overdue-payment {
+  border-left: 3px solid var(--red);
+}
+.card.status-delivered { opacity: 0.82; }
+.card.status-cancelled { opacity: 0.65; }
+
+/* Card header */
+.card-head {
+  padding: 14px 14px 12px;
+  cursor: pointer;
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.card-stripe {
+  width: 3.5px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  align-self: stretch;
+  min-height: 44px;
+  border-radius: var(--radius-pill);
+}
+.col-confirmed { background: var(--pink); }
+.col-baking    { background: var(--amber); }
+.col-delivered { background: var(--green); }
+.col-cancelled { background: var(--text3); }
+
+.card-head-body { flex: 1; min-width: 0; }
+.card-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.card-meta {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 2px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+/* Chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1;
+}
+.chip-pink   { background: var(--pink-light); color: var(--pink); }
+.chip-green  { background: var(--green-light); color: var(--green); }
+.chip-amber  { background: var(--amber-light); color: var(--amber); }
+.chip-red    { background: var(--red-light); color: var(--red); }
+.chip-blue   { background: var(--blue-light); color: var(--blue); }
+.chip-gray   { background: var(--surface2); color: var(--text3); }
+.chip-purple { background: var(--purple-light); color: var(--purple); }
+.chip-tally  { background: #e8eaf6; color: #3949ab; font-size: 10px; padding: 2px 7px; }
+.chip-customer { background: #e0f2f1; color: #00695c; font-size: 10px; padding: 2px 7px; }
+
+/* Countdown */
+.countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  padding: 2.5px 8px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  margin-top: 5px;
+  margin-bottom: 1px;
+}
+.countdown.urgent  { background: var(--red-light); color: var(--red); }
+.countdown.soon    { background: var(--amber-light); color: var(--amber); }
+.countdown.later   { background: var(--blue-light); color: var(--blue); }
+.countdown.overdue { background: var(--red); color: #fff; }
+
+/* Chevron */
+.card-chevron {
+  font-size: 20px;
+  color: var(--text3);
+  margin-top: 1px;
+  transition: transform var(--dur-base) var(--ease-smooth);
+  flex-shrink: 0;
+  line-height: 1;
+}
+.card.expanded .card-chevron { transform: rotate(180deg); }
+
+/* Payment progress bar */
+.pay-progress-wrap {
+  padding: 0 14px 10px;
+  display: none;
+}
+.card.expanded .pay-progress-wrap { display: block; }
+.pay-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--text3);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.pay-progress-bar {
+  height: 5px;
+  background: var(--border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.pay-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green-mid), var(--green));
+  border-radius: var(--radius-pill);
+  transition: width 0.6s var(--ease-smooth);
+}
+.pay-progress-fill.partial { background: linear-gradient(90deg, var(--amber), #ffa000); }
+.pay-progress-fill.zero    { background: var(--red-light); }
+
+/* Card details */
+.card-details {
+  display: none;
+  border-top: 1px solid var(--border);
+  animation: details-in var(--dur-base) var(--ease-smooth) both;
+}
+@keyframes details-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.card.expanded .card-details { display: block; }
+
+.detail-section {
+  padding: 12px 14px 0;
+}
+.detail-section:last-of-type { padding-bottom: 4px; }
+.detail-title {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.detail-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.detail-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+  align-items: flex-start;
+}
+.detail-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 22px;
+  text-align: center;
+  margin-top: 1px;
+}
+.detail-body { flex: 1; min-width: 0; }
+.detail-label { font-size: 10px; color: var(--text3); margin-bottom: 1px; font-weight: 600; }
+.detail-val { font-size: 13px; color: var(--text); line-height: 1.5; word-break: break-word; }
+
+/* Payment box */
+.pay-box {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+}
+.pay-cell {
+  background: var(--surface2);
+  padding: 10px 6px;
+  text-align: center;
+}
+.pay-lbl { font-size: 10px; color: var(--text3); font-weight: 500; }
+.pay-val {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+  margin-top: 3px;
+  letter-spacing: -0.3px;
+}
+.pay-val.green { color: var(--green); }
+.pay-val.red   { color: var(--red); }
+.pay-val.zero  { color: var(--text3); }
+.pay-note { font-size: 11px; color: var(--text3); margin-top: 6px; line-height: 1.5; }
+
+/* Payment Calculator */
+.payment-breakdown {
+  background: var(--pink-light);
+  border: 1.5px solid var(--pink-soft);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-top: 12px;
+}
+.payment-breakdown.hidden { display: none; }
+.pay-calc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text2);
+}
+.pay-calc-row.charge-row {
+  color: var(--amber);
+  font-size: 12px;
+}
+.pay-calc-row.total-row {
+  border-top: 2px solid var(--pink);
+  margin-top: 6px;
+  padding-top: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.btn-calc-approve, .btn-calc-edit {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all var(--dur-fast);
+}
+.btn-calc-approve {
+  background: var(--green);
+  color: #fff;
+}
+.btn-calc-approve:active {
+  background: var(--green-mid);
+  transform: scale(0.98);
+}
+.btn-calc-edit {
+  background: var(--surface);
+  color: var(--text2);
+  border: 1.5px solid var(--border);
+}
+.btn-calc-edit:active {
+  background: var(--surface2);
+}
+
+.overdue-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--red-light);
+  border: 1px solid #ef9a9a;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin: 10px 14px 0;
+  font-size: 12px;
+  color: var(--red);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Card photo */
+.card-photo-wrap {
+  padding: 12px 14px 0;
+}
+.card-photo {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  cursor: zoom-in;
+  display: block;
+  transition: opacity var(--dur-fast);
+}
+.card-photo:active { opacity: 0.85; }
+
+/* Baking notes */
+.baking-notes-wrap {
+  padding: 10px 14px;
+}
+.notes-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--pink);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.notes-input {
+  width: 100%;
+  font-size: 13px;
+  border: 1.5px solid var(--pink-soft);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--pink-light);
+  color: var(--text);
+  resize: none;
+  min-height: 76px;
+  line-height: 1.5;
+  transition: border-color var(--dur-fast), background var(--dur-fast), box-shadow var(--dur-fast);
+}
+.notes-input:focus {
+  outline: none;
+  border-color: var(--pink);
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--pink-glow);
+}
+
+/* Status select */
+.status-select-wrap {
+  padding: 4px 14px 0;
+}
+.status-select {
+  width: 100%;
+  font-size: 13px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  background: var(--surface2);
+  color: var(--text);
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239999bb'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  transition: border-color var(--dur-fast);
+}
+.status-select:focus { outline: none; border-color: var(--pink); }
+
+/* Card actions */
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 10px 14px 14px;
+}
+.card-btn {
+  flex: 1;
+  min-width: 64px;
+  padding: 8px 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid;
+  cursor: pointer;
+  transition: opacity var(--dur-fast), transform var(--dur-fast), box-shadow var(--dur-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.card-btn:active { opacity: 0.7; transform: scale(0.96); }
+.btn-srs   { background: var(--green-light); border-color: #a5d6a7; color: var(--green); }
+.btn-wa    { background: #e8f5e9; border-color: #a5d6a7; color: #1b5e20; }
+.btn-dup   { background: var(--purple-light); border-color: #ce93d8; color: var(--purple); }
+.btn-edit  { background: #fff; border-color: var(--border); color: var(--text2); }
+.btn-del   { background: #fff; border-color: #ffcdd2; color: var(--red); }
+.btn-call     { background: var(--blue-light); border-color: #90caf9; color: var(--blue); }
+.btn-markpaid { background: var(--green-light); border-color: #a5d6a7; color: var(--green); }
+
+/* =============================================
+   REVENUE VIEW
+   ============================================= */
+.rev-header {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+}
+.rev-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.rev-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 12px;
+  text-align: center;
+  transition: box-shadow var(--dur-fast);
+}
+.rev-icon { font-size: 22px; margin-bottom: 4px; }
+.rev-num {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--pink);
+  letter-spacing: -0.5px;
+}
+.rev-num.green { color: var(--green); }
+.rev-num.red   { color: var(--red); }
+.rev-num.blue  { color: var(--blue); }
+.rev-lbl { font-size: 10.5px; color: var(--text3); margin-top: 3px; font-weight: 500; }
+
+/* Mini chart */
+.mini-chart-wrap {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.mini-chart-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text2);
+  margin-bottom: 12px;
+}
+.chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 72px;
+}
+.chart-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.chart-bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, var(--pink-mid), var(--pink));
+  min-height: 4px;
+  transition: height 0.6s var(--ease-smooth);
+  position: relative;
+}
+.chart-bar:hover { opacity: 0.85; }
+.chart-bar-lbl { font-size: 9px; color: var(--text3); font-weight: 600; text-align: center; white-space: nowrap; }
+.chart-bar-val { font-size: 9px; color: var(--pink); font-weight: 700; }
+
+.rev-divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+.due-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.due-item:last-child { border: none; }
+.due-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.due-meta { font-size: 10.5px; color: var(--text3); margin-top: 2px; }
+.due-amount { font-weight: 800; color: var(--red); font-size: 15px; }
+
+.delivery-alert {
+  background: var(--amber-light);
+  border: 1.5px solid #ffcc80;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--amber);
+  font-weight: 600;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* =============================================
+   LOGIN SCREEN
+   ============================================= */
+.login-screen {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, var(--pink-dark) 0%, var(--pink) 45%, var(--pink-mid) 100%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  transition: opacity 0.4s, visibility 0.4s;
+}
+.login-screen.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.login-box {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 32px 24px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+.login-logo {
+  margin-bottom: 12px;
+}
+.login-logo img {
+  max-width: 200px;
+  height: auto;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.1));
+}
+.login-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text2);
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+.login-subtitle {
+  font-size: 13px;
+  color: var(--text3);
+  margin-bottom: 24px;
+}
+.login-field {
+  margin-bottom: 12px;
+  text-align: left;
+}
+.login-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 4px;
+}
+.login-field input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  background: var(--surface2);
+  color: var(--text);
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.login-field input:focus {
+  outline: none;
+  border-color: var(--pink);
+  box-shadow: 0 0 0 3px var(--pink-glow);
+}
+.login-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--pink-dark), var(--pink-mid));
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: transform var(--dur-fast), box-shadow var(--dur-fast);
+}
+.login-btn:active {
+  transform: scale(0.98);
+}
+.login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.login-error {
+  background: var(--red-light);
+  color: var(--red);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: none;
+}
+.login-error.show {
+  display: block;
+}
+.login-toggle {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--text3);
+}
+.login-toggle a {
+  color: var(--pink);
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+.logout-btn {
+  background: rgba(255,255,255,0.13);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #fff;
+  padding: 5px 10px;
+  font-size: 11px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-weight: 600;
+}
+.logout-btn:active {
+  background: rgba(255,255,255,0.22);
+}
+
+/* =============================================
+   LIGHTBOX
+   ============================================= */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-base);
+  padding: 20px;
+}
+.lightbox.open { opacity: 1; pointer-events: all; }
+.lightbox-img {
+  max-width: 100%;
+  max-height: 88vh;
+  border-radius: var(--radius);
+  object-fit: contain;
+  transform: scale(0.9);
+  transition: transform var(--dur-slow) var(--ease);
+}
+.lightbox.open .lightbox-img { transform: scale(1); }
+.lightbox-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 40px; height: 40px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* =============================================
+   FAB
+   ============================================= */
+.fab {
+  position: fixed;
+  bottom: 24px; right: 18px;
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--pink-dark), var(--pink-mid));
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-pink);
+  z-index: 200;
+  font-size: 28px;
+  color: #fff;
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast);
+  line-height: 1;
+}
+.fab:hover { transform: scale(1.06); box-shadow: 0 6px 28px rgba(194,24,91,0.5); }
+.fab:active { transform: scale(0.92); }
+.fab-ripple {
+  position: absolute;
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  animation: ripple 0.5s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes ripple {
+  from { transform: scale(0); opacity: 1; }
+  to   { transform: scale(2.2); opacity: 0; }
+}
+
+/* =============================================
+   EMPTY STATES
+   ============================================= */
+.empty {
+  text-align: center;
+  padding: 52px 24px;
+}
+.empty-icon { font-size: 52px; margin-bottom: 14px; line-height: 1; }
+.empty h3 { font-size: 16px; font-weight: 700; color: var(--text2); margin-bottom: 6px; }
+.empty p  { font-size: 13px; color: var(--text3); line-height: 1.6; max-width: 240px; margin: 0 auto; }
+
+/* Skeleton loading */
+.skeleton-wrap { padding: 14px; }
+.skeleton-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  padding: 14px;
+  overflow: hidden;
+  position: relative;
+}
+.skeleton-line {
+  background: linear-gradient(90deg, var(--surface2) 25%, #e9e9f3 50%, var(--surface2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-xs);
+  height: 12px;
+  margin-bottom: 8px;
+}
+.skeleton-line.wide  { width: 70%; }
+.skeleton-line.short { width: 45%; }
+.skeleton-line.xshort { width: 30%; height: 9px; }
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* =============================================
+   MODAL
+   ============================================= */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,8,30,0.55);
+  backdrop-filter: blur(3px);
+  z-index: 300;
+  display: flex;
+  align-items: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-base);
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+
+.modal {
+  background: var(--surface);
+  border-radius: 22px 22px 0 0;
+  padding: 0;
+  width: 100%;
+  max-height: 94vh;
+  overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform var(--dur-slow) var(--ease);
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+
+.modal-handle {
+  width: 40px; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 12px auto 0;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 0;
+}
+.modal-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+.modal-close-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: none;
+  font-size: 16px;
+  color: var(--text3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--dur-fast);
+}
+.modal-close-btn:active { background: var(--border); }
+
+.modal-body { padding: 14px 18px 32px; }
+
+.modal-section { margin-bottom: 20px; }
+.modal-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.field { margin-bottom: 11px; }
+.field label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text2);
+  display: block;
+  margin-bottom: 4px;
+}
+.field input,
+.field textarea,
+.field select {
+  width: 100%;
+  font-size: 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--surface2);
+  color: var(--text);
+  -webkit-appearance: none;
+  transition: border-color var(--dur-fast), background var(--dur-fast), box-shadow var(--dur-fast);
+}
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--pink);
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--pink-glow);
+}
+.field textarea {
+  resize: none;
+  min-height: 64px;
+  line-height: 1.5;
+}
+.field select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239999bb'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 10px;
+  padding-right: 32px;
+}
+select:focus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c2185b'/%3E%3C/svg%3E");
+}
+.field input[type="date"] { color-scheme: light; }
+
+/* Required marker */
+.field label .req { color: var(--pink); margin-left: 2px; }
+
+/* Photo upload */
+.photo-upload-btn {
+  border: 2px dashed var(--pink-soft);
+  border-radius: var(--radius-sm);
+  background: var(--pink-light);
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--pink);
+  font-size: 13px;
+  font-weight: 600;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.photo-upload-btn:active { background: var(--pink-soft); }
+.photo-preview {
+  position: relative;
+  margin-top: 8px;
+}
+.photo-preview img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  display: block;
+}
+.photo-remove-btn {
+  position: absolute;
+  top: 7px; right: 7px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 28px; height: 28px;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.modal-footer {
+  display: flex;
+  gap: 10px;
+  padding: 0 18px 32px;
+  position: sticky;
+  bottom: 0;
+  background: var(--surface);
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  z-index: 1;
+}
+.modal-footer button {
+  flex: 1;
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid;
+  transition: opacity var(--dur-fast), transform var(--dur-fast);
+}
+.modal-footer button:active { opacity: 0.8; transform: scale(0.97); }
+.btn-cancel {
+  background: var(--surface2);
+  border-color: var(--border);
+  color: var(--text2);
+}
+.btn-save {
+  background: linear-gradient(135deg, var(--pink-dark), var(--pink-mid));
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(194,24,91,0.35);
+}
+
+/* =============================================
+   CONFIRM DIALOG
+   ============================================= */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,8,30,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-base);
+}
+.confirm-overlay.open { opacity: 1; pointer-events: all; }
+
+.confirm-box {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 26px 22px 20px;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+  transform: scale(0.88);
+  transition: transform var(--dur-slow) var(--ease);
+  box-shadow: var(--shadow-lg);
+}
+.confirm-overlay.open .confirm-box { transform: scale(1); }
+.confirm-box h3 {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.confirm-box p {
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 22px;
+  line-height: 1.5;
+}
+.confirm-btns { display: flex; gap: 10px; }
+.confirm-btns button {
+  flex: 1;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid;
+  transition: opacity var(--dur-fast);
+}
+.confirm-btns button:active { opacity: 0.7; }
+.btn-cnf-no  { background: var(--surface2); border-color: var(--border); color: var(--text2); }
+.btn-cnf-yes { background: var(--red); border-color: var(--red); color: #fff; }
+.btn-cnf-yes.green { background: var(--green); border-color: var(--green); }
+
+/* =============================================
+   TOAST
+   ============================================= */
+.toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: #1a1a2e;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  z-index: 600;
+  opacity: 0;
+  transition: opacity var(--dur-base), transform var(--dur-base) var(--ease);
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+  max-width: calc(100vw - 40px);
+  text-align: center;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <img src="logo.png" alt="নিতুর বেকারি">
+    </div>
+    <h1 class="login-title">অর্ডার ম্যানেজার</h1>
+    <p class="login-subtitle" id="login-subtitle">লগইন করুন</p>
+    
+    <div class="login-error" id="login-error"></div>
+    
+    <div class="login-field">
+      <label for="login-email">ইমেইল</label>
+      <input type="email" id="login-email" placeholder="your@email.com" autocomplete="email">
+    </div>
+    <div class="login-field">
+      <label for="login-password">পাসওয়ার্ড</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    
+    <button class="login-btn" id="login-btn" onclick="App.handleLogin()">লগইন</button>
+    
+    <div class="login-toggle">
+      <span id="login-toggle-text">অ্যাকাউন্ট নেই?</span>
+      <a id="login-toggle-link" onclick="App.toggleAuthMode()">রেজিস্টার করুন</a>
+    </div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<header class="topbar" role="banner">
+  <div class="topbar-row1">
+    <div class="topbar-brand">
+      <img src="logo.png" alt="নিতুর বেকারি">
+      <div class="topbar-brand-text">
+        <h1 data-i18n="brand">অর্ডার ম্যানেজার</h1>
+        <p id="last-sync-text" data-i18n="connecting">ক্লাউডে সংযুক্ত হচ্ছে...</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="lang-toggle" role="group" aria-label="Language">
+        <button id="lang-bn" onclick="App.setLang('bn')">বাং</button>
+        <button id="lang-en" onclick="App.setLang('en')">EN</button>
+      </div>
+      <button class="logout-btn" onclick="App.handleLogout()" title="লগআউট" aria-label="Logout">🚪 লগআউট</button>
+      <button class="notif-bell-btn active" id="notif-bell" onclick="App.toggleNotifications()" title="নোটিফিকেশন সবসময় চালু — প্রতিদিন ২ বার রিমাইন্ড পাবেন" aria-label="Notifications (always on)">
+        🔔
+        <span class="notif-badge hidden" id="notif-badge"></span>
+      </button>
+      <div class="status-pill" id="status-pill" aria-live="polite">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-label">সংযোগ...</span>
+      </div>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <button class="action-btn" onclick="App.exportData()" data-i18n="backup" aria-label="Backup">⬆ ব্যাকআপ</button>
+    <label class="action-btn" for="import-file" role="button" data-i18n="restore" aria-label="Restore">⬇ রিস্টোর</label>
+    <input type="file" id="import-file" accept=".json" class="hidden" aria-hidden="true">
+    <button class="action-btn" id="sort-btn" onclick="App.toggleSort()" aria-label="Change sort">⇅ <span id="sort-label">তারিখ</span></button>
+  </div>
+</header>
+
+<!-- SEARCH -->
+<div class="search-wrap" role="search">
+  <div class="search-box">
+    <span class="search-icon" aria-hidden="true">🔍</span>
+    <input
+      class="search-input"
+      id="search-input"
+      type="search"
+      placeholder="নাম, ফোন, ফ্লেভার দিয়ে খুঁজুন..."
+      autocomplete="off"
+      data-i18n-ph="searchPlaceholder"
+      aria-label="Search orders"
+    >
+    <button class="search-clear" id="search-clear" aria-label="Clear search" onclick="App.clearSearch()">✕</button>
+  </div>
+  <select class="filter-select" id="filter-status" aria-label="Status filter">
+    <option value="" data-i18n="allStatus">সব স্ট্যাটাস</option>
+    <option value="confirmed" data-i18n="st_confirmed">কনফার্মড</option>
+    <option value="baking" data-i18n="st_baking">বেক হচ্ছে</option>
+    <option value="delivered" data-i18n="st_delivered">ডেলিভার্ড</option>
+    <option value="cancelled" data-i18n="st_cancelled">বাতিল</option>
+  </select>
+</div>
+
+<!-- SUMMARY -->
+<div class="summary" role="region" aria-label="সারসংক্ষেপ">
+  <div class="sum-card" id="sum-today" onclick="App.switchTab('plan')" role="button" tabindex="0">
+    <div class="sum-num" id="s-today">0</div>
+    <div class="sum-lbl" data-i18n="sumToday">আজ ডেলিভারি</div>
+  </div>
+  <div class="sum-card" id="sum-bake" onclick="App.switchTab('plan')" role="button" tabindex="0">
+    <div class="sum-num" id="s-bake">0</div>
+    <div class="sum-lbl" data-i18n="sumBake">আজ রাতে বেক</div>
+  </div>
+  <div class="sum-card" id="sum-week" onclick="App.switchTab('revenue')" role="button" tabindex="0">
+    <div class="sum-num" id="s-week">0</div>
+    <div class="sum-lbl" data-i18n="sumWeek">এই সপ্তাহে</div>
+  </div>
+</div>
+
+<!-- TABS -->
+<nav class="tabs" role="tablist" aria-label="ভিউ নির্বাচন">
+  <button class="tab active" id="tab-plan" role="tab" aria-selected="true"  aria-controls="view-plan"    onclick="App.switchTab('plan')">📅 <span data-i18n="tabPlan">প্ল্যান</span> <span class="tab-count" id="tc-plan">0</span></button>
+  <button class="tab"        id="tab-all"  role="tab" aria-selected="false" aria-controls="view-all"     onclick="App.switchTab('all')">📦 <span data-i18n="tabAll">অর্ডার</span> <span class="tab-count" id="tc-all">0</span></button>
+  <button class="tab"        id="tab-done" role="tab" aria-selected="false" aria-controls="view-done"    onclick="App.switchTab('done')">✅ <span data-i18n="tabDone">সম্পন্ন</span> <span class="tab-count" id="tc-done">0</span></button>
+  <button class="tab"        id="tab-rev"  role="tab" aria-selected="false" aria-controls="view-revenue" onclick="App.switchTab('revenue')">💰 <span data-i18n="tabRev">আয়</span></button>
+</nav>
+
+<!-- VIEWS -->
+<main>
+  <div id="view-plan"    role="tabpanel" aria-labelledby="tab-plan" class="section"><div class="skeleton-wrap" id="sk-plan"></div></div>
+  <div id="view-all"     role="tabpanel" aria-labelledby="tab-all"  class="section hidden"></div>
+  <div id="view-done"    role="tabpanel" aria-labelledby="tab-done" class="section hidden"></div>
+  <div id="view-revenue" role="tabpanel" aria-labelledby="tab-rev"  class="revenue-section hidden"></div>
+</main>
+
+<!-- FAB -->
+<button class="fab" onclick="App.openModal(null)" aria-label="Add new order">+</button>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="App.closeLightbox()" role="dialog" aria-modal="true" aria-label="রেফারেন্স ছবি">
+  <img class="lightbox-img" id="lightbox-img" src="" alt="রেফারেন্স কেক">
+  <button class="lightbox-close" onclick="App.closeLightbox()" aria-label="বন্ধ করুন">✕</button>
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div class="confirm-overlay" id="confirm-overlay" role="alertdialog" aria-modal="true">
+  <div class="confirm-box">
+    <h3 id="confirm-title">নিশ্চিত করুন</h3>
+    <p  id="confirm-msg">এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।</p>
+    <div class="confirm-btns">
+      <button class="btn-cnf-no"  onclick="App.closeConfirm(false)">বাতিল</button>
+      <button class="btn-cnf-yes" id="confirm-yes-btn" onclick="App.closeConfirm(true)">নিশ্চিত</button>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="App.closeModalBg(event)" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal" id="modal-sheet">
+    <div class="modal-handle" aria-hidden="true"></div>
+    <div class="modal-header">
+      <h2 class="modal-title" id="modal-title">নতুন অর্ডার</h2>
+      <button class="modal-close-btn" onclick="App.closeModal()" aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Customer -->
+      <div class="modal-section">
+        <div class="modal-section-title">👤 কাস্টমার তথ্য</div>
+        <div class="row2">
+          <div class="field"><label>নাম<span class="req">*</span></label><input id="f-name" placeholder="রিনা বেগম" type="text" autocomplete="off"></div>
+          <div class="field"><label>ফোন<span class="req">*</span></label><input id="f-phone" placeholder="017xx-xxxxxx" type="tel" autocomplete="off"></div>
+        </div>
+      </div>
+
+      <!-- Cake -->
+      <div class="modal-section">
+        <div class="modal-section-title">🎂 কেক বিবরণ</div>
+        <div class="row2">
+          <div class="field">
+            <label>ওজন</label>
+            <input id="f-weight" placeholder="২ পাউন্ড" type="text">
+          </div>
+          <div class="field">
+            <label>ফ্লেভার</label>
+            <select id="f-flavour">
+              <option>Chocolate Sponge</option>
+              <option>Vanilla Sponge</option>
+              <option>Vanilla with Whipped Cream</option>
+              <option>Red Velvet</option>
+              <option>Black Forest</option>
+              <option>White Forest</option>
+              <option>Lemon Cake</option>
+              <option>Orange Cake</option>
+              <option>Strawberry Cake</option>
+              <option>Blueberry Cake</option>
+              <option>Malai Cake</option>
+              <option>Butterscotch</option>
+              <option>Special Vanilla</option>
+              <option>Chocolate Mudcake</option>
+              <option>Double Chocolate</option>
+              <option>Choco Truffle</option>
+              <option>Mango Mousse</option>
+              <option>Custom</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>সাইজ</label><input id="f-size" placeholder="৬ ইঞ্চি, উচ্চতা কেক" type="text"></div>
+        <div class="field"><label>ডিজাইন / বিবরণ</label><textarea id="f-design" placeholder="বেবি পিংক ভিন্টেজ কেক..."></textarea></div>
+        <div class="field">
+          <label>কেকে লেখা</label>
+          <div class="row2">
+            <input id="f-writing" placeholder="Happy Birthday Rima" type="text" style="flex:1">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;margin:0">
+              <input type="checkbox" id="f-no-writing" onchange="App.toggleWriting()" style="width:auto;margin:0">
+              <span>লেখা নেই</span>
+            </label>
+          </div>
+        </div>
+        <div class="field">
+          <label>📷 রেফারেন্স ছবি (ঐচ্ছিক)</label>
+          <div class="photo-upload-btn" onclick="document.getElementById('f-photo-file').click()" role="button" tabindex="0">
+            <span>📎</span> ছবি আপলোড করুন
+          </div>
+          <input type="file" id="f-photo-file" accept="image/*" class="hidden" aria-hidden="true">
+          <div id="modal-photo-preview" class="photo-preview hidden">
+            <img id="modal-photo-img" src="" alt="রেফারেন্স">
+            <button class="photo-remove-btn" onclick="App.removePhoto()" aria-label="ছবি সরান">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delivery -->
+      <div class="modal-section">
+        <div class="modal-section-title">🚚 ডেলিভারি তথ্য</div>
+        <div class="row2">
+          <div class="field"><label>তারিখ<span class="req">*</span></label><input id="f-date" type="date"></div>
+          <div class="field">
+            <label>সময়</label>
+            <div class="row2" style="gap:8px">
+              <input id="f-time" placeholder="বিকাল ৪টা" type="text" style="flex:1">
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;margin:0">
+                <input type="checkbox" id="f-no-time" onchange="App.toggleTime()" style="width:auto;margin:0">
+                <span>নির্ধারিত নয়</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="field"><label>রিসিভার নাম ও ফোন</label><input id="f-receiver" placeholder="অনহারা, ০১৩১২-৫৭৭৭৬৫" type="text"></div>
+        <div class="field"><label>ডেলিভারি ঠিকানা</label><textarea id="f-address" placeholder="কান্টা গার্লস হোস্টেল, চট্টগ্রাম মেডিকেল" style="min-height:52px"></textarea></div>
+        <div class="row2">
+          <div class="field">
+            <label>সারপ্রাইজ?</label>
+            <select id="f-surprise">
+              <option value="no">না</option>
+              <option value="yes">হ্যাঁ — সারপ্রাইজ 🎁</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>🚚 ডেলিভারি চার্জ</label>
+            <select id="f-delivery-paid">
+              <option value="unpaid">🔴 বাকি আছে</option>
+              <option value="paid">✅ পরিশোধিত</option>
+              <option value="na">— প্রযোজ্য নয়</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>ডেলিভারি চার্জের পরিমাণ (৳)</label><input id="f-delivery-amount" type="number" placeholder="60" min="0"></div>
+      </div>
+
+      <!-- Payment -->
+      <div class="modal-section">
+        <div class="modal-section-title" data-i18n="secPayment">💳 পেমেন্ট</div>
+        
+        <!-- Step 1: Cake Price -->
+        <div class="field">
+          <label data-i18n="fTotal">কেকের মূল্য (৳)</label>
+          <input id="f-total" type="number" placeholder="1850" min="0" oninput="App.calculatePayment()">
+        </div>
+
+        <!-- Step 2: Payment Method -->
+        <div class="field">
+          <label>💰 কাস্টমার কীভাবে পেমেন্ট দিবে?</label>
+          <select id="f-payment-method" onchange="App.calculatePayment()">
+            <option value="cash">💵 নগদ / হাতে (No Charge)</option>
+            <option value="bkash">📱 bKash (Cash Out ~1.85%)</option>
+            <option value="nagad">📱 Nagad (Cash Out ~1.49%)</option>
+            <option value="rocket">🚀 Rocket (Cash Out ~1.80%)</option>
+            <option value="bank">🏦 Bank Transfer (No Charge)</option>
+          </select>
+        </div>
+
+        <!-- Auto-calculated amounts (read-only display) -->
+        <div id="payment-breakdown" class="payment-breakdown hidden">
+          <div class="pay-calc-row">
+            <span>কেকের মূল্য:</span>
+            <strong id="calc-cake-price">৳0</strong>
+          </div>
+          <div class="pay-calc-row charge-row">
+            <span id="calc-charge-label">+ চার্জ:</span>
+            <strong id="calc-charge">৳0</strong>
+          </div>
+          <div class="pay-calc-row total-row">
+            <span>কাস্টমার দিবে:</span>
+            <strong id="calc-customer-pays" style="color:var(--pink);font-size:18px">৳0</strong>
+          </div>
+          <button type="button" class="btn-calc-approve" onclick="App.approveCalculation()" id="btn-approve">
+            ✅ এই হিসাব ঠিক আছে
+          </button>
+          <button type="button" class="btn-calc-edit" onclick="App.editPayment()" id="btn-edit-payment" style="display:none">
+            ✏️ পরিবর্তন করুন
+          </button>
+        </div>
+
+        <!-- Manual override (hidden by default) -->
+        <div id="manual-payment" class="hidden">
+          <div class="row2">
+            <div class="field">
+              <label>পরিশোধিত (৳)</label>
+              <input id="f-paid" type="number" placeholder="0" min="0">
+            </div>
+            <div class="field">
+              <label>চার্জ বাদ (৳)</label>
+              <input id="f-charge-deduct" type="number" placeholder="0" min="0" step="0.01">
+            </div>
+          </div>
+        </div>
+
+        <div class="field"><label data-i18n="fPaynote">পেমেন্ট নোট</label><input id="f-paynote" placeholder="bKash, শেষ ৩ সংখ্যা: 765" type="text"></div>
+        <div class="field">
+          <label>অর্ডার স্ট্যাটাস</label>
+          <select id="f-status">
+            <option value="confirmed">কনফার্মড ✅</option>
+            <option value="baking">আজ রাতে বেক 🔄</option>
+            <option value="delivered">ডেলিভার দেওয়া হয়েছে 🎉</option>
+            <option value="cancelled">বাতিল ❌</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Delay Tracking -->
+      <div class="modal-section">
+        <div class="modal-section-title">⏰ ডিলে ট্র্যাকিং</div>
+        <div class="field">
+          <label>অর্ডার কি দেরি হয়েছে?</label>
+          <select id="f-delayed" onchange="App.toggleDelayFields()">
+            <option value="no">না — সময়মতো</option>
+            <option value="customer">কাস্টমারের কারণে</option>
+            <option value="me">আমার কারণে</option>
+          </select>
+        </div>
+        <div id="delay-fields" class="hidden">
+          <div class="field">
+            <label>কাস্টমারকে জানানো হয়েছে?</label>
+            <select id="f-client-informed">
+              <option value="informed">✅ জানানো হয়েছে</option>
+              <option value="pending">⏳ পরে জানাবো</option>
+              <option value="not-needed">— প্রয়োজন নেই</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>নতুন প্রত্যাশিত তারিখ (ঐচ্ছিক)</label>
+            <input id="f-expected-date" type="date">
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="modal-section">
+        <div class="modal-section-title">✍️ নিতুর বেকিং নোটস</div>
+        <div class="field">
+          <textarea id="f-bakingnotes" placeholder="বেকিং প্ল্যান, টিপস, রিমাইন্ডার..." style="background:var(--pink-light);border-color:var(--pink-soft);min-height:80px"></textarea>
+        </div>
+      </div>
+    </div><!-- /modal-body -->
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="App.closeModal()">বাতিল</button>
+      <button class="btn-save"   onclick="App.saveOrder()">☁️ সেভ করুন</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+<script>
+/* =============================================================
+   NITU BAKERY ORDER MANAGER — v4.0
+   Professional, modular, ES6+ codebase
+   Firebase Realtime Database · Mobile-first · Accessible
+   ============================================================= */
+'use strict';
+
+const App = (() => {
+
+  // ─── Firebase ───────────────────────────────────────────────
+  const firebaseConfig = {
+    apiKey:            'AIzaSyD9mGV0hogQ6AyPMznmEcZuAhFmIV3rh3M',
+    authDomain:        'nitusbakingplanv2.firebaseapp.com',
+    databaseURL:       'https://nitusbakingplanv2-default-rtdb.asia-southeast1.firebasedatabase.app',
+    projectId:         'nitusbakingplanv2',
+    storageBucket:     'nitusbakingplanv2.firebasestorage.app',
+    messagingSenderId: '413436889702',
+    appId:             '1:413436889702:web:f0290fdc4b8d4e80d1bba7'
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db        = firebase.database();
+  const auth      = firebase.auth();
+  const ordersRef = db.ref('orders');
+
+  // ─── State ───────────────────────────────────────────────────
+  let orders        = [];
+  let currentUser   = null;
+  let editingId     = null;
+  let activeTab     = 'plan';
+  let isConnected   = false;
+  let confirmCb     = null;
+  let currentPhoto  = '';
+  let sortMode      = 'date';       // 'date' | 'name' | 'due'
+  let searchTimer   = null;
+  let lang          = localStorage.getItem('nitu-lang') || 'bn';  // 'bn' | 'en'
+
+  // bKash Cash Out charge rate (agent cash out ≈ 1.85%)
+  const BKASH_RATE = 0.0185;
+  const NAGAD_RATE = 0.0149;
+  const ROCKET_RATE = 0.0180;
+
+  // Payment calculator state
+  let paymentApproved = false;
+
+  // ─── i18n dictionary ─────────────────────────────────────────
+  const I18N = {
+    bn: {
+      brand: 'অর্ডার ম্যানেজার', connecting: 'ক্লাউডে সংযুক্ত হচ্ছে...',
+      backup: '⬆ ব্যাকআপ', restore: '⬇ রিস্টোর',
+      searchPlaceholder: 'নাম, ফোন, ফ্লেভার দিয়ে খুঁজুন...',
+      allStatus: 'সব স্ট্যাটাস', st_confirmed: 'কনফার্মড', st_baking: 'বেক হচ্ছে',
+      st_delivered: 'ডেলিভার্ড', st_cancelled: 'বাতিল',
+      sumToday: 'আজ ডেলিভারি', sumBake: 'আজ রাতে বেক', sumWeek: 'এই সপ্তাহে',
+      tabPlan: 'প্ল্যান', tabAll: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'আয়',
+      sort_date: 'তারিখ', sort_name: 'নাম', sort_due: 'বকেয়া',
+      secPayment: '💳 পেমেন্ট', fTotal: 'মোট মূল্য (৳)', fPaid: 'পরিশোধিত (৳)',
+      fBkash: '💰 bKash চার্জ কি টাকার সাথে যোগ করা?',
+      bkNone: 'না — সরাসরি পেমেন্ট (নগদ/হাতে)',
+      bkAuto: 'হ্যাঁ — চার্জ অটো হিসাব (Cash Out ~1.85%)',
+      bkManual: 'হ্যাঁ — চার্জ আমি লিখব',
+      fBkashCharge: 'bKash চার্জ (৳) — এটি পেমেন্ট থেকে বাদ যাবে',
+      fPaynote: 'পেমেন্ট নোট',
+      live: 'লাইভ', offline: 'সংযোগ নেই', saving: 'সেভ হচ্ছে...', conn: 'সংযোগ...',
+      cakePayment: 'কেকের পেমেন্ট', bkashDeducted: 'bKash চার্জ বাদ',
+      call: '📞 কল', markPaid: '✅ সম্পূর্ণ পরিশোধ', copyPhone: '📱 ফোন কপি',
+      due: 'বকেয়া', paidFull: 'পরিশোধিত ✅', delCharge: 'ডেলিভারি চার্জ',
+    },
+    en: {
+      brand: 'Order Manager', connecting: 'Connecting to cloud...',
+      backup: '⬆ Backup', restore: '⬇ Restore',
+      searchPlaceholder: 'Search by name, phone, flavour...',
+      allStatus: 'All Status', st_confirmed: 'Confirmed', st_baking: 'Baking',
+      st_delivered: 'Delivered', st_cancelled: 'Cancelled',
+      sumToday: 'Today\'s Delivery', sumBake: 'Bake Tonight', sumWeek: 'This Week',
+      tabPlan: 'Plan', tabAll: 'Orders', tabDone: 'Done', tabRev: 'Revenue',
+      sort_date: 'Date', sort_name: 'Name', sort_due: 'Due',
+      secPayment: '💳 Payment', fTotal: 'Total Price (৳)', fPaid: 'Paid (৳)',
+      fBkash: '💰 Is bKash charge added to the amount?',
+      bkNone: 'No — direct payment (cash/hand)',
+      bkAuto: 'Yes — auto-calc charge (Cash Out ~1.85%)',
+      bkManual: 'Yes — I\'ll enter the charge',
+      fBkashCharge: 'bKash charge (৳) — deducted from payment',
+      fPaynote: 'Payment Note',
+      live: 'Live', offline: 'Offline', saving: 'Saving...', conn: 'Connecting...',
+      cakePayment: 'Cake Payment', bkashDeducted: 'bKash charge deducted',
+      call: '📞 Call', markPaid: '✅ Mark Fully Paid', copyPhone: '📱 Copy Phone',
+      due: 'Due', paidFull: 'Paid ✅', delCharge: 'Delivery Charge',
+    }
+  };
+
+  const tr = key => (I18N[lang] && I18N[lang][key]) || (I18N.bn[key]) || key;
+
+  // ─── Date helpers ────────────────────────────────────────────
+  const toDate  = s => new Date(s + 'T00:00:00');
+  const today0  = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+
+  const fmtDate = s => {
+    const d = toDate(s);
+    const DAYS   = ['রবি','সোম','মঙ্গল','বুধ','বৃহস্পতি','শুক্র','শনি'];
+    const MONTHS = ['জানু','ফেব্রু','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টে','অক্টো','নভে','ডিসে'];
+    return `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  };
+
+  const fmtMoney = n => {
+    n = Number(n) || 0;
+    return n.toLocaleString('bn-BD');
+  };
+
+  // Effective amount that actually counts toward the cake.
+  // If the customer sent money with the bKash cash-out charge included,
+  // that charge is NOT payment for the cake, so we subtract it.
+  const bkashCharge   = o => Math.max(0, Number(o.bkashCharge) || 0);
+  const effectivePaid = o => Math.max(0, (Number(o.paid) || 0) - bkashCharge(o));
+  const dueAmt        = o => Math.max(0, (o.total || 0) - effectivePaid(o));
+
+  // ─── HTML escaping ───────────────────────────────────────────
+  const esc = s => {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g,  '&amp;')
+      .replace(/</g,  '&lt;')
+      .replace(/>/g,  '&gt;')
+      .replace(/"/g,  '&quot;');
+  };
+
+  // ─── i18n engine ─────────────────────────────────────────────
+  const applyI18n = () => {
+    document.body.setAttribute('data-lang', lang);
+    document.documentElement.setAttribute('lang', lang);
+    // textContent for [data-i18n]
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      el.textContent = tr(el.getAttribute('data-i18n'));
+    });
+    // placeholder for [data-i18n-ph]
+    document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+      el.setAttribute('placeholder', tr(el.getAttribute('data-i18n-ph')));
+    });
+    // toggle buttons
+    document.getElementById('lang-bn').classList.toggle('active', lang === 'bn');
+    document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+    // sort button label
+    document.getElementById('sort-label').textContent = tr('sort_' + sortMode);
+  };
+
+  const setLang = l => {
+    lang = l;
+    localStorage.setItem('nitu-lang', l);
+    applyI18n();
+    render();
+  };
+
+  // ─── Sync status ─────────────────────────────────────────────
+  const setSyncStatus = (state, msg) => {
+    const pill  = document.getElementById('status-pill');
+    const dot   = document.getElementById('sync-dot');
+    const label = document.getElementById('sync-label');
+    const sub   = document.getElementById('last-sync-text');
+
+    dot.className = 'sync-dot' + (state === 'ok' ? '' : ` ${state}`);
+    label.textContent = state === 'ok' ? tr('live') : state === 'error' ? tr('offline') : tr('saving');
+    pill.className    = 'status-pill' + (state === 'error' ? ' error' : '');
+    if (msg) sub.textContent = msg;
+    if (state === 'ok') {
+      const locale = lang === 'bn' ? 'bn-BD' : 'en-US';
+      sub.textContent = (lang === 'bn' ? '☁️ সব ডেটা ক্লাউডে সেভ · ' : '☁️ All data saved to cloud · ')
+        + new Date().toLocaleTimeString(locale);
+    }
+  };
+
+  // ─── Toast ───────────────────────────────────────────────────
+  let toastTimer = null;
+  const showToast = msg => {
+    const el = document.getElementById('toast');
+    clearTimeout(toastTimer);
+    el.textContent = msg;
+    el.classList.add('show');
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  };
+
+  // ─── Firebase listeners ──────────────────────────────────────
+  // Auth state listener - MUST be set up before database listeners
+  auth.onAuthStateChanged(user => {
+    currentUser = user;
+    if (user) {
+      // User is signed in - show main app
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('last-sync-text').textContent = user.email;
+      // Start listening to orders
+      ordersRef.on('value', snap => {
+        isConnected = true;
+        setSyncStatus('ok');
+        orders = [];
+        const data = snap.val();
+        if (data) {
+          Object.keys(data).forEach(k => {
+            const o = data[k];
+            o.firebaseKey = k;
+            orders.push(o);
+          });
+        }
+        sortOrders();
+        render();
+      }, err => {
+        console.error('Firebase error:', err);
+        setSyncStatus('error', '❌ সংযোগ বিচ্ছিন্ন — ইন্টারনেট চেক করুন');
+        render();
+      });
+    } else {
+      // User is signed out - show login screen
+      document.getElementById('login-screen').classList.remove('hidden');
+      orders = [];
+      render();
+    }
+  });
+
+  setTimeout(() => {
+    if (!isConnected) setSyncStatus('error', '❌ সংযোগ ব্যর্থ হয়েছে');
+  }, 6000);
+
+  db.ref('.info/connected').on('value', snap => {
+    if (isConnected && !snap.val()) setSyncStatus('error', '✈️ অফলাইন — পুনরায় সংযুক্ত হলে সিঙ্ক হবে');
+    else if (snap.val() && isConnected) setSyncStatus('ok');
+  });
+
+  // File import listener
+  document.getElementById('import-file').addEventListener('change', e => importData(e));
+
+  // Search debounce
+  document.getElementById('search-input').addEventListener('input', () => {
+    const val = document.getElementById('search-input').value;
+    document.getElementById('search-clear').classList.toggle('visible', val.length > 0);
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(render, 200);
+  });
+  document.getElementById('filter-status').addEventListener('change', () => render());
+
+  // ─── Sorting ─────────────────────────────────────────────────
+  const sortOrders = () => {
+    orders.sort((a, b) => {
+      if (sortMode === 'name') return (a.name || '').localeCompare(b.name || '');
+      if (sortMode === 'due')  return dueAmt(b) - dueAmt(a);
+      return toDate(a.date || '2099-01-01') - toDate(b.date || '2099-01-01');
+    });
+  };
+
+  const toggleSort = () => {
+    const modes = ['date','name','due'];
+    const labels = { date: '⇅ তারিখ', name: '⇅ নাম', due: '⇅ বকেয়া' };
+    sortMode = modes[(modes.indexOf(sortMode) + 1) % modes.length];
+    document.getElementById('sort-btn').textContent = labels[sortMode];
+    sortOrders();
+    render();
+    showToast(`সাজানো হচ্ছে: ${labels[sortMode].replace('⇅ ','')}`);
+  };
+
+  // ─── Filtering ───────────────────────────────────────────────
+  const getFiltered = pool => {
+    const q  = (document.getElementById('search-input').value || '').toLowerCase().trim();
+    const st = document.getElementById('filter-status').value;
+    return pool.filter(o => {
+      if (st && o.status !== st) return false;
+      if (!q) return true;
+      return [o.name, o.phone, o.flavour, o.address, o.receiver, o.design, o.writing]
+        .filter(Boolean).join(' ').toLowerCase().includes(q);
+    });
+  };
+
+  const clearSearch = () => {
+    document.getElementById('search-input').value = '';
+    document.getElementById('search-clear').classList.remove('visible');
+    render();
+  };
+
+  // ─── Chip / status helpers ───────────────────────────────────
+  const colClass = o => ({
+    delivered: 'col-delivered',
+    baking:    'col-baking',
+    cancelled: 'col-cancelled'
+  })[o.status] || 'col-confirmed';
+
+  const statusChip = o => {
+    const map = {
+      delivered: ['chip-green', 'ডেলিভার হয়েছে 🎉'],
+      baking:    ['chip-amber', 'বেক হচ্ছে 🔄'],
+      cancelled: ['chip-gray',  'বাতিল ❌']
+    };
+    const [cls, lbl] = map[o.status] || ['chip-pink', 'কনফার্মড ✅'];
+    return `<span class="chip ${cls}">${lbl}</span>`;
+  };
+
+  const countdownChip = dateStr => {
+    if (!dateStr) return '';
+    const diff = Math.round((toDate(dateStr) - today0()) / 86_400_000);
+    if (diff < 0)  return `<div class="countdown overdue">⚠️ ${Math.abs(diff)} দিন দেরি</div>`;
+    if (diff === 0) return `<div class="countdown urgent">🚀 আজকে!</div>`;
+    if (diff === 1) return `<div class="countdown urgent">🌙 আগামীকাল</div>`;
+    if (diff <= 3)  return `<div class="countdown soon">${diff} দিন বাকি</div>`;
+    return `<div class="countdown later">${diff} দিন বাকি</div>`;
+  };
+
+  // ─── SRS message builder ─────────────────────────────────────
+  const buildSrsMsg = o => {
+    const rp = o.receiver || o.phone || '';
+    const pm = rp.match(/(\+?880)?0?1[0-9]{9}/);
+    let msg = `আপনার নামঃ ${o.name}\n`;
+    msg += `ডেলিভারি পয়েন্টঃ ${o.address || ''}\n`;
+    msg += `ডেলিভারির তারিখ এবং সময়ঃ ${o.date ? fmtDate(o.date) : ''} — ${o.time || ''}\n`;
+    msg += `রিসিভার এর ফোন নাম্বারঃ ${pm ? pm[0] : rp}\n\nCake ${o.weight || ''}\n`;
+    if (o.deliveryPaid === 'unpaid' && o.deliveryAmount > 0) msg += `due: Delivery charge (${o.deliveryAmount}/-)`;
+    else if (o.deliveryPaid === 'unpaid') msg += `due: Delivery charge`;
+    else msg += `Delivery charge: Paid`;
+    return msg;
+  };
+
+  // ─── Detail row helper ───────────────────────────────────────
+  const drow = (icon, label, val) => {
+    if (val == null || val === '' || val === 'Na' || val === 'undefined') return '';
+    val = String(val).trim();
+    if (!val) return '';
+    return `<div class="detail-row">
+      <div class="detail-icon">${icon}</div>
+      <div class="detail-body">
+        <div class="detail-label">${label}</div>
+        <div class="detail-val">${esc(val)}</div>
+      </div>
+    </div>`;
+  };
+
+  // ─── Payment progress bar ────────────────────────────────────
+  const payProgressBar = o => {
+    const total = o.total || 0;
+    const paid  = effectivePaid(o);
+    if (total <= 0) return '';
+    const pct = Math.min(100, Math.round((paid / total) * 100));
+    const fillClass = pct >= 100 ? '' : pct > 0 ? 'partial' : 'zero';
+    return `
+      <div class="pay-progress-wrap">
+        <div class="pay-progress-label">
+          <span>পেমেন্ট অগ্রগতি</span>
+          <span>${pct}% পরিশোধিত</span>
+        </div>
+        <div class="pay-progress-bar">
+          <div class="pay-progress-fill ${fillClass}" style="width:${pct}%"></div>
+        </div>
+      </div>`;
+  };
+
+  // ─── Render a single card ────────────────────────────────────
+  const renderCard = o => {
+    const d          = dueAmt(o);
+    const t          = today0();
+    const dd         = o.date ? toDate(o.date) : null;
+    const isPast     = dd && dd < t && o.status !== 'delivered' && o.status !== 'cancelled';
+    const isOvdPay   = d > 0 && isPast;
+    const fk         = o.firebaseKey;
+
+    const dueChip      = d > 0
+      ? `<span class="chip chip-red">বকেয়া ৳${fmtMoney(d)}</span>`
+      : `<span class="chip chip-green">পরিশোধিত ✅</span>`;
+    const surpriseChip = o.surprise === 'yes' ? `<span class="chip chip-purple">🎁 সারপ্রাইজ</span>` : '';
+    const tallyBadge   = o.source === 'tally'  ? `<span class="chip chip-tally">Tally</span>` : '';
+    const customerBadge = o.source === 'customer' ? `<span class="chip chip-customer">অনলাইন অর্ডার</span>` : '';
+    const deliveryChip = o.deliveryPaid === 'paid'
+      ? `<span class="chip chip-green">🚚 ডেল. পরিশোধিত</span>`
+      : o.deliveryPaid === 'unpaid'
+      ? `<span class="chip chip-amber">🚚 ডেল. বাকি</span>` : '';
+    const delayedChip = o.delayed === 'customer'
+      ? `<span class="chip chip-amber">⏰ ডিলেড (কাস্টমার)</span>`
+      : o.delayed === 'me'
+      ? `<span class="chip chip-red">⏰ ডিলেড (আমি)</span>` : '';
+    const cdChip = (o.status !== 'delivered' && o.status !== 'cancelled') ? countdownChip(o.date) : '';
+
+    // WhatsApp link
+    const rm = (o.receiver || o.phone || '').match(/(\+?880|0)(1[0-9]{9})/);
+    const waPhone = rm ? `880${rm[2]}` : '';
+    const waLink  = waPhone
+      ? `https://wa.me/${waPhone}?text=${encodeURIComponent(buildSrsMsg(o))}`
+      : '';
+
+    const statusClass = { delivered: ' status-delivered', cancelled: ' status-cancelled' }[o.status] || '';
+
+    return `
+<div class="card${isOvdPay ? ' overdue-payment' : ''}${statusClass}" id="card-${fk}">
+  <div class="card-head" onclick="App.toggleCard('${fk}')" role="button" tabindex="0" aria-expanded="false">
+    <div class="card-stripe ${colClass(o)}"></div>
+    <div class="card-head-body">
+      <div class="card-name">${esc(o.name)}${tallyBadge}${customerBadge}</div>
+      <div class="card-meta">${esc(o.weight || '')}${o.weight && o.flavour ? ' · ' : ''}${esc(o.flavour || '')}${o.time ? ' · ' + esc(o.time) : ''}</div>
+      ${cdChip}
+      <div class="card-chips">${statusChip(o)}${dueChip}${surpriseChip}${deliveryChip}${delayedChip}</div>
+    </div>
+    <div class="card-chevron" aria-hidden="true">⌄</div>
+  </div>
+
+  ${payProgressBar(o)}
+
+  <div class="card-details">
+    ${o.photo ? `<div class="card-photo-wrap"><img class="card-photo" src="${o.photo}" onclick="App.openLightbox('${fk}')" alt="রেফারেন্স কেক" loading="lazy"></div>` : ''}
+
+    ${isOvdPay ? `<div class="overdue-alert">⚠️ বকেয়া পেমেন্ট: ৳${fmtMoney(d)} — ডেলিভারির তারিখ পেরিয়ে গেছে!</div>` : ''}
+
+    <div class="detail-section">
+      <div class="detail-title">🎂 কেক বিবরণ</div>
+      ${drow('⚖️', 'ওজন ও ফ্লেভার', `${o.weight || ''} — ${o.flavour || ''}`)}
+      ${drow('📐', 'সাইজ', o.size)}
+      ${drow('🎨', 'ডিজাইন', o.design)}
+      ${drow('✍️', 'লেখা', o.writing)}
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-title">🚚 ডেলিভারি</div>
+      ${drow('📅', 'তারিখ ও সময়', `${o.date ? fmtDate(o.date) : ''} — ${o.time || ''}`)}
+      ${drow('👤', 'রিসিভার', o.receiver)}
+      ${o.receiverPhone ? drow('📞', 'রিসিভার ফোন', o.receiverPhone) : ''}
+      ${drow('📍', 'ঠিকানা', o.address)}
+      ${o.surprise === 'yes' ? drow('🎁', 'সারপ্রাইজ', 'হ্যাঁ — গোপন রাখুন!') : ''}
+      ${o.deliveryPaid && o.deliveryPaid !== 'na'
+        ? drow('🚚', 'ডেলিভারি চার্জ', (o.deliveryPaid === 'paid' ? 'পরিশোধিত' : 'বাকি') + (o.deliveryAmount ? ` — ৳${fmtMoney(o.deliveryAmount)}` : ''))
+        : ''}
+      ${o.delayed && o.delayed !== 'no'
+        ? drow('⏰', 'ডিলে', (o.delayed === 'customer' ? 'কাস্টমারের কারণে' : 'আমার কারণে')
+          + (o.expectedDate ? ` — নতুন তারিখ: ${fmtDate(o.expectedDate)}` : ' — নতুন তারিখ: জানানো হয়নি')
+          + (o.clientInformed === 'informed' ? ' (কাস্টমারকে জানানো হয়েছে)' : o.clientInformed === 'pending' ? ' (পরে জানাবো)' : ''))
+        : ''}
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-title">💳 পেমেন্ট</div>
+      <div class="pay-box">
+        <div class="pay-cell"><div class="pay-lbl">${lang==='bn'?'মোট':'Total'}</div><div class="pay-val">৳${fmtMoney(o.total)}</div></div>
+        <div class="pay-cell"><div class="pay-lbl">${tr('cakePayment')}</div><div class="pay-val green">৳${fmtMoney(effectivePaid(o))}</div></div>
+        <div class="pay-cell"><div class="pay-lbl">${tr('due')}</div><div class="pay-val ${d > 0 ? 'red' : 'green'}">৳${fmtMoney(d)}</div></div>
+      </div>
+      ${bkashCharge(o) > 0 ? `<div class="pay-note">💰 ${tr('bkashDeducted')}: ৳${fmtMoney(o.paid)} − ৳${fmtMoney(bkashCharge(o))} (bKash) = ৳${fmtMoney(effectivePaid(o))}</div>` : ''}
+      ${o.paynote ? `<div class="pay-note">💳 ${esc(o.paynote)}</div>` : ''}
+      ${o.source === 'customer' && o.advance ? `<div class="pay-note">📱 কাস্টমার অগ্রিম: ৳${fmtMoney(o.advance)}${o.advanceCharge > 0 ? ` (+চার্জ ৳${fmtMoney(o.advanceCharge)})` : ''} = ৳${fmtMoney(o.advanceTotal)} | ট্রানজেকশন: ${esc(o.trx || '')}</div>` : ''}
+    </div>
+
+    <div class="status-select-wrap">
+      <div class="detail-title" style="padding:0;margin-bottom:6px">🔄 স্ট্যাটাস পরিবর্তন</div>
+      <select class="status-select" onchange="App.confirmStatusChange('${fk}', this)" onclick="event.stopPropagation()">
+        <option value="confirmed" ${o.status === 'confirmed' ? 'selected' : ''}>কনফার্মড ✅</option>
+        <option value="baking"    ${o.status === 'baking'    ? 'selected' : ''}>আজ রাতে বেক 🔄</option>
+        <option value="delivered" ${o.status === 'delivered' ? 'selected' : ''}>ডেলিভার হয়েছে 🎉</option>
+        <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>বাতিল ❌</option>
+      </select>
+    </div>
+
+    <div class="baking-notes-wrap">
+      <div class="notes-label">✍️ নিতুর বেকিং নোটস</div>
+      <textarea
+        class="notes-input"
+        placeholder="বেকিং প্ল্যান, টিপস, রিমাইন্ডার..."
+        onclick="event.stopPropagation()"
+        onblur="App.updateNotes('${fk}', this.value)"
+      >${esc(o.bakingnotes || '')}</textarea>
+    </div>
+
+    <div class="card-actions">
+      <button class="card-btn btn-srs"   onclick="event.stopPropagation(); App.copySrsMessage('${fk}')">📋 SRS কপি</button>
+      ${waLink ? `<button class="card-btn btn-wa" onclick="event.stopPropagation(); window.open('${waLink}','_blank')">💬 WhatsApp</button>` : ''}
+      ${waPhone ? `<button class="card-btn btn-call" onclick="event.stopPropagation(); window.open('tel:${waPhone}')">${tr('call')}</button>` : ''}
+      <button class="card-btn btn-edit"  onclick="event.stopPropagation(); App.openModal('${fk}')">✏️ এডিট</button>
+      <button class="card-btn btn-del"   onclick="event.stopPropagation(); App.confirmDelete('${fk}')">🗑️ মুছুন</button>
+    </div>
+  </div>
+</div>`;
+  };
+
+  // ─── Skeleton loader ─────────────────────────────────────────
+  const renderSkeletons = (n = 3) => {
+    return Array.from({ length: n }, () => `
+      <div class="skeleton-card">
+        <div class="skeleton-line wide"></div>
+        <div class="skeleton-line short"></div>
+        <div class="skeleton-line xshort" style="margin-top:10px"></div>
+      </div>`).join('');
+  };
+
+  // ─── Render views ────────────────────────────────────────────
+  const renderPlan = () => {
+    const t   = today0();
+    const tm  = new Date(t); tm.setDate(tm.getDate() + 1);
+    const pool = getFiltered(orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled'));
+
+    const groups = {};
+    pool.forEach(o => {
+      if (!o.date) return;
+      const d = toDate(o.date);
+      let key, dot;
+      if (d.getTime() === t.getTime())  { key = '🚚 আজকে ডেলিভারি';    dot = 'dot-today'; }
+      else if (d.getTime() === tm.getTime()) { key = '🌙 আজ রাতে বেক — আগামীকাল ডেলিভারি'; dot = 'dot-tomorrow'; }
+      else if (d > t)  { key = fmtDate(o.date); dot = 'dot-later'; }
+      else { key = '⚠️ দেরি — ' + fmtDate(o.date); dot = 'dot-today'; }
+      if (!groups[key]) groups[key] = { orders: [], dot };
+      groups[key].orders.push(o);
+    });
+
+    let html = '';
+    Object.keys(groups).forEach(k => {
+      const g = groups[k];
+      html += `<div class="day-group">
+        <div class="day-label">
+          <div class="day-dot ${g.dot}"></div>
+          <span class="day-label-text">${k}</span>
+          <span class="day-count">${g.orders.length}</span>
+        </div>
+        ${g.orders.map(renderCard).join('')}
+      </div>`;
+    });
+
+    if (!html) html = `<div class="empty">
+      <div class="empty-icon">🎂</div>
+      <h3>কোনো আসন্ন অর্ডার নেই</h3>
+      <p>+ বাটন চাপুন নতুন অর্ডার যোগ করতে।</p>
+    </div>`;
+
+    document.getElementById('view-plan').innerHTML = html;
+    document.getElementById('tc-plan').textContent = pool.length;
+  };
+
+  const renderAll = () => {
+    const pool = getFiltered(orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled'));
+    const el = document.getElementById('view-all');
+    el.innerHTML = pool.length
+      ? pool.map(renderCard).join('')
+      : `<div class="empty"><div class="empty-icon">📦</div><h3>কোনো মিল পাওয়া যায়নি</h3><p>ভিন্ন সার্চ বা ফিল্টার চেষ্টা করুন।</p></div>`;
+    document.getElementById('tc-all').textContent = pool.length;
+  };
+
+  const renderDone = () => {
+    const pool = getFiltered(orders.filter(o => o.status === 'delivered' || o.status === 'cancelled'))
+      .sort((a, b) => toDate(b.date || '2000-01-01') - toDate(a.date || '2000-01-01'));
+    const el = document.getElementById('view-done');
+    el.innerHTML = pool.length
+      ? pool.map(renderCard).join('')
+      : `<div class="empty"><div class="empty-icon">✅</div><h3>কোনো সম্পন্ন অর্ডার নেই</h3><p>ডেলিভার করা অর্ডার এখানে দেখাবে।</p></div>`;
+    document.getElementById('tc-done').textContent = pool.length;
+  };
+
+  // ─── Revenue mini chart ──────────────────────────────────────
+  const buildMonthlyChart = () => {
+    const now     = new Date();
+    const months  = ['জানু','ফেব্রু','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টে','অক্টো','নভে','ডিসে'];
+    const data    = {};
+
+    // Last 5 months
+    for (let i = 4; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      data[key] = { label: months[d.getMonth()], rev: 0 };
+    }
+
+    orders.forEach(o => {
+      if (o.status === 'cancelled' || !o.date) return;
+      const d   = toDate(o.date);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      if (data[key]) data[key].rev += effectivePaid(o);
+    });
+
+    const vals = Object.values(data);
+    const max  = Math.max(...vals.map(v => v.rev), 1);
+
+    const bars = vals.map(v => {
+      const pct = Math.max(4, Math.round((v.rev / max) * 100));
+      return `<div class="chart-bar-col">
+        <div class="chart-bar-val">${v.rev > 0 ? '৳' + Math.round(v.rev / 1000) + 'k' : ''}</div>
+        <div class="chart-bar" style="height:${pct}%"></div>
+        <div class="chart-bar-lbl">${v.label}</div>
+      </div>`;
+    }).join('');
+
+    return `<div class="mini-chart-wrap">
+      <div class="mini-chart-title">📈 মাসিক আয় (পরিশোধিত)</div>
+      <div class="chart-bars">${bars}</div>
+    </div>`;
+  };
+
+  const renderRevenue = () => {
+    const t       = today0();
+    const months  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const curMonth = months[t.getMonth()] + ' ' + t.getFullYear();
+
+    let totalRev = 0, totalCol = 0, totalDue = 0, totalDelDue = 0, monthRev = 0, monthCol = 0;
+
+    orders.forEach(o => {
+      if (o.status === 'cancelled') return;
+      totalRev += (o.total || 0);
+      totalCol += effectivePaid(o);
+      totalDue += dueAmt(o);
+      if (o.deliveryPaid === 'unpaid') totalDelDue += (o.deliveryAmount || 0);
+      const d = o.date ? toDate(o.date) : null;
+      if (d && d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth()) {
+        monthRev += (o.total || 0);
+        monthCol += effectivePaid(o);
+      }
+    });
+
+    const dueList = orders
+      .filter(o => dueAmt(o) > 0 && o.status !== 'cancelled' && o.status !== 'delivered')
+      .sort((a, b) => dueAmt(b) - dueAmt(a));
+
+    let html = `
+      <div class="rev-header">📊 সামগ্রিক আয়ের বিবরণ</div>
+      <div class="rev-grid">
+        <div class="rev-card"><div class="rev-icon">💰</div><div class="rev-num">৳${fmtMoney(totalRev)}</div><div class="rev-lbl">মোট রাজস্ব</div></div>
+        <div class="rev-card"><div class="rev-icon">✅</div><div class="rev-num green">৳${fmtMoney(totalCol)}</div><div class="rev-lbl">সংগৃহীত</div></div>
+        <div class="rev-card"><div class="rev-icon">⏳</div><div class="rev-num red">৳${fmtMoney(totalDue)}</div><div class="rev-lbl">বকেয়া</div></div>
+        <div class="rev-card"><div class="rev-icon">📅</div><div class="rev-num blue">৳${fmtMoney(monthRev)}</div><div class="rev-lbl">${curMonth}</div></div>
+      </div>`;
+
+    if (totalDelDue > 0) {
+      html += `<div class="delivery-alert">🚚 অপরিশোধিত ডেলিভারি চার্জ: ৳${fmtMoney(totalDelDue)}</div>`;
+    }
+
+    html += buildMonthlyChart();
+    html += `<div class="rev-divider"></div>`;
+
+    if (dueList.length) {
+      html += `<div class="rev-header">⏳ বকেয়া পেমেন্ট তালিকা</div>`;
+      html += dueList.map(o => `
+        <div class="due-item">
+          <div>
+            <div class="due-name">${esc(o.name)}</div>
+            <div class="due-meta">${o.date ? fmtDate(o.date) : ''} · ${esc(o.phone || '')}</div>
+          </div>
+          <div class="due-amount">৳${fmtMoney(dueAmt(o))}</div>
+        </div>`).join('');
+    } else {
+      html += `<div class="empty" style="padding:28px 24px">
+        <div class="empty-icon">🎉</div>
+        <h3>সব পরিশোধিত!</h3>
+        <p>কোনো বকেয়া নেই।</p>
+      </div>`;
+    }
+
+    document.getElementById('view-revenue').innerHTML = html;
+  };
+
+  // ─── Summary bar ─────────────────────────────────────────────
+  const updateSummary = () => {
+    const t    = today0();
+    const tm   = new Date(t); tm.setDate(tm.getDate() + 1);
+    const week = new Date(t); week.setDate(week.getDate() + 7);
+    let tc = 0, bc = 0, wc = 0;
+
+    orders.forEach(o => {
+      if (o.status === 'delivered' || o.status === 'cancelled') return;
+      const d = toDate(o.date || '2099-01-01');
+      if (d.getTime() === t.getTime())  tc++;
+      if (d.getTime() === tm.getTime()) bc++;
+      if (d >= t && d <= week) wc++;
+    });
+
+    document.getElementById('s-today').textContent = tc;
+    document.getElementById('s-bake').textContent  = bc;
+    document.getElementById('s-week').textContent  = wc;
+
+    const n = orders.length;
+    document.title = `🎂 নিতুর বেকারি (${n} অর্ডার)`;
+  };
+
+  const render = () => {
+    updateSummary();
+    renderPlan();
+    if (activeTab === 'all')     renderAll();
+    if (activeTab === 'done')    renderDone();
+    if (activeTab === 'revenue') renderRevenue();
+  };
+
+  // ─── Tab switcher ─────────────────────────────────────────────
+  const switchTab = t => {
+    activeTab = t;
+    ['plan','all','done','revenue'].forEach(n => {
+      document.getElementById(`view-${n}`).classList.toggle('hidden', n !== t);
+      const btn = document.getElementById(`tab-${n === 'revenue' ? 'rev' : n}`);
+      const isActive = n === t;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    // Lazy render on switch
+    if (t === 'all')     renderAll();
+    if (t === 'done')    renderDone();
+    if (t === 'revenue') renderRevenue();
+
+    // Highlight summary card
+    document.getElementById('sum-today').classList.toggle('active', t === 'plan');
+    document.getElementById('sum-week').classList.toggle('active',  t === 'revenue');
+  };
+
+  // ─── Toggle card expand ──────────────────────────────────────
+  const toggleCard = key => {
+    const el = document.getElementById(`card-${key}`);
+    if (!el) return;
+    const head = el.querySelector('.card-head');
+    el.classList.toggle('expanded');
+    head.setAttribute('aria-expanded', el.classList.contains('expanded') ? 'true' : 'false');
+  };
+
+  // ─── Lightbox ────────────────────────────────────────────────
+  const openLightbox = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o?.photo) return;
+    document.getElementById('lightbox-img').src = o.photo;
+    document.getElementById('lightbox').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+  const closeLightbox = () => {
+    document.getElementById('lightbox').classList.remove('open');
+    document.body.style.overflow = '';
+  };
+
+  // ─── Status update ───────────────────────────────────────────
+  const confirmStatusChange = (key, sel) => {
+    const newVal = sel.value;
+    const o      = orders.find(x => x.firebaseKey === key);
+    const oldVal = o ? o.status : 'confirmed';
+    if (newVal === oldVal) return;
+
+    if (newVal === 'delivered' || newVal === 'cancelled') {
+      showConfirm(
+        newVal === 'delivered' ? 'ডেলিভার হিসেবে মার্ক করুন? 🎉' : 'বাতিল করবেন? ❌',
+        newVal === 'delivered' ? 'অর্ডারটি সম্পন্ন ট্যাবে চলে যাবে।' : 'অর্ডারটি সম্পন্ন ট্যাবে আর্কাইভ হবে।',
+        newVal === 'delivered',
+        ok => { if (ok) updateStatus(key, newVal); else sel.value = oldVal; }
+      );
+    } else {
+      updateStatus(key, newVal);
+    }
+  };
+
+  const updateStatus = (key, val) => {
+    setSyncStatus('syncing', 'সেভ হচ্ছে...');
+    ordersRef.child(key).update({ status: val, updatedAt: Date.now() });
+    showToast('স্ট্যাটাস আপডেট হয়েছে ✅');
+  };
+
+  const updateNotes = (key, val) => {
+    setSyncStatus('syncing', 'নোটস সেভ হচ্ছে...');
+    ordersRef.child(key).update({ bakingnotes: val, updatedAt: Date.now() });
+  };
+
+  const markFullyPaid = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) return;
+    const title = lang === 'bn' ? 'সম্পূর্ণ পরিশোধ?' : 'Mark as fully paid?';
+    const msg   = lang === 'bn'
+      ? `বকেয়া ৳${fmtMoney(dueAmt(o))} পরিশোধিত হিসেবে চিহ্নিত হবে।`
+      : `The due of ৳${fmtMoney(dueAmt(o))} will be marked as paid.`;
+    showConfirm(title, msg, true, ok => {
+      if (!ok) return;
+      // Set paid so that effectivePaid == total (keep existing bKash charge)
+      const newPaid = (o.total || 0) + bkashCharge(o);
+      setSyncStatus('syncing', tr('saving'));
+      ordersRef.child(key).update({ paid: newPaid, updatedAt: Date.now() });
+      showToast(lang === 'bn' ? '✅ সম্পূর্ণ পরিশোধিত!' : '✅ Marked fully paid!');
+    });
+  };
+
+  // ─── Copy SRS ────────────────────────────────────────────────
+  const copySrsMessage = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) return;
+    const msg = buildSrsMsg(o);
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(msg)
+        .then(() => showToast('✅ SRS মেসেজ কপি হয়েছে!'))
+        .catch(() => fallbackCopy(msg));
+    } else {
+      fallbackCopy(msg);
+    }
+  };
+
+  const fallbackCopy = text => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    try { document.execCommand('copy'); showToast('✅ SRS মেসেজ কপি হয়েছে!'); }
+    catch { alert(`মেসেজ:\n\n${text}`); }
+    document.body.removeChild(ta);
+  };
+
+  // ─── Duplicate order ─────────────────────────────────────────
+  const duplicateOrder = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) return;
+    editingId    = null;
+    currentPhoto = '';
+    populateForm({
+      ...o,
+      date:      '',
+      paid:      0,
+      paynote:   '',
+      status:    'confirmed',
+      bakingnotes: o.bakingnotes || ''
+    });
+    document.getElementById('modal-title').textContent = 'অর্ডার কপি করুন';
+    document.getElementById('modal-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+
+  // ─── Confirm dialog ──────────────────────────────────────────
+  const showConfirm = (title, msg, isGreen, cb) => {
+    document.getElementById('confirm-title').textContent    = title;
+    document.getElementById('confirm-msg').textContent      = msg;
+    const btn = document.getElementById('confirm-yes-btn');
+    btn.className = 'btn-cnf-yes' + (isGreen ? ' green' : '');
+    confirmCb = cb;
+    document.getElementById('confirm-overlay').classList.add('open');
+  };
+  const closeConfirm = result => {
+    document.getElementById('confirm-overlay').classList.remove('open');
+    if (confirmCb) confirmCb(result);
+    confirmCb = null;
+  };
+  const confirmDelete = key => {
+    showConfirm('এই অর্ডার মুছবেন?', 'এটি স্থায়ীভাবে মুছে যাবে।', false, ok => {
+      if (ok) { ordersRef.child(key).remove(); showToast('অর্ডার মুছে ফেলা হয়েছে।'); }
+    });
+  };
+
+  // ─── Modal ───────────────────────────────────────────────────
+  const populateForm = o => {
+    const g = id => document.getElementById(id);
+    g('f-name').value           = o.name      || '';
+    g('f-phone').value          = o.phone     || '';
+    g('f-weight').value         = o.weight    || '';
+    g('f-flavour').value        = o.flavour   || 'Chocolate Sponge';
+    g('f-size').value           = o.size      || '';
+    g('f-design').value         = o.design    || '';
+    g('f-writing').value        = o.writing   || '';
+    g('f-date').value           = o.date      || '';
+    g('f-time').value           = o.time      || '';
+    g('f-receiver').value       = o.receiver  || '';
+    g('f-address').value        = o.address   || '';
+    g('f-surprise').value       = o.surprise  || 'no';
+    g('f-delivery-paid').value  = o.deliveryPaid    || 'unpaid';
+    g('f-delivery-amount').value = o.deliveryAmount || '';
+    g('f-total').value          = o.total     || '';
+    g('f-paid').value           = o.paid      || '';
+    g('f-bkash-mode').value     = o.bkashMode || 'none';
+    g('f-bkash-charge').value   = o.bkashCharge ? o.bkashCharge : '';
+    onBkashModeChange();
+    g('f-paynote').value        = o.paynote   || '';
+    g('f-status').value         = o.status    || 'confirmed';
+    g('f-bakingnotes').value    = o.bakingnotes || '';
+    
+    // Delay tracking
+    g('f-delayed').value        = o.delayed   || 'no';
+    g('f-client-informed').value = o.clientInformed || 'informed';
+    g('f-expected-date').value   = o.expectedDate || '';
+    toggleDelayFields();
+
+    if (o.photo) {
+      g('modal-photo-img').src = o.photo;
+      g('modal-photo-preview').classList.remove('hidden');
+      currentPhoto = o.photo;
+    } else {
+      g('modal-photo-preview').classList.add('hidden');
+      g('modal-photo-img').src = '';
+      currentPhoto = '';
+    }
+  };
+
+  const openModal = key => {
+    editingId    = key;
+    currentPhoto = '';
+    const o = key ? orders.find(x => x.firebaseKey === key) : null;
+    document.getElementById('modal-title').textContent =
+      o ? 'অর্ডার সম্পাদনা করুন' : 'নতুন অর্ডার';
+    populateForm(o || {});
+    document.getElementById('modal-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    // Focus first field
+    setTimeout(() => document.getElementById('f-name').focus(), 350);
+  };
+
+  const closeModal = () => {
+    document.getElementById('modal-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+    document.getElementById('f-photo-file').value = '';
+  };
+
+  const closeModalBg = e => {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  };
+
+  // ─── Photo handling ──────────────────────────────────────────
+  document.getElementById('f-photo-file').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 900;
+        let { width: w, height: h } = img;
+        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const compressed = canvas.toDataURL('image/jpeg', 0.78);
+        currentPhoto = compressed;
+        document.getElementById('modal-photo-img').src = compressed;
+        document.getElementById('modal-photo-preview').classList.remove('hidden');
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  const removePhoto = () => {
+    currentPhoto = '';
+    document.getElementById('modal-photo-img').src = '';
+    document.getElementById('modal-photo-preview').classList.add('hidden');
+    document.getElementById('f-photo-file').value = '';
+  };
+
+  // Recalc bKash charge live when paid amount changes (auto mode)
+  document.getElementById('f-paid').addEventListener('input', () => recalcAutoBkash());
+
+  // ─── bKash charge helpers (modal) ────────────────────────────
+  const onBkashModeChange = () => {
+    const mode  = document.getElementById('f-bkash-mode').value;
+    const wrap   = document.getElementById('f-bkash-charge-wrap');
+    const chargeI = document.getElementById('f-bkash-charge');
+    const hint    = document.getElementById('bkash-hint');
+
+    if (mode === 'none') {
+      wrap.classList.add('hidden');
+      chargeI.value = '';
+      return;
+    }
+    wrap.classList.remove('hidden');
+
+    if (mode === 'auto') {
+      chargeI.readOnly = true;
+      recalcAutoBkash();
+    } else { // manual
+      chargeI.readOnly = false;
+      hint.textContent = lang === 'bn'
+        ? 'আপনি যে টাকা পেয়েছেন তার মধ্যে চার্জ কত ছিল লিখুন।'
+        : 'Enter how much of the received amount was the charge.';
+    }
+  };
+
+  const recalcAutoBkash = () => {
+    const mode = document.getElementById('f-bkash-mode').value;
+    if (mode !== 'auto') return;
+    const paid    = parseFloat(document.getElementById('f-paid').value) || 0;
+    // paid = base + base*rate  →  charge = paid - paid/(1+rate)
+    const charge  = paid > 0 ? +(paid - paid / (1 + BKASH_RATE)).toFixed(2) : 0;
+    document.getElementById('f-bkash-charge').value = charge ? charge.toFixed(2) : '';
+    const net = (paid - charge).toFixed(0);
+    document.getElementById('bkash-hint').textContent = lang === 'bn'
+      ? `৳${fmtMoney(paid)} এর মধ্যে ৳${charge.toFixed(2)} চার্জ → কেকে জমা ৳${fmtMoney(net)}`
+      : `Of ৳${fmtMoney(paid)}, ৳${charge.toFixed(2)} is charge → ৳${fmtMoney(net)} to cake`;
+  };
+
+  // ─── Save order ──────────────────────────────────────────────
+  const saveOrder = () => {
+    const g    = id => document.getElementById(id);
+    const name = g('f-name').value.trim();
+    const date = g('f-date').value;
+
+    if (!name) { showToast('⚠️ কাস্টমারের নাম দিন।'); g('f-name').focus(); return; }
+    if (!date) { showToast('⚠️ ডেলিভারির তারিখ দিন।'); g('f-date').focus(); return; }
+
+    const existing   = editingId ? orders.find(x => x.firebaseKey === editingId) : null;
+    const photoHidden = g('modal-photo-preview').classList.contains('hidden');
+    const photoToSave = photoHidden ? '' : (currentPhoto || (existing?.photo || ''));
+
+    const o = {
+      name,
+      phone:          g('f-phone').value.trim(),
+      weight:         g('f-weight').value.trim(),
+      flavour:        g('f-flavour').value,
+      size:           g('f-size').value.trim(),
+      design:         g('f-design').value.trim(),
+      writing:        g('f-writing').value.trim(),
+      photo:          photoToSave,
+      date,
+      time:           g('f-time').value.trim(),
+      receiver:       g('f-receiver').value.trim(),
+      address:        g('f-address').value.trim(),
+      surprise:       g('f-surprise').value,
+      deliveryPaid:   g('f-delivery-paid').value,
+      deliveryAmount: parseFloat(g('f-delivery-amount').value) || 0,
+      total:          parseFloat(g('f-total').value) || 0,
+      paid:           parseFloat(g('f-paid').value)  || 0,
+      bkashMode:      g('f-bkash-mode').value,
+      bkashCharge:    g('f-bkash-mode').value === 'none' ? 0 : (parseFloat(g('f-bkash-charge').value) || 0),
+      paynote:        g('f-paynote').value.trim(),
+      status:         g('f-status').value,
+      bakingnotes:    g('f-bakingnotes').value.trim(),
+      delayed:        g('f-delayed').value,
+      clientInformed: g('f-client-informed').value,
+      expectedDate:   g('f-expected-date').value || '',
+      source:         existing ? (existing.source || 'manual') : 'manual',
+      updatedAt:      Date.now()
+    };
+
+    setSyncStatus('syncing', 'ক্লাউডে সেভ হচ্ছে...');
+    if (editingId) {
+      ordersRef.child(editingId).update(o);
+      showToast('✅ অর্ডার আপডেট হয়েছে!');
+    } else {
+      o.createdAt = Date.now();
+      ordersRef.push(o);
+      showToast('✅ নতুন অর্ডার সেভ হয়েছে!');
+    }
+    currentPhoto = '';
+    closeModal();
+  };
+
+  // ─── Backup / Restore ─────────────────────────────────────────
+  const exportData = () => {
+    const backup = { exported: new Date().toISOString(), version: 4, orders };
+    const blob   = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement('a');
+    const ds     = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `NituOrders_Backup_${ds}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ ব্যাকআপ ডাউনলোড হয়েছে!');
+  };
+
+  const importData = event => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const backup = JSON.parse(e.target.result);
+        if (!backup.orders || !Array.isArray(backup.orders)) {
+          showToast('❌ অবৈধ ব্যাকআপ ফাইল।');
+          return;
+        }
+        showConfirm(
+          `${backup.orders.length}টি অর্ডার রিস্টোর করবেন?`,
+          'এটি বিদ্যমান অর্ডারে যোগ হবে। তারিখ: ' +
+            (backup.exported ? new Date(backup.exported).toLocaleDateString('bn-BD') : 'অজানা'),
+          true,
+          ok => {
+            if (!ok) return;
+            backup.orders.forEach(o => {
+              const n = { ...o };
+              delete n.firebaseKey;
+              ordersRef.push(n);
+            });
+            showToast(`✅ ${backup.orders.length}টি অর্ডার রিস্টোর হয়েছে!`);
+          }
+        );
+      } catch {
+        showToast('❌ ব্যাকআপ ফাইল পড়া যাচ্ছে না।');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+
+  // ─── Keyboard shortcuts ──────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'n' || e.key === 'N') openModal(null);
+    if (e.key === 'Escape') {
+      closeModal();
+      closeLightbox();
+      closeConfirm(false);
+    }
+    if (e.key === '1') switchTab('plan');
+    if (e.key === '2') switchTab('all');
+    if (e.key === '3') switchTab('done');
+    if (e.key === '4') switchTab('revenue');
+  });
+
+  // ─── Init skeleton + language ────────────────────────────────
+  document.getElementById('view-plan').innerHTML =
+    `<div class="skeleton-wrap">${renderSkeletons(4)}</div>`;
+  applyI18n();
+
+  // ─── Delay tracking helper ──────────────────────────────────
+  const toggleDelayFields = () => {
+    const delayed = document.getElementById('f-delayed').value;
+    const fields = document.getElementById('delay-fields');
+    if (delayed === 'customer' || delayed === 'me') {
+      fields.classList.remove('hidden');
+    } else {
+      fields.classList.add('hidden');
+    }
+  };
+
+  // ─── Reminder Notification System ────────────────────────────
+  const checkUpcomingOrders = () => {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    
+    const now = today0();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dayAfter = new Date(now);
+    dayAfter.setDate(dayAfter.getDate() + 2);
+
+    // Check for orders 1-2 days away
+    orders.forEach(o => {
+      if (o.status === 'delivered' || o.status === 'cancelled' || !o.date) return;
+      
+      const deliveryDate = toDate(o.date);
+      const diff = Math.round((deliveryDate - now) / 86_400_000);
+      
+      // Remind 1-2 days before delivery
+      if (diff === 1 || diff === 2) {
+        const notifKey = `reminder-${o.firebaseKey}-${o.date}`;
+        const lastReminder = localStorage.getItem(notifKey);
+        const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+        
+        // Send notification only once per day per order
+        if (!lastReminder || parseInt(lastReminder) < oneDayAgo) {
+          const title = diff === 1 
+            ? `⚠️ আগামীকাল ডেলিভারি: ${o.name}`
+            : `📅 ${diff} দিনে ডেলিভারি: ${o.name}`;
+          const body = `${o.weight || ''} ${o.flavour || ''} কেক\n${o.time || 'সময় নির্ধারিত নয়'}`;
+          
+          try {
+            const n = new Notification(title, { 
+              body, 
+              tag: notifKey,
+              requireInteraction: false,
+              icon: 'icons/icon-192.png'
+            });
+            n.onclick = () => { window.focus(); n.close(); };
+            localStorage.setItem(notifKey, Date.now().toString());
+          } catch(e) {
+            console.error('Notification error:', e);
+          }
+        }
+      }
+    });
+  };
+
+  // Check reminders every 30 minutes
+  setInterval(checkUpcomingOrders, 30 * 60 * 1000);
+  // Also check on page load (after orders are loaded)
+  setTimeout(checkUpcomingOrders, 5000);
+
+  // ─── Authentication ──────────────────────────────────────────
+  let authMode = 'login'; // 'login' | 'register'
+
+  const handleLogin = async () => {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const btn = document.getElementById('login-btn');
+    const errorEl = document.getElementById('login-error');
+
+    if (!email || !password) {
+      showLoginError('ইমেইল এবং পাসওয়ার্ড দিন');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = authMode === 'login' ? 'লগইন হচ্ছে...' : 'রেজিস্টার হচ্ছে...';
+    errorEl.classList.remove('show');
+
+    try {
+      if (authMode === 'login') {
+        await auth.signInWithEmailAndPassword(email, password);
+      } else {
+        await auth.createUserWithEmailAndPassword(email, password);
+      }
+      // onAuthStateChanged will handle the UI update
+    } catch (error) {
+      console.error('Auth error:', error);
+      let msg = 'লগইন ব্যর্থ হয়েছে';
+      if (error.code === 'auth/user-not-found') msg = 'ইউজার পাওয়া যায়নি';
+      if (error.code === 'auth/wrong-password') msg = 'ভুল পাসওয়ার্ড';
+      if (error.code === 'auth/email-already-in-use') msg = 'এই ইমেইল ইতিমধ্যে ব্যবহৃত';
+      if (error.code === 'auth/weak-password') msg = 'পাসওয়ার্ড দুর্বল (কমপক্ষে ৬টি অক্ষর)';
+      if (error.code === 'auth/invalid-email') msg = 'ইমেইল ঠিকানা সঠিক নয়';
+      showLoginError(msg);
+      btn.disabled = false;
+      btn.textContent = authMode === 'login' ? 'লগইন' : 'রেজিস্টার করুন';
+    }
+  };
+
+  const showLoginError = msg => {
+    const el = document.getElementById('login-error');
+    el.textContent = '⚠️ ' + msg;
+    el.classList.add('show');
+  };
+
+  const toggleAuthMode = () => {
+    authMode = authMode === 'login' ? 'register' : 'login';
+    const subtitle = document.getElementById('login-subtitle');
+    const btn = document.getElementById('login-btn');
+    const toggleText = document.getElementById('login-toggle-text');
+    const toggleLink = document.getElementById('login-toggle-link');
+
+    if (authMode === 'register') {
+      subtitle.textContent = 'নতুন অ্যাকাউন্ট তৈরি করুন';
+      btn.textContent = 'রেজিস্টার করুন';
+      toggleText.textContent = 'ইতিমধ্যে অ্যাকাউন্ট আছে?';
+      toggleLink.textContent = 'লগইন করুন';
+    } else {
+      subtitle.textContent = 'লগইন করুন';
+      btn.textContent = 'লগইন';
+      toggleText.textContent = 'অ্যাকাউন্ট নেই?';
+      toggleLink.textContent = 'রেজিস্টার করুন';
+    }
+    document.getElementById('login-error').classList.remove('show');
+  };
+
+  const handleLogout = () => {
+    showConfirm('লগআউট করবেন?', 'আপনি লগআউট হয়ে যাবেন।', false, ok => {
+      if (ok) auth.signOut();
+    });
+  };
+
+  // Enter key support for login
+  document.addEventListener('DOMContentLoaded', () => {
+    const handleEnter = e => {
+      if (e.key === 'Enter') handleLogin();
+    };
+    document.getElementById('login-email')?.addEventListener('keypress', handleEnter);
+    document.getElementById('login-password')?.addEventListener('keypress', handleEnter);
+  });
+
+  // ─── Public API ──────────────────────────────────────────────
+  // ─── Writing toggle ─────────────────────────────────────────────
+  const toggleWriting = function() {
+    const checkbox = document.getElementById('f-no-writing');
+    const input = document.getElementById('f-writing');
+    if (checkbox.checked) {
+      input.value = 'NO WRITING';
+      input.disabled = true;
+      input.style.opacity = '0.5';
+    } else {
+      if (input.value === 'NO WRITING') input.value = '';
+      input.disabled = false;
+      input.style.opacity = '1';
+    }
+  };
+
+  // ─── Time toggle ────────────────────────────────────────────────
+  const toggleTime = function() {
+    const checkbox = document.getElementById('f-no-time');
+    const input = document.getElementById('f-time');
+    if (checkbox.checked) {
+      input.value = 'TIME NOT CONFIRMED';
+      input.disabled = true;
+      input.style.opacity = '0.5';
+    } else {
+      if (input.value === 'TIME NOT CONFIRMED') input.value = '';
+      input.disabled = false;
+      input.style.opacity = '1';
+    }
+  };
+
+  // ─── Payment calculator ─────────────────────────────────────────
+  const calculatePayment = function() {
+    const cakePrice = parseFloat(document.getElementById('f-total').value) || 0;
+    const method = document.getElementById('f-payment-method').value;
+    const breakdown = document.getElementById('payment-breakdown');
+
+    if (cakePrice <= 0) {
+      breakdown.classList.add('hidden');
+      paymentApproved = false;
+      return;
+    }
+
+    let chargeRate = 0;
+    let chargeLabel = '';
+
+    switch(method) {
+      case 'bkash':
+        chargeRate = 0.0185;
+        chargeLabel = '+ bKash চার্জ (1.85%)';
+        break;
+      case 'nagad':
+        chargeRate = 0.0149;
+        chargeLabel = '+ Nagad চার্জ (1.49%)';
+        break;
+      case 'rocket':
+        chargeRate = 0.0180;
+        chargeLabel = '+ Rocket চার্জ (1.80%)';
+        break;
+      default:
+        chargeRate = 0;
+        chargeLabel = '+ চার্জ';
+    }
+
+    const charge = chargeRate > 0 ? +(cakePrice * chargeRate).toFixed(2) : 0;
+    const customerPays = cakePrice + charge;
+
+    document.getElementById('calc-cake-price').textContent = `৳${cakePrice.toFixed(0)}`;
+    document.getElementById('calc-charge-label').textContent = chargeLabel;
+    document.getElementById('calc-charge').textContent = `৳${charge.toFixed(2)}`;
+    document.getElementById('calc-customer-pays').textContent = `৳${customerPays.toFixed(0)}`;
+
+    const chargeRow = breakdown.querySelector('.charge-row');
+    if (charge > 0) {
+      chargeRow.style.display = 'flex';
+    } else {
+      chargeRow.style.display = 'none';
+    }
+
+    breakdown.classList.remove('hidden');
+    paymentApproved = false;
+
+    document.getElementById('btn-approve').style.display = 'block';
+    document.getElementById('btn-edit-payment').style.display = 'none';
+  };
+
+  // ─── Approve payment calculation ────────────────────────────────
+  const approveCalculation = function() {
+    const cakePrice = parseFloat(document.getElementById('f-total').value) || 0;
+    const method = document.getElementById('f-payment-method').value;
+
+    let chargeRate = 0;
+    switch(method) {
+      case 'bkash': chargeRate = 0.0185; break;
+      case 'nagad': chargeRate = 0.0149; break;
+      case 'rocket': chargeRate = 0.0180; break;
+    }
+
+    const charge = chargeRate > 0 ? +(cakePrice * chargeRate).toFixed(2) : 0;
+    const customerPays = cakePrice + charge;
+
+    document.getElementById('f-paid').value = customerPays.toFixed(2);
+    document.getElementById('f-charge-deduct').value = charge.toFixed(2);
+
+    paymentApproved = true;
+
+    document.getElementById('btn-approve').style.display = 'none';
+    document.getElementById('btn-edit-payment').style.display = 'block';
+
+    showToast('✅ পেমেন্ট হিসাব অনুমোদিত');
+  };
+
+  // ─── Edit payment manually ────────────────────────────────────────
+  const editPayment = function() {
+    const manualSection = document.getElementById('manual-payment');
+    manualSection.classList.remove('hidden');
+    showToast('এখন আপনি ম্যানুয়ালি পরিবর্তন করতে পারবেন');
+  };
+
+  return {
+    switchTab,
+    toggleCard,
+    openModal,
+    closeModal,
+    closeModalBg,
+    saveOrder,
+    exportData,
+    openLightbox,
+    closeLightbox,
+    confirmStatusChange,
+    updateNotes,
+    copySrsMessage,
+    duplicateOrder,
+    showConfirm,
+    closeConfirm,
+    confirmDelete,
+    toggleSort,
+    clearSearch,
+    removePhoto,
+    setLang,
+    onBkashModeChange,
+    markFullyPaid,
+    handleLogin,
+    toggleAuthMode,
+    handleLogout,
+    toggleDelayFields,
+    toggleWriting,
+    toggleTime,
+    calculatePayment,
+    approveCalculation,
+    editPayment
+  };
+
+})();
+</script>
+
+<!-- Notification System (isolated - cannot break main app) -->
+<script>
+(function() {
+  'use strict';
+  if (!window.firebase) return;
+
+  var db = firebase.database();
+  var notifReady = false;
+  var notifEnabled = false;
+
+  // ─── Auto-request notification permission on load ──────────────
+  function ensureNotifications() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      notifEnabled = true;
+      updateBellUI();
+      return;
+    }
+    if (Notification.permission === 'denied') {
+      notifEnabled = false;
+      updateBellUI();
+      return;
+    }
+    // Permission not yet decided — request it
+    Notification.requestPermission().then(function(perm) {
+      notifEnabled = (perm === 'granted');
+      updateBellUI();
+      if (perm === 'granted') {
+        new Notification('🎂 নিতুর বেকারি', { body: 'নোটিফিকেশন চালু হয়েছে! প্রতিদিন রিমাইন্ড পাবেন।', tag: 'nitu-welcome' });
+      }
+    });
+  }
+
+  function updateBellUI() {
+    var bell = document.getElementById('notif-bell');
+    if (!bell) return;
+    // Bell always shows active — notifications are always on
+    bell.classList.add('active');
+    bell.classList.remove('denied');
+    if (!('Notification' in window)) { bell.style.opacity = '0.5'; return; }
+    if (Notification.permission === 'denied') {
+      bell.style.opacity = '0.6';
+    }
+  }
+
+  // Bell button always shows info, never toggles off
+  window.App.toggleNotifications = function() {
+    if (!('Notification' in window)) {
+      alert('এই ব্রাউজারে নোটিফিকেশন সাপোর্ট নেই');
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      alert('✅ নোটিফিকেশন চালু আছে!\n\nআপনি প্রতিদিন কমপক্ষে ২ বার রিমাইন্ড পাবেন।');
+      return;
+    }
+    if (Notification.permission === 'denied') {
+      alert('⚠️ নোটিফিকেশন ব্লক করা আছে।\nব্রাউজার সেটিংস থেকে nitusbakingplanv2 এর জন্য নোটিফিকেশন অনুমতি দিন।');
+      return;
+    }
+    Notification.requestPermission().then(function(perm) {
+      notifEnabled = (perm === 'granted');
+      updateBellUI();
+      if (perm === 'granted') {
+        alert('🔔 নোটিফিকেশন চালু হয়েছে!');
+        new Notification('🎂 নিতুর বেকারি', { body: 'নোটিফিকেশন সফলভাবে চালু হয়েছে!', tag: 'nitu-test' });
+      }
+    });
+  };
+
+  // ─── Order notifications ───────────────────────────────────────
+  var notifRef = db.ref('orders');
+
+  function sendNotification(orderData) {
+    if (!notifEnabled || Notification.permission !== 'granted') return;
+    var name = orderData.name || 'Unknown';
+    var source = orderData.source === 'tally' ? ' (Tally)' : '';
+    var body = [orderData.weight, orderData.flavour, orderData.total ? '৳'+orderData.total : ''].filter(Boolean).join(' · ');
+    try {
+      var n = new Notification('🎂 নতুন অর্ডার' + source + ': ' + name, { body: body || 'নতুন অর্ডার!', tag: 'nitu-' + Date.now(), requireInteraction: true });
+      n.onclick = function() { window.focus(); n.close(); };
+    } catch(e) {}
+    var bell = document.getElementById('notif-bell');
+    if (bell) { bell.classList.remove('ringing'); bell.offsetWidth; bell.classList.add('ringing'); setTimeout(function(){ bell.classList.remove('ringing'); }, 700); }
+  }
+
+  // Wait for initial data load, then listen for NEW orders only
+  notifRef.once('value').then(function(snap) {
+    var knownKeys = {};
+    var data = snap.val();
+    if (data) { Object.keys(data).forEach(function(k) { knownKeys[k] = true; }); }
+    notifReady = true;
+    notifRef.on('child_added', function(childSnap) {
+      if (knownKeys[childSnap.key]) { delete knownKeys[childSnap.key]; return; }
+      var o = childSnap.val();
+      if (o) sendNotification(o);
+    });
+  });
+
+  // ─── Scheduled daily reminders (2x/day) ────────────────────────
+  var REMINDER_HOURS = [9, 18]; // 9 AM and 6 PM
+  var REMINDER_MESSAGES = [
+    { title: '🎂 নিতুর বেকারি — দৈনিক রিমাইন্ডার', body: 'আজকের অর্ডার চেক করুন এবং পেমেন্ট হিসাব মিলিয়ে নিন!' },
+    { title: '🧁 নিতুর বেকারি — সন্ধ্যার রিমাইন্ডার', body: 'আজকের ডেলিভারি শেষ হয়েছে কি? পেন্ডিং অর্ডার দেখুন!' }
+  ];
+
+  function checkScheduledReminders() {
+    if (!notifEnabled || Notification.permission !== 'granted') return;
+    var now = new Date();
+    var currentHour = now.getHours();
+    var currentMinute = now.getMinutes();
+    var todayKey = now.toISOString().slice(0, 10); // YYYY-MM-DD
+
+    for (var i = 0; i < REMINDER_HOURS.length; i++) {
+      var reminderKey = 'nitu-reminder-' + todayKey + '-' + REMINDER_HOURS[i];
+      var lastSent = localStorage.getItem(reminderKey);
+      if (lastSent) continue;
+
+      if (currentHour === REMINDER_HOURS[i] && currentMinute < 15) {
+        try {
+          var msg = REMINDER_MESSAGES[i] || REMINDER_MESSAGES[0];
+          new Notification(msg.title, { body: msg.body, tag: reminderKey, requireInteraction: false });
+          localStorage.setItem(reminderKey, Date.now().toString());
+          var bell = document.getElementById('notif-bell');
+          if (bell) { bell.classList.remove('ringing'); bell.offsetWidth; bell.classList.add('ringing'); setTimeout(function(){ bell.classList.remove('ringing'); }, 700); }
+        } catch(e) {}
+      }
+    }
+  }
+
+  // Check every minute for scheduled reminders
+  setInterval(checkScheduledReminders, 60000);
+  // Also check immediately on load
+  setTimeout(function() {
+    ensureNotifications();
+    checkScheduledReminders();
+  }, 200);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#c2185b">
+<title>নিতুর বেকারি — অর্ডার ফর্ম</title>
+<link rel="icon" type="image/png" href="logo.png">
+<link rel="apple-touch-icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --pink:#c2185b; --pink-dark:#880e4f; --pink-mid:#e91e8c;
+  --pink-light:#fce4ec; --pink-soft:#f8bbd9; --pink-glow:rgba(194,24,91,0.18);
+  --green:#2e7d32; --green-light:#e8f5e9; --green-mid:#43a047;
+  --amber:#e65100; --amber-light:#fff3e0; --red:#c62828; --red-light:#ffebee;
+  --blue:#1565c0; --blue-light:#e3f2fd; --purple:#6a1b9a; --purple-light:#f3e5f5;
+  --text:#1a1a2e; --text2:#555577; --text3:#9999bb;
+  --border:#e8e8f0; --border-focus:var(--pink);
+  --surface:#ffffff; --surface2:#f7f7fb; --bg:#f3f3f8;
+  --radius:14px; --radius-sm:9px; --radius-xs:6px;
+  --shadow-sm:0 1px 4px rgba(0,0,0,0.07),0 0 0 1px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 18px rgba(0,0,0,0.10),0 1px 4px rgba(0,0,0,0.06);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.14),0 2px 8px rgba(0,0,0,0.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{font-family:'Poppins','Hind Siliguri',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+input,select,textarea,button{font-family:inherit;font-size:inherit}
+button{cursor:pointer}
+
+/* ─── ENTRY SCREEN ──────────────────────────── */
+.entry-screen{position:fixed;inset:0;background:linear-gradient(135deg,var(--pink-dark) 0%,var(--pink) 45%,var(--pink-mid) 100%);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;transition:opacity .4s,visibility .4s}
+.entry-screen.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.entry-box{background:var(--surface);border-radius:var(--radius);padding:32px 24px;width:100%;max-width:380px;box-shadow:var(--shadow-lg);text-align:center}
+.entry-logo{margin-bottom:12px}
+.entry-logo img{max-width:180px;height:auto;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.1))}
+.entry-subtitle{font-size:14px;color:var(--text2);margin-bottom:20px;font-weight:500}
+.lang-row{display:flex;gap:8px;margin-bottom:16px;justify-content:center}
+.lang-btn{padding:8px 20px;border:2px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font-size:13px;font-weight:600;color:var(--text2);transition:all .15s}
+.lang-btn.active{border-color:var(--pink);background:var(--pink-light);color:var(--pink)}
+.field{margin-bottom:14px;text-align:left}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px}
+.req{color:var(--red)}
+.field input,.field select,.field textarea{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;background:var(--surface2);color:var(--text);transition:border-color .14s,box-shadow .14s}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-glow)}
+.field textarea{min-height:60px;resize:vertical}
+.btn-primary{width:100%;padding:14px;background:linear-gradient(135deg,var(--pink-dark),var(--pink-mid));border:none;border-radius:var(--radius-sm);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;transition:transform .14s,box-shadow .14s}
+.btn-primary:active{transform:scale(0.98)}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+.entry-error{background:var(--red-light);color:var(--red);padding:10px 12px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:16px;display:none}
+.entry-error.show{display:block}
+
+/* ─── FORM SCREEN ───────────────────────────── */
+.form-screen{display:none;max-width:480px;margin:0 auto;padding:16px 16px 100px}
+.form-screen.active{display:block}
+.form-header{text-align:center;padding:20px 0 12px}
+.form-header img{max-width:140px;height:auto;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.1))}
+.form-header h2{font-size:16px;font-weight:600;color:var(--text);margin-top:8px}
+.progress-wrap{background:var(--surface);border-radius:var(--radius-pill);height:6px;margin:16px 0;overflow:hidden;box-shadow:var(--shadow-sm)}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--pink),var(--pink-mid));border-radius:var(--radius-pill);transition:width .3s ease;width:0}
+.section{background:var(--surface);border-radius:var(--radius);padding:20px 16px;margin-bottom:16px;box-shadow:var(--shadow-sm)}
+.section-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.note-box{background:#fff3e0;border:1px solid #ffcc80;border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--amber);line-height:1.5;margin-top:8px}
+.photo-upload{border:2px dashed var(--border);border-radius:var(--radius-sm);padding:24px;text-align:center;cursor:pointer;transition:border-color .15s;color:var(--text3);font-size:13px}
+.photo-upload:active{border-color:var(--pink)}
+.photo-preview{position:relative;margin-top:10px;display:none}
+.photo-preview.show{display:block}
+.photo-preview img{width:100%;max-height:200px;object-fit:cover;border-radius:var(--radius-sm)}
+.photo-remove{position:absolute;top:6px;right:6px;background:var(--red);color:#fff;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+
+/* Payment calc */
+.calc-box{background:var(--pink-light);border-radius:var(--radius-sm);padding:14px;margin-top:12px;display:none}
+.calc-box.show{display:block}
+.calc-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+.calc-row.total{font-weight:700;font-size:16px;color:var(--pink);border-top:1px solid var(--pink-soft);padding-top:8px;margin-top:4px}
+.advance-options{display:flex;gap:8px;margin-bottom:12px}
+.advance-opt{flex:1;padding:10px;border:2px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--text2)}
+.advance-opt.active{border-color:var(--pink);background:var(--pink-light);color:var(--pink)}
+.surprise-note{background:var(--red-light);border:1px solid #ef9a9a;border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;color:var(--red);margin-top:8px;display:none}
+.surprise-note.show{display:block}
+
+/* Success */
+.success-screen{display:none;text-align:center;padding:40px 20px;max-width:400px;margin:0 auto}
+.success-screen.active{display:block}
+.success-icon{font-size:64px;margin-bottom:16px}
+.success-title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px}
+.success-msg{font-size:14px;color:var(--text2);margin-bottom:24px;line-height:1.6}
+.order-summary{background:var(--surface);border-radius:var(--radius);padding:16px;text-align:left;margin-bottom:24px;box-shadow:var(--shadow-sm);font-size:13px}
+.order-summary .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)}
+.order-summary .row:last-child{border-bottom:none}
+.order-summary .row span:first-child{color:var(--text3)}
+.order-summary .row span:last-child{font-weight:600;color:var(--text)}
+
+/* Loading */
+.loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:none;align-items:center;justify-content:center}
+.loading-overlay.show{display:flex}
+.spinner{width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--pink);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--text);color:#fff;padding:12px 20px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;z-index:3000;opacity:0;transition:all .3s ease;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media print{body>*{display:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ═══════ ENTRY SCREEN ═══════ -->
+<div class="entry-screen" id="entry-screen">
+  <div class="entry-box">
+    <div class="entry-logo"><img src="logo.png" alt="নিতুর বেকারি"></div>
+    <div class="entry-subtitle" data-bn="অর্ডার ফর্ম" data-en="Order Form">অর্ডার ফর্ম</div>
+    <div class="lang-row">
+      <button class="lang-btn active" id="lang-bn" onclick="setLang('bn')">বাংলা</button>
+      <button class="lang-btn" id="lang-en" onclick="setLang('en')">English</button>
+    </div>
+    <div class="entry-error" id="entry-error"></div>
+    <div class="field">
+      <label data-bn="ফোন নম্বর *" data-en="Phone Number *">ফোন নম্বর *</label>
+      <input type="tel" id="entry-phone" placeholder="017xx-xxxxxx" autocomplete="tel">
+    </div>
+    <button class="btn-primary" id="entry-btn" onclick="startOrder()" data-bn="অর্ডার শুরু করুন" data-en="Start Order">অর্ডার শুরু করুন</button>
+  </div>
+</div>
+
+<!-- ═══════ FORM SCREEN ═══════ -->
+<div class="form-screen" id="form-screen">
+  <div class="form-header">
+    <img src="logo.png" alt="নিতুর বেকারি">
+    <h2 data-bn="আপনার অর্ডার দিন" data-en="Place Your Order">আপনার অর্ডার দিন</h2>
+  </div>
+
+  <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+
+  <!-- 🎂 Cake Info -->
+  <div class="section">
+    <div class="section-title">🎂 <span data-bn="কেক তথ্য" data-en="Cake Details">কেক তথ্য</span></div>
+    <div class="row2">
+      <div class="field">
+        <label data-bn="আপনার নাম *" data-en="Your Name *">আপনার নাম *</label>
+        <input type="text" id="f-name" data-bn-placeholder="রিনা বেগম" data-en-placeholder="Rina Begum" placeholder="রিনা বেগম">
+      </div>
+      <div class="field">
+        <label data-bn="কেকের ওজন *" data-en="Cake Weight *">কেকের ওজন *</label>
+        <select id="f-weight">
+          <option value="" data-bn="নির্বাচন করুন" data-en="Select">নির্বাচন করুন</option>
+          <option value="1 lb">1 পাউন্ড</option>
+          <option value="1.5 lb">1.5 পাউন্ড</option>
+          <option value="2 lb">2 পাউন্ড</option>
+          <option value="2.5 lb">2.5 পাউন্ড</option>
+          <option value="3 lb">3 পাউন্ড</option>
+          <option value="3.5 lb">3.5 পাউন্ড</option>
+          <option value="4 lb">4 পাউন্ড</option>
+          <option value="5 lb">5 পাউন্ড</option>
+          <option value="6 lb">6 পাউন্ড</option>
+          <option value="Custom" data-bn="কাস্টম" data-en="Custom">কাস্টম</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label data-bn="কেকের ফ্লেভার *" data-en="Cake Flavor *">কেকের ফ্লেভার *</label>
+      <select id="f-flavour">
+        <option value="" data-bn="নির্বাচন করুন" data-en="Select">নির্বাচন করুন</option>
+        <option>Chocolate Sponge</option>
+        <option>Vanilla Sponge</option>
+        <option>Vanilla with Whipped Cream</option>
+        <option>Red Velvet</option>
+        <option>Black Forest</option>
+        <option>White Forest</option>
+        <option>Lemon Cake</option>
+        <option>Orange Cake</option>
+        <option>Strawberry Cake</option>
+        <option>Blueberry Cake</option>
+        <option>Malai Cake</option>
+        <option>Butterscotch</option>
+        <option>Special Vanilla</option>
+        <option>Chocolate Mudcake</option>
+        <option>Double Chocolate</option>
+        <option>Choco Truffle</option>
+        <option>Mango Mousse</option>
+        <option>Custom</option>
+      </select>
+    </div>
+    <div class="field">
+      <label data-bn="কেকে লেখা" data-en="Writing on Cake">কেকে লেখা</label>
+      <input type="text" id="f-writing" data-bn-placeholder="যেমন: Rima এর জন্মদিন" data-en-placeholder="e.g. For Rima's Birthday" placeholder="যেমন: Rima এর জন্মদিন">
+      <div class="note-box" data-bn="দ্রষ্টব্য: শুভেচ্ছা বা অভিনন্দন ধরনের লেখা (যেমন: &quot;Happy Birthday&quot;, &quot;Congratulations&quot;) আমাদের অঞ্চলের নীতিমালা অনুযায়ী গ্রহণযোগ্য নয়। দয়া করে কেকের নাম বা সংক্ষিপ্ত বার্তা লিখুন।" data-en="Note: Greeting or congratulatory messages (e.g. &quot;Happy Birthday&quot;, &quot;Congratulations&quot;) are not accepted per our regional policy. Please write the cake name or a short message." data-bn="দ্রষ্টব্য: শুভেচ্ছা বা অভিনন্দন ধরনের লেখা (যেমন: &quot;Happy Birthday&quot;, &quot;Congratulations&quot;) আমাদের অঞ্চলের নীতিমালা অনুযায়ী গ্রহণযোগ্য নয়। দয়া করে কেকের নাম বা সংক্ষিপ্ত বার্তা লিখুন।">দ্রষ্টব্য: শুভেচ্ছা বা অভিনন্দন ধরনের লেখা (যেমন: "Happy Birthday", "Congratulations") আমাদের অঞ্চলের নীতিমালা অনুযায়ী গ্রহণযোগ্য নয়। দয়া করে কেকের নাম বা সংক্ষিপ্ত বার্তা লিখুন।</div>
+    </div>
+    <div class="field">
+      <label data-bn="রেফারেন্স ছবি (ঐচ্ছিক)" data-en="Reference Photo (Optional)">রেফারেন্স ছবি (ঐচ্ছিক)</label>
+      <div class="photo-upload" onclick="document.getElementById('f-photo').click()" role="button">
+        <div>📎</div>
+        <div data-bn="ছবি আপলোড করুন" data-en="Upload Photo">ছবি আপলোড করুন</div>
+      </div>
+      <input type="file" id="f-photo" accept="image/*" class="hidden" onchange="handlePhoto(event)">
+      <div class="photo-preview" id="photo-preview">
+        <img id="photo-img" src="" alt="Reference">
+        <button class="photo-remove" onclick="removePhoto()">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🚚 Delivery -->
+  <div class="section">
+    <div class="section-title">🚚 <span data-bn="ডেলিভারি তথ্য" data-en="Delivery Info">ডেলিভারি তথ্য</span></div>
+    <div class="field">
+      <label data-bn="ডেলিভারি ঠিকানা *" data-en="Delivery Address *">ডেলিভারি ঠিকানা *</label>
+      <textarea id="f-address" data-bn-placeholder="পূর্ণ ঠিকানা লিখুন" data-en-placeholder="Enter full address" placeholder="পূর্ণ ঠিকানা লিখুন"></textarea>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label data-bn="ডেলিভারির তারিখ *" data-en="Delivery Date *">ডেলিভারির তারিখ *</label>
+        <input type="date" id="f-date">
+      </div>
+      <div class="field">
+        <label data-bn="ডেলিভারির সময়" data-en="Delivery Time">ডেলিভারির সময়</label>
+        <input type="text" id="f-time" data-bn-placeholder="বিকাল ৪টা" data-en-placeholder="e.g. 4 PM" placeholder="বিকাল ৪টা">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label data-bn="রিসিভারের নাম *" data-en="Receiver Name *">রিসিভারের নাম *</label>
+        <input type="text" id="f-receiver" data-bn-placeholder="কে নেবেন" data-en-placeholder="Who receives" placeholder="কে নেবেন">
+      </div>
+      <div class="field">
+        <label data-bn="রিসিভারের ফোন *" data-en="Receiver Phone *">রিসিভারের ফোন *</label>
+        <input type="tel" id="f-receiver-phone" placeholder="017xx-xxxxxx">
+      </div>
+    </div>
+    <div class="field">
+      <label data-bn="সারপ্রাইজ কেক?" data-en="Surprise Cake?">সারপ্রাইজ কেক?</label>
+      <select id="f-surprise">
+        <option value="no" data-bn="না" data-en="No">না</option>
+        <option value="yes" data-bn="হ্যাঁ — সারপ্রাইজ 🎁" data-en="Yes — Surprise 🎁">হ্যাঁ — সারপ্রাইজ 🎁</option>
+      </select>
+      <div class="surprise-note" id="surprise-note" data-bn="⚠️ সারপ্রাইজ কেকের জন্য ১০০% অগ্রিম পেমেন্ট আবশ্যক।" data-en="⚠️ 100% advance payment is required for surprise cakes.">⚠️ সারপ্রাইজ কেকের জন্য ১০০% অগ্রিম পেমেন্ট আবশ্যক।</div>
+    </div>
+  </div>
+
+  <!-- 💳 Payment -->
+  <div class="section">
+    <div class="section-title">💳 <span data-bn="পেমেন্ট" data-en="Payment">পেমেন্ট</span></div>
+    <div class="field">
+      <label data-bn="পেমেন্ট পদ্ধতি *" data-en="Payment Method *">পেমেন্ট পদ্ধতি *</label>
+      <select id="f-payment-method" onchange="calcPayment()">
+        <option value="" data-bn="নির্বাচন করুন" data-en="Select">নির্বাচন করুন</option>
+        <option value="cash">💵 <span data-bn="নগদ / হাতে (কোনো চার্জ নেই)" data-en="Cash (No Charge)">নগদ / হাতে (কোনো চার্জ নেই)</span></option>
+        <option value="bkash">📱 bKash (1.85%)</option>
+        <option value="nagad">📱 Nagad (1.49%)</option>
+        <option value="rocket">🚀 Rocket (1.80%)</option>
+        <option value="bank">🏦 <span data-bn="ব্যাংক ট্রান্সফার (কোনো চার্জ নেই)" data-en="Bank Transfer (No Charge)">ব্যাংক ট্রান্সফার (কোনো চার্জ নেই)</span></option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label data-bn="আপনি কত টাকা অগ্রিম দিতে চান? *" data-en="How much advance do you want to pay? *">আপনি কত টাকা অগ্রিম দিতে চান? *</label>
+      <div class="advance-options" id="advance-options">
+        <div class="advance-opt" id="opt-50" onclick="setAdvanceType('50')" data-bn="৫০% অগ্রিম" data-en="50% Advance">৫০% অগ্রিম</div>
+        <div class="advance-opt" id="opt-full" onclick="setAdvanceType('full')" data-bn="১০০% পরিশোধ" data-en="Full Payment">১০০% পরিশোধ</div>
+      </div>
+      <input type="number" id="f-advance" placeholder="৳ পরিমাণ লিখুন" min="0" oninput="calcPayment()">
+    </div>
+
+    <div class="calc-box" id="calc-box">
+      <div class="calc-row">
+        <span data-bn="আপনার অগ্রিম:" data-en="Your advance:">আপনার অগ্রিম:</span>
+        <span id="calc-advance">৳0</span>
+      </div>
+      <div class="calc-row" id="calc-charge-row" style="display:none">
+        <span id="calc-charge-label">+ bKash চার্জ:</span>
+        <span id="calc-charge">৳0</span>
+      </div>
+      <div class="calc-row total">
+        <span data-bn="চার্জসহ মোট:" data-en="Total with charge:">চার্জসহ মোট:</span>
+        <span id="calc-total">৳0</span>
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:12px">
+      <label data-bn="ট্রানজেকশন আইডি / bKash শেষ ৪ ডিজিট *" data-en="Transaction ID / bKash Last 4 Digits *">ট্রানজেকশন আইডি / bKash শেষ ৪ ডিজিট *</label>
+      <input type="text" id="f-trx" data-bn-placeholder="যেমন: 8K3N বা 12345678" data-en-placeholder="e.g. 8K3N or 12345678" placeholder="যেমন: 8K3N বা 12345678">
+    </div>
+
+    <div class="field">
+      <label data-bn="অতিরিক্ত তথ্য (ঐচ্ছিক)" data-en="Additional Info (Optional)">অতিরিক্ত তথ্য (ঐচ্ছিক)</label>
+      <textarea id="f-notes" data-bn-placeholder="কোনো বিশেষ অনুরোধ থাকলে লিখুন" data-en-placeholder="Any special requests?" placeholder="কোনো বিশেষ অনুরোধ থাকলে লিখুন"></textarea>
+    </div>
+  </div>
+
+  <!-- Submit -->
+  <button class="btn-primary" onclick="submitOrder()" id="submit-btn" data-bn="✅ অর্ডার জমা দিন" data-en="✅ Submit Order">✅ অর্ডার জমা দিন</button>
+</div>
+
+<!-- ═══════ SUCCESS SCREEN ═══════ -->
+<div class="success-screen" id="success-screen">
+  <div class="success-icon">✅</div>
+  <div class="success-title" data-bn="অর্ডার সফলভাবে জমা হয়েছে!" data-en="Order Submitted Successfully!">অর্ডার সফলভাবে জমা হয়েছে!</div>
+  <div class="success-msg" data-bn="আমরা শীঘ্রই আপনার সাথে যোগাযোগ করব। অর্ডার কনফার্ম হলে আপনাকে জানানো হবে।" data-en="We will contact you shortly. You will be notified once your order is confirmed.">আমরা শীঘ্রই আপনার সাথে যোগাযোগ করব। অর্ডার কনফার্ম হলে আপনাকে জানানো হবে।</div>
+  <div class="order-summary" id="order-summary"></div>
+  <button class="btn-primary" onclick="resetForm()" data-bn="🔄 নতুন অর্ডার দিন" data-en="🔄 Place New Order">🔄 নতুন অর্ডার দিন</button>
+</div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+'use strict';
+
+const firebaseConfig = {
+  apiKey:            'AIzaSyD9mGV0hogQ6AyPMznmEcZuAhFmIV3rh3M',
+  authDomain:        'nitusbakingplanv2.firebaseapp.com',
+  databaseURL:       'https://nitusbakingplanv2-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId:         'nitusbakingplanv2',
+  storageBucket:     'nitusbakingplanv2.firebasestorage.app',
+  messagingSenderId: '413436889702',
+  appId:             '1:413436889702:web:f0290fdc4b8d4e80d1bba7'
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const ordersRef = db.ref('orders');
+
+let lang = localStorage.getItem('nitu-cust-lang') || 'bn';
+let currentPhoto = '';
+let advanceType = ''; // '50' | 'full' | ''
+let isSurprise = false;
+
+// ─── Language ───────────────────────────────
+function setLang(l) {
+  lang = l;
+  localStorage.setItem('nitu-cust-lang', l);
+  document.getElementById('lang-bn').classList.toggle('active', l === 'bn');
+  document.getElementById('lang-en').classList.toggle('active', l === 'en');
+  applyLang();
+}
+
+function applyLang() {
+  document.querySelectorAll('[data-bn]').forEach(el => {
+    el.textContent = el.getAttribute('data-' + lang);
+  });
+  document.querySelectorAll('[data-bn-placeholder]').forEach(el => {
+    el.placeholder = el.getAttribute('data-' + lang + '-placeholder') || '';
+  });
+}
+
+// ─── Entry ──────────────────────────────────
+function startOrder() {
+  const phone = document.getElementById('entry-phone').value.trim();
+  const err = document.getElementById('entry-error');
+  if (!phone || phone.length < 10) {
+    err.textContent = lang === 'bn' ? 'সঠিক ফোন নম্বর দিন' : 'Enter a valid phone number';
+    err.classList.add('show');
+    return;
+  }
+  err.classList.remove('show');
+  localStorage.setItem('nitu-cust-phone', phone);
+  document.getElementById('entry-screen').classList.add('hidden');
+  document.getElementById('form-screen').classList.add('active');
+  setMinDate();
+  updateProgress();
+}
+
+// ─── Photo handling ─────────────────────────
+function handlePhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    showToast(lang === 'bn' ? 'ফাইল সাইজ ৫MB এর কম হতে হবে' : 'File size must be under 5MB');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    // Compress image
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > MAX) { h = h * MAX / w; w = MAX; }
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      currentPhoto = canvas.toDataURL('image/jpeg', 0.7);
+      document.getElementById('photo-img').src = currentPhoto;
+      document.getElementById('photo-preview').classList.add('show');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePhoto() {
+  currentPhoto = '';
+  document.getElementById('photo-preview').classList.remove('show');
+  document.getElementById('f-photo').value = '';
+}
+
+// ─── Advance & Payment ──────────────────────
+function setAdvanceType(type) {
+  advanceType = type;
+  document.querySelectorAll('.advance-opt').forEach(el => el.classList.remove('active'));
+  document.getElementById('opt-' + type).classList.add('active');
+
+  const advanceInput = document.getElementById('f-advance');
+
+  if (type === '50') {
+    advanceInput.placeholder = lang === 'bn' ? '৫০% হিসাবে লিখুন' : 'Enter 50% amount';
+    advanceInput.removeAttribute('readonly');
+  } else {
+    advanceInput.placeholder = lang === 'bn' ? 'পূর্ণ পরিমাণ লিখুন' : 'Enter full amount';
+    advanceInput.removeAttribute('readonly');
+  }
+  calcPayment();
+}
+
+function calcPayment() {
+  const advance = parseFloat(document.getElementById('f-advance').value) || 0;
+  const method = document.getElementById('f-payment-method').value;
+  const calcBox = document.getElementById('calc-box');
+  const chargeRow = document.getElementById('calc-charge-row');
+
+  if (advance <= 0) { calcBox.classList.remove('show'); return; }
+
+  let rate = 0, label = '';
+  switch (method) {
+    case 'bkash': rate = 0.0185; label = '+ bKash চার্জ (1.85%)'; break;
+    case 'nagad': rate = 0.0149; label = '+ Nagad চার্জ (1.49%)'; break;
+    case 'rocket': rate = 0.0180; label = '+ Rocket চার্জ (1.80%)'; break;
+    default: rate = 0; label = '';
+  }
+
+  const charge = rate > 0 ? +(advance * rate).toFixed(2) : 0;
+  const total = advance + charge;
+
+  document.getElementById('calc-advance').textContent = '৳' + advance;
+  document.getElementById('calc-charge-label').textContent = label;
+  document.getElementById('calc-charge').textContent = '৳' + charge;
+  document.getElementById('calc-total').textContent = '৳' + total.toFixed(0);
+  chargeRow.style.display = charge > 0 ? 'flex' : 'none';
+  calcBox.classList.add('show');
+}
+
+// ─── Surprise toggle ────────────────────────
+document.getElementById('f-surprise').addEventListener('change', function() {
+  isSurprise = this.value === 'yes';
+  document.getElementById('surprise-note').classList.toggle('show', isSurprise);
+  if (isSurprise) {
+    setAdvanceType('full');
+    document.querySelectorAll('.advance-opt').forEach(el => el.style.opacity = '0.5');
+    document.getElementById('opt-full').style.opacity = '1';
+  } else {
+    document.querySelectorAll('.advance-opt').forEach(el => el.style.opacity = '1');
+  }
+});
+
+// ─── Progress ───────────────────────────────
+function updateProgress() {
+  const fields = ['f-name','f-weight','f-flavour','f-address','f-date','f-receiver','f-receiver-phone','f-payment-method','f-advance','f-trx'];
+  let filled = 0;
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.value.trim()) filled++;
+  });
+  const pct = Math.round((filled / fields.length) * 100);
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+// Attach progress listeners
+document.querySelectorAll('#form-screen input, #form-screen select, #form-screen textarea').forEach(el => {
+  el.addEventListener('input', updateProgress);
+  el.addEventListener('change', updateProgress);
+});
+
+// ─── Validation ─────────────────────────────
+function validate() {
+  const req = [
+    ['f-name', lang === 'bn' ? 'নাম দিন' : 'Enter name'],
+    ['f-weight', lang === 'bn' ? 'ওজন নির্বাচন করুন' : 'Select weight'],
+    ['f-flavour', lang === 'bn' ? 'ফ্লেভার নির্বাচন করুন' : 'Select flavor'],
+    ['f-address', lang === 'bn' ? 'ঠিকানা দিন' : 'Enter address'],
+    ['f-date', lang === 'bn' ? 'তারিখ দিন' : 'Enter date'],
+    ['f-receiver', lang === 'bn' ? 'রিসিভারের নাম দিন' : 'Enter receiver name'],
+    ['f-receiver-phone', lang === 'bn' ? 'রিসিভারের ফোন দিন' : 'Enter receiver phone'],
+    ['f-payment-method', lang === 'bn' ? 'পেমেন্ট পদ্ধতি নির্বাচন করুন' : 'Select payment method'],
+    ['f-advance', lang === 'bn' ? 'অগ্রিম পরিমাণ দিন' : 'Enter advance amount'],
+    ['f-trx', lang === 'bn' ? 'ট্রানজেকশন আইডি দিন' : 'Enter transaction ID'],
+  ];
+
+  for (const [id, msg] of req) {
+    const el = document.getElementById(id);
+    if (!el || !el.value.trim()) {
+      showToast(msg);
+      el.focus();
+      return false;
+    }
+  }
+
+  // Surprise must be full payment
+  if (isSurprise) {
+    const adv = parseFloat(document.getElementById('f-advance').value) || 0;
+    if (adv <= 0) {
+      showToast(lang === 'bn' ? 'সারপ্রাইজ কেকের জন্য পূর্ণ পেমেন্ট দিন' : 'Full payment required for surprise cake');
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// ─── Submit ─────────────────────────────────
+function submitOrder() {
+  if (!validate()) return;
+
+  const phone = localStorage.getItem('nitu-cust-phone') || '';
+  const advance = parseFloat(document.getElementById('f-advance').value) || 0;
+  const method = document.getElementById('f-payment-method').value;
+
+  let rate = 0;
+  switch (method) {
+    case 'bkash': rate = 0.0185; break;
+    case 'nagad': rate = 0.0149; break;
+    case 'rocket': rate = 0.0180; break;
+  }
+  const charge = rate > 0 ? +(advance * rate).toFixed(2) : 0;
+
+  const order = {
+    phone:           phone,
+    name:            document.getElementById('f-name').value.trim(),
+    weight:          document.getElementById('f-weight').value,
+    flavour:         document.getElementById('f-flavour').value,
+    writing:         document.getElementById('f-writing').value.trim(),
+    photo:           currentPhoto,
+    address:         document.getElementById('f-address').value.trim(),
+    date:            document.getElementById('f-date').value,
+    time:            document.getElementById('f-time').value.trim(),
+    receiver:        document.getElementById('f-receiver').value.trim(),
+    receiverPhone:   document.getElementById('f-receiver-phone').value.trim(),
+    surprise:        document.getElementById('f-surprise').value,
+    paymentMethod:   method,
+    advance:         advance,
+    advanceCharge:   charge,
+    advanceTotal:    advance + charge,
+    trx:             document.getElementById('f-trx').value.trim(),
+    notes:           document.getElementById('f-notes').value.trim(),
+    lang:            lang,
+    source:          'customer',
+    status:          'confirmed',
+    createdAt:       Date.now(),
+    updatedAt:       Date.now(),
+    // Admin fills later
+    total: 0, paid: 0, design: '', size: '',
+    deliveryPaid: 'na', deliveryAmount: 0,
+    bkashMode: 'none', bkashCharge: 0, paynote: '',
+    bakingnotes: '', delayed: 'no', clientInformed: 'informed', expectedDate: ''
+  };
+
+  showLoading(true);
+  ordersRef.push(order).then(() => {
+    showLoading(false);
+    showSuccess(order);
+  }).catch(err => {
+    showLoading(false);
+    showToast(lang === 'bn' ? 'সমস্যা হয়েছে, আবার চেষ্টা করুন' : 'Error occurred, try again');
+    console.error(err);
+  });
+}
+
+// ─── Success ────────────────────────────────
+function showSuccess(order) {
+  document.getElementById('form-screen').classList.remove('active');
+  document.getElementById('success-screen').classList.add('active');
+
+  const summary = document.getElementById('order-summary');
+  summary.innerHTML = `
+    <div class="row"><span>${lang==='bn'?'নাম':'Name'}</span><span>${esc(order.name)}</span></div>
+    <div class="row"><span>${lang==='bn'?'ফোন':'Phone'}</span><span>${esc(order.phone)}</span></div>
+    <div class="row"><span>${lang==='bn'?'কেক':'Cake'}</span><span>${esc(order.weight)} — ${esc(order.flavour)}</span></div>
+    ${order.writing ? `<div class="row"><span>${lang==='bn'?'লেখা':'Writing'}</span><span>${esc(order.writing)}</span></div>` : ''}
+    <div class="row"><span>${lang==='bn'?'তারিখ':'Date'}</span><span>${esc(order.date)} ${order.time ? '· '+esc(order.time) : ''}</span></div>
+    <div class="row"><span>${lang==='bn'?'ঠিকানা':'Address'}</span><span>${esc(order.address)}</span></div>
+    <div class="row"><span>${lang==='bn'?'পেমেন্ট':'Payment'}</span><span>${esc(order.paymentMethod)} — ৳${order.advance}</span></div>
+    ${order.advanceCharge > 0 ? `<div class="row"><span>${lang==='bn'?'চার্জ':'Charge'}</span><span>৳${order.advanceCharge}</span></div>` : ''}
+    <div class="row"><span>${lang==='bn'?'মোট পেমেন্ট':'Total Paid'}</span><span style="color:var(--pink);font-weight:700">৳${order.advanceTotal}</span></div>
+  `;
+}
+
+function resetForm() {
+  document.getElementById('success-screen').classList.remove('active');
+  document.getElementById('form-screen').classList.add('active');
+  // Clear form
+  document.querySelectorAll('#form-screen input:not(#f-readonly), #form-screen textarea').forEach(el => el.value = '');
+  document.querySelectorAll('#form-screen select').forEach(el => el.selectedIndex = 0);
+  currentPhoto = '';
+  advanceType = '';
+  isSurprise = false;
+  document.getElementById('photo-preview').classList.remove('show');
+  document.getElementById('calc-box').classList.remove('show');
+  document.getElementById('surprise-note').classList.remove('show');
+  document.querySelectorAll('.advance-opt').forEach(el => { el.classList.remove('active'); el.style.opacity = '1'; });
+  updateProgress();
+  window.scrollTo(0, 0);
+}
+
+// ─── Helpers ────────────────────────────────
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function showLoading(on) {
+  document.getElementById('loading').classList.toggle('show', on);
+}
+
+function setMinDate() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('f-date').setAttribute('min', today);
+}
+
+// ─── Init ───────────────────────────────────
+(function init() {
+  applyLang();
+  setLang(lang);
+  // Pre-fill phone if returning
+  const savedPhone = localStorage.getItem('nitu-cust-phone');
+  if (savedPhone) {
+    document.getElementById('entry-phone').value = savedPhone;
+  }
+  setMinDate();
+})();
+</script>
+</body>
+</html>
