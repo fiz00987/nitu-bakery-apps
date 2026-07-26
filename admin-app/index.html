@@ -1916,6 +1916,19 @@ select:focus {
           </div>
         </div>
 
+        <!-- Hidden fields for legacy bKash mode compatibility -->
+        <div style="display:none">
+          <select id="f-bkash-mode">
+            <option value="none">none</option>
+            <option value="auto">auto</option>
+            <option value="manual">manual</option>
+          </select>
+          <div id="f-bkash-charge-wrap">
+            <input id="f-bkash-charge" type="number" placeholder="0">
+          </div>
+          <span id="bkash-hint"></span>
+        </div>
+
         <div class="field"><label data-i18n="fPaynote">পেমেন্ট নোট</label><input id="f-paynote" placeholder="bKash, শেষ ৩ সংখ্যা: 765" type="text"></div>
         <div class="field">
           <label>অর্ডার স্ট্যাটাস</label>
