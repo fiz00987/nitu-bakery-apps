@@ -105,7 +105,6 @@ button{cursor:pointer}
 /* Success */
 .success-screen{display:none;text-align:center;padding:40px 20px;max-width:400px;margin:0 auto}
 .success-screen.active{display:block}
-.success-icon{font-size:64px;margin-bottom:16px}
 .success-title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px}
 .success-msg{font-size:14px;color:var(--text2);margin-bottom:24px;line-height:1.6}
 .order-summary{background:var(--surface);border-radius:var(--radius);padding:16px;text-align:left;margin-bottom:24px;box-shadow:var(--shadow-sm);font-size:13px}
@@ -124,6 +123,18 @@ button{cursor:pointer}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--text);color:#fff;padding:12px 20px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;z-index:3000;opacity:0;transition:all .3s ease;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+/* Cake Doodle Animation */
+.cake-doodle{position:relative;width:120px;height:80px;margin:0 auto;margin-bottom:20px;opacity:0;transition:opacity .6s}
+.cake-plate{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:140px;height:12px;background:#e0e0e0;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+.cake-layer{position:absolute;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#fff9c4,#fff176);border:2px solid #ffeb3b;border-radius:4px}
+.cake-icing{position:absolute;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#f48fb1,#f06292);border-radius:2px}
+.cake-strawberry{position:absolute;background:#f44336;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,0.2)}
+.cake-cherry{position:absolute;width:14px;height:14px;background:#f44336;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,0.3)}
+.cake-frosting{position:absolute;background:#e91e63;border-radius:3px;box-shadow:0 0 6px rgba(0,0,0,0.15)}
+@keyframes float{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-6px) rotate(1.5deg)}}
+@keyframes fadeSlide{0%{opacity:0;transform:translateY(15px)}100%{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+
 @media print{body>*{display:none!important}}
 </style>
 </head>
@@ -139,9 +150,16 @@ button{cursor:pointer}
       <button class="lang-btn" id="lang-en" onclick="setLang('en')">English</button>
     </div>
     <div class="entry-error" id="entry-error"></div>
-    <div class="field">
+     <div class="field">
       <label data-bn="ফোন নম্বর *" data-en="Phone Number *">ফোন নম্বর *</label>
       <input type="tel" id="entry-phone" placeholder="017xx-xxxxxx" autocomplete="tel">
+    </div>
+     <div class="field">
+      <label data-bn="সুরক্ষা প্রশ্ন: ৫ + ৩ = ?" data-en="Security: 5 + 3 = ?">সুরক্ষা প্রশ্ন: ৫ + ৩ = ?</label>
+      <input type="text" id="entry-captcha" placeholder="উত্তর লিখুন" data-bn-placeholder="উত্তর লিখুন" data-en-placeholder="Enter answer">
+    </div>
+    <div style="display:none">
+      <input type="text" id="entry-honeypot" autocomplete="off" tabindex="-1">
     </div>
     <button class="btn-primary" id="entry-btn" onclick="startOrder()" data-bn="অর্ডার শুরু করুন" data-en="Start Order">অর্ডার শুরু করুন</button>
   </div>
@@ -324,10 +342,11 @@ button{cursor:pointer}
 
 <!-- ═══════ SUCCESS SCREEN ═══════ -->
 <div class="success-screen" id="success-screen">
-  <div class="success-icon">✅</div>
-  <div class="success-title" data-bn="অর্ডার সফলভাবে জমা হয়েছে!" data-en="Order Submitted Successfully!">অর্ডার সফলভাবে জমা হয়েছে!</div>
-  <div class="success-msg" data-bn="আমরা শীঘ্রই আপনার সাথে যোগাযোগ করব। অর্ডার কনফার্ম হলে আপনাকে জানানো হবে।" data-en="We will contact you shortly. You will be notified once your order is confirmed.">আমরা শীঘ্রই আপনার সাথে যোগাযোগ করব। অর্ডার কনফার্ম হলে আপনাকে জানানো হবে।</div>
+  <div class="cake-doodle" id="cake-doodle"></div>
+  <div class="success-title" data-bn="ধন্যবাদ! আপনার অর্ডারটি জমা হয়েছে।" data-en="Thank You! Your Order Has Been Received.">ধন্যবাদ! আপনার অর্ডারটি জমা হয়েছে।</div>
+  <div class="success-msg" data-bn="আমরা শীঘ্রই আপনার সাথে যোগাযোগ করব। অর্ডার কনফার্ম হলে আপনাকে জানানো হবে। এই পৃষ্ঠাটি ১০ সেকেন্ডের মধ্যে বন্ধ হবে।" data-en="We will contact you shortly. You will be notified once your order is confirmed. This page will close automatically in 10 seconds.">আমরা শীঘ্রই আপনার সাথে যোগাযোগ করব। অর্ডার কনফার্ম হলে আপনাকে জানানো হবে। এই পৃষ্ঠাটি ১০ সেকেন্ডের মধ্যে বন্ধ হবে।</div>
   <div class="order-summary" id="order-summary"></div>
+  <div style="font-size:12px;color:var(--text3);margin-top:16px" data-bn="আপনি যদি আরও অর্ডার দিতে চান, নতুন অর্ডার বাটনে ক্লিক করুন।" data-en="Click the new order button if you wish to place another order.">আপনি যদি আরও অর্ডার দিতে চান, নতুন অর্ডার বাটনে ক্লিক করুন।</div>
   <button class="btn-primary" onclick="resetForm()" data-bn="🔄 নতুন অর্ডার দিন" data-en="🔄 Place New Order">🔄 নতুন অর্ডার দিন</button>
 </div>
 
@@ -381,18 +400,37 @@ function applyLang() {
 }
 
 // ─── Entry ──────────────────────────────────
+let formStartTime = 0;
+
 function startOrder() {
   const phone = document.getElementById('entry-phone').value.trim();
+  const captcha = document.getElementById('entry-captcha').value.trim();
   const err = document.getElementById('entry-error');
+
   if (!phone || phone.length < 10) {
     err.textContent = lang === 'bn' ? 'সঠিক ফোন নম্বর দিন' : 'Enter a valid phone number';
     err.classList.add('show');
     return;
   }
+
+  if (captcha !== '8') {
+    err.textContent = lang === 'bn' ? 'সঠিক উত্তর দিন' : 'Enter the correct answer';
+    err.classList.add('show');
+    return;
+  }
+
+  // Honeypot check (bots fill hidden fields)
+  if (document.getElementById('entry-honeypot').value) {
+    err.textContent = lang === 'bn' ? 'সঠিক ফোন নম্বর দিন' : 'Enter a valid phone number';
+    err.classList.add('show');
+    return;
+  }
+
   err.classList.remove('show');
   localStorage.setItem('nitu-cust-phone', phone);
   document.getElementById('entry-screen').classList.add('hidden');
   document.getElementById('form-screen').classList.add('active');
+  formStartTime = Date.now();
   setMinDate();
   updateProgress();
 }
@@ -549,6 +587,13 @@ function validate() {
 function submitOrder() {
   if (!validate()) return;
 
+  // Bot detection: reject if form filled too quickly (< 8 seconds)
+  const elapsed = (Date.now() - formStartTime) / 1000;
+  if (elapsed < 8) {
+    showToast(lang === 'bn' ? 'ফর্মটি খুব দ্রুত পূরণ করা হয়েছে। কিছু সেকেন্ড অপেক্ষা করুন।' : 'Form filled too quickly. Please wait a few seconds.');
+    return;
+  }
+
   const phone = localStorage.getItem('nitu-cust-phone') || '';
   const advance = parseFloat(document.getElementById('f-advance').value) || 0;
   const method = document.getElementById('f-payment-method').value;
@@ -602,10 +647,79 @@ function submitOrder() {
   });
 }
 
+// ─── Cake Doodle Animation ────────────────────
+function drawCakeDoodle() {
+  const container = document.getElementById('cake-doodle');
+  if (!container) return;
+  container.innerHTML = '';
+
+  // Plate
+  const plate = document.createElement('div');
+  plate.className = 'cake-plate';
+  container.appendChild(plate);
+
+  // Bottom layer
+  const layer1 = document.createElement('div');
+  layer1.className = 'cake-layer';
+  layer1.style.cssText = 'bottom:12px;width:90px;height:20px';
+  container.appendChild(layer1);
+
+  // Middle layer
+  const layer2 = document.createElement('div');
+  layer2.className = 'cake-layer';
+  layer2.style.cssText = 'bottom:32px;width:100px;height:18px';
+  container.appendChild(layer2);
+
+  // Top layer
+  const layer3 = document.createElement('div');
+  layer3.className = 'cake-layer';
+  layer3.style.cssText = 'bottom:50px;width:110px;height:16px';
+  container.appendChild(layer3);
+
+  // Icing on top layer
+  const icing = document.createElement('div');
+  icing.className = 'cake-icing';
+  icing.style.cssText = 'bottom:66px;width:110px;height:8px';
+  container.appendChild(icing);
+
+  // Strawberries
+  for (let i = 0; i < 3; i++) {
+    const s = document.createElement('div');
+    s.className = 'cake-strawberry';
+    s.style.cssText = `bottom:66px;left:${20 + i * 35}px;width:12px;height:6px`;
+    container.appendChild(s);
+  }
+
+  // Cherry on top
+  const cherry = document.createElement('div');
+  cherry.className = 'cake-cherry';
+  cherry.style.cssText = 'bottom:74px;left:50%;transform:translateX(-50%)';
+  container.appendChild(cherry);
+
+  // Frosting swirls
+  for (let i = 0; i < 4; i++) {
+    const f = document.createElement('div');
+    f.className = 'cake-frosting';
+    f.style.cssText = `bottom:${50 + i * 4}px;left:${10 + i * 25}px;width:8px;height:18px;border-radius:50% 50% 0 0`;
+    container.appendChild(f);
+  }
+
+  // Animate
+  const layers = container.querySelectorAll('.cake-layer, .cake-icing, .cake-strawberry, .cake-frosting');
+  layers.forEach((el, i) => {
+    el.style.animation = `float 3.5s ease-in-out infinite`;
+    el.style.animationDelay = (i * 0.2) + 's';
+  });
+  cherry.style.animation = `float 3.5s ease-in-out infinite 0.1s, pulse 3.5s ease-in-out infinite 0.1s`;
+  plate.style.animation = 'fadeSlide 0.6s ease-out 0.3s forwards';
+  container.style.opacity = '1';
+}
+
 // ─── Success ────────────────────────────────
 function showSuccess(order) {
   document.getElementById('form-screen').classList.remove('active');
   document.getElementById('success-screen').classList.add('active');
+  drawCakeDoodle();
 
   const bn = lang === 'bn';
   const summary = document.getElementById('order-summary');
@@ -630,6 +744,15 @@ function showSuccess(order) {
     </div>
     ${order.surprise === 'yes' ? `<div style="background:var(--red-light);border:1px solid #ef9a9a;border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;color:var(--red);margin-top:8px">${bn?'🎁 সারপ্রাইজ কেক — ১০০% অগ্রিম প্রাপ্ত':'🎁 Surprise Cake — 100% advance received'}</div>` : ''}
   `;
+
+  // Auto-close after 10 seconds
+  setTimeout(() => {
+    if (document.getElementById('success-screen').classList.contains('active')) {
+      window.close();
+      // Fallback if window.close() doesn't work (not in iframe)
+      document.getElementById('success-screen').innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:48px;margin-bottom:16px">🎂</div><div style="font-size:18px;font-weight:700" data-bn="ধন্যবাদ! আপনার অর্ডারটি জমা হয়েছে।" data-en="Thank You! Your Order Has Been Received.">ধন্যবাদ! আপনার অর্ডারটি জমা হয়েছে।</div></div>';
+    }
+  }, 10000);
 }
 
 function resetForm() {
