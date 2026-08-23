@@ -328,6 +328,26 @@
       updateStats();
       renderSchedule();
       setupNotifications();
+
+      // Phone validation on customer search
+      const phoneInput = document.getElementById('customerSearchPhone');
+      if (phoneInput) {
+        phoneInput.addEventListener('blur', function() {
+          const phone = this.value.trim().replace(/-/g, '');
+          if (phone && !validateBangladeshPhone(phone)) {
+            this.style.borderColor = 'var(--danger)';
+            this.setCustomValidity('সঠিক বাংলাদেশি ফোন নম্বর দিন');
+            this.reportValidity();
+          } else {
+            this.style.borderColor = '';
+            this.setCustomValidity('');
+          }
+        });
+        phoneInput.addEventListener('input', function() {
+          this.style.borderColor = '';
+          this.setCustomValidity('');
+        });
+      }
     }
 
     function showTab(tab) {
@@ -646,6 +666,10 @@
       const phone = document.getElementById('customerSearchPhone').value.trim().replace(/-/g, '');
       const resultsDiv = document.getElementById('customerResults');
       if (!phone) { resultsDiv.innerHTML = ''; return; }
+      if (!validateBangladeshPhone(phone)) {
+        resultsDiv.innerHTML = '<div style="text-align:center;padding:20px;color:var(--danger)"><p>❌ সঠিক বাংলাদেশি ফোন নম্বর দিন (যেমন: 01712345678)</p></div>';
+        return;
+      }
 
       const customerOrders = orders.filter(o => (o.customerPhone || o.phone || '').replace(/-/g, '') === phone);
       if (customerOrders.length === 0) {
