@@ -106,7 +106,6 @@ button{cursor:pointer}
 .popup-content{padding:18px;white-space:pre-wrap;overflow:auto;line-height:1.65;font-size:14px}
 .copy-button{margin:6px 4px 0 0;padding:5px 9px;border:1px solid currentColor;border-radius:var(--radius-xs);background:transparent;color:var(--green);font-size:12px;font-weight:600}
 .order-number-badge{display:inline-block;margin-top:8px;padding:6px 12px;border-radius:var(--radius-xs);background:var(--pink-light);color:var(--pink-dark);font-size:13px;font-weight:700}
-.time-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .due-panel{background:#eeeeee;border:1px solid #cfcfcf;border-radius:var(--radius-sm);padding:12px;margin-top:12px;display:none;color:#4a4a4a}
 .due-panel.show{display:block}
 .screenshot-note{background:var(--green-light);border:1px solid #a5d6a7;border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;color:var(--green);line-height:1.5;margin-bottom:14px}
@@ -215,11 +214,7 @@ button{cursor:pointer}
       </div>
       <div class="field">
         <label data-bn="ডেলিভারির সময় *" data-en="Delivery Time *">ডেলিভারির সময় *</label>
-        <div class="time-row">
-          <select id="f-time-hour"><option value="">ঘণ্টা</option></select>
-          <select id="f-time-minute"><option value="">মিনিট</option></select>
-          <select id="f-time-period"><option value="">AM/PM</option><option value="AM">AM</option><option value="PM">PM</option></select>
-        </div>
+        <input type="text" id="f-timeslot" placeholder="যেমন: 3.00 PM" data-bn-placeholder="যেমন: 3.00 PM" data-en-placeholder="Example: 3.00 PM" autocomplete="off">
         <div class="note-box">নিরাপত্তার জন্য ডেলিভারি সন্ধ্যা ৬টার পরে হয় না।</div>
       </div>
     </div>
@@ -348,10 +343,6 @@ let currentOrderId = '';
 
 // Populate dropdowns from utils.js
 function populateDropdowns() {
-  const hour = document.getElementById('f-time-hour');
-  for (let value = 1; value <= 12; value++) hour.insertAdjacentHTML('beforeend', `<option value="${value}">${value}</option>`);
-  const minute = document.getElementById('f-time-minute');
-  ['00', '15', '30', '45'].forEach(value => minute.insertAdjacentHTML('beforeend', `<option value="${value}">${value}</option>`));
   const wt = document.getElementById('f-weight');
   WEIGHTS.forEach(w => {
     const opt = document.createElement('option');
@@ -394,7 +385,7 @@ function setLang(l) {
   const labels = l === 'en' ? {
     '#entry-phone': 'Phone Number *', '#f-weight': 'Weight *',
     '#f-flavour': 'Flavour *', '#f-address': 'Delivery Address *', '#f-date': 'Delivery Date *',
-    '#f-time-hour': 'Delivery Time *', '#f-receiver': 'Receiver Name *', '#f-receiver-phone': 'Receiver Phone *',
+    '#f-timeslot': 'Delivery Time *', '#f-receiver': 'Receiver Name *', '#f-receiver-phone': 'Receiver Phone *',
     '#f-fulfilment': 'Fulfilment *', '#f-surprise': 'Surprise Cake?', '#f-payment-method': 'Payment Method *', '#f-advance': 'Advance Payment *',
     '#f-trx': 'Transaction ID / Last 4 Digits *', '#f-notes': 'Additional Info (Optional)'
   } : {};
@@ -405,6 +396,7 @@ function setLang(l) {
   if (l === 'en') {
     document.getElementById('f-cake-price').placeholder = 'Enter cake price';
     document.getElementById('f-weight-custom').placeholder = 'Custom weight (pounds)';
+    document.getElementById('f-timeslot').placeholder = 'Example: 3.00 PM';
     document.querySelector('#f-weight option[value=""]').textContent = 'Select weight';
     document.querySelector('#f-weight option[value="custom-weight"]').textContent = 'Custom weight';
     document.querySelector('#f-flavour option[value=""]').textContent = 'Select flavour';
@@ -418,6 +410,7 @@ function setLang(l) {
   } else {
     document.getElementById('f-cake-price').placeholder = 'কেকের মূল্য লিখুন';
     document.getElementById('f-weight-custom').placeholder = 'কাস্টম ওজন (পাউন্ড)';
+    document.getElementById('f-timeslot').placeholder = 'যেমন: 3.00 PM';
     FLAVOURS.forEach(f => { const option = document.querySelector(`#f-flavour option[value="${f.value}"]`); if (option) option.textContent = f.label; });
     PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.name; });
   }
@@ -689,7 +682,7 @@ document.getElementById('f-surprise').addEventListener('change', function() {
 
 // Progress
 function updateProgress() {
-  const fields = ['f-name','f-weight','f-cake-price','f-flavour','f-address','f-date','f-time-hour','f-time-minute','f-time-period','f-receiver','f-receiver-phone','f-payment-method','f-advance','f-trx'];
+  const fields = ['f-name','f-weight','f-cake-price','f-flavour','f-address','f-date','f-timeslot','f-receiver','f-receiver-phone','f-payment-method','f-advance','f-trx'];
   let filled = 0;
   fields.forEach(id => {
     const el = document.getElementById(id);
@@ -814,14 +807,7 @@ function submitOrder() {
 }
 
 function getSelectedTime() {
-  const hour = document.getElementById('f-time-hour').value;
-  const minute = document.getElementById('f-time-minute').value;
-  const period = document.getElementById('f-time-period').value;
-  if (!hour || !minute || !period) return '';
-  const hourNumber = Number(hour);
-  if ((period === 'PM' && hourNumber > 6) || (period === 'AM' && hourNumber < 9)) return '';
-  if (period === 'PM' && hourNumber === 6 && Number(minute) > 0) return '';
-  return `${hour}:${minute} ${period}`;
+  return document.getElementById('f-timeslot').value.trim();
 }
 
 // Success
