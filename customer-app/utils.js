@@ -23,7 +23,7 @@ const FLAVOURS = [
   { value: 'special-vanilla', label: 'স্পেশাল ভ্যানিলা', labelEn: 'Special Vanilla' },
   { value: 'chocolate-mud', label: 'চকলেট মাডকেক', labelEn: 'Chocolate Mud Cake' },
   { value: 'red-velvet', label: 'রেড ভেলভেট', labelEn: 'Red Velvet' },
-  { value: 'cream-cheese-fruit', label: 'Fruit Filling', labelEn: 'Fruit Filling' }
+  { value: 'cream-cheese-fruit', label: 'ক্রিম চিজ ফ্রস্টিং উইথ ফ্রুট ফিলিং', labelEn: 'Cream Cheese Frosting with Fruit Filling' }
 ];
 
 const TIME_SLOTS = [];
