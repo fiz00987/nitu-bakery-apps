@@ -178,10 +178,6 @@ button{cursor:pointer}
         <select id="f-weight" onchange="recalcPrice()"><option value="">নির্বাচন করুন</option></select>
         <input type="number" id="f-weight-custom" min="0.1" step="0.1" placeholder="কাস্টম ওজন (পাউন্ড)" oninput="recalcPrice()" style="display:none;margin-top:8px">
       </div>
-      <div class="field">
-        <label>আপনার কেকের মূল্য * (৳)</label>
-        <input type="number" id="f-cake-price" min="0" placeholder="আপনার বাজেট লিখুন" oninput="recalcPrice()">
-      </div>
     </div>
     <div class="field">
       <label data-bn="ফ্লেভার *" data-en="Flavour *">ফ্লেভার *</label>
@@ -245,6 +241,10 @@ button{cursor:pointer}
   <!-- PAYMENT -->
   <div class="section">
     <div class="section-title">💳 <span data-bn="পেমেন্ট" data-en="Payment">পেমেন্ট</span></div>
+    <div class="field">
+      <label>আপনার কেকের মূল্য * (৳)</label>
+      <input type="number" id="f-cake-price" min="0" placeholder="আপনার বাজেট লিখুন" oninput="recalcPrice()">
+    </div>
     <div class="calc-box" id="calc-box">
       <div class="calc-row"><span>কেকের মূল্য:</span><span id="calc-base">৳0</span></div>
       <div class="calc-row"><span>ডেলিভারি:</span><span id="calc-delivery">৳0</span></div>
