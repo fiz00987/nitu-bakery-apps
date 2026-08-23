@@ -1,16 +1,11 @@
 // ─── CAKE CONFIGURATIONS ────────────────────
-const CAKE_CATEGORIES = [
-  { id: 'birthday', name: 'জন্মদিন', nameEn: 'Birthday', emoji: '🎂', basePrice: 450 },
-  { id: 'wedding', name: 'বিয়ের', nameEn: 'Wedding', emoji: '💒', basePrice: 650 },
-  { id: 'anniversary', name: 'বার্ষিকী', nameEn: 'Anniversary', emoji: '💝', basePrice: 550 },
-  { id: 'custom', name: 'কাস্টম', nameEn: 'Custom', emoji: '🎨', basePrice: 500 }
-];
+const CAKE_CATEGORIES = [{ id: 'custom', name: 'কাস্টম কেক', nameEn: 'Custom Cake', emoji: '🎂', basePrice: 0 }];
 
 const WEIGHTS = [
   { value: '1-pound', label: '১ পাউন্ড', labelEn: '1 Pound', price: 0 },
-  { value: '2-pound', label: '২ পাউন্ড', labelEn: '2 Pound', price: 200 },
-  { value: '3-pound', label: '৩ পাউন্ড', labelEn: '3 Pound', price: 400 },
-  { value: '5-pound', label: '৫ পাউন্ড', labelEn: '5 Pound', price: 700 }
+  { value: '2-pound', label: '২ পাউন্ড', labelEn: '2 Pound', price: 0 },
+  { value: '3-pound', label: '৩ পাউন্ড', labelEn: '3 Pound', price: 0 },
+  { value: '5-pound', label: '৫ পাউন্ড', labelEn: '5 Pound', price: 0 }
 ];
 
 const FLAVOURS = [
@@ -26,11 +21,7 @@ const FLAVOURS = [
   { value: 'coffee', label: 'কফি', labelEn: 'Coffee' }
 ];
 
-const TIME_SLOTS = [
-  { value: 'morning', label: 'সকাল (৯টা - ১২টা)', labelEn: 'Morning (9AM-12PM)' },
-  { value: 'afternoon', label: 'দুপুর (১২টা - ৪টা)', labelEn: 'Afternoon (12PM-4PM)' },
-  { value: 'evening', label: 'বিকাল (৪টা - ৮টা)', labelEn: 'Evening (4PM-8PM)' }
-];
+const TIME_SLOTS = [];
 
 // ─── PAYMENT METHODS (UPDATED WITH NAGAD) ────
 const PAYMENT_METHODS = [
@@ -38,27 +29,27 @@ const PAYMENT_METHODS = [
     id: 'bkash', 
     name: 'বিকাশ', 
     nameEn: 'bKash', 
-    charges: 0.0185, 
-    number: '01XXX-XXXXXX',
-    regName: 'Nitu Bakery'
+    charges: 0.0182,
+    number: '01521400475',
+    regName: 'Nasrin Akter'
   },
   { 
     id: 'nagad', 
     name: 'নগদ', 
     nameEn: 'Nagad', 
-    charges: 0.0149, 
+    charges: 0,
     number: '01521222376',          // ← UPDATED
     regName: 'Firoz Ahmed'          // ← UPDATED
   },
-  { 
-    id: 'rocket', 
-    name: 'রকেট', 
-    nameEn: 'Rocket', 
-    charges: 0.0180, 
-    number: '01XXX-XXXXXX',
-    regName: 'Nitu Bakery'
+  {
+    id: 'bank',
+    name: 'ব্যাংক (NPSB)',
+    nameEn: 'Bank (NPSB)',
+    charges: 0,
+    number: '0210165544851',
+    regName: 'Sabrina Akter Bhuiyan'
   },
-  { 
+  {
     id: 'cod', 
     name: 'ক্যাশ অন ডেলিভারি', 
     nameEn: 'Cash on Delivery', 
@@ -68,9 +59,7 @@ const PAYMENT_METHODS = [
   }
 ];
 
-const BKASH_RATE = 0.0185;
-const NAGAD_RATE = 0.0149;
-const ROCKET_RATE = 0.018;
+const BKASH_RATE = 0.0182;
 
 // ─── HELPER FUNCTIONS ───────────────────────
 function getPaymentMethod(id) {
@@ -105,15 +94,13 @@ function calculatePayment(basePrice, weightPrice, deliveryCharge, paymentMethodI
   if (paymentMethodId === 'bkash') {
     charges = Math.ceil(subtotal * BKASH_RATE);
     total = subtotal + charges;
-  } else if (paymentMethodId === 'nagad') {
-    charges = Math.ceil(subtotal * NAGAD_RATE);
-    total = subtotal + charges;
-  } else if (paymentMethodId === 'rocket') {
-    charges = Math.ceil(subtotal * ROCKET_RATE);
-    total = subtotal + charges;
   }
 
   return { subtotal, charges, total };
+}
+
+function calculatePaymentAmount(basePrice, weightPrice, deliveryCharge, paymentMethodId) {
+  return calculatePayment(basePrice, weightPrice, deliveryCharge, paymentMethodId);
 }
 
 function validateBangladeshPhone(phone) {

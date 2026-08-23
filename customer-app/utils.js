@@ -1,36 +1,32 @@
 // ─── CAKE CONFIGURATIONS ────────────────────
-const CAKE_CATEGORIES = [
-  { id: 'birthday', name: 'জন্মদিন', nameEn: 'Birthday', emoji: '🎂', basePrice: 450 },
-  { id: 'wedding', name: 'বিয়ের', nameEn: 'Wedding', emoji: '💒', basePrice: 650 },
-  { id: 'anniversary', name: 'বার্ষিকী', nameEn: 'Anniversary', emoji: '💝', basePrice: 550 },
-  { id: 'custom', name: 'কাস্টম', nameEn: 'Custom', emoji: '🎨', basePrice: 500 }
-];
+const CAKE_CATEGORIES = [];
 
 const WEIGHTS = [
   { value: '1-pound', label: '১ পাউন্ড', labelEn: '1 Pound', price: 0 },
-  { value: '2-pound', label: '২ পাউন্ড', labelEn: '2 Pound', price: 200 },
-  { value: '3-pound', label: '৩ পাউন্ড', labelEn: '3 Pound', price: 400 },
-  { value: '5-pound', label: '৫ পাউন্ড', labelEn: '5 Pound', price: 700 }
+  { value: '2-pound', label: '২ পাউন্ড', labelEn: '2 Pound', price: 0 },
+  { value: '3-pound', label: '৩ পাউন্ড', labelEn: '3 Pound', price: 0 },
+  { value: '5-pound', label: '৫ পাউন্ড', labelEn: '5 Pound', price: 0 }
 ];
 
 const FLAVOURS = [
-  { value: 'chocolate-sponge', label: 'চকলেট স্পঞ্জ', labelEn: 'Chocolate Sponge' },
-  { value: 'vanilla', label: 'ভ্যানিলা', labelEn: 'Vanilla' },
-  { value: 'red-velvet', label: 'রেড ভেলভেট', labelEn: 'Red Velvet' },
+  { value: 'vanilla-sponge', label: 'ভ্যানিলা স্পঞ্জ', labelEn: 'Vanilla Sponge' },
+  { value: 'chocolate-sponge', label: 'চক্লেট স্পঞ্জ', labelEn: 'Chocolate Sponge' },
+  { value: 'double-layer-chocolate', label: 'ডাবল লেয়ারড চকলেট', labelEn: 'Double Layered Chocolate' },
   { value: 'black-forest', label: 'ব্ল্যাক ফরেস্ট', labelEn: 'Black Forest' },
-  { value: 'butter-scotch', label: 'বাটার স্কচ', labelEn: 'Butter Scotch' },
-  { value: 'strawberry', label: 'স্ট্রবেরি', labelEn: 'Strawberry' },
-  { value: 'pineapple', label: 'পাইনএপেল', labelEn: 'Pineapple' },
-  { value: 'mixed-fruit', label: 'মিক্সড ফ্রুট', labelEn: 'Mixed Fruit' },
-  { value: 'cheesecake', label: 'চিজ কেক', labelEn: 'Cheesecake' },
-  { value: 'coffee', label: 'কফি', labelEn: 'Coffee' }
+  { value: 'white-forest', label: 'হোয়াইট ফরেস্ট', labelEn: 'White Forest' },
+  { value: 'lemon', label: 'লেমন কেক', labelEn: 'Lemon Cake' },
+  { value: 'orange', label: 'অরেঞ্জ কেক', labelEn: 'Orange Cake' },
+  { value: 'strawberry', label: 'স্ট্রবেরি কেক', labelEn: 'Strawberry Cake' },
+  { value: 'blueberry', label: 'ব্লুবেরি', labelEn: 'Blueberry' },
+  { value: 'malai', label: 'মালাই কেক', labelEn: 'Malai Cake' },
+  { value: 'butterscotch', label: 'বাটারস্কচ কেক', labelEn: 'Butterscotch Cake' },
+  { value: 'special-vanilla', label: 'স্পেশাল ভ্যানিলা', labelEn: 'Special Vanilla' },
+  { value: 'chocolate-mud', label: 'চকলেট মাডকেক', labelEn: 'Chocolate Mud Cake' },
+  { value: 'red-velvet', label: 'রেড ভেলভেট', labelEn: 'Red Velvet' },
+  { value: 'cream-cheese-fruit', label: 'ক্রিমচিজ ফ্রস্টিংসহ ফলের কেক', labelEn: 'Fruit Cake with Cream Cheese Frosting' }
 ];
 
-const TIME_SLOTS = [
-  { value: 'morning', label: 'সকাল (৯টা - ১২টা)', labelEn: 'Morning (9AM-12PM)' },
-  { value: 'afternoon', label: 'দুপুর (১২টা - ৪টা)', labelEn: 'Afternoon (12PM-4PM)' },
-  { value: 'evening', label: 'বিকাল (৪টা - ৮টা)', labelEn: 'Evening (4PM-8PM)' }
-];
+const TIME_SLOTS = [];
 
 // ─── PAYMENT METHODS ────
 const PAYMENT_METHODS = [
@@ -38,27 +34,27 @@ const PAYMENT_METHODS = [
     id: 'bkash', 
     name: 'বিকাশ', 
     nameEn: 'bKash', 
-    charges: 0.0185, 
-    number: '01XXX-XXXXXX',
-    regName: 'Nitu Bakery'
+    charges: 0.0182,
+    number: '01521400475',
+    regName: 'Nasrin Akter'
   },
   { 
     id: 'nagad', 
     name: 'নগদ', 
     nameEn: 'Nagad', 
-    charges: 0.0149, 
+    charges: 0,
     number: '01521222376',          // ← UPDATED
     regName: 'Firoz Ahmed'          // ← UPDATED
   },
-  { 
-    id: 'rocket', 
-    name: 'রকেট', 
-    nameEn: 'Rocket', 
-    charges: 0.0180, 
-    number: '01XXX-XXXXXX',
-    regName: 'Nitu Bakery'
+  {
+    id: 'bank',
+    name: 'ব্যাংক (NPSB)',
+    nameEn: 'Bank (NPSB)',
+    charges: 0,
+    number: '0210165544851',
+    regName: 'Sabrina Akter Bhuiyan'
   },
-  { 
+  {
     id: 'cod', 
     name: 'ক্যাশ অন ডেলিভারি', 
     nameEn: 'Cash on Delivery', 
@@ -68,9 +64,7 @@ const PAYMENT_METHODS = [
   }
 ];
 
-const BKASH_RATE = 0.0185;
-const NAGAD_RATE = 0.0149;
-const ROCKET_RATE = 0.018;
+const BKASH_RATE = 0.0182;
 
 // ─── HELPER FUNCTIONS ───────────────────────
 function getPaymentMethod(id) {
@@ -104,12 +98,6 @@ function calculatePayment(basePrice, weightPrice, deliveryCharge, paymentMethodI
 
   if (paymentMethodId === 'bkash') {
     charges = Math.ceil(subtotal * BKASH_RATE);
-    total = subtotal + charges;
-  } else if (paymentMethodId === 'nagad') {
-    charges = Math.ceil(subtotal * NAGAD_RATE);
-    total = subtotal + charges;
-  } else if (paymentMethodId === 'rocket') {
-    charges = Math.ceil(subtotal * ROCKET_RATE);
     total = subtotal + charges;
   }
 

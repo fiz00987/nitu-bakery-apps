@@ -148,7 +148,7 @@
 
       <div class="tab-content active" id="tab-orders">
         <div class="search-box">
-          <input type="tel" id="searchPhone" placeholder="ফোন নম্বর দিয়ে খুঁজুন..." oninput="searchByPhone()">
+          <input type="text" id="searchPhone" placeholder="ফোন বা অর্ডার নম্বর দিয়ে খুঁজুন..." oninput="searchByPhone()">
           <button class="btn btn-primary btn-sm" onclick="searchByPhone()">🔍</button>
         </div>
         <div class="stats-grid">
@@ -245,7 +245,6 @@
           <select class="form-select" id="calcMethod" onchange="calculatePayment()">
             <option value="bkash">বিকাশ (1.85%)</option>
             <option value="nagad">নগদ (1.49%)</option>
-            <option value="rocket">রকেট (1.80%)</option>
             <option value="cod">ক্যাশ অন ডেলিভারি</option>
           </select>
         </div>
@@ -464,11 +463,12 @@
         <div class="detail-row"><span class="detail-label">গ্রাহক</span><span class="detail-value">${o.customerName || o.name || ''}</span></div>
         <div class="detail-row"><span class="detail-label">ফোন</span><span class="detail-value">${o.customerPhone || o.phone || ''}</span></div>
         <div class="detail-row"><span class="detail-label">কেক</span><span class="detail-value">${o.categoryName || ''} (${o.weightLabel || ''})</span></div>
+        <div class="detail-row"><span class="detail-label">গ্রাহকের নির্ধারিত মূল্য</span><span class="detail-value">৳${o.cakePrice || o.basePrice || 0}</span></div>
         <div class="detail-row"><span class="detail-label">ফ্লেভার</span><span class="detail-value">${o.flavourName || ''}</span></div>
         <div class="detail-row"><span class="detail-label">লেখা</span><span class="detail-value">${o.writing || 'নেই'}</span></div>
         <div class="detail-row"><span class="detail-label">ডেলিভারি</span><span class="detail-value">${o.deliveryDate || o.date || ''}</span></div>
         <div class="detail-row"><span class="detail-label">সময়</span><span class="detail-value">${o.timeSlotLabel || o.time || ''}</span></div>
-        <div class="detail-row"><span class="detail-label">ঠিকানা</span><span class="detail-value">${o.deliveryAddress || o.address || ''}</span></div>
+        <div class="detail-row"><span class="detail-label">ঠিকানা</span><span class="detail-value">${o.fulfilment === 'pickup' ? 'সেলফ পিকআপ · Rongdhonu apartment, Khoshalshah road, Amanbazar, Chattogram' : (o.deliveryAddress || o.address || '')}</span></div>
         <div class="detail-row"><span class="detail-label">রিসিভার</span><span class="detail-value">${o.receiver || ''} (${o.receiverPhone || ''})</span></div>
         <div class="detail-row"><span class="detail-label">সারপ্রাইজ</span><span class="detail-value">${o.surprise === 'yes' || o.surprise === true ? 'হ্যাঁ' : 'না'}</span></div>
         <div class="detail-row"><span class="detail-label">পেমেন্ট</span><span class="detail-value">${o.paymentMethodName || ''} ${o.trx ? '· Trx: ' + o.trx : ''}</span></div>
@@ -627,11 +627,12 @@
       window.open(`https://wa.me/88${phone}?text=${encodeURIComponent(message)}`, '_blank');
     }
 
-    // Search by phone
+    // Search by phone or customer order number
     function searchByPhone() {
       const phone = document.getElementById('searchPhone').value.trim();
       if (!phone) { renderOrders(); return; }
-      const filtered = orders.filter(o => (o.customerPhone || o.phone || '').includes(phone));
+      const normalized = phone.toUpperCase();
+      const filtered = orders.filter(o => (o.customerPhone || o.phone || '').includes(phone) || (o.orderId || '').toUpperCase().includes(normalized));
       if (filtered.length === 0) {
         document.getElementById('ordersList').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light)"><p>এই নম্বরে কোনো অর্ডার নেই</p></div>';
         return;

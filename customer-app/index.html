@@ -29,7 +29,7 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{scroll-behavior:smooth}
-body{font-family:'Poppins','Hind Siliguri',-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+body{font-family:'Poppins','Hind Siliguri',-apple-system,sans-serif;background:linear-gradient(rgba(247,244,246,.91),rgba(247,244,246,.96)),url('https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=75') center/cover fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
 input,select,textarea,button{font-family:inherit;font-size:inherit}
 button{cursor:pointer}
 
@@ -94,6 +94,9 @@ button{cursor:pointer}
 .payment-info-box{background:var(--green-light);border:1px solid #a5d6a7;border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--green);margin-top:8px;display:none}
 .payment-info-box.show{display:block}
 .payment-info-box strong{color:#1b5e20}
+.copy-number{border:0;background:none;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer;padding:0}
+.pickup-box{background:var(--blue-light);border:1px solid #90caf9;border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--blue);line-height:1.5;margin-top:8px;display:none}
+.pickup-box.show{display:block}
 
 /* SUCCESS */
 .success-screen{display:none;text-align:center;padding:40px 20px;max-width:400px;margin:0 auto}
@@ -134,6 +137,10 @@ button{cursor:pointer}
       <label data-bn="ফোন নম্বর *" data-en="Phone Number *">ফোন নম্বর *</label>
       <input type="tel" id="entry-phone" placeholder="017xx-xxxxxx" autocomplete="tel" maxlength="14">
     </div>
+    <div class="field">
+      <label>অর্ডার নম্বর দিয়ে ট্র্যাক করুন (ঐচ্ছিক)</label>
+      <div style="display:flex;gap:8px"><input type="text" id="entry-order-id" placeholder="যেমন: NB202608230123"><button class="btn-primary" style="width:auto;margin:0;padding:12px" onclick="trackOrder()">খুঁজুন</button></div>
+    </div>
     <div class="security-box" id="security-box">
       <label id="security-label"></label>
       <input type="number" id="entry-security" placeholder="উত্তর">
@@ -163,17 +170,19 @@ button{cursor:pointer}
     </div>
     <div class="row2">
       <div class="field">
-        <label data-bn="কেকের ধরন *" data-en="Cake Type *">কেকের ধরন *</label>
-        <select id="f-category" onchange="recalcPrice()"><option value="">নির্বাচন করুন</option></select>
-      </div>
-      <div class="field">
         <label data-bn="ওজন *" data-en="Weight *">ওজন *</label>
         <select id="f-weight" onchange="recalcPrice()"><option value="">নির্বাচন করুন</option></select>
       </div>
+      <div class="field">
+        <label>আপনার কেকের মূল্য * (৳)</label>
+        <input type="number" id="f-cake-price" min="0" placeholder="আপনার বাজেট লিখুন" oninput="recalcPrice()">
+      </div>
     </div>
+    <div class="note-box" id="base-price-note">ওজন নির্বাচন করলে আনুমানিক বেস মূল্য দেখা যাবে।</div>
     <div class="field">
       <label data-bn="ফ্লেভার *" data-en="Flavour *">ফ্লেভার *</label>
       <select id="f-flavour"><option value="">নির্বাচন করুন</option></select>
+      <div class="note-box">সব ফ্লেভার সব সময় পাওয়া নাও যেতে পারে। কিছু ফ্লেভারের জন্য নির্দিষ্ট ওজন প্রয়োজন। বিস্তারিত জানতে আমাদের Facebook পেজে যোগাযোগ করুন।</div>
     </div>
     <div class="field">
       <label data-bn="কেকে লেখা" data-en="Writing on Cake">কেকে লেখা</label>
@@ -205,7 +214,8 @@ button{cursor:pointer}
       </div>
       <div class="field">
         <label data-bn="ডেলিভারির সময় *" data-en="Delivery Time *">ডেলিভারির সময় *</label>
-        <select id="f-timeslot"><option value="">নির্বাচন করুন</option></select>
+        <input type="time" id="f-timeslot" min="09:00" max="18:00">
+        <div class="note-box">নিরাপত্তার জন্য ডেলিভারি সন্ধ্যা ৬টার পরে হয় না।</div>
       </div>
     </div>
     <div class="row2">
@@ -226,11 +236,21 @@ button{cursor:pointer}
       </select>
       <div class="surprise-note" id="surprise-note">⚠️ সারপ্রাইজ কেকের জন্য ১০০% অগ্রিম পেমেন্ট আবশ্যক।</div>
     </div>
+    <div class="field">
+      <label>ডেলিভারি ধরন *</label>
+      <select id="f-fulfilment" onchange="onFulfilmentChange()"><option value="delivery">ডেলিভারি</option><option value="pickup">সেলফ পিকআপ</option></select>
+      <div class="pickup-box" id="pickup-box">সেলফ পিকআপ ঠিকানা: Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram.<br><a href="https://www.google.com/maps/search/?api=1&query=Rongdhonu+apartment+Amanbazar+Chattogram" target="_blank" rel="noopener">Google Maps-এ ঠিকানা খুলুন</a></div>
+    </div>
   </div>
 
   <!-- PAYMENT -->
   <div class="section">
     <div class="section-title">💳 <span data-bn="পেমেন্ট" data-en="Payment">পেমেন্ট</span></div>
+    <div class="calc-box" id="calc-box">
+      <div class="calc-row"><span>কেকের মূল্য:</span><span id="calc-base">৳0</span></div>
+      <div class="calc-row"><span>ডেলিভারি:</span><span id="calc-delivery">৳0</span></div>
+      <div class="calc-row total"><span>মোট পেমেন্ট:</span><span id="calc-total">৳0</span></div>
+    </div>
     <div class="field">
       <label data-bn="পেমেন্ট পদ্ধতি *" data-en="Payment Method *">পেমেন্ট পদ্ধতি *</label>
       <select id="f-payment-method" onchange="onPaymentChange()">
@@ -248,14 +268,11 @@ button{cursor:pointer}
       <input type="number" id="f-advance" placeholder="৳ পরিমাণ লিখুন" min="0" oninput="recalcPrice()">
     </div>
 
-    <div class="calc-box" id="calc-box">
-      <div class="calc-row"><span>বেস মূল্য:</span><span id="calc-base">৳0</span></div>
-      <div class="calc-row"><span>ওজন বাড়তি:</span><span id="calc-weight">৳0</span></div>
-      <div class="calc-row"><span>ডেলিভারি (আনুমানিক):</span><span id="calc-delivery">৳0</span></div>
-      <div class="calc-row" id="calc-charge-row" style="display:none"><span id="calc-charge-label">চার্জ:</span><span id="calc-charge">৳0</span></div>
-      <div class="calc-row total"><span>মোট (আনুমানিক):</span><span id="calc-total">৳0</span></div>
-      <div class="calc-row"><span>আপনার প্রদান:</span><span id="calc-advance">৳0</span></div>
-      <div class="calc-row due" id="calc-due-row"><span>বাকি (আনুমানিক):</span><span id="calc-due">৳0</span></div>
+    <div class="calc-box" id="advance-calc-box">
+      <div class="calc-row"><span>আপনার কেক পেমেন্ট:</span><span id="calc-advance">৳0</span></div>
+      <div class="calc-row" id="calc-charge-row" style="display:none"><span id="calc-charge-label">বিকাশ ক্যাশআউট চার্জ:</span><span id="calc-charge">৳0</span></div>
+      <div class="calc-row total"><span>চার্জসহ দিতে হবে:</span><span id="calc-advance-total">৳0</span></div>
+      <div class="calc-row due" id="calc-due-row"><span>বাকি:</span><span id="calc-due">৳0</span></div>
     </div>
 
     <div class="field" style="margin-top:12px">
@@ -301,14 +318,6 @@ let expectedDeliveryCharge = 100; // admin updates this
 
 // Populate dropdowns from utils.js
 function populateDropdowns() {
-  const cat = document.getElementById('f-category');
-  CAKE_CATEGORIES.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c.id;
-    opt.textContent = `${c.emoji} ${c.name} (${c.basePrice}৳)`;
-    cat.appendChild(opt);
-  });
-
   const wt = document.getElementById('f-weight');
   WEIGHTS.forEach(w => {
     const opt = document.createElement('option');
@@ -323,14 +332,6 @@ function populateDropdowns() {
     opt.value = f.value;
     opt.textContent = f.label;
     fl.appendChild(opt);
-  });
-
-  const ts = document.getElementById('f-timeslot');
-  TIME_SLOTS.forEach(t => {
-    const opt = document.createElement('option');
-    opt.value = t.value;
-    opt.textContent = t.label;
-    ts.appendChild(opt);
   });
 
   const pm = document.getElementById('f-payment-method');
@@ -365,14 +366,8 @@ async function handleEntry() {
   }
 
   pendingPhone = phone;
-
-  // Check returning customer
-  const isReturning = await checkReturningCustomer(phone);
-  if (isReturning) {
-    askSecurityQuestion();
-  } else {
-    proceedToForm(phone);
-  }
+  if (!currentSecurityQ) { askSecurityQuestion(); return; }
+  await verifySecurity();
 }
 
 async function checkReturningCustomer(phone) {
@@ -385,7 +380,7 @@ async function checkReturningCustomer(phone) {
 function askSecurityQuestion() {
   currentSecurityQ = getSecurityQuestion();
   const label = document.getElementById('security-label');
-  label.textContent = 'নিরাপত্তা প্রশ্ন (আপনার পূর্ববর্তী অর্ডার দেখতে): ' + currentSecurityQ.q;
+  label.textContent = 'নিরাপত্তা প্রশ্ন (বট প্রতিরোধ): ' + currentSecurityQ.q;
   document.getElementById('security-box').classList.add('show');
   document.getElementById('entry-btn').textContent = '✓ যাচাই করুন';
   document.getElementById('entry-btn').onclick = verifySecurity;
@@ -406,6 +401,19 @@ async function verifySecurity() {
   err.classList.remove('show');
   await loadPreviousOrders(pendingPhone);
   proceedToForm(pendingPhone);
+}
+
+async function trackOrder() {
+  const orderId = document.getElementById('entry-order-id').value.trim().toUpperCase();
+  if (!orderId) { showToast('অর্ডার নম্বর লিখুন'); return; }
+  try {
+    const snap = await db.ref('orders').orderByChild('orderId').equalTo(orderId).once('value');
+    if (!snap.exists()) { showToast('অর্ডার পাওয়া যায়নি'); return; }
+    const order = Object.values(snap.val())[0];
+    document.getElementById('prev-title').textContent = 'অর্ডার স্ট্যাটাস';
+    document.getElementById('prev-list').innerHTML = `<div class="previous-order"><strong>${esc(order.orderId)}</strong><br>${esc(order.status || 'pending')} · মোট ৳${order.total || 0}<br>ডেলিভারি: ${esc(order.deliveryDate || '')}</div>`;
+    document.getElementById('previous-orders').classList.add('show');
+  } catch (e) { showToast('অর্ডার খুঁজতে সমস্যা হয়েছে'); console.error(e); }
 }
 
 async function loadPreviousOrders(phone) {
@@ -434,10 +442,18 @@ function proceedToForm(phone) {
   document.getElementById('entry-screen').classList.add('hidden');
   document.getElementById('form-screen').classList.add('active');
   setMinDate();
+  loadBasePriceGuide();
   updateProgress();
   // Pre-fill name from last order
   const lastName = localStorage.getItem('nitu-cust-name');
   if (lastName) document.getElementById('f-name').value = lastName;
+}
+
+async function loadBasePriceGuide() {
+  try {
+    const response = await fetch('./base%20price.txt');
+    if (response.ok) document.getElementById('base-price-note').textContent = await response.text();
+  } catch (e) { console.warn('Base price guide unavailable:', e); }
 }
 
 // Photo
@@ -474,7 +490,9 @@ function onPaymentChange() {
   const info = document.getElementById('payment-info');
   const method = getPaymentMethod(methodId);
   if (method && method.number) {
-    info.innerHTML = `📱 <strong>${method.name}</strong> নম্বর: <strong>${method.number}</strong><br>নাম: <strong>${method.regName || 'Nitu Bakery'}</strong><br><small>⚠️ সঠিক নামে পাঠান, অন্যথায় যাচাই করা হবে না।</small>`;
+    const copy = `<button class="copy-number" onclick="navigator.clipboard.writeText('${method.number}');showToast('নম্বর কপি হয়েছে')">${method.number}</button>`;
+    const bank = methodId === 'bank' ? '<br>IFIC Bank, Amanbazar sub-branch · Routing: 120 153 224 · SWIFT: IFICBDDH<br>Account holder: Sabrina Akter Bhuiyan' : '';
+    info.innerHTML = `📱 <strong>${method.name}</strong> নম্বর: ${copy}<br>নাম: <strong>${method.regName || ''}</strong>${bank}<br><small>${methodId === 'bkash' ? 'বিকাশ Send Money করুন। আপনার অগ্রিমের উপর ১.৮২% চার্জ যোগ হবে।' : 'পেমেন্টের বিস্তারিত যাচাই করা হবে।'}</small>`;
     info.classList.add('show');
   } else {
     info.classList.remove('show');
@@ -486,48 +504,51 @@ function setAdvanceType(type) {
   advanceType = type;
   document.querySelectorAll('.advance-opt').forEach(el => el.classList.remove('active'));
   document.getElementById('opt-' + type).classList.add('active');
+  const total = getOrderTotal();
+  document.getElementById('f-advance').value = type === '50' ? (total / 2).toFixed(2) : total.toFixed(2);
   recalcPrice();
 }
 
 function recalcPrice() {
-  const catId = document.getElementById('f-category').value;
   const wtVal = document.getElementById('f-weight').value;
   const methodId = document.getElementById('f-payment-method').value;
+  const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
   const advance = parseFloat(document.getElementById('f-advance').value) || 0;
 
-  const cat = getCategory(catId);
   const wt = getWeight(wtVal);
-  if (!cat || !wt) { document.getElementById('calc-box').classList.remove('show'); return; }
+  if (!wt || cakePrice <= 0) { document.getElementById('calc-box').classList.remove('show'); document.getElementById('advance-calc-box').classList.remove('show'); return; }
 
-  const base = cat.basePrice;
-  const weightPrice = wt.price;
-  const delivery = expectedDeliveryCharge;
+  const base = cakePrice;
+  const delivery = document.getElementById('f-fulfilment').value === 'pickup' ? 0 : expectedDeliveryCharge;
   const paymentMethod = getPaymentMethod(methodId);
-
-  let charge = 0;
-  if (paymentMethod && paymentMethod.charges > 0) {
-    // charge on total (base+weight+delivery)
-    charge = Math.ceil((base + weightPrice + delivery) * paymentMethod.charges);
-  }
-
-  const total = base + weightPrice + delivery + charge;
+  const charge = paymentMethod && paymentMethod.charges > 0 ? advance * paymentMethod.charges : 0;
+  const total = base + delivery;
   const due = Math.max(0, total - advance);
 
   document.getElementById('calc-base').textContent = '৳' + base;
-  document.getElementById('calc-weight').textContent = '৳' + weightPrice;
   document.getElementById('calc-delivery').textContent = '৳' + delivery;
   if (charge > 0) {
     document.getElementById('calc-charge-row').style.display = 'flex';
     document.getElementById('calc-charge-label').textContent = `${paymentMethod.name} চার্জ:`;
-    document.getElementById('calc-charge').textContent = '৳' + charge;
+    document.getElementById('calc-charge').textContent = '৳' + charge.toFixed(2);
   } else {
     document.getElementById('calc-charge-row').style.display = 'none';
   }
   document.getElementById('calc-total').textContent = '৳' + total;
   document.getElementById('calc-advance').textContent = '৳' + advance;
+  document.getElementById('calc-advance-total').textContent = '৳' + (advance + charge).toFixed(2);
   document.getElementById('calc-due').textContent = '৳' + due;
   document.getElementById('calc-due-row').style.display = due > 0 ? 'flex' : 'none';
   document.getElementById('calc-box').classList.add('show');
+  document.getElementById('advance-calc-box').classList.add('show');
+}
+
+function onFulfilmentChange() {
+  const pickup = document.getElementById('f-fulfilment').value === 'pickup';
+  document.getElementById('pickup-box').classList.toggle('show', pickup);
+  document.getElementById('f-address').required = !pickup;
+  if (pickup) document.getElementById('f-address').value = 'Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram';
+  recalcPrice();
 }
 
 // Surprise
@@ -545,7 +566,7 @@ document.getElementById('f-surprise').addEventListener('change', function() {
 
 // Progress
 function updateProgress() {
-  const fields = ['f-name','f-category','f-weight','f-flavour','f-address','f-date','f-timeslot','f-receiver','f-receiver-phone','f-payment-method','f-advance','f-trx'];
+  const fields = ['f-name','f-weight','f-cake-price','f-flavour','f-address','f-date','f-timeslot','f-receiver','f-receiver-phone','f-payment-method','f-advance','f-trx'];
   let filled = 0;
   fields.forEach(id => {
     const el = document.getElementById(id);
@@ -562,9 +583,8 @@ document.querySelectorAll('#form-screen input, #form-screen select, #form-screen
 // Validate
 function validate() {
   const req = [
-    ['f-name', 'নাম দিন'], ['f-category', 'কেকের ধরন নির্বাচন করুন'],
-    ['f-weight', 'ওজন নির্বাচন করুন'], ['f-flavour', 'ফ্লেভার নির্বাচন করুন'],
-    ['f-address', 'ঠিকানা দিন'], ['f-date', 'তারিখ দিন'],
+    ['f-name', 'নাম দিন'], ['f-weight', 'ওজন নির্বাচন করুন'], ['f-cake-price', 'কেকের মূল্য দিন'], ['f-flavour', 'ফ্লেভার নির্বাচন করুন'],
+    ['f-date', 'তারিখ দিন'],
     ['f-timeslot', 'সময় নির্বাচন করুন'], ['f-receiver', 'রিসিভারের নাম দিন'],
     ['f-receiver-phone', 'রিসিভারের ফোন দিন'],
     ['f-payment-method', 'পেমেন্ট পদ্ধতি নির্বাচন করুন'],
@@ -574,9 +594,12 @@ function validate() {
     const el = document.getElementById(id);
     if (!el || !el.value.trim()) { showToast(msg); el.focus(); return false; }
   }
+  if (document.getElementById('f-fulfilment').value === 'delivery' && !document.getElementById('f-address').value.trim()) { showToast('ঠিকানা দিন'); document.getElementById('f-address').focus(); return false; }
   if (!validateBangladeshPhone(document.getElementById('f-receiver-phone').value.trim())) {
     showToast('সঠিক রিসিভার ফোন দিন'); return false;
   }
+  const deliveryTime = document.getElementById('f-timeslot').value;
+  if (deliveryTime < '09:00' || deliveryTime > '18:00') { showToast('ডেলিভারি সময় সকাল ৯টা থেকে সন্ধ্যা ৬টার মধ্যে দিন'); return false; }
   if (isSurprise) {
     const adv = parseFloat(document.getElementById('f-advance').value) || 0;
     const total = getOrderTotal();
@@ -586,13 +609,11 @@ function validate() {
 }
 
 function getOrderTotal() {
-  const cat = getCategory(document.getElementById('f-category').value);
   const wt = getWeight(document.getElementById('f-weight').value);
-  const method = getPaymentMethod(document.getElementById('f-payment-method').value);
-  if (!cat || !wt) return 0;
-  let charge = 0;
-  if (method && method.charges > 0) charge = Math.ceil((cat.basePrice + wt.price + expectedDeliveryCharge) * method.charges);
-  return cat.basePrice + wt.price + expectedDeliveryCharge + charge;
+  const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
+  if (!wt || cakePrice <= 0) return 0;
+  const delivery = document.getElementById('f-fulfilment').value === 'pickup' ? 0 : expectedDeliveryCharge;
+  return cakePrice + delivery;
 }
 
 // Submit
@@ -603,27 +624,26 @@ function submitOrder() {
   const customerName = document.getElementById('f-name').value.trim();
   localStorage.setItem('nitu-cust-name', customerName);
 
-  const cat = getCategory(document.getElementById('f-category').value);
   const wt = getWeight(document.getElementById('f-weight').value);
   const fl = getFlavour(document.getElementById('f-flavour').value);
-  const ts = getTimeSlot(document.getElementById('f-timeslot').value);
+  const timeSlot = document.getElementById('f-timeslot').value;
   const method = getPaymentMethod(document.getElementById('f-payment-method').value);
+  const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
   const advance = parseFloat(document.getElementById('f-advance').value) || 0;
 
-  let charge = 0;
-  if (method && method.charges > 0) charge = Math.ceil((cat.basePrice + wt.price + expectedDeliveryCharge) * method.charges);
-
-  const subtotal = cat.basePrice + wt.price + expectedDeliveryCharge;
-  const total = subtotal + charge;
-  const advanceTotal = advance;
-  const dueAmount = Math.max(0, total - advance);
+  const delivery = document.getElementById('f-fulfilment').value === 'pickup' ? 0 : expectedDeliveryCharge;
+  const charge = method && method.charges > 0 ? advance * method.charges : 0;
+  const subtotal = cakePrice + delivery;
+  const total = subtotal;
+  const advanceTotal = advance + charge;
+  const dueAmount = Math.max(0, subtotal - advance);
 
   const order = {
     orderId: generateOrderId(),
     customerPhone: phone,
     customerName: customerName,
-    category: cat.id,
-    categoryName: cat.name,
+    category: 'custom',
+    categoryName: 'কাস্টম কেক',
     weight: wt.value,
     weightLabel: wt.label,
     flavour: fl.value,
@@ -634,22 +654,24 @@ function submitOrder() {
     deliveryAddress: document.getElementById('f-address').value.trim(),
     date: document.getElementById('f-date').value,
     deliveryDate: document.getElementById('f-date').value,
-    timeSlot: ts.value,
-    timeSlotLabel: ts.label,
+    timeSlot: timeSlot,
+    timeSlotLabel: timeSlot,
     receiver: document.getElementById('f-receiver').value.trim(),
     receiverPhone: document.getElementById('f-receiver-phone').value.trim(),
     surprise: isSurprise,
     paymentMethod: method.id,
     paymentMethodName: method.name,
-    basePrice: cat.basePrice,
-    weightPrice: wt.price,
-    deliveryCharge: expectedDeliveryCharge,
+    basePrice: cakePrice,
+    weightPrice: 0,
+    cakePrice: cakePrice,
+    deliveryCharge: delivery,
     paymentCharges: charge,
     subtotal: subtotal,
     total: total,
     advance: advance,
     advanceTotal: advanceTotal,
     dueAmount: dueAmount,
+    fulfilment: document.getElementById('f-fulfilment').value,
     trx: document.getElementById('f-trx').value.trim(),
     notes: document.getElementById('f-notes').value.trim(),
     lang: lang,
