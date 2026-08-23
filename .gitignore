@@ -27,3 +27,4 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+_dev_server.js
