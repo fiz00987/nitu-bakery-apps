@@ -138,8 +138,8 @@ button{cursor:pointer}
       <input type="tel" id="entry-phone" placeholder="017xx-xxxxxx" autocomplete="tel" maxlength="14">
     </div>
     <div class="field">
-      <label>অর্ডার নম্বর দিয়ে ট্র্যাক করুন (ঐচ্ছিক)</label>
-      <div style="display:flex;gap:8px"><input type="text" id="entry-order-id" placeholder="যেমন: NB202608230123"><button class="btn-primary" style="width:auto;margin:0;padding:12px" onclick="trackOrder()">খুঁজুন</button></div>
+      <label data-bn="অর্ডার নম্বর দিয়ে ট্র্যাক করুন (ঐচ্ছিক)" data-en="Track by order number (optional)">অর্ডার নম্বর দিয়ে ট্র্যাক করুন (ঐচ্ছিক)</label>
+      <div style="display:flex;gap:8px"><input type="text" id="entry-order-id" placeholder="যেমন: NB202608230123"><button class="btn-primary" style="width:auto;margin:0;padding:12px" onclick="trackOrder()" data-bn="খুঁজুন" data-en="Track">খুঁজুন</button></div>
     </div>
     <div class="security-box" id="security-box">
       <label id="security-label"></label>
@@ -172,6 +172,7 @@ button{cursor:pointer}
       <div class="field">
         <label data-bn="ওজন *" data-en="Weight *">ওজন *</label>
         <select id="f-weight" onchange="recalcPrice()"><option value="">নির্বাচন করুন</option></select>
+        <input type="number" id="f-weight-custom" min="0.1" step="0.1" placeholder="কাস্টম ওজন (পাউন্ড)" oninput="recalcPrice()" style="display:none;margin-top:8px">
       </div>
       <div class="field">
         <label>আপনার কেকের মূল্য * (৳)</label>
@@ -246,11 +247,6 @@ button{cursor:pointer}
   <!-- PAYMENT -->
   <div class="section">
     <div class="section-title">💳 <span data-bn="পেমেন্ট" data-en="Payment">পেমেন্ট</span></div>
-    <div class="calc-box" id="calc-box">
-      <div class="calc-row"><span>কেকের মূল্য:</span><span id="calc-base">৳0</span></div>
-      <div class="calc-row"><span>ডেলিভারি:</span><span id="calc-delivery">৳0</span></div>
-      <div class="calc-row total"><span>মোট পেমেন্ট:</span><span id="calc-total">৳0</span></div>
-    </div>
     <div class="field">
       <label data-bn="পেমেন্ট পদ্ধতি *" data-en="Payment Method *">পেমেন্ট পদ্ধতি *</label>
       <select id="f-payment-method" onchange="onPaymentChange()">
@@ -258,6 +254,11 @@ button{cursor:pointer}
       </select>
     </div>
     <div class="payment-info-box" id="payment-info"></div>
+    <div class="calc-box" id="calc-box">
+      <div class="calc-row"><span>কেকের মূল্য:</span><span id="calc-base">৳0</span></div>
+      <div class="calc-row"><span>ডেলিভারি:</span><span id="calc-delivery">৳0</span></div>
+      <div class="calc-row total"><span>মোট পেমেন্ট:</span><span id="calc-total">৳0</span></div>
+    </div>
 
     <div class="field">
       <label data-bn="আপনি কত টাকা অগ্রিম দিতে চান? *" data-en="How much advance do you want to pay? *">আপনি কত টাকা অগ্রিম দিতে চান? *</label>
@@ -322,15 +323,19 @@ function populateDropdowns() {
   WEIGHTS.forEach(w => {
     const opt = document.createElement('option');
     opt.value = w.value;
-    opt.textContent = `${w.label}${w.price ? ' (+' + w.price + '৳)' : ''}`;
+    opt.textContent = `${lang === 'en' ? w.labelEn : w.label}${w.price ? ' (+' + w.price + '৳)' : ''}`;
     wt.appendChild(opt);
   });
+  const customWeight = document.createElement('option');
+  customWeight.value = 'custom-weight';
+  customWeight.textContent = lang === 'en' ? 'Custom weight' : 'কাস্টম ওজন';
+  wt.appendChild(customWeight);
 
   const fl = document.getElementById('f-flavour');
   FLAVOURS.forEach(f => {
     const opt = document.createElement('option');
     opt.value = f.value;
-    opt.textContent = f.label;
+    opt.textContent = lang === 'en' ? f.labelEn : f.label;
     fl.appendChild(opt);
   });
 
@@ -338,7 +343,7 @@ function populateDropdowns() {
   PAYMENT_METHODS.forEach(p => {
     const opt = document.createElement('option');
     opt.value = p.id;
-    opt.textContent = p.name;
+    opt.textContent = lang === 'en' ? p.nameEn : p.name;
     pm.appendChild(opt);
   });
 }
@@ -349,6 +354,38 @@ function setLang(l) {
   localStorage.setItem('nitu-cust-lang', l);
   document.getElementById('lang-bn').classList.toggle('active', l === 'bn');
   document.getElementById('lang-en').classList.toggle('active', l === 'en');
+  document.documentElement.lang = l;
+  document.querySelectorAll('[data-bn][data-en]').forEach(el => {
+    el.textContent = l === 'en' ? el.dataset.en : el.dataset.bn;
+  });
+  const labels = l === 'en' ? {
+    '#entry-phone': 'Phone Number *', '#f-weight': 'Weight *', '#f-cake-price': 'Your Cake Price * (Tk)',
+    '#f-flavour': 'Flavour *', '#f-address': 'Delivery Address *', '#f-date': 'Delivery Date *',
+    '#f-timeslot': 'Delivery Time *', '#f-receiver': 'Receiver Name *', '#f-receiver-phone': 'Receiver Phone *',
+    '#f-fulfilment': 'Fulfilment *', '#f-surprise': 'Surprise Cake?', '#f-payment-method': 'Payment Method *', '#f-advance': 'Advance Payment *',
+    '#f-trx': 'Transaction ID / Last 4 Digits *', '#f-notes': 'Additional Info (Optional)'
+  } : {};
+  Object.entries(labels).forEach(([selector, text]) => {
+    const field = document.querySelector(selector);
+    if (field && field.parentElement) field.parentElement.querySelector('label').textContent = text;
+  });
+  if (l === 'en') {
+    document.getElementById('f-weight-custom').placeholder = 'Custom weight (pounds)';
+    document.querySelector('#f-weight option[value=""]').textContent = 'Select weight';
+    document.querySelector('#f-weight option[value="custom-weight"]').textContent = 'Custom weight';
+    document.querySelector('#f-flavour option[value=""]').textContent = 'Select flavour';
+    document.querySelector('#f-payment-method option[value=""]').textContent = 'Select payment method';
+    document.querySelector('#f-fulfilment option[value="delivery"]').textContent = 'Delivery';
+    document.querySelector('#f-fulfilment option[value="pickup"]').textContent = 'Self pickup';
+    document.querySelector('#f-surprise option[value="no"]').textContent = 'No';
+    document.querySelector('#f-surprise option[value="yes"]').textContent = 'Yes - surprise';
+    FLAVOURS.forEach(f => { const option = document.querySelector(`#f-flavour option[value="${f.value}"]`); if (option) option.textContent = f.labelEn; });
+    PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.nameEn; });
+  } else {
+    document.getElementById('f-weight-custom').placeholder = 'কাস্টম ওজন (পাউন্ড)';
+    FLAVOURS.forEach(f => { const option = document.querySelector(`#f-flavour option[value="${f.value}"]`); if (option) option.textContent = f.label; });
+    PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.name; });
+  }
 }
 
 function t(key) { return lang === 'en' ? (translationsEn[key] || key) : (translations[key] || key); }
@@ -394,7 +431,7 @@ async function verifySecurity() {
     err.classList.add('show');
     // New question
     currentSecurityQ = getSecurityQuestion();
-    document.getElementById('security-label').textContent = 'নিরাপত্তা প্রশ্ন: ' + currentSecurityQ.q;
+    document.getElementById('security-label').textContent = (lang === 'en' ? 'Security question: ' : 'নিরাপত্তা প্রশ্ন: ') + currentSecurityQ.q;
     document.getElementById('entry-security').value = '';
     return;
   }
@@ -515,7 +552,7 @@ function recalcPrice() {
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
   const advance = parseFloat(document.getElementById('f-advance').value) || 0;
 
-  const wt = getWeight(wtVal);
+  const wt = resolveWeight();
   if (!wt || cakePrice <= 0) { document.getElementById('calc-box').classList.remove('show'); document.getElementById('advance-calc-box').classList.remove('show'); return; }
 
   const base = cakePrice;
@@ -542,6 +579,20 @@ function recalcPrice() {
   document.getElementById('calc-box').classList.add('show');
   document.getElementById('advance-calc-box').classList.add('show');
 }
+
+function resolveWeight() {
+  const value = document.getElementById('f-weight').value;
+  if (value === 'custom-weight') {
+    const customValue = parseFloat(document.getElementById('f-weight-custom').value) || 0;
+    return customValue > 0 ? { value, label: `${customValue} pound`, price: 0 } : null;
+  }
+  return getWeight(value);
+}
+
+document.getElementById('f-weight').addEventListener('change', function() {
+  document.getElementById('f-weight-custom').style.display = this.value === 'custom-weight' ? 'block' : 'none';
+  recalcPrice();
+});
 
 function onFulfilmentChange() {
   const pickup = document.getElementById('f-fulfilment').value === 'pickup';
@@ -594,6 +645,7 @@ function validate() {
     const el = document.getElementById(id);
     if (!el || !el.value.trim()) { showToast(msg); el.focus(); return false; }
   }
+  if (document.getElementById('f-weight').value === 'custom-weight' && !document.getElementById('f-weight-custom').value) { showToast('কাস্টম ওজন দিন'); return false; }
   if (document.getElementById('f-fulfilment').value === 'delivery' && !document.getElementById('f-address').value.trim()) { showToast('ঠিকানা দিন'); document.getElementById('f-address').focus(); return false; }
   if (!validateBangladeshPhone(document.getElementById('f-receiver-phone').value.trim())) {
     showToast('সঠিক রিসিভার ফোন দিন'); return false;
@@ -609,7 +661,7 @@ function validate() {
 }
 
 function getOrderTotal() {
-  const wt = getWeight(document.getElementById('f-weight').value);
+  const wt = resolveWeight();
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
   if (!wt || cakePrice <= 0) return 0;
   const delivery = document.getElementById('f-fulfilment').value === 'pickup' ? 0 : expectedDeliveryCharge;
@@ -624,7 +676,7 @@ function submitOrder() {
   const customerName = document.getElementById('f-name').value.trim();
   localStorage.setItem('nitu-cust-name', customerName);
 
-  const wt = getWeight(document.getElementById('f-weight').value);
+  const wt = resolveWeight();
   const fl = getFlavour(document.getElementById('f-flavour').value);
   const timeSlot = document.getElementById('f-timeslot').value;
   const method = getPaymentMethod(document.getElementById('f-payment-method').value);
@@ -725,6 +777,7 @@ function resetForm() {
   document.getElementById('surprise-note').classList.remove('show');
   document.getElementById('payment-info').classList.remove('show');
   document.querySelectorAll('.advance-opt').forEach(el => { el.classList.remove('active'); el.style.opacity = '1'; });
+  document.getElementById('f-weight-custom').style.display = 'none';
   document.getElementById('entry-btn').textContent = 'অর্ডার শুরু করুন';
   document.getElementById('entry-btn').onclick = handleEntry;
   updateProgress();
@@ -746,6 +799,7 @@ function setMinDate() {
 // Init
 (function init() {
   populateDropdowns();
+  setLang(lang);
   const savedPhone = localStorage.getItem('nitu-cust-phone');
   if (savedPhone) document.getElementById('entry-phone').value = savedPhone;
   setMinDate();
