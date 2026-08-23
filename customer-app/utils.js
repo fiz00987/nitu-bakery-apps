@@ -141,12 +141,8 @@ function getBangladeshTime(date) {
 // ─── SECURITY QUESTIONS (randomized) ────────
 function getSecurityQuestion() {
   const questions = [
-    () => { const a = Math.floor(Math.random()*20)+1, b = Math.floor(Math.random()*20)+1; return { q: `${a} + ${b} = ?`, a: a+b }; },
-    () => { const a = Math.floor(Math.random()*30)+10, b = Math.floor(Math.random()*20)+1; return { q: `${a} - ${b} = ?`, a: a-b }; },
-    () => { const a = Math.floor(Math.random()*10)+2, b = Math.floor(Math.random()*10)+2; return { q: `${a} × ${b} = ?`, a: a*b }; },
-    () => { const a = Math.floor(Math.random()*50)+10, b = Math.floor(Math.random()*10)+1; return { q: `${a} + ${b} - 5 = ?`, a: a+b-5 }; },
-    () => { const a = Math.floor(Math.random()*12)+3, b = Math.floor(Math.random()*5)+2; return { q: `${a} × ${b} + 1 = ?`, a: a*b+1 }; },
-    () => { const a = Math.floor(Math.random()*100)+50, b = Math.floor(Math.random()*30)+10; return { q: `${a} - ${b} = ?`, a: a-b }; },
+    () => { const a = Math.floor(Math.random() * 9) + 1, b = Math.floor(Math.random() * 9) + 1; return { q: `${a} + ${b} = ?`, a: a + b }; },
+    () => { const a = Math.floor(Math.random() * 8) + 2, b = Math.floor(Math.random() * (a - 1)) + 1; return { q: `${a} - ${b} = ?`, a: a - b }; },
   ];
   return questions[Math.floor(Math.random() * questions.length)]();
 }
