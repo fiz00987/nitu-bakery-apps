@@ -257,6 +257,11 @@ button{cursor:pointer}
       </select>
     </div>
     <div class="payment-info-box" id="payment-info"></div>
+    <div class="field delivery-charge-field" id="delivery-charge-field">
+      <label>ডেলিভারি চার্জ (ডেলিভারি এজেন্ট জানালে লিখুন)</label>
+      <input type="number" id="f-delivery-charge" min="0" step="1" placeholder="এজেন্টের বলা চার্জ লিখুন" oninput="recalcPrice()">
+      <div class="note-box">এই চার্জটি কেকের দামের অংশ নয়। পুরো টাকা ডেলিভারি এজেন্টকে দেওয়া হবে।</div>
+    </div>
     <div class="field">
       <label data-bn="আপনি কত টাকা অগ্রিম দিতে চান? *" data-en="How much advance do you want to pay? *">আপনি কত টাকা অগ্রিম দিতে চান? *</label>
       <div class="advance-options" id="advance-options">
@@ -319,7 +324,6 @@ let advanceType = '';
 let isSurprise = false;
 let currentSecurityQ = null;
 let pendingPhone = '';
-let expectedDeliveryCharge = 100; // admin updates this
 
 // Populate dropdowns from utils.js
 function populateDropdowns() {
@@ -549,6 +553,13 @@ async function showTextPopup(fileName, title) {
   } catch (e) { showToast('তথ্য লোড করা যায়নি'); }
 }
 
+function showDeliveryPopup() {
+  document.getElementById('popup-title').textContent = 'ডেলিভারি তথ্য';
+  popupText = 'শুধুমাত্র চট্টগ্রাম মেট্রো শহরের মধ্যে ডেলিভারি দেওয়া হয়।\n\nডেলিভারি চার্জ নির্দিষ্ট নয়। ডেলিভারি এজেন্ট দূরত্ব এবং কেকের ওজন দেখে চার্জ নির্ধারণ করেন।\n\nআমরা এজেন্টের সঙ্গে যোগাযোগ করে চার্জ জানার পর Facebook পেজে আপনাকে জানাব। চার্জ জানলে নিচের Delivery Charge ঘরে লিখুন।\n\nএই ডেলিভারি চার্জ কেকের দামের সঙ্গে যোগ হবে না; সম্পূর্ণ টাকা ডেলিভারি এজেন্টকে দিতে হবে।';
+  document.getElementById('popup-content').textContent = popupText;
+  document.getElementById('text-popup').classList.add('show');
+}
+
 function showFlavourPopup() {
   if (document.getElementById('f-flavour').value) showTextPopup('flavours.txt', 'ফ্লেভার নির্দেশিকা');
 }
@@ -580,14 +591,14 @@ function recalcPrice() {
   if (!wt || cakePrice <= 0) { document.getElementById('calc-box').classList.remove('show'); document.getElementById('advance-calc-box').classList.remove('show'); return; }
 
   const base = cakePrice;
-  const delivery = document.getElementById('f-fulfilment').value === 'pickup' ? 0 : expectedDeliveryCharge;
+  const delivery = document.getElementById('f-fulfilment').value === 'pickup' ? 0 : (parseFloat(document.getElementById('f-delivery-charge').value) || 0);
   const paymentMethod = getPaymentMethod(methodId);
   const charge = paymentMethod && paymentMethod.charges > 0 ? advance * paymentMethod.charges : 0;
-  const total = base + delivery;
+  const total = base;
   const due = Math.max(0, total - advance);
 
   document.getElementById('calc-base').textContent = '৳' + base;
-  document.getElementById('calc-delivery').textContent = '৳' + delivery;
+  document.getElementById('calc-delivery').textContent = '৳' + delivery + ' (আলাদা)';
   if (charge > 0) {
     document.getElementById('calc-charge-row').style.display = 'flex';
     document.getElementById('calc-charge-label').textContent = `${paymentMethod.name} চার্জ:`;
@@ -622,6 +633,9 @@ document.getElementById('f-weight').addEventListener('change', function() {
 function onFulfilmentChange() {
   const pickup = document.getElementById('f-fulfilment').value === 'pickup';
   document.getElementById('pickup-box').classList.toggle('show', pickup);
+  document.getElementById('delivery-charge-field').style.display = pickup ? 'none' : 'block';
+  if (!pickup) showDeliveryPopup();
+  if (pickup) document.getElementById('f-delivery-charge').value = '';
   document.getElementById('f-address').required = !pickup;
   if (pickup) document.getElementById('f-address').value = 'Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram';
   recalcPrice();
@@ -689,8 +703,7 @@ function getOrderTotal() {
   const wt = resolveWeight();
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
   if (!wt || cakePrice <= 0) return 0;
-  const delivery = document.getElementById('f-fulfilment').value === 'pickup' ? 0 : expectedDeliveryCharge;
-  return cakePrice + delivery;
+  return cakePrice;
 }
 
 // Submit
@@ -708,10 +721,10 @@ function submitOrder() {
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
   const advance = parseFloat(document.getElementById('f-advance').value) || 0;
 
-  const delivery = document.getElementById('f-fulfilment').value === 'pickup' ? 0 : expectedDeliveryCharge;
+  const delivery = document.getElementById('f-fulfilment').value === 'pickup' ? 0 : (parseFloat(document.getElementById('f-delivery-charge').value) || 0);
   const charge = method && method.charges > 0 ? advance * method.charges : 0;
-  const subtotal = cakePrice + delivery;
-  const total = subtotal;
+  const subtotal = cakePrice;
+  const total = cakePrice;
   const advanceTotal = advance + charge;
   const dueAmount = Math.max(0, subtotal - advance);
 

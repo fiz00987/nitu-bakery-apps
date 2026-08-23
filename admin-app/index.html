@@ -2107,7 +2107,10 @@ window.App = (() => {
     if (o.timeSlotLabel && !o.time) o.time = o.timeSlotLabel;
     if (o.weightLabel && !o.weight) o.weight = o.weightLabel;
     if (o.flavourName && !o.flavour) o.flavour = o.flavourName;
-    if (o.cakePrice != null && !o.total) o.total = Number(o.cakePrice) + Number(o.deliveryCharge || 0);
+    if (o.cakePrice != null && !o.total) o.total = Number(o.cakePrice);
+    if (o.deliveryCharge != null && o.deliveryAmount == null) o.deliveryAmount = Number(o.deliveryCharge);
+    if (o.fulfilment === 'pickup' && o.deliveryPaid == null) o.deliveryPaid = 'na';
+    if (o.fulfilment === 'delivery' && o.deliveryPaid == null) o.deliveryPaid = o.deliveryAmount > 0 ? 'unpaid' : 'na';
     if (o.advanceTotal != null && o.paid == null) o.paid = Number(o.advanceTotal);
     if (o.paymentCharges != null && o.bkashCharge == null) o.bkashCharge = Number(o.paymentCharges);
     if (o.fulfilment === 'pickup' && !o.address) o.address = 'Self pickup: Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram';
