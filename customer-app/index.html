@@ -105,6 +105,11 @@ button{cursor:pointer}
 .popup-header h3{font-size:18px}.popup-close{border:0;background:none;font-size:24px;color:var(--text2)}
 .popup-content{padding:18px;white-space:pre-wrap;overflow:auto;line-height:1.65;font-size:14px}
 .copy-button{margin:6px 4px 0 0;padding:5px 9px;border:1px solid currentColor;border-radius:var(--radius-xs);background:transparent;color:var(--green);font-size:12px;font-weight:600}
+.order-number-badge{display:inline-block;margin-top:8px;padding:6px 12px;border-radius:var(--radius-xs);background:var(--pink-light);color:var(--pink-dark);font-size:13px;font-weight:700}
+.time-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.due-panel{background:#eeeeee;border:1px solid #cfcfcf;border-radius:var(--radius-sm);padding:12px;margin-top:12px;display:none;color:#4a4a4a}
+.due-panel.show{display:block}
+.screenshot-note{background:var(--green-light);border:1px solid #a5d6a7;border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;color:var(--green);line-height:1.5;margin-bottom:14px}
 
 /* SUCCESS */
 .success-screen{display:none;text-align:center;padding:40px 20px;max-width:400px;margin:0 auto}
@@ -162,6 +167,7 @@ button{cursor:pointer}
   <div class="form-header">
     <img src="logo.png" alt="নিতুর বেকারি">
     <h2 data-bn="আপনার অর্ডার দিন" data-en="Place Your Order">আপনার অর্ডার দিন</h2>
+    <div class="order-number-badge">অর্ডার নম্বর: <span id="form-order-id"></span></div>
   </div>
   <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
 
@@ -209,7 +215,11 @@ button{cursor:pointer}
       </div>
       <div class="field">
         <label data-bn="ডেলিভারির সময় *" data-en="Delivery Time *">ডেলিভারির সময় *</label>
-        <input type="time" id="f-timeslot" min="09:00" max="18:00">
+        <div class="time-row">
+          <select id="f-time-hour"><option value="">ঘণ্টা</option></select>
+          <select id="f-time-minute"><option value="">মিনিট</option></select>
+          <select id="f-time-period"><option value="">AM/PM</option><option value="AM">AM</option><option value="PM">PM</option></select>
+        </div>
         <div class="note-box">নিরাপত্তার জন্য ডেলিভারি সন্ধ্যা ৬টার পরে হয় না।</div>
       </div>
     </div>
@@ -278,6 +288,13 @@ button{cursor:pointer}
       <div class="calc-row due" id="calc-due-row"><span>বাকি:</span><span id="calc-due">৳0</span></div>
     </div>
 
+    <div class="due-panel" id="due-panel">
+      <strong>বাকি পেমেন্ট</strong><br>
+      কেকের মোট মূল্য: <span id="due-total">৳0</span><br>
+      ৫০% অগ্রিম: <span id="due-advance">৳0</span><br>
+      বাকি দিতে হবে: <strong id="due-amount">৳0</strong>
+    </div>
+
     <div class="field" style="margin-top:12px">
       <label data-bn="ট্রানজেকশন আইডি / শেষ ৪ ডিজিট *" data-en="Transaction ID / Last 4 Digits *">ট্রানজেকশন আইডি / শেষ ৪ ডিজিট *</label>
       <input type="text" id="f-trx" placeholder="যেমন: 8K3N বা 12345678">
@@ -304,6 +321,8 @@ button{cursor:pointer}
   <div class="success-title">অর্ডার সফলভাবে জমা হয়েছে!</div>
   <div class="success-msg">আমরা শীঘ্রই আপনার সাথে যোগাযোগ করব। অর্ডার কনফার্ম হলে আপনাকে জানানো হবে।</div>
   <div class="order-summary" id="order-summary"></div>
+  <div class="screenshot-note">অর্ডারের স্ক্রিনশটটি আমাদের Facebook পেজের ইনবক্সে পাঠালে অর্ডার নম্বর দেখে দ্রুত ট্র্যাক করতে সুবিধা হবে। স্ক্রিনশট নেওয়ার পর এই উইন্ডো ৫ সেকেন্ডের মধ্যে বন্ধ হয়ে নতুন ফর্ম খুলবে।</div>
+  <button class="btn-primary" onclick="takeOrderScreenshot()">📸 অর্ডারের স্ক্রিনশট নিন</button>
   <button class="btn-primary" onclick="resetForm()">🔄 নতুন অর্ডার দিন</button>
 </div>
 
@@ -315,6 +334,7 @@ button{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="./firebase-config.js"></script>
 <script src="./utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
 'use strict';
 
@@ -324,9 +344,14 @@ let advanceType = '';
 let isSurprise = false;
 let currentSecurityQ = null;
 let pendingPhone = '';
+let currentOrderId = '';
 
 // Populate dropdowns from utils.js
 function populateDropdowns() {
+  const hour = document.getElementById('f-time-hour');
+  for (let value = 1; value <= 12; value++) hour.insertAdjacentHTML('beforeend', `<option value="${value}">${value}</option>`);
+  const minute = document.getElementById('f-time-minute');
+  ['00', '15', '30', '45'].forEach(value => minute.insertAdjacentHTML('beforeend', `<option value="${value}">${value}</option>`));
   const wt = document.getElementById('f-weight');
   WEIGHTS.forEach(w => {
     const opt = document.createElement('option');
@@ -369,7 +394,7 @@ function setLang(l) {
   const labels = l === 'en' ? {
     '#entry-phone': 'Phone Number *', '#f-weight': 'Weight *',
     '#f-flavour': 'Flavour *', '#f-address': 'Delivery Address *', '#f-date': 'Delivery Date *',
-    '#f-timeslot': 'Delivery Time *', '#f-receiver': 'Receiver Name *', '#f-receiver-phone': 'Receiver Phone *',
+    '#f-time-hour': 'Delivery Time *', '#f-receiver': 'Receiver Name *', '#f-receiver-phone': 'Receiver Phone *',
     '#f-fulfilment': 'Fulfilment *', '#f-surprise': 'Surprise Cake?', '#f-payment-method': 'Payment Method *', '#f-advance': 'Advance Payment *',
     '#f-trx': 'Transaction ID / Last 4 Digits *', '#f-notes': 'Additional Info (Optional)'
   } : {};
@@ -488,6 +513,8 @@ function proceedToForm(phone) {
   localStorage.setItem('nitu-cust-phone', phone);
   document.getElementById('entry-screen').classList.add('hidden');
   document.getElementById('form-screen').classList.add('active');
+  currentOrderId = generateOrderId();
+  document.getElementById('form-order-id').textContent = currentOrderId;
   setMinDate();
   updateProgress();
   // Pre-fill name from last order
@@ -613,6 +640,10 @@ function recalcPrice() {
   document.getElementById('calc-advance-total').textContent = '৳' + (advance + charge).toFixed(2);
   document.getElementById('calc-due').textContent = '৳' + due;
   document.getElementById('calc-due-row').style.display = due > 0 ? 'flex' : 'none';
+  document.getElementById('due-panel').classList.toggle('show', advance > 0 && advance < total);
+  document.getElementById('due-total').textContent = '৳' + total;
+  document.getElementById('due-advance').textContent = '৳' + advance;
+  document.getElementById('due-amount').textContent = '৳' + due;
   document.getElementById('calc-box').classList.add('show');
   document.getElementById('advance-calc-box').classList.add('show');
 }
@@ -658,7 +689,7 @@ document.getElementById('f-surprise').addEventListener('change', function() {
 
 // Progress
 function updateProgress() {
-  const fields = ['f-name','f-weight','f-cake-price','f-flavour','f-address','f-date','f-timeslot','f-receiver','f-receiver-phone','f-payment-method','f-advance','f-trx'];
+  const fields = ['f-name','f-weight','f-cake-price','f-flavour','f-address','f-date','f-time-hour','f-time-minute','f-time-period','f-receiver','f-receiver-phone','f-payment-method','f-advance','f-trx'];
   let filled = 0;
   fields.forEach(id => {
     const el = document.getElementById(id);
@@ -677,7 +708,7 @@ function validate() {
   const req = [
     ['f-name', 'নাম দিন'], ['f-weight', 'ওজন নির্বাচন করুন'], ['f-cake-price', 'কেকের মূল্য দিন'], ['f-flavour', 'ফ্লেভার নির্বাচন করুন'],
     ['f-date', 'তারিখ দিন'],
-    ['f-timeslot', 'সময় নির্বাচন করুন'], ['f-receiver', 'রিসিভারের নাম দিন'],
+    ['f-receiver', 'রিসিভারের নাম দিন'],
     ['f-receiver-phone', 'রিসিভারের ফোন দিন'],
     ['f-payment-method', 'পেমেন্ট পদ্ধতি নির্বাচন করুন'],
     ['f-advance', 'অগ্রিম পরিমাণ দিন'], ['f-trx', 'ট্রানজেকশন আইডি দিন']
@@ -691,8 +722,7 @@ function validate() {
   if (!validateBangladeshPhone(document.getElementById('f-receiver-phone').value.trim())) {
     showToast('সঠিক রিসিভার ফোন দিন'); return false;
   }
-  const deliveryTime = document.getElementById('f-timeslot').value;
-  if (deliveryTime < '09:00' || deliveryTime > '18:00') { showToast('ডেলিভারি সময় সকাল ৯টা থেকে সন্ধ্যা ৬টার মধ্যে দিন'); return false; }
+  if (!getSelectedTime()) { showToast('ডেলিভারির সময় দিন'); return false; }
   if (isSurprise) {
     const adv = parseFloat(document.getElementById('f-advance').value) || 0;
     const total = getOrderTotal();
@@ -718,7 +748,7 @@ function submitOrder() {
 
   const wt = resolveWeight();
   const fl = getFlavour(document.getElementById('f-flavour').value);
-  const timeSlot = document.getElementById('f-timeslot').value;
+  const timeSlot = getSelectedTime();
   const method = getPaymentMethod(document.getElementById('f-payment-method').value);
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
   const advance = parseFloat(document.getElementById('f-advance').value) || 0;
@@ -731,7 +761,7 @@ function submitOrder() {
   const dueAmount = Math.max(0, subtotal - advance);
 
   const order = {
-    orderId: generateOrderId(),
+    orderId: currentOrderId || generateOrderId(),
     customerPhone: phone,
     customerName: customerName,
     category: 'custom',
@@ -783,6 +813,17 @@ function submitOrder() {
   });
 }
 
+function getSelectedTime() {
+  const hour = document.getElementById('f-time-hour').value;
+  const minute = document.getElementById('f-time-minute').value;
+  const period = document.getElementById('f-time-period').value;
+  if (!hour || !minute || !period) return '';
+  const hourNumber = Number(hour);
+  if ((period === 'PM' && hourNumber > 6) || (period === 'AM' && hourNumber < 9)) return '';
+  if (period === 'PM' && hourNumber === 6 && Number(minute) > 0) return '';
+  return `${hour}:${minute} ${period}`;
+}
+
 // Success
 function showSuccess(order) {
   document.getElementById('form-screen').classList.remove('active');
@@ -800,6 +841,24 @@ function showSuccess(order) {
     ${order.dueAmount > 0 ? `<div class="due-alert">⚠️ বাকি (আনুমানিক): ৳${order.dueAmount}<br><small>ডেলিভারি চার্জ নিশ্চিত হওয়ার পর চূড়ান্ত হবে</small></div>` : '<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ পূর্ণ পেমেন্ট সম্পন্ন</div>'}
   `;
 }
+
+async function takeOrderScreenshot() {
+  const summary = document.getElementById('order-summary');
+  if (!window.html2canvas) { showToast('স্ক্রিনশট টুল লোড হয়নি'); return; }
+  const canvas = await html2canvas(summary, { backgroundColor: '#ffffff', scale: 2 });
+  const link = document.createElement('a');
+  link.download = `${orderIdForScreenshot()}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('স্ক্রিনশট ডাউনলোড হয়েছে। Facebook ইনবক্সে পাঠান।');
+  setTimeout(async () => {
+    if ('caches' in window) { const keys = await caches.keys(); await Promise.all(keys.map(key => caches.delete(key))); }
+    localStorage.clear();
+    window.location.reload();
+  }, 5000);
+}
+
+function orderIdForScreenshot() { return currentOrderId || 'nitu-bakery-order'; }
 
 function resetForm() {
   document.getElementById('success-screen').classList.remove('active');

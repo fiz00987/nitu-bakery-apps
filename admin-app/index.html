@@ -2264,7 +2264,7 @@ window.App = (() => {
     return pool.filter(o => {
       if (st && o.status !== st) return false;
       if (!q) return true;
-      return [o.name, o.phone, o.flavour, o.address, o.receiver, o.design, o.writing]
+      return [o.orderId, o.name, o.phone, o.flavour, o.address, o.receiver, o.design, o.writing]
         .filter(Boolean).join(' ').toLowerCase().includes(q);
     });
   };
