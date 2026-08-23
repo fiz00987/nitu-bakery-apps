@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Noto+Serif+Bengali:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
   --pink:#c2185b; --pink-dark:#880e4f; --pink-mid:#e91e8c;
@@ -29,7 +29,8 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{scroll-behavior:smooth}
-body{font-family:'Poppins','Hind Siliguri',-apple-system,sans-serif;background:linear-gradient(rgba(247,244,246,.91),rgba(247,244,246,.96)),url('https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=75') center/cover fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+body{font-family:'SutonnyMJ','Noto Serif Bengali',serif;background:linear-gradient(rgba(247,244,246,.91),rgba(247,244,246,.96)),url('https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=75') center/cover fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+body:lang(en),body:lang(en) input,body:lang(en) select,body:lang(en) textarea,body:lang(en) button{font-family:'Cormorant Garamond',Georgia,serif}
 input,select,textarea,button{font-family:inherit;font-size:inherit}
 button{cursor:pointer}
 
@@ -97,6 +98,13 @@ button{cursor:pointer}
 .copy-number{border:0;background:none;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer;padding:0}
 .pickup-box{background:var(--blue-light);border:1px solid #90caf9;border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--blue);line-height:1.5;margin-top:8px;display:none}
 .pickup-box.show{display:block}
+.popup-overlay{position:fixed;inset:0;background:rgba(20,10,18,.5);z-index:2500;display:none;align-items:center;justify-content:center;padding:18px}
+.popup-overlay.show{display:flex}
+.popup{background:var(--surface);border-radius:var(--radius);width:100%;max-width:520px;max-height:82vh;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,.22)}
+.popup-header{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border);color:var(--pink-dark)}
+.popup-header h3{font-size:18px}.popup-close{border:0;background:none;font-size:24px;color:var(--text2)}
+.popup-content{padding:18px;white-space:pre-wrap;overflow:auto;line-height:1.65;font-size:14px}
+.copy-button{margin-top:10px;padding:8px 12px;border:1px solid currentColor;border-radius:var(--radius-xs);background:transparent;color:var(--green);font-weight:600}
 
 /* SUCCESS */
 .success-screen{display:none;text-align:center;padding:40px 20px;max-width:400px;margin:0 auto}
@@ -179,16 +187,11 @@ button{cursor:pointer}
         <input type="number" id="f-cake-price" min="0" placeholder="আপনার বাজেট লিখুন" oninput="recalcPrice()">
       </div>
     </div>
-    <div class="note-box" id="base-price-note">ওজন নির্বাচন করলে আনুমানিক বেস মূল্য দেখা যাবে।</div>
+    <button type="button" class="copy-button" onclick="showTextPopup('base price.txt','বেস মূল্য নির্দেশিকা')">ওজন অনুযায়ী বেস মূল্য দেখুন</button>
     <div class="field">
       <label data-bn="ফ্লেভার *" data-en="Flavour *">ফ্লেভার *</label>
-      <select id="f-flavour"><option value="">নির্বাচন করুন</option></select>
+      <select id="f-flavour" onchange="showFlavourPopup()"><option value="">নির্বাচন করুন</option></select>
       <div class="note-box">সব ফ্লেভার সব সময় পাওয়া নাও যেতে পারে। কিছু ফ্লেভারের জন্য নির্দিষ্ট ওজন প্রয়োজন। বিস্তারিত জানতে আমাদের Facebook পেজে যোগাযোগ করুন।</div>
-    </div>
-    <div class="field">
-      <label data-bn="কেকে লেখা" data-en="Writing on Cake">কেকে লেখা</label>
-      <input type="text" id="f-writing" placeholder="যেমন: রিমা এর জন্মদিন">
-      <div class="note-box" data-bn='দ্রষ্টব্য: শুভেচ্ছা বা অভিনন্দন ধরনের লেখা গ্রহণযোগ্য নয়। দয়া করে কেকের নাম বা সংক্ষিপ্ত বার্তা লিখুন।'>দ্রষ্টব্য: শুভেচ্ছা বা অভিনন্দন ধরনের লেখা গ্রহণযোগ্য নয়। দয়া করে কেকের নাম বা সংক্ষিপ্ত বার্তা লিখুন।</div>
     </div>
     <div class="field">
       <label data-bn="রেফারেন্স ছবি (ঐচ্ছিক)" data-en="Reference Photo (Optional)">রেফারেন্স ছবি (ঐচ্ছিক)</label>
@@ -240,7 +243,7 @@ button{cursor:pointer}
     <div class="field">
       <label>ডেলিভারি ধরন *</label>
       <select id="f-fulfilment" onchange="onFulfilmentChange()"><option value="delivery">ডেলিভারি</option><option value="pickup">সেলফ পিকআপ</option></select>
-      <div class="pickup-box" id="pickup-box">সেলফ পিকআপ ঠিকানা: Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram.<br><a href="https://www.google.com/maps/search/?api=1&query=Rongdhonu+apartment+Amanbazar+Chattogram" target="_blank" rel="noopener">Google Maps-এ ঠিকানা খুলুন</a></div>
+      <div class="pickup-box" id="pickup-box">সেলফ পিকআপ ঠিকানা: Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram.<br><a href="https://maps.app.goo.gl/vAk44BoEWRbppBuz8" target="_blank" rel="noopener">Google Maps-এ ঠিকানা খুলুন</a></div>
     </div>
   </div>
 
@@ -254,6 +257,7 @@ button{cursor:pointer}
       </select>
     </div>
     <div class="payment-info-box" id="payment-info"></div>
+    <button type="button" class="copy-button" id="payment-copy" style="display:none" onclick="copyPaymentDetails()">পেমেন্ট তথ্য কপি করুন</button>
     <div class="calc-box" id="calc-box">
       <div class="calc-row"><span>কেকের মূল্য:</span><span id="calc-base">৳0</span></div>
       <div class="calc-row"><span>ডেলিভারি:</span><span id="calc-delivery">৳0</span></div>
@@ -287,6 +291,14 @@ button{cursor:pointer}
   </div>
 
   <button class="btn-primary" onclick="submitOrder()" id="submit-btn">✅ অর্ডার জমা দিন</button>
+</div>
+
+<div class="popup-overlay" id="text-popup" onclick="closeTextPopup(event)">
+  <div class="popup" role="dialog" aria-modal="true">
+    <div class="popup-header"><h3 id="popup-title"></h3><button type="button" class="popup-close" onclick="closeTextPopup()">×</button></div>
+    <div class="popup-content" id="popup-content"></div>
+    <div style="padding:0 18px 18px"><button type="button" class="copy-button" onclick="copyPopupText()">এই তথ্য কপি করুন</button></div>
+  </div>
 </div>
 
 <!-- SUCCESS -->
@@ -479,18 +491,10 @@ function proceedToForm(phone) {
   document.getElementById('entry-screen').classList.add('hidden');
   document.getElementById('form-screen').classList.add('active');
   setMinDate();
-  loadBasePriceGuide();
   updateProgress();
   // Pre-fill name from last order
   const lastName = localStorage.getItem('nitu-cust-name');
   if (lastName) document.getElementById('f-name').value = lastName;
-}
-
-async function loadBasePriceGuide() {
-  try {
-    const response = await fetch('./base%20price.txt');
-    if (response.ok) document.getElementById('base-price-note').textContent = await response.text();
-  } catch (e) { console.warn('Base price guide unavailable:', e); }
 }
 
 // Photo
@@ -531,10 +535,43 @@ function onPaymentChange() {
     const bank = methodId === 'bank' ? '<br>IFIC Bank, Amanbazar sub-branch · Routing: 120 153 224 · SWIFT: IFICBDDH<br>Account holder: Sabrina Akter Bhuiyan' : '';
     info.innerHTML = `📱 <strong>${method.name}</strong> নম্বর: ${copy}<br>নাম: <strong>${method.regName || ''}</strong>${bank}<br><small>${methodId === 'bkash' ? 'বিকাশ Send Money করুন। আপনার অগ্রিমের উপর ১.৮২% চার্জ যোগ হবে।' : 'পেমেন্টের বিস্তারিত যাচাই করা হবে।'}</small>`;
     info.classList.add('show');
+    document.getElementById('payment-copy').style.display = 'inline-block';
   } else {
     info.classList.remove('show');
+    document.getElementById('payment-copy').style.display = 'none';
   }
   recalcPrice();
+}
+
+let popupText = '';
+async function showTextPopup(fileName, title) {
+  try {
+    const response = await fetch(`./${encodeURIComponent(fileName)}`);
+    if (!response.ok) throw new Error('Text file unavailable');
+    popupText = await response.text();
+    document.getElementById('popup-title').textContent = title;
+    document.getElementById('popup-content').textContent = popupText;
+    document.getElementById('text-popup').classList.add('show');
+  } catch (e) { showToast('তথ্য লোড করা যায়নি'); }
+}
+
+function showFlavourPopup() {
+  if (document.getElementById('f-flavour').value) showTextPopup('flavours.txt', 'ফ্লেভার নির্দেশিকা');
+}
+
+function closeTextPopup(event) {
+  if (!event || event.target === document.getElementById('text-popup')) document.getElementById('text-popup').classList.remove('show');
+}
+
+function copyPopupText() {
+  navigator.clipboard.writeText(popupText).then(() => showToast('তথ্য কপি হয়েছে'));
+}
+
+function copyPaymentDetails() {
+  const method = getPaymentMethod(document.getElementById('f-payment-method').value);
+  if (!method) return;
+  const details = method.id === 'bank' ? 'Bank payment: NPSB only\nBank Account Number: 0210165544851\nIFIC Bank, Amanbazar sub-branch.\nRouting Number: 120 153 224\nSwift code: IFICBDDH\nAccount holder name: Sabrina Akter Bhuiyan\nContact no: 01521400475' : `${method.name}\nName: ${method.regName || ''}\nNumber: ${method.number || ''}`;
+  navigator.clipboard.writeText(details).then(() => showToast('পেমেন্ট তথ্য কপি হয়েছে'));
 }
 
 function setAdvanceType(type) {
@@ -592,6 +629,7 @@ function resolveWeight() {
 document.getElementById('f-weight').addEventListener('change', function() {
   document.getElementById('f-weight-custom').style.display = this.value === 'custom-weight' ? 'block' : 'none';
   recalcPrice();
+  if (this.value) showTextPopup('base price.txt', 'বেস মূল্য নির্দেশিকা');
 });
 
 function onFulfilmentChange() {
@@ -700,7 +738,6 @@ function submitOrder() {
     weightLabel: wt.label,
     flavour: fl.value,
     flavourName: fl.label,
-    writing: document.getElementById('f-writing').value.trim(),
     photo: currentPhoto,
     address: document.getElementById('f-address').value.trim(),
     deliveryAddress: document.getElementById('f-address').value.trim(),

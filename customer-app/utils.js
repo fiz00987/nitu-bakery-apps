@@ -42,7 +42,7 @@ const PAYMENT_METHODS = [
     id: 'nagad', 
     name: 'নগদ', 
     nameEn: 'Nagad', 
-    charges: 0,
+    charges: 0.0149,
     number: '01521222376',          // ← UPDATED
     regName: 'Firoz Ahmed'          // ← UPDATED
   },
@@ -65,6 +65,7 @@ const PAYMENT_METHODS = [
 ];
 
 const BKASH_RATE = 0.0182;
+const NAGAD_RATE = 0.0149;
 
 // ─── HELPER FUNCTIONS ───────────────────────
 function getPaymentMethod(id) {
@@ -98,6 +99,9 @@ function calculatePayment(basePrice, weightPrice, deliveryCharge, paymentMethodI
 
   if (paymentMethodId === 'bkash') {
     charges = Math.ceil(subtotal * BKASH_RATE);
+    total = subtotal + charges;
+  } else if (paymentMethodId === 'nagad') {
+    charges = Math.ceil(subtotal * NAGAD_RATE);
     total = subtotal + charges;
   }
 
