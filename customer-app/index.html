@@ -242,8 +242,8 @@ button{cursor:pointer}
   <div class="section">
     <div class="section-title">💳 <span data-bn="পেমেন্ট" data-en="Payment">পেমেন্ট</span></div>
     <div class="field">
-      <label>আপনার কেকের মূল্য * (৳)</label>
-      <input type="number" id="f-cake-price" min="0" placeholder="আপনার বাজেট লিখুন" oninput="recalcPrice()">
+      <label data-bn="কেকের নির্ধারিত মূল্য * (৳)" data-en="Total payment of the cake * (Tk)">কেকের নির্ধারিত মূল্য * (৳)</label>
+      <input type="number" id="f-cake-price" min="0" placeholder="কেকের মূল্য লিখুন" data-bn-placeholder="কেকের মূল্য লিখুন" data-en-placeholder="Enter cake price" oninput="recalcPrice()">
     </div>
     <div class="calc-box" id="calc-box">
       <div class="calc-row"><span>কেকের মূল্য:</span><span id="calc-base">৳0</span></div>
@@ -367,7 +367,7 @@ function setLang(l) {
     el.textContent = l === 'en' ? el.dataset.en : el.dataset.bn;
   });
   const labels = l === 'en' ? {
-    '#entry-phone': 'Phone Number *', '#f-weight': 'Weight *', '#f-cake-price': 'Your Cake Price * (Tk)',
+    '#entry-phone': 'Phone Number *', '#f-weight': 'Weight *',
     '#f-flavour': 'Flavour *', '#f-address': 'Delivery Address *', '#f-date': 'Delivery Date *',
     '#f-timeslot': 'Delivery Time *', '#f-receiver': 'Receiver Name *', '#f-receiver-phone': 'Receiver Phone *',
     '#f-fulfilment': 'Fulfilment *', '#f-surprise': 'Surprise Cake?', '#f-payment-method': 'Payment Method *', '#f-advance': 'Advance Payment *',
@@ -378,6 +378,7 @@ function setLang(l) {
     if (field && field.parentElement) field.parentElement.querySelector('label').textContent = text;
   });
   if (l === 'en') {
+    document.getElementById('f-cake-price').placeholder = 'Enter cake price';
     document.getElementById('f-weight-custom').placeholder = 'Custom weight (pounds)';
     document.querySelector('#f-weight option[value=""]').textContent = 'Select weight';
     document.querySelector('#f-weight option[value="custom-weight"]').textContent = 'Custom weight';
@@ -390,6 +391,7 @@ function setLang(l) {
     FLAVOURS.forEach(f => { const option = document.querySelector(`#f-flavour option[value="${f.value}"]`); if (option) option.textContent = f.labelEn; });
     PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.nameEn; });
   } else {
+    document.getElementById('f-cake-price').placeholder = 'কেকের মূল্য লিখুন';
     document.getElementById('f-weight-custom').placeholder = 'কাস্টম ওজন (পাউন্ড)';
     FLAVOURS.forEach(f => { const option = document.querySelector(`#f-flavour option[value="${f.value}"]`); if (option) option.textContent = f.label; });
     PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.name; });
