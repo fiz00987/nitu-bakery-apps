@@ -250,6 +250,11 @@ button{cursor:pointer}
   <!-- PAYMENT -->
   <div class="section">
     <div class="section-title">💳 <span data-bn="পেমেন্ট" data-en="Payment">পেমেন্ট</span></div>
+    <div class="calc-box" id="calc-box">
+      <div class="calc-row"><span>কেকের মূল্য:</span><span id="calc-base">৳0</span></div>
+      <div class="calc-row"><span>ডেলিভারি:</span><span id="calc-delivery">৳0</span></div>
+      <div class="calc-row total"><span>মোট পেমেন্ট:</span><span id="calc-total">৳0</span></div>
+    </div>
     <div class="field">
       <label data-bn="পেমেন্ট পদ্ধতি *" data-en="Payment Method *">পেমেন্ট পদ্ধতি *</label>
       <select id="f-payment-method" onchange="onPaymentChange()">
@@ -258,12 +263,6 @@ button{cursor:pointer}
     </div>
     <div class="payment-info-box" id="payment-info"></div>
     <button type="button" class="copy-button" id="payment-copy" style="display:none" onclick="copyPaymentDetails()">পেমেন্ট তথ্য কপি করুন</button>
-    <div class="calc-box" id="calc-box">
-      <div class="calc-row"><span>কেকের মূল্য:</span><span id="calc-base">৳0</span></div>
-      <div class="calc-row"><span>ডেলিভারি:</span><span id="calc-delivery">৳0</span></div>
-      <div class="calc-row total"><span>মোট পেমেন্ট:</span><span id="calc-total">৳0</span></div>
-    </div>
-
     <div class="field">
       <label data-bn="আপনি কত টাকা অগ্রিম দিতে চান? *" data-en="How much advance do you want to pay? *">আপনি কত টাকা অগ্রিম দিতে চান? *</label>
       <div class="advance-options" id="advance-options">
