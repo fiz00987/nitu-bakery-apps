@@ -53,14 +53,6 @@ const PAYMENT_METHODS = [
     charges: 0,
     number: '0210165544851',
     regName: 'Sabrina Akter Bhuiyan'
-  },
-  {
-    id: 'cod', 
-    name: 'ক্যাশ অন ডেলিভারি', 
-    nameEn: 'Cash on Delivery', 
-    charges: 0, 
-    number: null,
-    regName: null
   }
 ];
 
@@ -185,7 +177,10 @@ function generateWhatsAppMessage(order) {
   if (order.paymentCharges > 0) message += `   পেমেন্ট চার্জ: ${formatCurrency(order.paymentCharges)}\n`;
   message += `   *মোট: ${formatCurrency(order.total)}\n`;
   message += `💳 *প্রদান:* ${formatCurrency(order.advanceTotal)}\n`;
-  if (order.dueAmount > 0) message += `⚠️ *বাকি:* ${formatCurrency(order.dueAmount)}\n`;
+  if (order.dueAmount > 0) {
+    message += `⚠️ *বাকি:* ${formatCurrency(order.dueAmount)}\n`;
+    if (order.deliveryCharge > 0) message += `🚚 *ডেলিভারি চার্জ (আলাদা):* ${formatCurrency(order.deliveryCharge)}\n`;
+  }
   message += `💳 *পদ্ধতি:* ${order.paymentMethodName}\n`;
   return encodeURIComponent(message);
 }

@@ -607,6 +607,18 @@ button { cursor: pointer; }
   gap: 6px;
   flex-wrap: wrap;
 }
+.name-copy-btn {
+  border: 1px solid var(--border);
+  background: var(--surface2, #f7f7fb);
+  border-radius: 6px;
+  font-size: 11px;
+  padding: 2px 7px;
+  cursor: pointer;
+  color: var(--text2);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.name-copy-btn:active { background: var(--pink-soft, #f8bbd0); color: var(--pink-dark, #880e4f); }
 .card-meta {
   font-size: 12px;
   color: var(--text2);
@@ -1875,7 +1887,6 @@ select:focus {
         <div class="field">
           <label>💰 কাস্টমার কীভাবে পেমেন্ট দিবে?</label>
           <select id="f-payment-method" onchange="App.calculatePayment()">
-            <option value="cash">💵 নগদ / হাতে (No Charge)</option>
             <option value="bkash">📱 bKash (Cash Out ~1.82%)</option>
             <option value="nagad">📱 Nagad (Cash Out ~1.49%)</option>
             <option value="rocket">🚀 Rocket (Cash Out ~1.80%)</option>
@@ -2388,7 +2399,7 @@ window.App = (() => {
   <div class="card-head" onclick="App.toggleCard('${fk}')" role="button" tabindex="0" aria-expanded="false">
     <div class="card-stripe ${colClass(o)}"></div>
     <div class="card-head-body">
-      <div class="card-name">${esc(o.name)}${tallyBadge}${customerBadge}</div>
+      <div class="card-name"><span class="card-name-text">${esc(o.name)}</span>${tallyBadge}${customerBadge}<button class="name-copy-btn" type="button" onclick="event.stopPropagation();App.copyCardName(this)" title="নাম কপি করুন">📋 কপি</button></div>
       <div class="card-meta">${esc(o.weight || '')}${o.weight && o.flavour ? ' · ' : ''}${esc(o.flavour || '')}${o.time ? ' · ' + esc(o.time) : ''}</div>
       ${cdChip}
       <div class="card-chips">${statusChip(o)}${dueChip}${surpriseChip}${deliveryChip}${delayedChip}</div>
@@ -2400,6 +2411,7 @@ window.App = (() => {
 
   <div class="card-details">
     ${o.photo ? `<div class="card-photo-wrap"><img class="card-photo" src="${o.photo}" onclick="App.openLightbox('${fk}')" alt="রেফারেন্স কেক" loading="lazy"></div>` : ''}
+    ${(o.photos && o.photos.length > 1) ? o.photos.slice(1).map((p, i) => `<div class="card-photo-wrap"><img class="card-photo" src="${p}" alt="রেফারেন্স কেক ${i + 2}" loading="lazy" onclick="event.stopPropagation();window.open(this.src,'_blank')"></div>`).join('') : ''}
 
     ${isOvdPay ? `<div class="overdue-alert">⚠️ বকেয়া পেমেন্ট: ৳${fmtMoney(d)} — ডেলিভারির তারিখ পেরিয়ে গেছে!</div>` : ''}
 
@@ -2408,6 +2420,7 @@ window.App = (() => {
       ${drow('⚖️', 'ওজন ও ফ্লেভার', `${o.weight || ''} — ${o.flavour || ''}`)}
       ${drow('📐', 'সাইজ', o.size)}
       ${drow('🎨', 'ডিজাইন', o.design)}
+      ${o.photoNote ? drow('📝', 'ছবির নোট', o.photoNote) : ''}
       ${drow('✍️', 'লেখা', o.writing)}
     </div>
 
@@ -2699,6 +2712,28 @@ window.App = (() => {
     const head = el.querySelector('.card-head');
     el.classList.toggle('expanded');
     head.setAttribute('aria-expanded', el.classList.contains('expanded') ? 'true' : 'false');
+  };
+
+  // ─── Copy customer name (exact Facebook name) ───────────────
+  const copyCardName = btn => {
+    const name = (btn.closest('.card-name')?.querySelector('.card-name-text')?.textContent || '').trim();
+    if (!name) return;
+    const done = () => showToast('✅ নাম কপি হয়েছে!');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(name).then(done).catch(() => fallbackCopyText(name, done));
+    } else {
+      fallbackCopyText(name, done);
+    }
+  };
+  const fallbackCopyText = (text, done) => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    document.body.removeChild(ta);
   };
 
   // ─── Lightbox ────────────────────────────────────────────────
@@ -3354,6 +3389,7 @@ window.App = (() => {
   return {
     switchTab,
     toggleCard,
+    copyCardName,
     openModal,
     closeModal,
     closeModalBg,

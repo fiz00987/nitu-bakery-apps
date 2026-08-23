@@ -78,10 +78,11 @@ button{cursor:pointer}
 .note-box{background:var(--amber-light);border:1px solid #ffcc80;border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--amber);line-height:1.5;margin-top:8px}
 .photo-upload{border:2px dashed var(--border);border-radius:var(--radius-sm);padding:24px;text-align:center;cursor:pointer;color:var(--text3);font-size:13px}
 .photo-upload:active{border-color:var(--pink)}
-.photo-preview{position:relative;margin-top:10px;display:none}
-.photo-preview.show{display:block}
-.photo-preview img{width:100%;max-height:200px;object-fit:cover;border-radius:var(--radius-sm)}
-.photo-remove{position:absolute;top:6px;right:6px;background:var(--red);color:#fff;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer}
+.hint-box{font-size:11px;color:var(--blue);margin-top:4px;line-height:1.4}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-top:10px}
+.photo-thumb{position:relative}
+.photo-thumb img{width:100%;height:80px;object-fit:cover;border-radius:var(--radius-xs)}
+.photo-remove{position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:13px;cursor:pointer;line-height:1}
 .calc-box{background:var(--pink-light);border-radius:var(--radius-sm);padding:14px;margin-top:12px;display:none}
 .calc-box.show{display:block}
 .calc-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
@@ -98,12 +99,12 @@ button{cursor:pointer}
 .copy-number{border:0;background:none;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer;padding:0}
 .pickup-box{background:var(--blue-light);border:1px solid #90caf9;border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--blue);line-height:1.5;margin-top:8px;display:none}
 .pickup-box.show{display:block}
-.popup-overlay{position:fixed;inset:0;background:rgba(20,10,18,.5);z-index:2500;display:none;align-items:center;justify-content:center;padding:18px}
+.popup-overlay{position:fixed;inset:0;background:rgba(20,10,18,.5);z-index:2500;display:none;align-items:center;justify-content:center;padding:18px;overscroll-behavior:contain}
 .popup-overlay.show{display:flex}
-.popup{background:var(--surface);border-radius:var(--radius);width:100%;max-width:520px;max-height:82vh;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,.22)}
-.popup-header{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border);color:var(--pink-dark)}
+.popup{background:var(--surface);border-radius:var(--radius);width:100%;max-width:520px;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,.22);overscroll-behavior:contain}
+.popup-header{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border);color:var(--pink-dark);flex-shrink:0}
 .popup-header h3{font-size:18px}.popup-close{border:0;background:none;font-size:24px;color:var(--text2)}
-.popup-content{padding:18px;white-space:pre-wrap;overflow:auto;line-height:1.65;font-size:14px}
+.popup-content{flex:1 1 auto;min-height:0;padding:18px;white-space:pre-wrap;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;line-height:1.65;font-size:14px}
 .copy-button{margin:6px 4px 0 0;padding:5px 9px;border:1px solid currentColor;border-radius:var(--radius-xs);background:transparent;color:var(--green);font-size:12px;font-weight:600}
 .order-number-badge{display:inline-block;margin-top:8px;padding:6px 12px;border-radius:var(--radius-xs);background:var(--pink-light);color:var(--pink-dark);font-size:13px;font-weight:700}
 .due-panel{background:#eeeeee;border:1px solid #cfcfcf;border-radius:var(--radius-sm);padding:12px;margin-top:12px;display:none;color:#4a4a4a}
@@ -151,7 +152,7 @@ button{cursor:pointer}
     </div>
     <div class="security-box" id="security-box">
       <label id="security-label"></label>
-      <input type="number" id="entry-security" placeholder="উত্তর">
+      <input type="text" inputmode="numeric" id="entry-security" placeholder="উত্তর">
     </div>
     <div class="previous-orders" id="previous-orders">
       <div class="previous-orders-title" id="prev-title"></div>
@@ -176,13 +177,12 @@ button{cursor:pointer}
     <div class="field">
       <label data-bn="আপনার নাম *" data-en="Your Name *">আপনার নাম *</label>
       <input type="text" id="f-name" placeholder="রিনা বেগম">
+      <div class="hint-box">Facebook প্রোফাইলে যে নাম আছে, ঠিক সেভাবে লিখুন — যেন আমরা আপনাকে সহজে খুঁজে পাই।</div>
     </div>
-    <div class="row2">
-      <div class="field">
-        <label data-bn="ওজন *" data-en="Weight *">ওজন *</label>
-        <select id="f-weight" onchange="recalcPrice()"><option value="">নির্বাচন করুন</option></select>
-        <input type="number" id="f-weight-custom" min="0.1" step="0.1" placeholder="কাস্টম ওজন (পাউন্ড)" oninput="recalcPrice()" style="display:none;margin-top:8px">
-      </div>
+    <div class="field">
+      <label data-bn="ওজন * (পাউন্ড বা KG)" data-en="Weight * (pound or KG)">ওজন * (পাউন্ড বা KG)</label>
+      <input type="text" id="f-weight" placeholder="যেমন: 2 pound, 2.5 pound, 1 KG" data-bn-placeholder="যেমন: 2 pound, 2.5 pound, 1 KG" data-en-placeholder="Example: 2 pound, 2.5 pound, 1 KG" autocomplete="off" oninput="updateWeightHint();recalcPrice()">
+      <div class="hint-box" id="weight-hint"></div>
     </div>
     <div class="field">
       <label data-bn="ফ্লেভার *" data-en="Flavour *">ফ্লেভার *</label>
@@ -192,11 +192,11 @@ button{cursor:pointer}
     <div class="field">
       <label data-bn="রেফারেন্স ছবি (ঐচ্ছিক)" data-en="Reference Photo (Optional)">রেফারেন্স ছবি (ঐচ্ছিক)</label>
       <div class="photo-upload" onclick="document.getElementById('f-photo').click()">📎<div>ছবি আপলোড করুন</div></div>
-      <input type="file" id="f-photo" accept="image/*" style="display:none" onchange="handlePhoto(event)">
-      <div class="photo-preview" id="photo-preview">
-        <img id="photo-img" src="" alt="">
-        <button class="photo-remove" onclick="removePhoto()">✕</button>
-      </div>
+      <input type="file" id="f-photo" accept="image/*" multiple style="display:none" onchange="handlePhoto(event)">
+      <div class="photo-grid" id="photo-grid"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">📸 একাধিক ছবি দিতে পারেন (সর্বোচ্চ ৪টি)</div>
+      <label data-bn="ছবির নোট (ঐচ্ছিক)" data-en="Photo Note (Optional)" style="margin-top:10px">ছবির নোট (ঐচ্ছিক)</label>
+      <textarea id="f-photo-note" placeholder="যেমন: কেকের ফুল হলুদ আছে, কিন্তু আমি লাল চাই"></textarea>
     </div>
   </div>
 
@@ -207,6 +207,11 @@ button{cursor:pointer}
       <label data-bn="ডেলিভারি ঠিকানা *" data-en="Delivery Address *">ডেলিভারি ঠিকানা *</label>
       <textarea id="f-address" placeholder="পূর্ণ ঠিকানা লিখুন"></textarea>
     </div>
+    <div class="field delivery-charge-field" id="delivery-charge-field">
+      <label>ডেলিভারি চার্জ (ডেলিভারি এজেন্ট জানালে লিখুন)</label>
+      <input type="number" id="f-delivery-charge" min="0" step="1" placeholder="এজেন্টের বলা চার্জ লিখুন" oninput="recalcPrice()">
+      <div class="note-box">এই চার্জটি কেকের দামের অংশ নয়। পুরো টাকা ডেলিভারি এজেন্টকে দেওয়া হবে।</div>
+    </div>
     <div class="row2">
       <div class="field">
         <label data-bn="ডেলিভারির তারিখ *" data-en="Delivery Date *">ডেলিভারির তারিখ *</label>
@@ -215,7 +220,7 @@ button{cursor:pointer}
       <div class="field">
         <label data-bn="ডেলিভারির সময় *" data-en="Delivery Time *">ডেলিভারির সময় *</label>
         <input type="text" id="f-timeslot" placeholder="যেমন: 3.00 PM" data-bn-placeholder="যেমন: 3.00 PM" data-en-placeholder="Example: 3.00 PM" autocomplete="off">
-        <div class="note-box">নিরাপত্তার জন্য ডেলিভারি সন্ধ্যা ৬টার পরে হয় না।</div>
+        <div class="note-box">নিরাপত্তার জন্য ডেলিভারি সর্বোচ্চ রাত ৮টা পর্যন্ত করা হয়।</div>
       </div>
     </div>
     <div class="row2">
@@ -262,11 +267,6 @@ button{cursor:pointer}
       </select>
     </div>
     <div class="payment-info-box" id="payment-info"></div>
-    <div class="field delivery-charge-field" id="delivery-charge-field">
-      <label>ডেলিভারি চার্জ (ডেলিভারি এজেন্ট জানালে লিখুন)</label>
-      <input type="number" id="f-delivery-charge" min="0" step="1" placeholder="এজেন্টের বলা চার্জ লিখুন" oninput="recalcPrice()">
-      <div class="note-box">এই চার্জটি কেকের দামের অংশ নয়। পুরো টাকা ডেলিভারি এজেন্টকে দেওয়া হবে।</div>
-    </div>
     <div class="field">
       <label data-bn="আপনি কত টাকা অগ্রিম দিতে চান? *" data-en="How much advance do you want to pay? *">আপনি কত টাকা অগ্রিম দিতে চান? *</label>
       <div class="advance-options" id="advance-options">
@@ -287,12 +287,13 @@ button{cursor:pointer}
       <strong>বাকি পেমেন্ট</strong><br>
       কেকের মোট মূল্য: <span id="due-total">৳0</span><br>
       ৫০% অগ্রিম: <span id="due-advance">৳0</span><br>
-      বাকি দিতে হবে: <strong id="due-amount">৳0</strong>
+      বাকি দিতে হবে: <strong id="due-amount">৳0</strong><br>
+      <span id="due-delivery-row">🚚 ডেলিভারি চার্জ (আলাদা): <strong id="due-delivery">৳0</strong></span>
     </div>
 
     <div class="field" style="margin-top:12px">
-      <label data-bn="ট্রানজেকশন আইডি / শেষ ৪ ডিজিট *" data-en="Transaction ID / Last 4 Digits *">ট্রানজেকশন আইডি / শেষ ৪ ডিজিট *</label>
-      <input type="text" id="f-trx" placeholder="যেমন: 8K3N বা 12345678">
+      <label data-bn="ট্রানজেকশন আইডি / পেমেন্ট নম্বরের শেষ ৩ ডিজিট *" data-en="Transaction ID / Last 3 Digits of Payment Number *">ট্রানজেকশন আইডি / পেমেন্ট নম্বরের শেষ ৩ ডিজিট *</label>
+      <input type="text" id="f-trx" placeholder="যেমন: 8K3N বা 456">
     </div>
     <div class="field">
       <label data-bn="অতিরিক্ত তথ্য (ঐচ্ছিক)" data-en="Additional Info (Optional)">অতিরিক্ত তথ্য (ঐচ্ছিক)</label>
@@ -334,7 +335,7 @@ button{cursor:pointer}
 'use strict';
 
 let lang = localStorage.getItem('nitu-cust-lang') || 'bn';
-let currentPhoto = '';
+let currentPhotos = [];
 let advanceType = '';
 let isSurprise = false;
 let currentSecurityQ = null;
@@ -343,18 +344,6 @@ let currentOrderId = '';
 
 // Populate dropdowns from utils.js
 function populateDropdowns() {
-  const wt = document.getElementById('f-weight');
-  WEIGHTS.forEach(w => {
-    const opt = document.createElement('option');
-    opt.value = w.value;
-    opt.textContent = `${lang === 'en' ? w.labelEn : w.label}${w.price ? ' (+' + w.price + '৳)' : ''}`;
-    wt.appendChild(opt);
-  });
-  const customWeight = document.createElement('option');
-  customWeight.value = 'custom-weight';
-  customWeight.textContent = lang === 'en' ? 'Custom weight' : 'কাস্টম ওজন';
-  wt.appendChild(customWeight);
-
   const fl = document.getElementById('f-flavour');
   FLAVOURS.forEach(f => {
     const opt = document.createElement('option');
@@ -387,7 +376,7 @@ function setLang(l) {
     '#f-flavour': 'Flavour *', '#f-address': 'Delivery Address *', '#f-date': 'Delivery Date *',
     '#f-timeslot': 'Delivery Time *', '#f-receiver': 'Receiver Name *', '#f-receiver-phone': 'Receiver Phone *',
     '#f-fulfilment': 'Fulfilment *', '#f-surprise': 'Surprise Cake?', '#f-payment-method': 'Payment Method *', '#f-advance': 'Advance Payment *',
-    '#f-trx': 'Transaction ID / Last 4 Digits *', '#f-notes': 'Additional Info (Optional)'
+    '#f-trx': 'Transaction ID / Last 3 Digits of Payment Number *', '#f-notes': 'Additional Info (Optional)'
   } : {};
   Object.entries(labels).forEach(([selector, text]) => {
     const field = document.querySelector(selector);
@@ -395,10 +384,8 @@ function setLang(l) {
   });
   if (l === 'en') {
     document.getElementById('f-cake-price').placeholder = 'Enter cake price';
-    document.getElementById('f-weight-custom').placeholder = 'Custom weight (pounds)';
+    document.getElementById('f-weight').placeholder = 'Example: 2 pound, 2.5 pound, 1 KG';
     document.getElementById('f-timeslot').placeholder = 'Example: 3.00 PM';
-    document.querySelector('#f-weight option[value=""]').textContent = 'Select weight';
-    document.querySelector('#f-weight option[value="custom-weight"]').textContent = 'Custom weight';
     document.querySelector('#f-flavour option[value=""]').textContent = 'Select flavour';
     document.querySelector('#f-payment-method option[value=""]').textContent = 'Select payment method';
     document.querySelector('#f-fulfilment option[value="delivery"]').textContent = 'Delivery';
@@ -409,7 +396,7 @@ function setLang(l) {
     PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.nameEn; });
   } else {
     document.getElementById('f-cake-price').placeholder = 'কেকের মূল্য লিখুন';
-    document.getElementById('f-weight-custom').placeholder = 'কাস্টম ওজন (পাউন্ড)';
+    document.getElementById('f-weight').placeholder = 'যেমন: 2 pound, 2.5 pound, 1 KG';
     document.getElementById('f-timeslot').placeholder = 'যেমন: 3.00 PM';
     FLAVOURS.forEach(f => { const option = document.querySelector(`#f-flavour option[value="${f.value}"]`); if (option) option.textContent = f.label; });
     PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.name; });
@@ -442,24 +429,31 @@ async function checkReturningCustomer(phone) {
   } catch (e) { console.error(e); return false; }
 }
 
+const BN_DIGITS = { '০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9' };
+function normalizeDigits(str) {
+  return String(str || '').trim().replace(/[০-৯]/g, d => BN_DIGITS[d]).replace(/[^0-9-]/g, '');
+}
+
 function askSecurityQuestion() {
   currentSecurityQ = getSecurityQuestion();
   const label = document.getElementById('security-label');
-  label.textContent = 'নিরাপত্তা প্রশ্ন (বট প্রতিরোধ): ' + currentSecurityQ.q;
+  // Bind the answer to the displayed question so display & check can never mismatch
+  label.dataset.answer = String(currentSecurityQ.a);
+  label.textContent = (lang === 'en' ? 'Security question (anti-bot): ' : 'নিরাপত্তা প্রশ্ন (বট প্রতিরোধ): ') + currentSecurityQ.q;
   document.getElementById('security-box').classList.add('show');
   document.getElementById('entry-btn').textContent = '✓ যাচাই করুন';
   document.getElementById('entry-btn').onclick = verifySecurity;
 }
 
 async function verifySecurity() {
-  const ans = parseInt(document.getElementById('entry-security').value);
+  const ans = Number(normalizeDigits(document.getElementById('entry-security').value));
+  const expected = Number(currentSecurityQ ? currentSecurityQ.a : NaN);
   const err = document.getElementById('entry-error');
-  if (isNaN(ans) || ans !== currentSecurityQ.a) {
+  if (!Number.isFinite(expected) || isNaN(ans) || ans !== expected) {
     err.textContent = 'ভুল উত্তর';
     err.classList.add('show');
     // New question
-    currentSecurityQ = getSecurityQuestion();
-    document.getElementById('security-label').textContent = (lang === 'en' ? 'Security question: ' : 'নিরাপত্তা প্রশ্ন: ') + currentSecurityQ.q;
+    askSecurityQuestion();
     document.getElementById('entry-security').value = '';
     return;
   }
@@ -516,31 +510,54 @@ function proceedToForm(phone) {
 }
 
 // Photo
-function handlePhoto(e) {
-  const file = e.target.files[0]; if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { showToast('ফাইল ৫MB এর কম হতে হবে'); return; }
-  const reader = new FileReader();
-  reader.onload = function(ev) {
-    const img = new Image();
-    img.onload = function() {
-      const canvas = document.createElement('canvas');
-      const MAX = 800; let w = img.width, h = img.height;
-      if (w > MAX) { h = h * MAX / w; w = MAX; }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      currentPhoto = canvas.toDataURL('image/jpeg', 0.7);
-      document.getElementById('photo-img').src = currentPhoto;
-      document.getElementById('photo-preview').classList.add('show');
+const MAX_PHOTOS = 4;
+
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const MAX = 800; let w = img.width, h = img.height;
+        if (w > MAX) { h = h * MAX / w; w = MAX; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.onerror = reject;
+      img.src = ev.target.result;
     };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
-function removePhoto() {
-  currentPhoto = '';
-  document.getElementById('photo-preview').classList.remove('show');
-  document.getElementById('f-photo').value = '';
+async function handlePhoto(e) {
+  const files = [...e.target.files];
+  e.target.value = '';
+  if (!files.length) return;
+  const slots = MAX_PHOTOS - currentPhotos.length;
+  if (slots <= 0) { showToast(`সর্বোচ্চ ${MAX_PHOTOS}টি ছবি দেওয়া যাবে`); return; }
+  if (files.length > slots) showToast(`প্রথম ${slots}টি ছবি নেওয়া হলো`);
+  for (const file of files.slice(0, slots)) {
+    if (file.size > 5 * 1024 * 1024) { showToast(`${file.name || 'ছবি'}: ৫MB এর কম হতে হবে`); continue; }
+    try { currentPhotos.push(await compressImage(file)); } catch (_) { showToast('ছবি লোড করা যায়নি'); }
+  }
+  renderPhotos();
+}
+
+function renderPhotos() {
+  document.getElementById('photo-grid').innerHTML = currentPhotos.map((src, i) => `
+    <div class="photo-thumb">
+      <img src="${src}" alt="">
+      <button type="button" class="photo-remove" onclick="removePhoto(${i})">✕</button>
+    </div>`).join('');
+}
+
+function removePhoto(i) {
+  currentPhotos.splice(i, 1);
+  renderPhotos();
 }
 
 // Payment change
@@ -631,29 +648,45 @@ function recalcPrice() {
   document.getElementById('calc-total').textContent = '৳' + total;
   document.getElementById('calc-advance').textContent = '৳' + advance;
   document.getElementById('calc-advance-total').textContent = '৳' + (advance + charge).toFixed(2);
-  document.getElementById('calc-due').textContent = '৳' + due;
+  document.getElementById('calc-due').textContent = due > 0 && delivery > 0 ? `৳${due} + ডেলিভারি চার্জ ৳${delivery}` : '৳' + due;
   document.getElementById('calc-due-row').style.display = due > 0 ? 'flex' : 'none';
   document.getElementById('due-panel').classList.toggle('show', advance > 0 && advance < total);
   document.getElementById('due-total').textContent = '৳' + total;
   document.getElementById('due-advance').textContent = '৳' + advance;
   document.getElementById('due-amount').textContent = '৳' + due;
+  document.getElementById('due-delivery-row').style.display = delivery > 0 ? 'inline' : 'none';
+  document.getElementById('due-delivery').textContent = '৳' + delivery;
   document.getElementById('calc-box').classList.add('show');
   document.getElementById('advance-calc-box').classList.add('show');
 }
 
 function resolveWeight() {
-  const value = document.getElementById('f-weight').value;
-  if (value === 'custom-weight') {
-    const customValue = parseFloat(document.getElementById('f-weight-custom').value) || 0;
-    return customValue > 0 ? { value, label: `${customValue} pound`, price: 0 } : null;
-  }
-  return getWeight(value);
+  const p = parseWeightText(document.getElementById('f-weight').value);
+  if (!p) return null;
+  const pounds = p.isKg ? +(p.num * 2.20462).toFixed(2) : p.num;
+  const kgs = p.isKg ? p.num : +(p.num / 2.20462).toFixed(2);
+  return { value: 'custom', label: `${pounds} pound (${kgs} KG)`, price: 0 };
+}
+
+function parseWeightText(raw) {
+  const text = String(raw || '').trim().toLowerCase().replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+  const m = text.match(/([\d]+(?:\.\d+)?)\s*(kg|কেজি|kilos?|kilograms?|pounds?|lbs|lb|পাউন্ড)?/);
+  if (!m) return null;
+  const num = parseFloat(m[1]);
+  if (!num || num <= 0 || num > 200) return null;
+  const isKg = /kg|কেজি|kilo/.test(m[2] || '');
+  return { num, isKg };
+}
+
+function updateWeightHint() {
+  const el = document.getElementById('weight-hint');
+  const p = parseWeightText(document.getElementById('f-weight').value);
+  if (!p) { el.textContent = ''; return; }
+  el.textContent = p.isKg ? `≈ ${(p.num * 2.20462).toFixed(1)} pound+` : `≈ ${(p.num / 2.20462).toFixed(2)} KG`;
 }
 
 document.getElementById('f-weight').addEventListener('change', function() {
-  document.getElementById('f-weight-custom').style.display = this.value === 'custom-weight' ? 'block' : 'none';
-  recalcPrice();
-  if (this.value) showTextPopup('base price.txt', 'বেস মূল্য নির্দেশিকা');
+  if (parseWeightText(this.value)) showTextPopup('base price.txt', 'বেস মূল্য নির্দেশিকা');
 });
 
 function onFulfilmentChange() {
@@ -710,7 +743,7 @@ function validate() {
     const el = document.getElementById(id);
     if (!el || !el.value.trim()) { showToast(msg); el.focus(); return false; }
   }
-  if (document.getElementById('f-weight').value === 'custom-weight' && !document.getElementById('f-weight-custom').value) { showToast('কাস্টম ওজন দিন'); return false; }
+  if (!resolveWeight()) { showToast('সঠিক ওজন লিখুন (যেমন: 2 pound বা 1 KG)'); return false; }
   if (document.getElementById('f-fulfilment').value === 'delivery' && !document.getElementById('f-address').value.trim()) { showToast('ঠিকানা দিন'); document.getElementById('f-address').focus(); return false; }
   if (!validateBangladeshPhone(document.getElementById('f-receiver-phone').value.trim())) {
     showToast('সঠিক রিসিভার ফোন দিন'); return false;
@@ -763,7 +796,9 @@ function submitOrder() {
     weightLabel: wt.label,
     flavour: fl.value,
     flavourName: fl.label,
-    photo: currentPhoto,
+    photo: currentPhotos[0] || '',
+    photos: currentPhotos,
+    photoNote: document.getElementById('f-photo-note').value.trim(),
     address: document.getElementById('f-address').value.trim(),
     deliveryAddress: document.getElementById('f-address').value.trim(),
     date: document.getElementById('f-date').value,
@@ -824,19 +859,72 @@ function showSuccess(order) {
     <div class="row"><span>ঠিকানা</span><span>${esc(order.deliveryAddress)}</span></div>
     <div class="row"><span>মোট (আনুমানিক)</span><span>৳${order.total}</span></div>
     <div class="row"><span>প্রদান</span><span style="color:var(--green)">৳${order.advanceTotal}</span></div>
-    ${order.dueAmount > 0 ? `<div class="due-alert">⚠️ বাকি (আনুমানিক): ৳${order.dueAmount}<br><small>ডেলিভারি চার্জ নিশ্চিত হওয়ার পর চূড়ান্ত হবে</small></div>` : '<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ পূর্ণ পেমেন্ট সম্পন্ন</div>'}
+    ${order.dueAmount > 0 ? `<div class="due-alert">⚠️ বাকি (আনুমানিক): ৳${order.dueAmount}${order.deliveryCharge > 0 ? `<br>🚚 ডেলিভারি চার্জ (আলাদা): ৳${order.deliveryCharge}` : ''}</div>` : '<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ পূর্ণ পেমেন্ট সম্পন্ন</div>'}
   `;
 }
 
 async function takeOrderScreenshot() {
   const summary = document.getElementById('order-summary');
   if (!window.html2canvas) { showToast('স্ক্রিনশট টুল লোড হয়নি'); return; }
-  const canvas = await html2canvas(summary, { backgroundColor: '#ffffff', scale: 2 });
+  showToast('স্ক্রিনশট তৈরি হচ্ছে...');
+  try {
+    const rect = summary.getBoundingClientRect();
+    let scale = 2;
+    // iOS Safari silently fails above ~16.7M canvas pixels — shrink scale to stay under it
+    const MAX_AREA = 16777216;
+    while (rect.width * scale * rect.height * scale > MAX_AREA && scale > 0.5) scale -= 0.25;
+    const canvas = await html2canvas(summary, { backgroundColor: '#ffffff', scale, useCORS: true, logging: false });
+    const fileName = `${orderIdForScreenshot()}.png`;
+
+    // iOS Safari: <a download> is unreliable — use the native share sheet, then fallbacks
+    if (canvas.toBlob) {
+      canvas.toBlob(async (blob) => {
+        if (!blob) { showToast('স্ক্রিনশট নিতে সমস্যা হয়েছে'); return; }
+        try {
+          const file = new File([blob], fileName, { type: 'image/png' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: 'নিতুর বেকারি অর্ডার' });
+            showToast('স্ক্রিনশট শেয়ার করুন Facebook ইনবক্সে');
+            scheduleFormReset();
+          } else {
+            openScreenshotBlob(blob);
+            scheduleFormReset();
+          }
+        } catch (err) {
+          if (err && err.name !== 'AbortError') { openScreenshotBlob(blob); scheduleFormReset(); }
+        }
+      }, 'image/png');
+    } else {
+      openScreenshotCanvas(canvas, fileName);
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('স্ক্রিনশট নিতে সমস্যা হয়েছে, আবার চেষ্টা করুন');
+  }
+}
+
+function openScreenshotBlob(blob) {
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  if (!win) downloadScreenshotUrl(url);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+function openScreenshotCanvas(canvas, fileName) {
+  canvas.toDataURL('image/png'); // ensure render
+  const url = canvas.toDataURL('image/png');
+  const win = window.open(url, '_blank');
+  if (!win) downloadScreenshotUrl(url);
+}
+
+function downloadScreenshotUrl(url) {
   const link = document.createElement('a');
   link.download = `${orderIdForScreenshot()}.png`;
-  link.href = canvas.toDataURL('image/png');
+  link.href = url;
   link.click();
-  showToast('স্ক্রিনশট ডাউনলোড হয়েছে। Facebook ইনবক্সে পাঠান।');
+}
+
+function scheduleFormReset() {
   setTimeout(async () => {
     if ('caches' in window) { const keys = await caches.keys(); await Promise.all(keys.map(key => caches.delete(key))); }
     localStorage.clear();
@@ -855,13 +943,11 @@ function resetForm() {
   document.getElementById('entry-security').value = '';
   document.querySelectorAll('#form-screen input:not(#entry-phone), #form-screen textarea').forEach(el => el.value = '');
   document.querySelectorAll('#form-screen select').forEach(el => el.selectedIndex = 0);
-  currentPhoto = ''; advanceType = ''; isSurprise = false;
-  document.getElementById('photo-preview').classList.remove('show');
+  currentPhotos = []; renderPhotos(); advanceType = ''; isSurprise = false;
   document.getElementById('calc-box').classList.remove('show');
   document.getElementById('surprise-note').classList.remove('show');
   document.getElementById('payment-info').classList.remove('show');
   document.querySelectorAll('.advance-opt').forEach(el => { el.classList.remove('active'); el.style.opacity = '1'; });
-  document.getElementById('f-weight-custom').style.display = 'none';
   document.getElementById('entry-btn').textContent = 'অর্ডার শুরু করুন';
   document.getElementById('entry-btn').onclick = handleEntry;
   updateProgress();

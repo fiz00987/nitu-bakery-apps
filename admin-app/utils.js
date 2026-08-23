@@ -48,14 +48,6 @@ const PAYMENT_METHODS = [
     charges: 0,
     number: '0210165544851',
     regName: 'Sabrina Akter Bhuiyan'
-  },
-  {
-    id: 'cod', 
-    name: 'ক্যাশ অন ডেলিভারি', 
-    nameEn: 'Cash on Delivery', 
-    charges: 0, 
-    number: null,
-    regName: null
   }
 ];
 
