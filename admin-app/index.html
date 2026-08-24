@@ -425,6 +425,8 @@ button { cursor: pointer; }
   overflow: hidden;
 }
 .sum-card:last-child { border-right: none; }
+.sum-card:nth-child(3n) { border-right: none; }
+.sum-card:nth-child(-n+3) { border-bottom: 1px solid var(--border); }
 .sum-card:active { background: var(--surface2); }
 .sum-card::after {
   content: '';
@@ -452,6 +454,7 @@ button { cursor: pointer; }
   line-height: 1.3;
   font-weight: 500;
 }
+.sum-num.delayed { color: var(--red, #e53935); }
 
 /* =============================================
    TABS
@@ -606,6 +609,13 @@ button { cursor: pointer; }
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+}
+.card-order-id {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--pink, #e91e63);
+  letter-spacing: .4px;
+  margin-bottom: 3px;
 }
 .name-copy-btn {
   border: 1px solid var(--border);
@@ -964,6 +974,7 @@ button { cursor: pointer; }
 }
 .card-btn:active { opacity: 0.7; transform: scale(0.96); }
 .btn-srs   { background: var(--green-light); border-color: #a5d6a7; color: var(--green); }
+.btn-note  { background: var(--pink-light); border-color: #f48fb1; color: var(--pink-dark, #880e4f); }
 .btn-wa    { background: #e8f5e9; border-color: #a5d6a7; color: #1b5e20; }
 .btn-dup   { background: var(--purple-light); border-color: #ce93d8; color: var(--purple); }
 .btn-edit  { background: #fff; border-color: var(--border); color: var(--text2); }
@@ -1690,20 +1701,13 @@ select:focus {
       class="search-input"
       id="search-input"
       type="search"
-      placeholder="নাম, ফোন, ফ্লেভার দিয়ে খুঁজুন..."
+      placeholder="অর্ডার নম্বর দিয়ে খুঁজুন..."
       autocomplete="off"
       data-i18n-ph="searchPlaceholder"
       aria-label="Search orders"
     >
     <button class="search-clear" id="search-clear" aria-label="Clear search" onclick="App.clearSearch()">✕</button>
   </div>
-  <select class="filter-select" id="filter-status" aria-label="Status filter">
-    <option value="" data-i18n="allStatus">সব স্ট্যাটাস</option>
-    <option value="confirmed" data-i18n="st_confirmed">কনফার্মড</option>
-    <option value="baking" data-i18n="st_baking">বেক হচ্ছে</option>
-    <option value="delivered" data-i18n="st_delivered">ডেলিভার্ড</option>
-    <option value="cancelled" data-i18n="st_cancelled">বাতিল</option>
-  </select>
 </div>
 
 <!-- SUMMARY -->
@@ -1719,6 +1723,18 @@ select:focus {
   <div class="sum-card" id="sum-week" onclick="App.switchTab('revenue')" role="button" tabindex="0">
     <div class="sum-num" id="s-week">0</div>
     <div class="sum-lbl" data-i18n="sumWeek">এই সপ্তাহে</div>
+  </div>
+  <div class="sum-card" id="sum-pending" onclick="App.switchTab('plan')" role="button" tabindex="0">
+    <div class="sum-num" id="s-pending">0</div>
+    <div class="sum-lbl" data-i18n="sumPending">পেন্ডিং</div>
+  </div>
+  <div class="sum-card" id="sum-done" onclick="App.switchTab('done')" role="button" tabindex="0">
+    <div class="sum-num" id="s-done">0</div>
+    <div class="sum-lbl" data-i18n="sumDone">সম্পন্ন</div>
+  </div>
+  <div class="sum-card" id="sum-delayed" onclick="App.switchTab('plan')" role="button" tabindex="0">
+    <div class="sum-num delayed" id="s-delayed">0</div>
+    <div class="sum-lbl" data-i18n="sumDelayed">দেরি</div>
   </div>
 </div>
 
@@ -1930,6 +1946,21 @@ select:focus {
           </div>
         </div>
 
+        <!-- bKash charge mode -->
+        <div class="field">
+          <label data-i18n="fBkash">💰 bKash চার্জ কি টাকার সাথে যোগ করা?</label>
+          <select id="f-bkash-mode" onchange="App.onBkashModeChange()">
+            <option value="none" data-i18n="bkNone">না — সরাসরি পেমেন্ট (নগদ/হাতে)</option>
+            <option value="auto" data-i18n="bkAuto">হ্যাঁ — চার্জ অটো হিসাব (Cash Out ~1.82%)</option>
+            <option value="manual" data-i18n="bkManual">হ্যাঁ — চার্জ আমি লিখব</option>
+          </select>
+        </div>
+        <div class="field hidden" id="f-bkash-charge-wrap">
+          <label data-i18n="fBkashCharge">bKash চার্জ (৳) — এটি পেমেন্ট থেকে বাদ যাবে</label>
+          <input id="f-bkash-charge" type="number" placeholder="0" min="0" step="0.01">
+          <div id="bkash-hint" style="font-size:11px;color:var(--text3);margin-top:4px"></div>
+        </div>
+
         <div class="field"><label data-i18n="fPaynote">পেমেন্ট নোট</label><input id="f-paynote" placeholder="bKash, শেষ ৩ সংখ্যা: 765" type="text"></div>
         <div class="field">
           <label>অর্ডার স্ট্যাটাস</label>
@@ -2044,10 +2075,11 @@ window.App = (() => {
     bn: {
       brand: 'অর্ডার ম্যানেজার', connecting: 'ক্লাউডে সংযুক্ত হচ্ছে...',
       backup: '⬆ ব্যাকআপ', restore: '⬇ রিস্টোর',
-      searchPlaceholder: 'নাম, ফোন, ফ্লেভার দিয়ে খুঁজুন...',
+      searchPlaceholder: 'অর্ডার নম্বর দিয়ে খুঁজুন...',
       allStatus: 'সব স্ট্যাটাস', st_confirmed: 'কনফার্মড', st_baking: 'বেক হচ্ছে',
       st_delivered: 'ডেলিভার্ড', st_cancelled: 'বাতিল',
       sumToday: 'আজ ডেলিভারি', sumBake: 'আজ রাতে বেক', sumWeek: 'এই সপ্তাহে',
+      sumPending: 'পেন্ডিং', sumDone: 'সম্পন্ন', sumDelayed: 'দেরি',
       tabPlan: 'প্ল্যান', tabAll: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'আয়',
       sort_date: 'তারিখ', sort_name: 'নাম', sort_due: 'বকেয়া',
       secPayment: '💳 পেমেন্ট', fTotal: 'মোট মূল্য (৳)', fPaid: 'পরিশোধিত (৳)',
@@ -2065,10 +2097,11 @@ window.App = (() => {
     en: {
       brand: 'Order Manager', connecting: 'Connecting to cloud...',
       backup: '⬆ Backup', restore: '⬇ Restore',
-      searchPlaceholder: 'Search by name, phone, flavour...',
+      searchPlaceholder: 'Search by order number...',
       allStatus: 'All Status', st_confirmed: 'Confirmed', st_baking: 'Baking',
       st_delivered: 'Delivered', st_cancelled: 'Cancelled',
       sumToday: 'Today\'s Delivery', sumBake: 'Bake Tonight', sumWeek: 'This Week',
+      sumPending: 'Pending', sumDone: 'Done', sumDelayed: 'Delayed',
       tabPlan: 'Plan', tabAll: 'Orders', tabDone: 'Done', tabRev: 'Revenue',
       sort_date: 'Date', sort_name: 'Name', sort_due: 'Due',
       secPayment: '💳 Payment', fTotal: 'Total Price (৳)', fPaid: 'Paid (৳)',
@@ -2099,7 +2132,7 @@ window.App = (() => {
   };
 
   const fmtMoney = n => {
-    n = Number(n) || 0;
+    n = Math.round(Number(n) || 0);
     return n.toLocaleString('bn-BD');
   };
 
@@ -2116,7 +2149,7 @@ window.App = (() => {
     if (o.deliveryDate && !o.date) o.date = o.deliveryDate;
     if (o.deliveryAddress && !o.address) o.address = o.deliveryAddress;
     if (o.timeSlotLabel && !o.time) o.time = o.timeSlotLabel;
-    if (o.weightLabel && !o.weight) o.weight = o.weightLabel;
+    if (o.weightLabel && (!o.weight || String(o.weight).toLowerCase() === 'custom')) o.weight = o.weightLabel;
     if (o.flavourName && !o.flavour) o.flavour = o.flavourName;
     if (o.cakePrice != null && !o.total) o.total = Number(o.cakePrice);
     if (o.deliveryCharge != null && o.deliveryAmount == null) o.deliveryAmount = Number(o.deliveryCharge);
@@ -2126,6 +2159,16 @@ window.App = (() => {
     if (o.paymentCharges != null && o.bkashCharge == null) o.bkashCharge = Number(o.paymentCharges);
     if (o.fulfilment === 'pickup' && !o.address) o.address = 'Self pickup: Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram';
     return o;
+  };
+
+  // Weight display: prefer the raw weight text written by the customer.
+  // Legacy customer orders stored weight='custom' with the real text in
+  // weightLabel, so fall back to that label when weight is missing or
+  // still the placeholder value 'custom'.
+  const weightText = o => {
+    const w  = (o.weight || '').trim();
+    const wl = (o.weightLabel || '').trim();
+    return (w && w.toLowerCase() !== 'custom') ? w : (wl || w);
   };
 
   // ─── HTML escaping ───────────────────────────────────────────
@@ -2241,13 +2284,13 @@ window.App = (() => {
   document.getElementById('import-file').addEventListener('change', e => importData(e));
 
   // Search debounce
+  // Search only by order number (debounced)
   document.getElementById('search-input').addEventListener('input', () => {
     const val = document.getElementById('search-input').value;
     document.getElementById('search-clear').classList.toggle('visible', val.length > 0);
     clearTimeout(searchTimer);
     searchTimer = setTimeout(render, 200);
   });
-  document.getElementById('filter-status').addEventListener('change', () => render());
 
   // ─── Sorting ─────────────────────────────────────────────────
   const sortOrders = () => {
@@ -2270,14 +2313,9 @@ window.App = (() => {
 
   // ─── Filtering ───────────────────────────────────────────────
   const getFiltered = pool => {
-    const q  = (document.getElementById('search-input').value || '').toLowerCase().trim();
-    const st = document.getElementById('filter-status').value;
-    return pool.filter(o => {
-      if (st && o.status !== st) return false;
-      if (!q) return true;
-      return [o.orderId, o.name, o.phone, o.flavour, o.address, o.receiver, o.design, o.writing]
-        .filter(Boolean).join(' ').toLowerCase().includes(q);
-    });
+    const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
+    if (!q) return pool;
+    return pool.filter(o => String(o.orderId || '').toLowerCase().includes(q));
   };
 
   const clearSearch = () => {
@@ -2320,11 +2358,37 @@ window.App = (() => {
     let msg = `আপনার নামঃ ${o.name}\n`;
     msg += `ডেলিভারি পয়েন্টঃ ${o.address || ''}\n`;
     msg += `ডেলিভারির তারিখ এবং সময়ঃ ${o.date ? fmtDate(o.date) : ''} — ${o.time || ''}\n`;
-    msg += `রিসিভার এর ফোন নাম্বারঃ ${pm ? pm[0] : rp}\n\nCake ${o.weight || ''}\n`;
+    msg += `রিসিভার এর ফোন নাম্বারঃ ${pm ? pm[0] : rp}\n\nCake ${weightText(o)}\n`;
     if (o.deliveryPaid === 'unpaid' && o.deliveryAmount > 0) msg += `due: Delivery charge (${o.deliveryAmount}/-)`;
     else if (o.deliveryPaid === 'unpaid') msg += `due: Delivery charge`;
     else msg += `Delivery charge: Paid`;
     return msg;
+  };
+
+  // ─── Copy-to-notepad (full order text) ─────────────────────────
+  const buildNotepadText = o => {
+    const L = [];
+    L.push('🧁 নিতুর বেকারি — অর্ডার');
+    L.push('════════════════════');
+    L.push(`অর্ডার আইডি: ${o.orderId || ''}`);
+    L.push(`নাম: ${o.name || ''}`);
+    L.push(`ফোন: ${o.customerPhone || o.phone || ''}`);
+    L.push(`কেক: ${weightText(o)}${weightText(o) && o.flavour ? ' — ' : ''}${o.flavour || ''}`);
+    if (o.size) L.push(`সাইজ: ${o.size}`);
+    if (o.design) L.push(`ডিজাইন: ${o.design}`);
+    if (o.writing) L.push(`লেখা: ${o.writing}`);
+    if (o.photoNote) L.push(`ছবির নোট: ${o.photoNote}`);
+    L.push(`ডেলিভারি: ${o.date ? fmtDate(o.date) : ''}${o.time ? ' — ' + o.time : ''}`);
+    if (o.receiverPhone) L.push(`রিসিভার ফোন: ${o.receiverPhone}${o.receiver ? ` (${o.receiver})` : ''}`);
+    else if (o.receiver) L.push(`রিসিভার: ${o.receiver}`);
+    L.push(`ঠিকানা: ${o.address || ''}`);
+    if (o.surprise === 'yes') L.push('সারপ্রাইজ: হ্যাঁ 🎁');
+    L.push(`মোট: ৳${fmtMoney(o.total)}`);
+    L.push(`প্রদান: ৳${fmtMoney(o.paid)}`);
+    L.push(`বাকি: ৳${fmtMoney(dueAmt(o))}`);
+    L.push(`স্ট্যাটাস: ${({ delivered: 'ডেলিভার হয়েছে 🎉', baking: 'বেক হচ্ছে 🔄', cancelled: 'বাতিল ❌' })[o.status] || 'কনফার্মড ✅'}`);
+    if (o.bakingnotes) L.push(`বেকিং নোট: ${o.bakingnotes}`);
+    return L.join('\n');
   };
 
   // ─── Detail row helper ───────────────────────────────────────
@@ -2385,8 +2449,9 @@ window.App = (() => {
       ? `<span class="chip chip-red">⏰ ডিলেড (আমি)</span>` : '';
     const cdChip = (o.status !== 'delivered' && o.status !== 'cancelled') ? countdownChip(o.date) : '';
 
-    // WhatsApp link
-    const rm = (o.receiver || o.phone || '').match(/(\+?880|0)(1[0-9]{9})/);
+    // WhatsApp link — customer's own phone is the primary contact
+    const waSrc = o.customerPhone || o.phone || o.receiverPhone || '';
+    const rm = String(waSrc).match(/(\+?880|0)(1[0-9]{9})/);
     const waPhone = rm ? `880${rm[2]}` : '';
     const waLink  = waPhone
       ? `https://wa.me/${waPhone}?text=${encodeURIComponent(buildSrsMsg(o))}`
@@ -2399,8 +2464,9 @@ window.App = (() => {
   <div class="card-head" onclick="App.toggleCard('${fk}')" role="button" tabindex="0" aria-expanded="false">
     <div class="card-stripe ${colClass(o)}"></div>
     <div class="card-head-body">
+      ${o.orderId ? `<div class="card-order-id">🆔 ${esc(o.orderId)}</div>` : ''}
       <div class="card-name"><span class="card-name-text">${esc(o.name)}</span>${tallyBadge}${customerBadge}<button class="name-copy-btn" type="button" onclick="event.stopPropagation();App.copyCardName(this)" title="নাম কপি করুন">📋 কপি</button></div>
-      <div class="card-meta">${esc(o.weight || '')}${o.weight && o.flavour ? ' · ' : ''}${esc(o.flavour || '')}${o.time ? ' · ' + esc(o.time) : ''}</div>
+      <div class="card-meta">${esc(weightText(o))}${weightText(o) && o.flavour ? ' · ' : ''}${esc(o.flavour || '')}${o.time ? ' · ' + esc(o.time) : ''}</div>
       ${cdChip}
       <div class="card-chips">${statusChip(o)}${dueChip}${surpriseChip}${deliveryChip}${delayedChip}</div>
     </div>
@@ -2417,7 +2483,7 @@ window.App = (() => {
 
     <div class="detail-section">
       <div class="detail-title">🎂 কেক বিবরণ</div>
-      ${drow('⚖️', 'ওজন ও ফ্লেভার', `${o.weight || ''} — ${o.flavour || ''}`)}
+      ${drow('⚖️', 'ওজন ও ফ্লেভার', `${weightText(o)} — ${o.flavour || ''}`)}
       ${drow('📐', 'সাইজ', o.size)}
       ${drow('🎨', 'ডিজাইন', o.design)}
       ${o.photoNote ? drow('📝', 'ছবির নোট', o.photoNote) : ''}
@@ -2474,6 +2540,7 @@ window.App = (() => {
     </div>
 
     <div class="card-actions">
+      <button class="card-btn btn-note"   onclick="event.stopPropagation(); App.copyNotepad('${fk}')">📋 নোটপ্যাড কপি</button>
       <button class="card-btn btn-srs"   onclick="event.stopPropagation(); App.copySrsMessage('${fk}')">📋 SRS কপি</button>
       ${waLink ? `<button class="card-btn btn-wa" onclick="event.stopPropagation(); window.open('${waLink}','_blank')">💬 WhatsApp</button>` : ''}
       ${waPhone ? `<button class="card-btn btn-call" onclick="event.stopPropagation(); window.open('tel:${waPhone}')">${tr('call')}</button>` : ''}
@@ -2658,20 +2725,29 @@ window.App = (() => {
   const updateSummary = () => {
     const t    = today0();
     const tm   = new Date(t); tm.setDate(tm.getDate() + 1);
-    const week = new Date(t); week.setDate(week.getDate() + 7);
-    let tc = 0, bc = 0, wc = 0;
+    // BD week starts on Sunday
+    const dow    = t.getDay();               // 0 = Sunday
+    const wStart = new Date(t); wStart.setDate(t.getDate() - dow);
+    const wEnd   = new Date(wStart); wEnd.setDate(wStart.getDate() + 6);
+    let tc = 0, bc = 0, wc = 0, pc = 0, dc = 0, dlc = 0;
 
     orders.forEach(o => {
-      if (o.status === 'delivered' || o.status === 'cancelled') return;
+      if (o.status === 'delivered' || o.status === 'cancelled') { dc++; return; }
+      pc++;
       const d = toDate(o.date || '2099-01-01');
-      if (d.getTime() === t.getTime())  tc++;
-      if (d.getTime() === tm.getTime()) bc++;
-      if (d >= t && d <= week) wc++;
+      const tt = d.getTime();
+      if (tt === t.getTime())          tc++;
+      if (tt === tm.getTime())         bc++;
+      if (tt >= wStart.getTime() && tt <= wEnd.getTime()) wc++;
+      if (tt < t.getTime())            dlc++;
     });
 
     document.getElementById('s-today').textContent = tc;
     document.getElementById('s-bake').textContent  = bc;
     document.getElementById('s-week').textContent  = wc;
+    document.getElementById('s-pending').textContent = pc;
+    document.getElementById('s-done').textContent  = dc;
+    document.getElementById('s-delayed').textContent = dlc;
 
     const n = orders.length;
     document.title = `🎂 নিতুর বেকারি (${n} অর্ডার)`;
@@ -2703,6 +2779,9 @@ window.App = (() => {
     // Highlight summary card
     document.getElementById('sum-today').classList.toggle('active', t === 'plan');
     document.getElementById('sum-week').classList.toggle('active',  t === 'revenue');
+    document.getElementById('sum-pending').classList.toggle('active', t === 'plan' || t === 'all');
+    document.getElementById('sum-done').classList.toggle('active', t === 'done');
+    document.getElementById('sum-delayed').classList.toggle('active', t === 'plan');
   };
 
   // ─── Toggle card expand ──────────────────────────────────────
@@ -2801,23 +2880,34 @@ window.App = (() => {
     const o = orders.find(x => x.firebaseKey === key);
     if (!o) return;
     const msg = buildSrsMsg(o);
+    const done = () => showToast('✅ SRS মেসেজ কপি হয়েছে!');
     if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(msg)
-        .then(() => showToast('✅ SRS মেসেজ কপি হয়েছে!'))
-        .catch(() => fallbackCopy(msg));
+      navigator.clipboard.writeText(msg).then(done).catch(() => fallbackCopy(msg, done));
     } else {
-      fallbackCopy(msg);
+      fallbackCopy(msg, done);
     }
   };
 
-  const fallbackCopy = text => {
+  const copyNotepad = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) return;
+    const msg = buildNotepadText(o);
+    const done = () => showToast('✅ নোটপ্যাড কপি হয়েছে!');
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(msg).then(done).catch(() => fallbackCopy(msg, done));
+    } else {
+      fallbackCopy(msg, done);
+    }
+  };
+
+  const fallbackCopy = (text, done) => {
     const ta = document.createElement('textarea');
     ta.value = text;
     ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
     document.body.appendChild(ta);
     ta.focus(); ta.select();
-    try { document.execCommand('copy'); showToast('✅ SRS মেসেজ কপি হয়েছে!'); }
-    catch { alert(`মেসেজ:\n\n${text}`); }
+    try { document.execCommand('copy'); done(); }
+    catch { alert(`টেক্সট:\n\n${text}`); }
     document.body.removeChild(ta);
   };
 
@@ -2865,7 +2955,7 @@ window.App = (() => {
     const g = id => document.getElementById(id);
     g('f-name').value           = o.name      || '';
     g('f-phone').value          = o.phone     || '';
-    g('f-weight').value         = o.weight    || '';
+    g('f-weight').value         = weightText(o);
     g('f-flavour').value        = o.flavour   || 'Chocolate Sponge';
     g('f-size').value           = o.size      || '';
     g('f-design').value         = o.design    || '';
@@ -2991,12 +3081,12 @@ window.App = (() => {
     if (mode !== 'auto') return;
     const paid    = parseFloat(document.getElementById('f-paid').value) || 0;
     // paid = base + base*rate  →  charge = paid - paid/(1+rate)
-    const charge  = paid > 0 ? +(paid - paid / (1 + BKASH_RATE)).toFixed(2) : 0;
-    document.getElementById('f-bkash-charge').value = charge ? charge.toFixed(2) : '';
-    const net = (paid - charge).toFixed(0);
+    const charge  = paid > 0 ? Math.round(paid - paid / (1 + BKASH_RATE)) : 0;
+    document.getElementById('f-bkash-charge').value = charge || '';
+    const net = paid - charge;
     document.getElementById('bkash-hint').textContent = lang === 'bn'
-      ? `৳${fmtMoney(paid)} এর মধ্যে ৳${charge.toFixed(2)} চার্জ → কেকে জমা ৳${fmtMoney(net)}`
-      : `Of ৳${fmtMoney(paid)}, ৳${charge.toFixed(2)} is charge → ৳${fmtMoney(net)} to cake`;
+      ? `৳${fmtMoney(paid)} এর মধ্যে ৳${charge} চার্জ → কেকে জমা ৳${fmtMoney(net)}`
+      : `Of ৳${fmtMoney(paid)}, ৳${charge} is charge → ৳${fmtMoney(net)} to cake`;
   };
 
   // ─── Save order ──────────────────────────────────────────────
@@ -3162,7 +3252,7 @@ window.App = (() => {
           const title = diff === 1 
             ? `⚠️ আগামীকাল ডেলিভারি: ${o.name}`
             : `📅 ${diff} দিনে ডেলিভারি: ${o.name}`;
-          const body = `${o.weight || ''} ${o.flavour || ''} কেক\n${o.time || 'সময় নির্ধারিত নয়'}`;
+          const body = `${weightText(o)} ${o.flavour || ''} কেক\n${o.time || 'সময় নির্ধারিত নয়'}`;
           
           try {
             const n = new Notification(title, { 
@@ -3331,13 +3421,13 @@ window.App = (() => {
         chargeLabel = '+ চার্জ';
     }
 
-    const charge = chargeRate > 0 ? +(cakePrice * chargeRate).toFixed(2) : 0;
+    const charge = chargeRate > 0 ? Math.round(cakePrice * chargeRate) : 0;
     const customerPays = cakePrice + charge;
 
-    document.getElementById('calc-cake-price').textContent = `৳${cakePrice.toFixed(0)}`;
+    document.getElementById('calc-cake-price').textContent = `৳${Math.round(cakePrice)}`;
     document.getElementById('calc-charge-label').textContent = chargeLabel;
-    document.getElementById('calc-charge').textContent = `৳${charge.toFixed(2)}`;
-    document.getElementById('calc-customer-pays').textContent = `৳${customerPays.toFixed(0)}`;
+    document.getElementById('calc-charge').textContent = `৳${charge}`;
+    document.getElementById('calc-customer-pays').textContent = `৳${Math.round(customerPays)}`;
 
     const chargeRow = breakdown.querySelector('.charge-row');
     if (charge > 0) {
@@ -3366,10 +3456,10 @@ window.App = (() => {
     }
 
     const charge = chargeRate > 0 ? +(cakePrice * chargeRate).toFixed(2) : 0;
-    const customerPays = cakePrice + charge;
+    const customerPays = Math.round(cakePrice + charge);
 
-    document.getElementById('f-paid').value = customerPays.toFixed(2);
-    document.getElementById('f-charge-deduct').value = charge.toFixed(2);
+    document.getElementById('f-paid').value = customerPays;
+    document.getElementById('f-charge-deduct').value = Math.round(charge);
 
     paymentApproved = true;
 
@@ -3390,6 +3480,8 @@ window.App = (() => {
     switchTab,
     toggleCard,
     copyCardName,
+    copySrsMessage,
+    copyNotepad,
     openModal,
     closeModal,
     closeModalBg,
@@ -3496,11 +3588,18 @@ window.App = (() => {
   // ─── Order notifications ───────────────────────────────────────
   var notifRef = db.ref('orders');
 
+  // Same fallback as weightText() in main App (this IIFE is isolated)
+  function wt(o) {
+    var w = (o && (o.weight || '')).toString().trim();
+    if (!w || w.toLowerCase() === 'custom') w = (o && (o.weightLabel || '')).toString().trim();
+    return w || '';
+  }
+
   function sendNotification(orderData) {
     if (!notifEnabled || Notification.permission !== 'granted') return;
     var name = orderData.name || 'Unknown';
     var source = orderData.source === 'tally' ? ' (Tally)' : '';
-    var body = [orderData.weight, orderData.flavour, orderData.total ? '৳'+orderData.total : ''].filter(Boolean).join(' · ');
+    var body = [wt(orderData), orderData.flavour, orderData.total ? '৳' + Math.round(orderData.total) : ''].filter(Boolean).join(' · ');
     try {
       var n = new Notification('🎂 নতুন অর্ডার' + source + ': ' + name, { body: body || 'নতুন অর্ডার!', tag: 'nitu-' + Date.now(), requireInteraction: true });
       n.onclick = function() { window.focus(); n.close(); };

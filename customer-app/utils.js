@@ -81,7 +81,7 @@ function getTimeSlot(value) {
 }
 
 function formatCurrency(amount) {
-  return `৳${parseInt(amount).toLocaleString('bn-BD')}`;
+  return `৳${Math.round(Number(amount) || 0).toLocaleString('bn-BD')}`;
 }
 
 function calculatePayment(basePrice, weightPrice, deliveryCharge, paymentMethodId) {
