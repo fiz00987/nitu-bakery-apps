@@ -457,6 +457,78 @@ button { cursor: pointer; }
 .sum-num.delayed { color: var(--red, #e53935); }
 
 /* =============================================
+   MINI CALENDAR
+   ============================================= */
+.minical-wrap {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px 12px;
+}
+.minical-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.minical-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.minical-nav {
+  width: 30px; height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--text2);
+  font-size: 18px; line-height: 1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.minical-nav:active { background: var(--pink-light); color: var(--pink); }
+.minical-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.minical-dow {
+  text-align: center;
+  font-size: 9px;
+  color: var(--text3);
+  font-weight: 600;
+  padding: 2px 0;
+}
+.minical-cell {
+  aspect-ratio: 1;
+  min-height: 32px;
+  border-radius: 8px;
+  background: var(--surface2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+.minical-cell .mc-day { font-size: 11px; font-weight: 600; }
+.minical-cell .mc-cnt { font-size: 9px; font-weight: 800; }
+.minical-cell.empty { visibility: hidden; }
+.minical-cell.c-0    { background: var(--surface2); color: var(--text3); }
+.minical-cell.c-ok   { background: var(--green-light); color: var(--green); }
+.minical-cell.c-warn { background: var(--amber-light); color: var(--amber); }
+.minical-cell.c-bad  { background: var(--red-light); color: var(--red); }
+.minical-cell.today  { box-shadow: inset 0 0 0 2px var(--pink); }
+.minical-legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text3);
+  flex-wrap: wrap;
+}
+.minical-legend .lg {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 3px;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+.lg-ok { background: var(--green-light); }
+.lg-warn { background: var(--amber-light); }
+.lg-bad { background: var(--red-light); }
+
+/* =============================================
    TABS
    ============================================= */
 .tabs {
@@ -1738,6 +1810,21 @@ select:focus {
   </div>
 </div>
 
+<!-- MINI CALENDAR -->
+<div class="minical-wrap" role="region" aria-label="দৈনিক অর্ডার ক্যালেন্ডার">
+  <div class="minical-head">
+    <button class="minical-nav" onclick="App.calPrev()" aria-label="আগের মাস">‹</button>
+    <div class="minical-title" id="cal-title"></div>
+    <button class="minical-nav" onclick="App.calNext()" aria-label="পরের মাস">›</button>
+  </div>
+  <div class="minical-grid" id="cal-grid"></div>
+  <div class="minical-legend">
+    <span><i class="lg lg-ok"></i> ১-২ অর্ডার</span>
+    <span><i class="lg lg-warn"></i> ৩ অর্ডার</span>
+    <span><i class="lg lg-bad"></i> ৪+ অর্ডার</span>
+  </div>
+</div>
+
 <!-- TABS -->
 <nav class="tabs" role="tablist" aria-label="ভিউ নির্বাচন">
   <button class="tab active" id="tab-plan" role="tab" aria-selected="true"  aria-controls="view-plan"    onclick="App.switchTab('plan')">📅 <span data-i18n="tabPlan">প্ল্যান</span> <span class="tab-count" id="tc-plan">0</span></button>
@@ -2753,8 +2840,55 @@ window.App = (() => {
     document.title = `🎂 নিতুর বেকারি (${n} অর্ডার)`;
   };
 
+  // ─── Mini calendar (daily order capacity) ─────────────────────
+  let calCursor = today0(); calCursor.setDate(1);
+
+  const calLabel = () => {
+    const MON = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+    return `${MON[calCursor.getMonth()]} ${calCursor.getFullYear()}`;
+  };
+
+  const calShift = dir => {
+    calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth() + dir, 1);
+    render();
+  };
+
+  const renderCalendar = () => {
+    // count non-cancelled orders per delivery date (customer + manual)
+    const counts = {};
+    orders.forEach(o => {
+      if (o.status === 'cancelled' || !o.date) return;
+      const d = toDate(o.date);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      counts[key] = (counts[key] || 0) + 1;
+    });
+
+    const y = calCursor.getFullYear(), m = calCursor.getMonth();
+    const startDow = new Date(y, m, 1).getDay();          // 0 = Sunday
+    const dim      = new Date(y, m + 1, 0).getDate();
+    const today    = today0();
+
+    const DOW = ['রবি','সোম','মঙ্গল','বুধ','বৃহস্পতি','শুক্র','শনি'];
+    let html = DOW.map(d => `<div class="minical-dow">${d}</div>`).join('');
+    for (let i = 0; i < startDow; i++) html += '<div class="minical-cell empty"></div>';
+
+    for (let day = 1; day <= dim; day++) {
+      const n = counts[`${y}-${m}-${day}`] || 0;
+      const cls = n === 0 ? 'c-0' : n <= 2 ? 'c-ok' : n === 3 ? 'c-warn' : 'c-bad';
+      const isToday = (today.getFullYear() === y && today.getMonth() === m && today.getDate() === day);
+      html += `<div class="minical-cell ${cls}${isToday ? ' today' : ''}">` +
+              `<span class="mc-day">${day}</span>` +
+              (n ? `<span class="mc-cnt">${n}</span>` : '') +
+              `</div>`;
+    }
+
+    document.getElementById('cal-title').textContent = calLabel();
+    document.getElementById('cal-grid').innerHTML = html;
+  };
+
   const render = () => {
     updateSummary();
+    renderCalendar();
     renderPlan();
     if (activeTab === 'all')     renderAll();
     if (activeTab === 'done')    renderDone();
@@ -3498,6 +3632,8 @@ window.App = (() => {
     confirmDelete,
     toggleSort,
     clearSearch,
+    calPrev: () => calShift(-1),
+    calNext: () => calShift(1),
     removePhoto,
     setLang,
     onBkashModeChange,
