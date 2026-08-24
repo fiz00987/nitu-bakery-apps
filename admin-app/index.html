@@ -2254,8 +2254,9 @@ function registerServiceWorkers() {
   // Cloud Messaging and offline app-shell caching (see that file). Registering
   // it at the app root gives it scope over the whole app.
   try {
-    return navigator.serviceWorker.register('./firebase-messaging-sw.js').then(function (reg) {
+    return navigator.serviceWorker.register('./firebase-messaging-sw.js', { updateViaCache: 'none' }).then(function (reg) {
       FCM_SW_REGISTERED = true;
+      // Check the worker source on every launch without using the browser HTTP cache.
       reg.update().catch(function () {});
       return reg;
     }).catch(function () {

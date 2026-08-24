@@ -56,7 +56,7 @@ self.addEventListener('notificationclick', function (event) {
    Offline app-shell caching (kept in this worker so the single
    service worker covers BOTH push messages and offline startup).
    ============================================================ */
-var CACHE_NAME = 'nitu-bakery-v2';
+var CACHE_NAME = 'nitu-bakery-v3';
 var APP_SHELL = [
   './',
   './index.html',
@@ -113,7 +113,9 @@ self.addEventListener('fetch', function (event) {
   // App shell (same origin): network-first, cache fallback
   if (url.origin === self.location.origin) {
     event.respondWith(
-      fetch(req).then(function (resp) {
+      // Bypass the browser's HTTP cache on every launch/request.
+      // Cache Storage is retained only as an offline fallback.
+      fetch(new Request(req, { cache: 'no-store' })).then(function (resp) {
         var copy = resp.clone();
         caches.open(CACHE_NAME).then(function (cache) { cache.put(req, copy); });
         return resp;

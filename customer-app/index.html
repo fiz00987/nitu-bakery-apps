@@ -388,6 +388,17 @@ button{cursor:pointer}
 <script src="./utils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
+// The customer app never serves a stale app shell: its worker fetches each page
+// from the network with cache disabled and checks for worker updates on every open.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+      .then(function (registration) { return registration.update(); })
+      .catch(function () {});
+  });
+}
+</script>
+<script>
 'use strict';
 
 let lang = localStorage.getItem('nitu-cust-lang') || 'bn';
