@@ -569,9 +569,33 @@ button { cursor: pointer; }
   box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 360px;
+  min-width: 0;
   max-height: 92vh;
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 14px 14px 16px;
+}
+/* Keep the month controls and seven-column grid inside the popup on narrow screens. */
+.cal-popup .minical-head { gap: 8px; }
+.cal-popup .minical-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cal-popup .minical-nav { flex: 0 0 28px; }
+.cal-popup .minical-grid {
+  min-width: 0;
+  gap: clamp(2px, 1.5vw, 4px);
+}
+.cal-popup .minical-cell,
+.cal-popup .minical-dow { min-width: 0; }
+.cal-popup .minical-dow { overflow: hidden; text-overflow: clip; white-space: nowrap; }
+@media (max-width: 380px) {
+  .cal-popup-overlay { padding: 10px; }
+  .cal-popup { padding: 12px 10px 14px; }
 }
 .cal-popup-head {
   display: flex;
