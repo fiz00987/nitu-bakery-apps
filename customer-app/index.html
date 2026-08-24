@@ -130,7 +130,10 @@ button{cursor:pointer}
 .success-icon{font-size:64px;margin-bottom:16px}
 .success-title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px}
 .success-msg{font-size:14px;color:var(--text2);margin-bottom:24px;line-height:1.6}
-.order-summary{background:var(--surface);border-radius:var(--radius);padding:16px;text-align:left;margin-bottom:24px;box-shadow:var(--shadow-sm);font-size:13px}
+.order-summary{background:var(--surface);border-radius:var(--radius);padding:16px;text-align:left;margin-bottom:24px;box-shadow:var(--shadow-sm);font-size:13px;position:relative;isolation:isolate;overflow:hidden}
+/* A subtle watermark remains behind the order details and is included in the downloaded card. */
+.order-summary::before{content:'';position:absolute;inset:0;background:url('logo.png') center/150px auto no-repeat;opacity:.07;pointer-events:none;z-index:0}
+.order-summary>*{position:relative;z-index:1}
 .order-summary .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)}
 .order-summary .row:last-child{border-bottom:none}
 .order-summary .row span:first-child{color:var(--text3)}
@@ -887,7 +890,7 @@ function showSuccess(order) {
     <div class="row"><span>ঠিকানা</span><span>${esc(order.deliveryAddress)}</span></div>
     <div class="row"><span>মোট (আনুমানিক)</span><span>৳${Math.round(order.total)}</span></div>
     <div class="row"><span>প্রদান</span><span style="color:var(--green)">৳${Math.round(order.advanceTotal)}</span></div>
-    ${order.dueAmount > 0 ? `<div class="due-alert">⚠️ বাকি (আনুমানিক): ৳${Math.round(order.dueAmount)}${order.deliveryCharge > 0 ? `<br>🚚 ডেলিভারি চার্জ (আলাদা): ৳${Math.round(order.deliveryCharge)}` : ''}</div>` : '<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ পূর্ণ পেমেন্ট সম্পন্ন</div>'}
+    ${order.dueAmount > 0 ? `<div class="due-alert">⚠️ বাকি: ৳${Math.round(order.dueAmount)}${order.deliveryCharge > 0 ? `<br>🚚 ডেলিভারি চার্জ (আলাদা): ৳${Math.round(order.deliveryCharge)}` : ''}</div>` : '<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ পূর্ণ পেমেন্ট সম্পন্ন</div>'}
   `;
 
   // Start a 5-second timer after submitting. If the customer hasn't tapped Download
