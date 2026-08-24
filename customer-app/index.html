@@ -139,6 +139,18 @@ button{cursor:pointer}
 .order-summary .row span:first-child{color:var(--text3)}
 .order-summary .row span:last-child{font-weight:600;color:var(--text)}
 .due-alert{background:var(--red-light);border:2px solid var(--red);border-radius:var(--radius-sm);padding:12px;margin-top:12px;color:var(--red);font-weight:700;text-align:center}
+.previous-orders-btn{width:100%;margin-top:10px;padding:10px 12px;border:1.5px solid var(--pink);border-radius:var(--radius-sm);background:var(--pink-light);color:var(--pink-dark);font-size:13px;font-weight:700}
+.previous-orders-btn:active{transform:scale(.98)}
+.order-history-popup .popup-content{white-space:normal}
+.order-history-card{position:relative;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;background:var(--surface2)}
+.order-history-card::before{content:'';position:absolute;inset:0;background:url('logo.png') center/120px auto no-repeat;opacity:.045;pointer-events:none}
+.order-history-card>*{position:relative}
+.order-history-date{color:var(--pink-dark);font-size:14px;font-weight:700;margin-bottom:10px}
+.order-history-row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--border);font-size:13px}
+.order-history-row span:first-child{color:var(--text3);flex-shrink:0}.order-history-row span:last-child{font-weight:600;text-align:right;word-break:break-word}
+.order-history-status{display:inline-block;padding:3px 8px;border-radius:99px;background:var(--pink-light);color:var(--pink-dark);font-size:11px;font-weight:700}
+.order-history-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-top:1px solid var(--border);flex-shrink:0}
+.order-history-nav button{min-width:84px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-xs);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:700}.order-history-nav button:disabled{opacity:.45}.order-history-nav span{font-size:12px;color:var(--text3);font-weight:600}
 
 .loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:none;align-items:center;justify-content:center}
 .loading-overlay.show{display:flex}
@@ -184,6 +196,7 @@ button{cursor:pointer}
     <img src="logo.png" alt="নিতুর বেকারি">
     <h2 data-bn="আপনার অর্ডার দিন" data-en="Place Your Order">আপনার অর্ডার দিন</h2>
     <div class="order-number-badge">অর্ডার নম্বর: <span id="form-order-id"></span></div>
+    <button type="button" class="previous-orders-btn" onclick="showPreviousOrders()" data-bn="🧾 আপনার পূর্ববর্তী অর্ডার" data-en="🧾 Your Previous Orders">🧾 আপনার পূর্ববর্তী অর্ডার</button>
   </div>
   <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
 
@@ -327,6 +340,19 @@ button{cursor:pointer}
   </div>
 </div>
 
+<!-- PREVIOUS ORDERS -->
+<div class="popup-overlay" id="previous-orders-popup" onclick="closePreviousOrders(event)">
+  <div class="popup order-history-popup" role="dialog" aria-modal="true" aria-labelledby="previous-orders-title">
+    <div class="popup-header"><h3 id="previous-orders-title">আপনার পূর্ববর্তী অর্ডার</h3><button type="button" class="popup-close" onclick="closePreviousOrders()" aria-label="Close">×</button></div>
+    <div class="popup-content" id="previous-orders-content"></div>
+    <div class="order-history-nav" id="previous-orders-nav">
+      <button type="button" id="previous-order-back" onclick="changePreviousOrder(-1)">← আগেরটি</button>
+      <span id="previous-order-position"></span>
+      <button type="button" id="previous-order-next" onclick="changePreviousOrder(1)">পরেরটি →</button>
+    </div>
+  </div>
+</div>
+
 <!-- SUCCESS -->
 <div class="success-screen" id="success-screen">
   <div class="success-icon">✅</div>
@@ -335,6 +361,7 @@ button{cursor:pointer}
   <div class="order-summary" id="order-summary"></div>
   <div class="screenshot-note">অর্ডার কার্ডটি ডাউনলোড করে আমাদের Facebook পেজের ইনবক্সে পাঠালে অর্ডার নম্বর দেখে দ্রুত ট্র্যাক করতে সুবিধা হবে।</div>
   <button class="btn-primary" onclick="downloadOrderCard()" id="download-card-btn">📥 অর্ডার কার্ড ডাউনলোড করুন</button>
+  <button type="button" class="previous-orders-btn" onclick="showPreviousOrders()" data-bn="🧾 আপনার পূর্ববর্তী অর্ডার" data-en="🧾 Your Previous Orders">🧾 আপনার পূর্ববর্তী অর্ডার</button>
   <button class="btn-primary" onclick="resetForm()">🔄 নতুন অর্ডার দিন</button>
 </div>
 
@@ -370,6 +397,8 @@ let isSurprise = false;
 let currentSecurityQ = null;
 let pendingPhone = '';
 let currentOrderId = '';
+let previousOrderHistory = [];
+let previousOrderCursor = 0;
 let downloadPressed = false;
 let autoCloseTimer = null;
 let autoCloseTick = null;
@@ -526,6 +555,103 @@ async function loadPreviousOrders(phone) {
     `).join('');
     document.getElementById('previous-orders').classList.add('show');
   } catch (e) { console.error(e); }
+}
+
+function previousOrderDateValue(order) {
+  const raw = order.deliveryDate || order.date || '';
+  const match = String(raw).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (match) return new Date(+match[1], +match[2] - 1, +match[3]).getTime();
+  const parsed = new Date(raw).getTime();
+  return Number.isNaN(parsed) ? Number(order.createdAt || 0) : parsed;
+}
+
+function previousOrderStatus(order) {
+  const labels = {
+    pending: 'পেন্ডিং', confirmed: 'কনফার্মড', baking: 'বেক হচ্ছে',
+    delivered: 'ডেলিভার্ড', cancelled: 'বাতিল', completed: 'সম্পন্ন'
+  };
+  const status = String(order.status || 'pending').toLowerCase();
+  return lang === 'en' ? status.charAt(0).toUpperCase() + status.slice(1) : (labels[status] || 'পেন্ডিং');
+}
+
+function renderPreviousOrder() {
+  const order = previousOrderHistory[previousOrderCursor];
+  const content = document.getElementById('previous-orders-content');
+  const nav = document.getElementById('previous-orders-nav');
+  if (!order) {
+    content.innerHTML = `<p style="text-align:center;color:var(--text3);padding:18px 0">${lang === 'en' ? 'No previous orders found for this phone number.' : 'এই ফোন নম্বরে কোনো পূর্ববর্তী অর্ডার পাওয়া যায়নি।'}</p>`;
+    nav.hidden = true;
+    return;
+  }
+
+  const total = Number(order.total != null ? order.total : order.cakePrice) || 0;
+  const paid = Number(order.advanceTotal != null ? order.advanceTotal : (order.advance != null ? order.advance : order.paid)) || 0;
+  const due = Number(order.dueAmount != null ? order.dueAmount : Math.max(0, total - paid)) || 0;
+  const cake = [order.weightLabel || order.weight, order.flavourName || order.flavour].filter(Boolean).join(' · ') || '—';
+  const deliveryDate = fmtDate(order.deliveryDate || order.date || '') || 'তারিখ নির্ধারিত হয়নি';
+  const deliveryTime = order.timeSlotLabel || order.time || '';
+  const address = order.deliveryAddress || order.address || '—';
+
+  content.innerHTML = `
+    <article class="order-history-card">
+      <div class="order-history-date">📅 ${esc(deliveryDate)}${deliveryTime ? ` · ${esc(deliveryTime)}` : ''}</div>
+      <div class="order-history-row"><span>${lang === 'en' ? 'Order ID' : 'অর্ডার নম্বর'}</span><span>${esc(order.orderId || '—')}</span></div>
+      <div class="order-history-row"><span>${lang === 'en' ? 'Cake' : 'কেক'}</span><span>${esc(cake)}</span></div>
+      <div class="order-history-row"><span>${lang === 'en' ? 'Address' : 'ঠিকানা'}</span><span>${esc(address)}</span></div>
+      <div class="order-history-row"><span>${lang === 'en' ? 'Total' : 'মোট'}</span><span>৳${Math.round(total)}</span></div>
+      <div class="order-history-row"><span>${lang === 'en' ? 'Paid' : 'প্রদান'}</span><span>৳${Math.round(paid)}</span></div>
+      <div class="order-history-row"><span>${lang === 'en' ? 'Due' : 'বাকি'}</span><span>৳${Math.round(due)}</span></div>
+      <div class="order-history-row"><span>${lang === 'en' ? 'Status' : 'অবস্থা'}</span><span class="order-history-status">${esc(previousOrderStatus(order))}</span></div>
+    </article>`;
+  nav.hidden = false;
+  document.getElementById('previous-order-position').textContent = lang === 'en'
+    ? `${previousOrderCursor + 1} of ${previousOrderHistory.length}`
+    : `${previousOrderCursor + 1} / ${previousOrderHistory.length}`;
+  const back = document.getElementById('previous-order-back');
+  const next = document.getElementById('previous-order-next');
+  back.textContent = lang === 'en' ? '← Previous' : '← আগেরটি';
+  next.textContent = lang === 'en' ? 'Next →' : 'পরেরটি →';
+  back.disabled = previousOrderCursor === 0;
+  next.disabled = previousOrderCursor === previousOrderHistory.length - 1;
+}
+
+async function showPreviousOrders() {
+  const phone = localStorage.getItem('nitu-cust-phone') || '';
+  if (!phone) { showToast(lang === 'en' ? 'Enter and verify your phone number first.' : 'আগে আপনার ফোন নম্বর যাচাই করুন।'); return; }
+
+  const popup = document.getElementById('previous-orders-popup');
+  const content = document.getElementById('previous-orders-content');
+  popup.classList.add('show');
+  content.innerHTML = `<p style="text-align:center;color:var(--text3);padding:18px 0">${lang === 'en' ? 'Loading orders…' : 'অর্ডার লোড হচ্ছে…'}</p>`;
+  document.getElementById('previous-orders-nav').hidden = true;
+
+  try {
+    const snap = await db.ref('orders').orderByChild('customerPhone').equalTo(phone).once('value');
+    previousOrderHistory = [];
+    snap.forEach(child => previousOrderHistory.push(child.val()));
+    // Newest delivery date first; creation time is the fallback if a legacy order has no date.
+    previousOrderHistory.sort((a, b) => previousOrderDateValue(b) - previousOrderDateValue(a));
+    previousOrderCursor = 0;
+    document.getElementById('previous-orders-title').textContent = lang === 'en' ? 'Your Previous Orders' : 'আপনার পূর্ববর্তী অর্ডার';
+    renderPreviousOrder();
+  } catch (error) {
+    console.error(error);
+    popup.classList.remove('show');
+    showToast(lang === 'en' ? 'Could not load previous orders. Please try again.' : 'পূর্ববর্তী অর্ডার লোড করা যায়নি। আবার চেষ্টা করুন।');
+  }
+}
+
+function changePreviousOrder(direction) {
+  const nextIndex = previousOrderCursor + direction;
+  if (nextIndex < 0 || nextIndex >= previousOrderHistory.length) return;
+  previousOrderCursor = nextIndex;
+  renderPreviousOrder();
+}
+
+function closePreviousOrders(event) {
+  if (!event || event.target === document.getElementById('previous-orders-popup')) {
+    document.getElementById('previous-orders-popup').classList.remove('show');
+  }
 }
 
 function proceedToForm(phone) {
