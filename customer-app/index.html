@@ -111,6 +111,19 @@ button{cursor:pointer}
 .due-panel.show{display:block}
 .screenshot-note{background:var(--green-light);border:1px solid #a5d6a7;border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;color:var(--green);line-height:1.5;margin-bottom:14px}
 
+/* AUTO-CLOSE POPUP */
+.auto-close-pop{position:fixed;inset:0;background:rgba(10,8,30,0.55);z-index:900;display:none;align-items:center;justify-content:center;padding:20px}
+.auto-close-pop.show{display:flex}
+.auto-close-box{background:var(--surface);border-radius:var(--radius);padding:24px;width:100%;max-width:320px;box-shadow:0 10px 40px rgba(0,0,0,0.25);text-align:center}
+.auto-close-box .pc-icon{font-size:44px;margin-bottom:10px}
+.auto-close-box .pc-title{font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px}
+.auto-close-box .pc-msg{font-size:13.5px;color:var(--text2);line-height:1.6;margin-bottom:14px}
+.auto-close-count{font-size:13px;font-weight:700;color:var(--pink);margin-bottom:16px}
+.auto-close-count b{font-size:20px}
+.auto-close-actions{display:flex;flex-direction:column;gap:8px}
+.auto-close-actions .btn-primary{width:100%}
+.btn-ghost{padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);font-size:14px;font-weight:600}
+
 /* SUCCESS */
 .success-screen{display:none;text-align:center;padding:40px 20px;max-width:400px;margin:0 auto}
 .success-screen.active{display:block}
@@ -317,9 +330,22 @@ button{cursor:pointer}
   <div class="success-title">অর্ডার সফলভাবে জমা হয়েছে!</div>
   <div class="success-msg">আমরা শীঘ্রই আপনার সাথে যোগাযোগ করব। অর্ডার কনফার্ম হলে আপনাকে জানানো হবে।</div>
   <div class="order-summary" id="order-summary"></div>
-  <div class="screenshot-note">অর্ডার কার্ডটি ডাউনলোড করে আমাদের Facebook পেজের ইনবক্সে পাঠালে অর্ডার নম্বর দেখে দ্রুত ট্র্যাক করতে সুবিধা হবে। ডাউনলোড শুরু হওয়ার ৫ সেকেন্ড পর এই উইন্ডোটি বন্ধ হয়ে যাবে।</div>
-  <button class="btn-primary" onclick="downloadOrderCard()">📥 অর্ডার কার্ড ডাউনলোড করুন</button>
+  <div class="screenshot-note">অর্ডার কার্ডটি ডাউনলোড করে আমাদের Facebook পেজের ইনবক্সে পাঠালে অর্ডার নম্বর দেখে দ্রুত ট্র্যাক করতে সুবিধা হবে।</div>
+  <button class="btn-primary" onclick="downloadOrderCard()" id="download-card-btn">📥 অর্ডার কার্ড ডাউনলোড করুন</button>
   <button class="btn-primary" onclick="resetForm()">🔄 নতুন অর্ডার দিন</button>
+</div>
+
+<!-- AUTO-CLOSE POPUP -->
+<div class="auto-close-pop" id="auto-close-pop">
+  <div class="auto-close-box">
+    <div class="pc-icon">📥</div>
+    <div class="pc-title">অর্ডার কার্ডটি এখনই ডাউনলোড করুন</div>
+    <div class="pc-msg">এই উইন্ডোটি <span class="auto-close-count"><b id="auto-close-sec">৫</b> সেকেন্ড</span>-এর মধ্যে বন্ধ হয়ে যাবে। চাইলে কার্ডটি ডাউনলোড করতে পারেন।</div>
+    <div class="auto-close-actions">
+      <button class="btn-primary" onclick="downloadOrderCard()">📥 অর্ডার কার্ড ডাউনলোড করুন</button>
+      <button class="btn-ghost" onclick="keepWindowOpen()">✕ এই উইন্ডো খোলা রাখুন</button>
+    </div>
+  </div>
 </div>
 
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
@@ -341,6 +367,9 @@ let isSurprise = false;
 let currentSecurityQ = null;
 let pendingPhone = '';
 let currentOrderId = '';
+let downloadPressed = false;
+let autoCloseTimer = null;
+let autoCloseTick = null;
 
 // Populate dropdowns from utils.js
 function populateDropdowns() {
@@ -860,10 +889,57 @@ function showSuccess(order) {
     <div class="row"><span>প্রদান</span><span style="color:var(--green)">৳${Math.round(order.advanceTotal)}</span></div>
     ${order.dueAmount > 0 ? `<div class="due-alert">⚠️ বাকি (আনুমানিক): ৳${Math.round(order.dueAmount)}${order.deliveryCharge > 0 ? `<br>🚚 ডেলিভারি চার্জ (আলাদা): ৳${Math.round(order.deliveryCharge)}` : ''}</div>` : '<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ পূর্ণ পেমেন্ট সম্পন্ন</div>'}
   `;
+
+  // Start a 5-second timer after submitting. If the customer hasn't tapped Download
+  // by then, show the auto-close popup. (Downloading simply cancels this timer — the
+  // window will then close on its own after the download completes via scheduleWindowClose.)
+  downloadPressed = false;
+  if (autoCloseTimer) clearTimeout(autoCloseTimer);
+  autoCloseTimer = setTimeout(() => {
+    autoCloseTimer = null;
+    if (downloadPressed) return;
+    showAutoClosePopup();
+  }, 5000);
+}
+
+function showAutoClosePopup() {
+  const pop = document.getElementById('auto-close-pop');
+  if (!pop) return;
+  if (autoCloseTick) { clearInterval(autoCloseTick); autoCloseTick = null; }
+  pop.classList.add('show');
+  document.getElementById('auto-close-sec').textContent = '৫';
+  let remain = 5;
+  const secDisp = document.getElementById('auto-close-sec');
+  autoCloseTick = setInterval(() => {
+    remain--;
+    if (remain <= 0) {
+      clearInterval(autoCloseTick);
+      autoCloseTick = null;
+      hideAutoClosePopup();
+      scheduleWindowClose();
+      return;
+    }
+    secDisp.textContent = '৫৪৩২১'.charAt(5 - remain);
+  }, 1000);
+}
+
+function hideAutoClosePopup() {
+  const pop = document.getElementById('auto-close-pop');
+  if (pop) pop.classList.remove('show');
+}
+
+function keepWindowOpen() {
+  downloadPressed = true;
+  if (autoCloseTick) { clearInterval(autoCloseTick); autoCloseTick = null; }
+  hideAutoClosePopup();
+  showToast('উইন্ডো খোলা রাখা হয়েছে');
 }
 
 // Download the order card as an image, then close the window + clear cache after 5 seconds
 async function downloadOrderCard() {
+  downloadPressed = true;
+  if (autoCloseTick) { clearInterval(autoCloseTick); autoCloseTick = null; }
+  hideAutoClosePopup();
   const summary = document.getElementById('order-summary');
   if (!window.html2canvas) { showToast('ডাউনলোড টুল লোড হয়নি'); return; }
   showToast('অর্ডার কার্ড তৈরি হচ্ছে...');
@@ -952,6 +1028,10 @@ function scheduleWindowClose() {
 function orderIdForScreenshot() { return currentOrderId || 'nitu-bakery-order'; }
 
 function resetForm() {
+  if (autoCloseTimer) { clearTimeout(autoCloseTimer); autoCloseTimer = null; }
+  if (autoCloseTick) { clearInterval(autoCloseTick); autoCloseTick = null; }
+  downloadPressed = true;
+  hideAutoClosePopup();
   document.getElementById('success-screen').classList.remove('active');
   document.getElementById('entry-screen').classList.remove('hidden');
   document.getElementById('form-screen').classList.remove('active');
