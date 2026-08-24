@@ -511,17 +511,14 @@ button { cursor: pointer; }
   padding: 1px 0;
 }
 .minical-cell {
-  height: 26px;
+  height: 30px;
   border-radius: 8px;
   background: var(--surface2);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
 }
-.minical-cell .mc-day { font-size: 11px; font-weight: 600; }
-.minical-cell .mc-cnt { font-size: 9px; font-weight: 800; }
+.minical-cell .mc-day { font-size: 12px; font-weight: 700; }
 .minical-cell.empty { visibility: hidden; }
 .minical-cell.c-0    { background: var(--surface2); color: var(--text3); }
 .minical-cell.c-ok   { background: var(--green-mid);   color: #fff; }
@@ -590,7 +587,7 @@ button { cursor: pointer; }
   min-width: 0;
   gap: clamp(2px, 1.5vw, 4px);
   align-content: start;
-  grid-auto-rows: 26px;
+  grid-auto-rows: 30px;
 }
 .cal-popup .minical-cell,
 .cal-popup .minical-dow { min-width: 0; }
@@ -3069,9 +3066,11 @@ window.App = (() => {
       const n = counts[`${y}-${m}-${day}`] || 0;
       const cls = n === 0 ? 'c-0' : n <= 2 ? 'c-ok' : n === 3 ? 'c-warn' : 'c-bad';
       const isToday = (today.getFullYear() === y && today.getMonth() === m && today.getDate() === day);
-      html += `<div class="minical-cell ${cls}${isToday ? ' today' : ''}">` +
+      // Color communicates the order-capacity range shown in the legend.
+      // Do not print the count beneath the date: it can look like a date from the next month.
+      const orderLabel = n === 1 ? '১টি অর্ডার' : `${n}টি অর্ডার`;
+      html += `<div class="minical-cell ${cls}${isToday ? ' today' : ''}" title="${day} তারিখে ${orderLabel}" aria-label="${day} তারিখে ${orderLabel}">` +
               `<span class="mc-day">${day}</span>` +
-              (n ? `<span class="mc-cnt">${n}</span>` : '') +
               `</div>`;
     }
 
