@@ -1762,10 +1762,18 @@ select:focus {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
-
+  /* ─── New-order alert banner (free, works on Android + iPhone) ─── */
+  #alert-banner{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:#fff;border:2px solid var(--red);color:var(--red);padding:10px 16px;border-radius:8px;font-size:13px;font-weight:700;z-index:3000;display:none;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+  #alert-banner.show{display:flex}
+  #alert-banner .ab-close{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;line-height:1}
+  #alert-banner .ab-badge{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--red);margin-right:4px;box-shadow:0 0 8px var(--red);animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
 </style>
 </head>
 <body>
+
+<!-- New-order alert banner (free, cross-platform sound + banner) -->
+<div id="alert-banner"><span class="ab-badge"></span><span id="ab-text"></span><span class="ab-close" id="ab-close">✕</span></div>
 
 <!-- LOGIN SCREEN -->
 <div class="login-screen" id="login-screen">
@@ -3953,15 +3961,73 @@ window.App = (() => {
     var name = orderData.name || "Unknown";
     var source = orderData.source === "tally" ? " (Tally)" : "";
     var body = [wt(orderData), orderData.flavour, orderData.total ? "৳" + Math.round(orderData.total) : ""].filter(Boolean).join(" · ");
-    if (granted) {
+    // Android: native notification (free). iPhone: in-app banner handles it (no billing needed).
+    if (granted && !isIos) {
       try {
         var n = new Notification("🎂 নতুন অর্ডার" + source + ": " + name, { body: body || "নতুন অর্ডার!", tag: "nitu-" + Date.now(), requireInteraction: true });
         n.onclick = function(){ window.focus(); n.close(); };
       } catch(e){}
+    } else if (granted) {
+      try { new Notification("🎂 নতুন অর্ডার", { body: name + " — " + (body||""), tag: "nitu-" + Date.now() }); } catch(e){}
     }
+    // FREE cross-platform alert (always): sound + red banner + bell flash — works on Android AND iPhone
+    playAlertSound();
+    showOrderBanner(name, body);
     showNotifToast("🎂 নতুন অর্ডার: " + name + " — " + (body||""));
     var bell = document.getElementById("notif-bell");
     if (bell) { bell.classList.remove("ringing"); bell.offsetWidth; bell.classList.add("ringing"); setTimeout(function(){ bell.classList.remove("ringing"); }, 700); }
+  }
+
+  // Free alert helpers (sound + red banner) — no billing needed; works on both Android & iPhone
+  var audioCtx;
+  var alertBeep;
+
+  // Red banner close button + prepare fallback Audio element (runs once at load)
+  (function initAlertBanner() {
+    var c = document.getElementById("ab-close");
+    if (c) c.onclick = function() { var e = document.getElementById("alert-banner"); if (e) e.classList.remove("show"); };
+    try {
+      alertBeep = new Audio();
+      alertBeep.volume = 0.4;
+      alertBeep.src = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAAAAAAAAABkQeIAAAD/WAQBAAAAAA==";
+    } catch(e) {}
+  })();
+
+  function playAlertSound() {
+    try { (alertBeep && alertBeep.play && alertBeep.play().catch(function(){})); } catch(e) {}
+    try {
+      if (!audioCtx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        audioCtx = new AC();
+      }
+      if (audioCtx.state === "suspended") { try { audioCtx.resume(); } catch(e){} }
+      var ctx = audioCtx;
+      if (!ctx || ctx.state !== "running") return;
+      var now = ctx.currentTime;
+      [0, 0.22, 0.44].forEach(function(delay){
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(900 - (delay*140), now + delay);
+        o.connect(g); g.connect(ctx.destination);
+        g.setValueAtTime(0, now + delay);
+        g.linearRampToValueAtTime(0.18, now + delay + 0.015);
+        g.linearRampToValueAtTime(0, now + delay + 0.16);
+        o.start(now + delay + 0.015);
+        o.stop(now + delay + 0.16);
+      });
+    } catch(e){}
+  }
+  function showOrderBanner(name, body) {
+    try {
+      var el = document.getElementById("alert-banner");
+      if (!el) return;
+      var txt = document.getElementById("ab-text");
+      if (txt) txt.textContent = "🎂 নতুন অর্ডার: " + (name || "") + (body ? " — " + body : "");
+      el.classList.add("show");
+      clearTimeout(showOrderBanner._hide);
+      showOrderBanner._hide = setTimeout(function(){ el.classList.remove("show"); }, 6000);
+    } catch(e){}
   }
 
   // ─── Listen for NEW orders only ──────────────────────────────

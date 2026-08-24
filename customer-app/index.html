@@ -499,7 +499,7 @@ async function trackOrder() {
     if (!snap.exists()) { showToast('অর্ডার পাওয়া যায়নি'); return; }
     const order = Object.values(snap.val())[0];
     document.getElementById('prev-title').textContent = 'অর্ডার স্ট্যাটাস';
-    document.getElementById('prev-list').innerHTML = `<div class="previous-order"><strong>${esc(order.orderId)}</strong><br>${esc(order.status || 'pending')} · মোট ৳${order.total || 0}<br>ডেলিভারি: ${esc(order.deliveryDate || '')}</div>`;
+    document.getElementById('prev-list').innerHTML = `<div class="previous-order"><strong>${esc(order.orderId)}</strong><br>${esc(order.status || 'pending')} · মোট ৳${order.total || 0}<br>ডেলিভারি: ${esc(fmtDate(order.deliveryDate || ''))}</div>`;
     document.getElementById('previous-orders').classList.add('show');
   } catch (e) { showToast('অর্ডার খুঁজতে সমস্যা হয়েছে'); console.error(e); }
 }
@@ -518,7 +518,7 @@ async function loadPreviousOrders(phone) {
     list.innerHTML = orders.slice(0, 5).map(o => `
       <div class="previous-order">
         <div style="font-weight:600">${esc(o.customerName || o.name || '')} · ${esc(o.weightLabel || o.weight || '')} · ${esc(o.flavourName || o.flavour || '')}</div>
-        <div style="color:#888;margin-top:2px">📅 ${esc(o.deliveryDate || o.date || '')} · 💰 ৳${o.total || 0}</div>
+        <div style="color:#888;margin-top:2px">📅 ${esc(fmtDate(o.deliveryDate || o.date || ''))} · 💰 ৳${o.total || 0}</div>
       </div>
     `).join('');
     document.getElementById('previous-orders').classList.add('show');
@@ -883,7 +883,7 @@ function showSuccess(order) {
     <div class="row"><span>নাম</span><span>${esc(order.customerName)}</span></div>
     <div class="row"><span>ফোন</span><span>${esc(order.customerPhone)}</span></div>
     <div class="row"><span>কেক</span><span>${esc(order.weightLabel)} — ${esc(order.flavourName)}</span></div>
-    <div class="row"><span>তারিখ</span><span>${esc(order.deliveryDate)} · ${esc(order.timeSlotLabel)}</span></div>
+    <div class="row"><span>তারিখ</span><span>${esc(fmtDate(order.deliveryDate))} · ${esc(order.timeSlotLabel)}</span></div>
     <div class="row"><span>ঠিকানা</span><span>${esc(order.deliveryAddress)}</span></div>
     <div class="row"><span>মোট (আনুমানিক)</span><span>৳${Math.round(order.total)}</span></div>
     <div class="row"><span>প্রদান</span><span style="color:var(--green)">৳${Math.round(order.advanceTotal)}</span></div>
@@ -1058,6 +1058,19 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 3000);
 }
 function showLoading(on) { document.getElementById('loading').classList.toggle('show', on); }
+function fmtDate(s) {
+  if (!s) return '';
+  const MONTHS = ['জানু','ফেব্রু','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টে','অক্টো','নভে','ডিসে'];
+  // input type=date gives YYYY-MM-DD; also tolerate other forms
+  const m = String(s).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) {
+    const yy = +m[1], mm = +m[2], dd = +m[3];
+    if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) return `${dd} ${MONTHS[mm - 1]} ${yy}`; // date month year
+  }
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  return s;
+}
 function setMinDate() {
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('f-date').setAttribute('min', today);
