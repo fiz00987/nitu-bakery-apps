@@ -2182,6 +2182,58 @@ select:focus {
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
+
+<script>
+/* =============================================================
+   PUSH NOTIFICATIONS (Firebase Cloud Messaging / Web Push)
+   -------------------------------------------------------------
+   THIS REPLACES the old "Notification-only" system and makes the
+   bell work on BOTH Android (any browser) and iPhone/iPad.
+
+   iOS IMPORTANT: Apple only allows notifications for installed
+   PWAs over HTTPS. For iPhone the admin must:
+     1) Open this app in Safari
+     2) Tap Share (square icon) -> "Add to Home Screen"
+     3) Open the app FROM the home screen icon
+   Only then will the bell be able to ring on iPhone. Normal
+   Safari tabs cannot ring on iOS (Apple restriction).
+
+   To finish enabling push you MUST put your VAPID key below
+   (Firebase Console -> Project Settings -> Cloud Messaging ->
+    Web Push certificates -> copy the "Key pair"). It looks like
+   "BAA...ABCDEF...-....".
+============================================================= */
+var FCM_VAPID_KEY = "REPLACE_WITH_YOUR_VAPID_KEY";
+var FCM_APP_NAME  = "nitusbakingplanv2";
+var FCM_INIT_DONE = false;
+var FCM_SW_REGISTERED = false;
+
+function registerServiceWorkers() {
+  if (!('serviceWorker' in navigator)) return;
+  if (FCM_SW_REGISTERED) return Promise.resolve();
+  FCM_SW_REGISTERED = true;
+  // Single service worker: firebase-messaging-sw.js handles BOTH Firebase
+  // Cloud Messaging and offline app-shell caching (see that file). Registering
+  // it at the app root gives it scope over the whole app.
+  try {
+    return navigator.serviceWorker.register('./firebase-messaging-sw.js').then(function (reg) {
+      FCM_SW_REGISTERED = true;
+      reg.update().catch(function () {});
+      return reg;
+    }).catch(function () {
+      FCM_SW_REGISTERED = false;
+      return null;
+    });
+  } catch (e) { return Promise.resolve(null); }
+}
+
+function isIosDevice() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform && /Mac/.test(navigator.platform) &&
+     navigator.maxTouchPoints > 1);
+}
+</script>
 
 <script>
 /* =============================================================
@@ -3762,150 +3814,201 @@ window.App = (() => {
 })();
 </script>
 
-<!-- Notification System (isolated - cannot break main app) -->
+<!-- PUSH NOTIFICATION SYSTEM (Firebase Cloud Messaging / Web Push) -->
 <script>
 (function() {
-  'use strict';
+  "use strict";
   if (!window.firebase) return;
 
   var db = firebase.database();
-  var notifReady = false;
+  var notifRef = db.ref("orders");
+  var tokRef   = db.ref("pushTokens");
   var notifEnabled = false;
+  var fcmToken = null;
 
-  // ─── Auto-request notification permission on load ──────────────
-  function ensureNotifications() {
-    if (!('Notification' in window)) return;
-    if (Notification.permission === 'granted') {
-      notifEnabled = true;
+  // ISO-safe localStorage wrapper (private mode safe)
+  function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+  function lsSet(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+
+  // ─── Feature support ──────────────────────────────────────────
+  function supportsNotification(){ return ("Notification" in window); }
+  var isIos = isIosDevice && isIosDevice();
+
+  // Self-contained toast (does not depend on the main App scope)
+  function showNotifToast(msg) {
+    try {
+      var el = document.getElementById("toast");
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(showNotifToast._t);
+      showNotifToast._t = setTimeout(function(){ el.classList.remove("show"); }, 3500);
+    } catch(e){}
+  }
+
+  // ─── Registration + FCM token (Web Push) ─────────────────────
+  function subscribePush() {
+    if (FCM_VAPID_KEY && FCM_VAPID_KEY.indexOf("REPLACE") === 0) {
+      // VAPID not set yet: fall back to the standard Notification API (Android).
       updateBellUI();
       return;
     }
-    if (Notification.permission === 'denied') {
-      notifEnabled = false;
-      updateBellUI();
-      return;
-    }
-    // Permission not yet decided — request it
-    Notification.requestPermission().then(function(perm) {
-      notifEnabled = (perm === 'granted');
-      updateBellUI();
-      if (perm === 'granted') {
-        new Notification('🎂 নিতুর বেকারি', { body: 'নোটিফিকেশন চালু হয়েছে! প্রতিদিন রিমাইন্ড পাবেন।', tag: 'nitu-welcome' });
-      }
+    if (!window.firebase.messaging) { updateBellUI(); return; }
+    registerServiceWorkers().then(function(reg) {
+      if (!reg) { updateBellUI(); return; }
+      var messaging = firebase.messaging();
+      try {
+        messaging.getToken({ vapidKey: FCM_VAPID_KEY }).then(function(token) {
+          if (!token) { updateBellUI(); return; }
+          fcmToken = token;
+          lsSet("nitu-fcm-token", token);
+          // Persist this device token so a future sender can target it.
+          var devKey = (navigator.userAgent || "").slice(0, 40).replace(/[^\w]+/g, "-") + "-" + lsGet("nitu-uid");
+          tokRef.child(devKey).set({ token: token, ts: Date.now(), ua: (navigator.userAgent||"").slice(0,80) });
+          notifEnabled = true;
+        }).catch(function(){ updateBellUI(); });
+      } catch(e){ updateBellUI(); }
     });
   }
 
+  // ─── Foreground message handler (app is open) ────────────────
+  function wireOnMessage() {
+    if (!window.firebase.messaging) return;
+    try {
+      firebase.messaging().onMessage(function(payload) {
+        var d = (payload && payload.data) || {};
+        var n = (payload && payload.notification) || {};
+        var title = n.title || d.title || "🎂 নিতুর বেকারি";
+        var body  = n.body  || d.body  || "নতুন বিজ্ঞপ্তি";
+        if (supportsNotification() && Notification.permission === "granted") {
+          try { new Notification(title, { body: body, icon: "./logo.png", tag: "nitu-" + Date.now() }); } catch(e){}
+        } else {
+          showNotifToast(title + " — " + body);
+        }
+      });
+    } catch(e){}
+  }
+
+  // ─── Bell UI + button (cross-platform) ───────────────────────
   function updateBellUI() {
-    var bell = document.getElementById('notif-bell');
+    var bell = document.getElementById("notif-bell");
     if (!bell) return;
-    // Bell always shows active — notifications are always on
-    bell.classList.add('active');
-    bell.classList.remove('denied');
-    if (!('Notification' in window)) { bell.style.opacity = '0.5'; return; }
-    if (Notification.permission === 'denied') {
-      bell.style.opacity = '0.6';
+    bell.classList.add("active");
+    bell.classList.remove("denied");
+    // On iOS Safari (non-installed / no SW push) dim the bell and explain.
+    if (isIos && !navigator.standalone && !("onappleinstallprompt" in window)) {
+      bell.style.opacity = "0.6";
+    } else {
+      bell.style.opacity = "1";
     }
   }
 
-  // Bell button always shows info, never toggles off
+  // ─── Bell button handler ─────────────────────────────────────
   window.App.toggleNotifications = function() {
-    if (!('Notification' in window)) {
-      alert('এই ব্রাউজারে নোটিফিকেশন সাপোর্ট নেই');
+    var iosInstallTip = "\n\niPhone-এ নোটিফিকেশন পেতে:\n1. Safari-তে এই অ্যাপ খুলুন\n2. শেয়ার (Share) বাটনে চাপুন\n3. \"হোম স্ক্রিনে যোগ করুন\" (Add to Home Screen)\n4. হোম স্ক্রিন আইকন থেকে অ্যাপ খুলুন";
+
+    if (isIos && !navigator.standalone) {
+      alert("🔔 iPhone-এ নোটিফিকেশন পেতে অ্যাপ হিসেবে ইনস্টল করুন" + iosInstallTip);
       return;
     }
-    if (Notification.permission === 'granted') {
-      alert('✅ নোটিফিকেশন চালু আছে!\n\nআপনি প্রতিদিন কমপক্ষে ২ বার রিমাইন্ড পাবেন।');
+
+    if (!supportsNotification()) {
+      // iOS installed PWA uses registration.showNotification via the push worker,
+      // so fall back to request permission + subscribe.
+      subscribePush();
       return;
     }
-    if (Notification.permission === 'denied') {
-      alert('⚠️ নোটিফিকেশন ব্লক করা আছে।\nব্রাউজার সেটিংস থেকে nitusbakingplanv2 এর জন্য নোটিফিকেশন অনুমতি দিন।');
+
+    if (Notification.permission === "denied") {
+      alert("⚠️ নোটিফিকেশন ব্লক করা আছে।\nব্রাউজার সেটিংস থেকে নোটিফিকেশন অনুমতি দিন।");
       return;
     }
+
+    if (Notification.permission === "granted") {
+      subscribePush();
+      alert("✅ নোটিফিকেশন চালু আছে! নতুন অর্ডার ও প্রতিদিন ২ বার রিমাইন্ড পাবেন।");
+      return;
+    }
+
     Notification.requestPermission().then(function(perm) {
-      notifEnabled = (perm === 'granted');
+      notifEnabled = (perm === "granted");
       updateBellUI();
-      if (perm === 'granted') {
-        alert('🔔 নোটিফিকেশন চালু হয়েছে!');
-        new Notification('🎂 নিতুর বেকারি', { body: 'নোটিফিকেশন সফলভাবে চালু হয়েছে!', tag: 'nitu-test' });
+      if (perm === "granted") {
+        subscribePush();
+        try { new Notification("🎂 নিতুর বেকারি", { body: "নোটিফিকেশন সফলভাবে চালু হয়েছে!", tag: "nitu-test" }); } catch(e){}
       }
     });
   };
 
-  // ─── Order notifications ───────────────────────────────────────
-  var notifRef = db.ref('orders');
-
-  // Same fallback as weightText() in main App (this IIFE is isolated)
+  // ─── Order notifications ─────────────────────────────────────
   function wt(o) {
-    var w = (o && (o.weight || '')).toString().trim();
-    if (!w || w.toLowerCase() === 'custom') w = (o && (o.weightLabel || '')).toString().trim();
-    return w || '';
+    var w = (o && (o.weight || "")).toString().trim();
+    if (!w || w.toLowerCase() === "custom") w = (o && (o.weightLabel || "")).toString().trim();
+    return w || "";
   }
 
   function sendNotification(orderData) {
-    if (!notifEnabled || Notification.permission !== 'granted') return;
-    var name = orderData.name || 'Unknown';
-    var source = orderData.source === 'tally' ? ' (Tally)' : '';
-    var body = [wt(orderData), orderData.flavour, orderData.total ? '৳' + Math.round(orderData.total) : ''].filter(Boolean).join(' · ');
-    try {
-      var n = new Notification('🎂 নতুন অর্ডার' + source + ': ' + name, { body: body || 'নতুন অর্ডার!', tag: 'nitu-' + Date.now(), requireInteraction: true });
-      n.onclick = function() { window.focus(); n.close(); };
-    } catch(e) {}
-    var bell = document.getElementById('notif-bell');
-    if (bell) { bell.classList.remove('ringing'); bell.offsetWidth; bell.classList.add('ringing'); setTimeout(function(){ bell.classList.remove('ringing'); }, 700); }
+    var supported = supportsNotification();
+    var granted = supported && Notification.permission === "granted";
+    var name = orderData.name || "Unknown";
+    var source = orderData.source === "tally" ? " (Tally)" : "";
+    var body = [wt(orderData), orderData.flavour, orderData.total ? "৳" + Math.round(orderData.total) : ""].filter(Boolean).join(" · ");
+    if (granted) {
+      try {
+        var n = new Notification("🎂 নতুন অর্ডার" + source + ": " + name, { body: body || "নতুন অর্ডার!", tag: "nitu-" + Date.now(), requireInteraction: true });
+        n.onclick = function(){ window.focus(); n.close(); };
+      } catch(e){}
+    }
+    showNotifToast("🎂 নতুন অর্ডার: " + name + " — " + (body||""));
+    var bell = document.getElementById("notif-bell");
+    if (bell) { bell.classList.remove("ringing"); bell.offsetWidth; bell.classList.add("ringing"); setTimeout(function(){ bell.classList.remove("ringing"); }, 700); }
   }
 
-  // Wait for initial data load, then listen for NEW orders only
-  notifRef.once('value').then(function(snap) {
-    var knownKeys = {};
+  // ─── Listen for NEW orders only ──────────────────────────────
+  notifRef.once("value").then(function(snap) {
+    var known = {};
     var data = snap.val();
-    if (data) { Object.keys(data).forEach(function(k) { knownKeys[k] = true; }); }
-    notifReady = true;
-    notifRef.on('child_added', function(childSnap) {
-      if (knownKeys[childSnap.key]) { delete knownKeys[childSnap.key]; return; }
-      var o = childSnap.val();
+    if (data) Object.keys(data).forEach(function(k){ known[k]=true; });
+    notifRef.on("child_added", function(cs) {
+      if (known[cs.key]) { delete known[cs.key]; return; }
+      var o = cs.val();
       if (o) sendNotification(o);
     });
   });
 
-  // ─── Scheduled daily reminders (2x/day) ────────────────────────
-  var REMINDER_HOURS = [9, 18]; // 9 AM and 6 PM
-  var REMINDER_MESSAGES = [
-    { title: '🎂 নিতুর বেকারি — দৈনিক রিমাইন্ডার', body: 'আজকের অর্ডার চেক করুন এবং পেমেন্ট হিসাব মিলিয়ে নিন!' },
-    { title: '🧁 নিতুর বেকারি — সন্ধ্যার রিমাইন্ডার', body: 'আজকের ডেলিভারি শেষ হয়েছে কি? পেন্ডিং অর্ডার দেখুন!' }
+  // ─── Scheduled daily reminders (2x/day, foreground only) ─────
+  var REMINDER_HOURS = [9, 18];
+  var REMINDER_MSGS = [
+    { t: "🎂 নিতুর বেকারি — দৈনিক রিমাইন্ডার", b: "আজকের অর্ডার চেক করুন এবং পেমেন্ট হিসাব মিলিয়ে নিন!" },
+    { t: "🧁 নিতুর বেকারি — সন্ধ্যার রিমাইন্ডার", b: "আজকের ডেলিভারি শেষ হয়েছে কি? পেন্ডিং অর্ডার দেখুন!" }
   ];
-
-  function checkScheduledReminders() {
-    if (!notifEnabled || Notification.permission !== 'granted') return;
+  function checkReminders() {
+    var supported = supportsNotification();
+    var granted = supported && Notification.permission === "granted";
+    if (!granted) return;
     var now = new Date();
-    var currentHour = now.getHours();
-    var currentMinute = now.getMinutes();
-    var todayKey = now.toISOString().slice(0, 10); // YYYY-MM-DD
-
-    for (var i = 0; i < REMINDER_HOURS.length; i++) {
-      var reminderKey = 'nitu-reminder-' + todayKey + '-' + REMINDER_HOURS[i];
-      var lastSent = localStorage.getItem(reminderKey);
-      if (lastSent) continue;
-
-      if (currentHour === REMINDER_HOURS[i] && currentMinute < 15) {
+    var h = now.getHours(), m = now.getMinutes();
+    var today = now.toISOString().slice(0,10);
+    for (var i=0;i<REMINDER_HOURS.length;i++){
+      var key = "nitu-reminder-"+today+"-"+REMINDER_HOURS[i];
+      if (lsGet(key)) continue;
+      if (h === REMINDER_HOURS[i] && m < 15) {
         try {
-          var msg = REMINDER_MESSAGES[i] || REMINDER_MESSAGES[0];
-          new Notification(msg.title, { body: msg.body, tag: reminderKey, requireInteraction: false });
-          localStorage.setItem(reminderKey, Date.now().toString());
-          var bell = document.getElementById('notif-bell');
-          if (bell) { bell.classList.remove('ringing'); bell.offsetWidth; bell.classList.add('ringing'); setTimeout(function(){ bell.classList.remove('ringing'); }, 700); }
-        } catch(e) {}
+          new Notification(REMINDER_MSGS[i].t, { body: REMINDER_MSGS[i].b, tag: key });
+          lsSet(key, Date.now().toString());
+        } catch(e){}
       }
     }
   }
-
-  // Check every minute for scheduled reminders
-  setInterval(checkScheduledReminders, 60000);
-  // Also check immediately on load
-  setTimeout(function() {
-    ensureNotifications();
-    checkScheduledReminders();
-  }, 200);
+  setTimeout(function(){
+    registerServiceWorkers().then(function(){
+      wireOnMessage();
+      subscribePush();
+    });
+    updateBellUI();
+    checkReminders();
+  }, 400);
+  setInterval(checkReminders, 60000);
 })();
-</script>
-</body>
+</script></body>
 </html>
