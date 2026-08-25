@@ -2400,6 +2400,7 @@ window.App = (() => {
     if (o.timeSlotLabel && !o.time) o.time = o.timeSlotLabel;
     if (o.weightLabel && (!o.weight || String(o.weight).toLowerCase() === 'custom')) o.weight = o.weightLabel;
     if (o.flavourName && !o.flavour) o.flavour = o.flavourName;
+    if (o.cakeWriting && !o.writing) o.writing = o.cakeWriting;
     if (o.cakePrice != null && !o.total) o.total = Number(o.cakePrice);
     if (o.deliveryCharge != null && o.deliveryAmount == null) o.deliveryAmount = Number(o.deliveryCharge);
     if (o.fulfilment === 'pickup' && o.deliveryPaid == null) o.deliveryPaid = 'na';

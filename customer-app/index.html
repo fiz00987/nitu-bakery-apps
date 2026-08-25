@@ -219,6 +219,11 @@ button{cursor:pointer}
       <div class="note-box">সব ফ্লেভার সব সময় পাওয়া নাও যেতে পারে। কিছু ফ্লেভারের জন্য নির্দিষ্ট ওজন প্রয়োজন। বিস্তারিত জানতে আমাদের Facebook পেজে যোগাযোগ করুন।</div>
     </div>
     <div class="field">
+      <label data-bn="কেকে কী লিখতে চান? (ঐচ্ছিক)" data-en="Cake writing text (Optional)">কেকে কী লিখতে চান? (ঐচ্ছিক)</label>
+      <textarea id="f-writing" maxlength="120" placeholder="যেমন: তোমার হাসিই আমাদের ঘরের আলো" onfocus="showCakeWritingNotice()" onclick="showCakeWritingNotice()"></textarea>
+      <div class="hint-box">জন্মদিন/বার্ষিকী/Happy ধরনের লেখা নেওয়া হয় না। সুন্দর নোট, কোট বা স্মরণীয় কথা লিখতে পারেন।</div>
+    </div>
+    <div class="field">
       <label data-bn="রেফারেন্স ছবি (ঐচ্ছিক)" data-en="Reference Photo (Optional)">রেফারেন্স ছবি (ঐচ্ছিক)</label>
       <div class="photo-upload" onclick="document.getElementById('f-photo').click()">📎<div>ছবি আপলোড করুন</div></div>
       <input type="file" id="f-photo" accept="image/*" multiple style="display:none" onchange="handlePhoto(event)">
@@ -410,6 +415,7 @@ let pendingPhone = '';
 let currentOrderId = '';
 let previousOrderHistory = [];
 let previousOrderCursor = 0;
+let cakeWritingNoticeShown = false;
 let downloadPressed = false;
 let autoCloseTimer = null;
 let autoCloseTick = null;
@@ -448,6 +454,7 @@ function setLang(l) {
     '#f-flavour': 'Flavour *', '#f-address': 'Delivery Address *', '#f-date': 'Delivery Date *',
     '#f-timeslot': 'Delivery Time *', '#f-receiver': 'Receiver Name *', '#f-receiver-phone': 'Receiver Phone *',
     '#f-fulfilment': 'Fulfilment *', '#f-surprise': 'Surprise Cake?', '#f-payment-method': 'Payment Method *', '#f-advance': 'Advance Payment *',
+    '#f-writing': 'Cake writing text (Optional)',
     '#f-trx': 'Transaction ID / Last 3 Digits of Payment Number *', '#f-notes': 'Additional Info (Optional)'
   } : {};
   Object.entries(labels).forEach(([selector, text]) => {
@@ -458,6 +465,7 @@ function setLang(l) {
     document.getElementById('f-cake-price').placeholder = 'Enter cake price';
     document.getElementById('f-weight').placeholder = 'Example: 2 pound, 2.5 pound, 1 KG';
     document.getElementById('f-timeslot').placeholder = 'Example: 3.00 PM';
+    document.getElementById('f-writing').placeholder = 'Example: Your smile is our home\'s light';
     document.querySelector('#f-flavour option[value=""]').textContent = 'Select flavour';
     document.querySelector('#f-payment-method option[value=""]').textContent = 'Select payment method';
     document.querySelector('#f-fulfilment option[value="delivery"]').textContent = 'Delivery';
@@ -470,6 +478,7 @@ function setLang(l) {
     document.getElementById('f-cake-price').placeholder = 'কেকের মূল্য লিখুন';
     document.getElementById('f-weight').placeholder = 'যেমন: 2 pound, 2.5 pound, 1 KG';
     document.getElementById('f-timeslot').placeholder = 'যেমন: 3.00 PM';
+    document.getElementById('f-writing').placeholder = 'যেমন: তোমার হাসিই আমাদের ঘরের আলো';
     FLAVOURS.forEach(f => { const option = document.querySelector(`#f-flavour option[value="${f.value}"]`); if (option) option.textContent = f.label; });
     PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.name; });
   }
@@ -599,6 +608,7 @@ function renderPreviousOrder() {
   const paid = Number(order.advanceTotal != null ? order.advanceTotal : (order.advance != null ? order.advance : order.paid)) || 0;
   const due = Number(order.dueAmount != null ? order.dueAmount : Math.max(0, total - paid)) || 0;
   const cake = [order.weightLabel || order.weight, order.flavourName || order.flavour].filter(Boolean).join(' · ') || '—';
+  const writing = order.writing || order.cakeWriting || '';
   const deliveryDate = fmtDate(order.deliveryDate || order.date || '') || 'তারিখ নির্ধারিত হয়নি';
   const deliveryTime = order.timeSlotLabel || order.time || '';
   const address = order.deliveryAddress || order.address || '—';
@@ -608,6 +618,7 @@ function renderPreviousOrder() {
       <div class="order-history-date">📅 ${esc(deliveryDate)}${deliveryTime ? ` · ${esc(deliveryTime)}` : ''}</div>
       <div class="order-history-row"><span>${lang === 'en' ? 'Order ID' : 'অর্ডার নম্বর'}</span><span>${esc(order.orderId || '—')}</span></div>
       <div class="order-history-row"><span>${lang === 'en' ? 'Cake' : 'কেক'}</span><span>${esc(cake)}</span></div>
+      ${writing ? `<div class="order-history-row"><span>${lang === 'en' ? 'Cake writing' : 'কেকের লেখা'}</span><span>${esc(writing)}</span></div>` : ''}
       <div class="order-history-row"><span>${lang === 'en' ? 'Address' : 'ঠিকানা'}</span><span>${esc(address)}</span></div>
       <div class="order-history-row"><span>${lang === 'en' ? 'Total' : 'মোট'}</span><span>৳${Math.round(total)}</span></div>
       <div class="order-history-row"><span>${lang === 'en' ? 'Paid' : 'প্রদান'}</span><span>৳${Math.round(paid)}</span></div>
@@ -772,12 +783,47 @@ function showFlavourPopup() {
   if (document.getElementById('f-flavour').value) showTextPopup('flavours.txt', 'ফ্লেভার নির্দেশিকা');
 }
 
+function showCakeWritingNotice() {
+  if (cakeWritingNoticeShown) return;
+  cakeWritingNoticeShown = true;
+  document.getElementById('popup-title').textContent = lang === 'en' ? 'Cake Writing Policy' : 'কেকের লেখার নীতিমালা';
+  popupText = lang === 'en'
+    ? 'From our religious perspective, we do not write birthday, anniversary, or any “Happy ...” message on cakes.\n\nYou may write cute notes, meaningful quotes, names, duas, or memorable words said by the customer. Please keep the text respectful and short so it fits neatly on the cake.'
+    : 'আমাদের ধর্মীয় দৃষ্টিকোণ থেকে কেকে জন্মদিন, বার্ষিকী বা “Happy ...” ধরনের কোনো লেখা লেখা হয় না।\n\nআপনি চাইলে সুন্দর নোট, অর্থপূর্ণ কোট, নাম, দোয়া বা কাস্টমারের বলা কোনো স্মরণীয় কথা লিখতে পারেন। লেখাটি সম্মানজনক ও সংক্ষিপ্ত রাখুন, যাতে কেকের ওপর সুন্দরভাবে বসানো যায়।';
+  document.getElementById('popup-content').textContent = popupText;
+  document.getElementById('text-popup').classList.add('show');
+}
+
 function closeTextPopup(event) {
   if (!event || event.target === document.getElementById('text-popup')) document.getElementById('text-popup').classList.remove('show');
 }
 
 function copyPopupText() {
   navigator.clipboard.writeText(popupText).then(() => showToast('তথ্য কপি হয়েছে'));
+}
+
+function getCakeWritingError(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return '';
+  const normalized = raw.toLowerCase().replace(/[.,!?;:()\[\]{}'"“”‘’_-]+/g, ' ').replace(/\s+/g, ' ');
+  const blocked = [
+    /\bhappy\b/,
+    /\bbirthday\b/,
+    /\banniversary\b/,
+    /\banyversery\b/,
+    /\baniversery\b/,
+    /জন্মদিন/,
+    /বার্ষিকী/,
+    /বিবাহবার্ষিকী/,
+    /এনিভার্সারি/,
+    /হ্যাপি/,
+    /শুভ\s*জন্মদিন/
+  ];
+  return blocked.some(pattern => pattern.test(normalized))
+    ? (lang === 'en'
+      ? 'Please remove birthday, anniversary, or “Happy ...” wording from the cake writing text.'
+      : 'কেকের লেখায় জন্মদিন, বার্ষিকী বা “Happy ...” ধরনের শব্দ রাখা যাবে না। অনুগ্রহ করে লেখাটি পরিবর্তন করুন।')
+    : '';
 }
 
 function setAdvanceType(type) {
@@ -917,6 +963,8 @@ function validate() {
     showToast('সঠিক রিসিভার ফোন দিন'); return false;
   }
   if (!getSelectedTime()) { showToast('ডেলিভারির সময় দিন'); return false; }
+  const writingError = getCakeWritingError(document.getElementById('f-writing').value);
+  if (writingError) { showToast(writingError); document.getElementById('f-writing').focus(); return false; }
   if (isSurprise) {
     const adv = parseFloat(document.getElementById('f-advance').value) || 0;
     const total = getOrderTotal();
@@ -967,6 +1015,8 @@ function submitOrder() {
     photo: currentPhotos[0] || '',
     photos: currentPhotos,
     photoNote: document.getElementById('f-photo-note').value.trim(),
+    writing: document.getElementById('f-writing').value.trim(),
+    cakeWriting: document.getElementById('f-writing').value.trim(),
     address: document.getElementById('f-address').value.trim(),
     deliveryAddress: document.getElementById('f-address').value.trim(),
     date: document.getElementById('f-date').value,
@@ -1023,6 +1073,7 @@ function showSuccess(order) {
     <div class="row"><span>নাম</span><span>${esc(order.customerName)}</span></div>
     <div class="row"><span>ফোন</span><span>${esc(order.customerPhone)}</span></div>
     <div class="row"><span>কেক</span><span>${esc(order.weightLabel)} — ${esc(order.flavourName)}</span></div>
+    ${order.writing ? `<div class="row"><span>কেকের লেখা</span><span>${esc(order.writing)}</span></div>` : ''}
     <div class="row"><span>তারিখ</span><span>${esc(fmtDate(order.deliveryDate))} · ${esc(order.timeSlotLabel)}</span></div>
     <div class="row"><span>ঠিকানা</span><span>${esc(order.deliveryAddress)}</span></div>
     <div class="row"><span>মোট (আনুমানিক)</span><span>৳${Math.round(order.total)}</span></div>
@@ -1180,7 +1231,7 @@ function resetForm() {
   document.getElementById('entry-security').value = '';
   document.querySelectorAll('#form-screen input:not(#entry-phone), #form-screen textarea').forEach(el => el.value = '');
   document.querySelectorAll('#form-screen select').forEach(el => el.selectedIndex = 0);
-  currentPhotos = []; renderPhotos(); advanceType = ''; isSurprise = false;
+  currentPhotos = []; renderPhotos(); advanceType = ''; isSurprise = false; cakeWritingNoticeShown = false;
   document.getElementById('calc-box').classList.remove('show');
   document.getElementById('surprise-note').classList.remove('show');
   document.getElementById('payment-info').classList.remove('show');
