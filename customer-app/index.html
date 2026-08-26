@@ -49,6 +49,9 @@ button{cursor:pointer}
 .req{color:var(--red)}
 .field input,.field select,.field textarea{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;background:var(--surface2);color:var(--text);transition:border-color .14s,box-shadow .14s}
 .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-glow)}
+/* Hide native number-input spinner arrows (delivery charge etc.) */
+#f-delivery-charge::-webkit-outer-spin-button,#f-delivery-charge::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+#f-delivery-charge{-moz-appearance:textfield;appearance:textfield}
 .field textarea{min-height:60px;resize:vertical}
 .btn-primary{width:100%;padding:14px;background:linear-gradient(135deg,var(--pink-dark),var(--pink-mid));border:none;border-radius:var(--radius-sm);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px}
 .btn-primary:active{transform:scale(0.98)}
