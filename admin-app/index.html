@@ -425,58 +425,6 @@ button { cursor: pointer; }
 .filter-select:focus { outline: none; border-color: var(--pink); }
 
 /* =============================================
-   SUMMARY CARDS
-   ============================================= */
-.summary {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-
-.sum-card {
-  padding: 12px 8px 10px;
-  text-align: center;
-  cursor: pointer;
-  border-right: 1px solid var(--border);
-  transition: background var(--dur-fast);
-  position: relative;
-  overflow: hidden;
-}
-.sum-card:last-child { border-right: none; }
-.sum-card:nth-child(3n) { border-right: none; }
-.sum-card:nth-child(-n+3) { border-bottom: 1px solid var(--border); }
-.sum-card:active { background: var(--surface2); }
-.sum-card::after {
-  content: '';
-  position: absolute;
-  bottom: 0; left: 50%;
-  transform: translateX(-50%) scaleX(0);
-  width: 32px; height: 2.5px;
-  background: var(--pink);
-  border-radius: 2px;
-  transition: transform var(--dur-base) var(--ease-smooth);
-}
-.sum-card.active::after { transform: translateX(-50%) scaleX(1); }
-
-.sum-num {
-  font-size: 23px;
-  font-weight: 800;
-  color: var(--pink);
-  line-height: 1;
-  letter-spacing: -0.5px;
-}
-.sum-lbl {
-  font-size: 10px;
-  color: var(--text3);
-  margin-top: 3px;
-  line-height: 1.3;
-  font-weight: 500;
-}
-.sum-num.delayed { color: var(--red, #e53935); }
-
-/* =============================================
    MINI CALENDAR
    ============================================= */
 .minical-wrap {
@@ -1184,6 +1132,15 @@ button { cursor: pointer; }
 .rev-num.red   { color: var(--red); }
 .rev-num.blue  { color: var(--blue); }
 .rev-lbl { font-size: 10.5px; color: var(--text3); margin-top: 3px; font-weight: 500; }
+.rev-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.earn-note {
+  font-size: 10.5px;
+  color: var(--text3);
+  text-align: center;
+  line-height: 1.55;
+  padding: 0 10px;
+  margin-bottom: 8px;
+}
 
 /* Mini chart */
 .mini-chart-wrap {
@@ -1885,34 +1842,6 @@ select:focus {
   </div>
 </div>
 
-<!-- SUMMARY -->
-<div class="summary" role="region" aria-label="সারসংক্ষেপ">
-  <div class="sum-card" id="sum-today" onclick="App.switchTab('plan')" role="button" tabindex="0">
-    <div class="sum-num" id="s-today">0</div>
-    <div class="sum-lbl" data-i18n="sumToday">আজ ডেলিভারি</div>
-  </div>
-  <div class="sum-card" id="sum-bake" onclick="App.switchTab('plan')" role="button" tabindex="0">
-    <div class="sum-num" id="s-bake">0</div>
-    <div class="sum-lbl" data-i18n="sumBake">আজ রাতে বেক</div>
-  </div>
-  <div class="sum-card" id="sum-week" onclick="App.switchTab('revenue')" role="button" tabindex="0">
-    <div class="sum-num" id="s-week">0</div>
-    <div class="sum-lbl" data-i18n="sumWeek">এই সপ্তাহে</div>
-  </div>
-  <div class="sum-card" id="sum-pending" onclick="App.switchTab('plan')" role="button" tabindex="0">
-    <div class="sum-num" id="s-pending">0</div>
-    <div class="sum-lbl" data-i18n="sumPending">পেন্ডিং</div>
-  </div>
-  <div class="sum-card" id="sum-done" onclick="App.switchTab('done')" role="button" tabindex="0">
-    <div class="sum-num" id="s-done">0</div>
-    <div class="sum-lbl" data-i18n="sumDone">সম্পন্ন</div>
-  </div>
-  <div class="sum-card" id="sum-delayed" onclick="App.switchTab('plan')" role="button" tabindex="0">
-    <div class="sum-num delayed" id="s-delayed">0</div>
-    <div class="sum-lbl" data-i18n="sumDelayed">দেরি</div>
-  </div>
-</div>
-
 <!-- ORDER CALENDAR POPUP -->
 <div class="cal-popup-overlay" id="cal-popup-overlay" onclick="App.closeCalendarBg(event)">
   <div class="cal-popup" role="dialog" aria-modal="true" aria-label="অর্ডার ক্যালেন্ডার">
@@ -2329,6 +2258,10 @@ window.App = (() => {
       st_delivered: 'ডেলিভার্ড', st_cancelled: 'বাতিল',
       sumToday: 'আজ ডেলিভারি', sumBake: 'আজ রাতে বেক', sumWeek: 'এই সপ্তাহে',
       sumPending: 'পেন্ডিং', sumDone: 'সম্পন্ন', sumDelayed: 'দেরি',
+      monthPlanned: 'এই মাসে অর্ডার', monthCompleted: 'এই মাসে সম্পন্ন',
+      monthEarn: 'আয় (মোট বিক্রি)',
+      monthEarnNote: '💡 ডেলিভারি চার্জ ও bKash চার্জ বাদে কেকের মোট বিক্রি। ডেলিভারি চার্জ পুরোটা ডেলিভারি এজেন্ট পান।',
+      chartMonthlyOrders: '📊 মাসিক অর্ডার — শেষ ৫ মাস',
       tabPlan: 'প্ল্যান', tabAll: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'আয়',
       sort_date: 'তারিখ', sort_name: 'নাম', sort_due: 'বকেয়া',
       secPayment: '💳 পেমেন্ট', fTotal: 'মোট মূল্য (৳)', fPaid: 'পরিশোধিত (৳)',
@@ -2351,6 +2284,10 @@ window.App = (() => {
       st_delivered: 'Delivered', st_cancelled: 'Cancelled',
       sumToday: 'Today\'s Delivery', sumBake: 'Bake Tonight', sumWeek: 'This Week',
       sumPending: 'Pending', sumDone: 'Done', sumDelayed: 'Delayed',
+      monthPlanned: 'Orders This Month', monthCompleted: 'Completed This Month',
+      monthEarn: 'Earn (Total Sale)',
+      monthEarnNote: '💡 Total cake sale excluding delivery & bKash charges. The delivery fee goes fully to the delivery agent.',
+      chartMonthlyOrders: '📊 Orders per Month — Last 5',
       tabPlan: 'Plan', tabAll: 'Orders', tabDone: 'Done', tabRev: 'Revenue',
       sort_date: 'Date', sort_name: 'Name', sort_due: 'Due',
       secPayment: '💳 Payment', fTotal: 'Total Price (৳)', fPaid: 'Paid (৳)',
@@ -2892,7 +2829,19 @@ window.App = (() => {
     document.getElementById('tc-done').textContent = pool.length;
   };
 
-  // ─── Revenue mini chart ──────────────────────────────────────
+  // ─── Earn concept ────────────────────────────────────────────
+  // Supplies are bought in bulk, so per-cake cost/profit cannot be
+  // measured reliably. "Earn" is therefore simply the total cake
+  // sale value EXCLUDING the delivery charge (goes fully to the
+  // delivery agent) and the bKash charge (payment fee).
+  const earnOf = o => Math.max(
+    0,
+    (Number(o.total) || 0) -
+    (Number(o.deliveryAmount) || 0) -
+    bkashCharge(o)
+  );
+
+  // ─── Monthly mini chart: orders taken per month ──────────────
   const buildMonthlyChart = () => {
     const now     = new Date();
     const months  = ['জানু','ফেব্রু','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টে','অক্টো','নভে','ডিসে'];
@@ -2902,125 +2851,70 @@ window.App = (() => {
     for (let i = 4; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
-      data[key] = { label: months[d.getMonth()], rev: 0 };
+      data[key] = { label: months[d.getMonth()], n: 0 };
     }
 
     orders.forEach(o => {
       if (o.status === 'cancelled' || !o.date) return;
       const d   = toDate(o.date);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
-      if (data[key]) data[key].rev += effectivePaid(o);
+      if (data[key]) data[key].n++;
     });
 
     const vals = Object.values(data);
-    const max  = Math.max(...vals.map(v => v.rev), 1);
+    const max  = Math.max(...vals.map(v => v.n), 1);
 
     const bars = vals.map(v => {
-      const pct = Math.max(4, Math.round((v.rev / max) * 100));
+      const pct = Math.max(4, Math.round((v.n / max) * 100));
       return `<div class="chart-bar-col">
-        <div class="chart-bar-val">${v.rev > 0 ? '৳' + Math.round(v.rev / 1000) + 'k' : ''}</div>
+        <div class="chart-bar-val">${v.n > 0 ? v.n : ''}</div>
         <div class="chart-bar" style="height:${pct}%"></div>
         <div class="chart-bar-lbl">${v.label}</div>
       </div>`;
     }).join('');
 
     return `<div class="mini-chart-wrap">
-      <div class="mini-chart-title">📈 মাসিক আয় (পরিশোধিত)</div>
+      <div class="mini-chart-title">${tr('chartMonthlyOrders')}</div>
       <div class="chart-bars">${bars}</div>
     </div>`;
   };
 
   const renderRevenue = () => {
-    const t       = today0();
-    const months  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const curMonth = months[t.getMonth()] + ' ' + t.getFullYear();
+    const t        = today0();
+    const y        = t.getFullYear();
+    const m        = t.getMonth();
+    const MONTHS   = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+    const curMonth = `${MONTHS[m]} ${y}`;
 
-    let totalRev = 0, totalCol = 0, totalDue = 0, totalDelDue = 0, monthRev = 0, monthCol = 0;
+    // Monthly basis: orders taken in the CURRENT month only.
+    let planned = 0, completed = 0, earn = 0;
 
     orders.forEach(o => {
-      if (o.status === 'cancelled') return;
-      totalRev += (o.total || 0);
-      totalCol += effectivePaid(o);
-      totalDue += dueAmt(o);
-      if (o.deliveryPaid === 'unpaid') totalDelDue += (o.deliveryAmount || 0);
-      const d = o.date ? toDate(o.date) : null;
-      if (d && d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth()) {
-        monthRev += (o.total || 0);
-        monthCol += effectivePaid(o);
-      }
+      if (!o.date || o.status === 'cancelled') return;
+      const d = toDate(o.date);
+      if (d.getFullYear() !== y || d.getMonth() !== m) return;
+      planned++;
+      if (o.status === 'delivered') completed++;
+      earn += earnOf(o);
     });
 
-    const dueList = orders
-      .filter(o => dueAmt(o) > 0 && o.status !== 'cancelled' && o.status !== 'delivered')
-      .sort((a, b) => dueAmt(b) - dueAmt(a));
+    let html = buildMonthlyChart();
 
-    let html = `
-      <div class="rev-header">📊 সামগ্রিক আয়ের বিবরণ</div>
-      <div class="rev-grid">
-        <div class="rev-card"><div class="rev-icon">💰</div><div class="rev-num">৳${fmtMoney(totalRev)}</div><div class="rev-lbl">মোট রাজস্ব</div></div>
-        <div class="rev-card"><div class="rev-icon">✅</div><div class="rev-num green">৳${fmtMoney(totalCol)}</div><div class="rev-lbl">সংগৃহীত</div></div>
-        <div class="rev-card"><div class="rev-icon">⏳</div><div class="rev-num red">৳${fmtMoney(totalDue)}</div><div class="rev-lbl">বকেয়া</div></div>
-        <div class="rev-card"><div class="rev-icon">📅</div><div class="rev-num blue">৳${fmtMoney(monthRev)}</div><div class="rev-lbl">${curMonth}</div></div>
-      </div>`;
-
-    if (totalDelDue > 0) {
-      html += `<div class="delivery-alert">🚚 অপরিশোধিত ডেলিভারি চার্জ: ৳${fmtMoney(totalDelDue)}</div>`;
-    }
-
-    html += buildMonthlyChart();
-    html += `<div class="rev-divider"></div>`;
-
-    if (dueList.length) {
-      html += `<div class="rev-header">⏳ বকেয়া পেমেন্ট তালিকা</div>`;
-      html += dueList.map(o => `
-        <div class="due-item">
-          <div>
-            <div class="due-name">${esc(o.name)}</div>
-            <div class="due-meta">${o.date ? fmtDate(o.date) : ''} · ${esc(o.phone || '')}</div>
-          </div>
-          <div class="due-amount">৳${fmtMoney(dueAmt(o))}</div>
-        </div>`).join('');
-    } else {
-      html += `<div class="empty" style="padding:28px 24px">
-        <div class="empty-icon">🎉</div>
-        <h3>সব পরিশোধিত!</h3>
-        <p>কোনো বকেয়া নেই।</p>
-      </div>`;
-    }
+    html += `
+      <div class="rev-header">${curMonth}</div>
+      <div class="rev-grid rev-grid-3">
+        <div class="rev-card"><div class="rev-icon">🧾</div><div class="rev-num">${fmtMoney(planned)}</div><div class="rev-lbl">${tr('monthPlanned')}</div></div>
+        <div class="rev-card"><div class="rev-icon">✅</div><div class="rev-num green">${fmtMoney(completed)}</div><div class="rev-lbl">${tr('monthCompleted')}</div></div>
+        <div class="rev-card"><div class="rev-icon">💰</div><div class="rev-num blue">৳${fmtMoney(earn)}</div><div class="rev-lbl">${tr('monthEarn')}</div></div>
+      </div>
+      <div class="earn-note">${tr('monthEarnNote')}</div>`;
 
     document.getElementById('view-revenue').innerHTML = html;
   };
 
-  // ─── Summary bar ─────────────────────────────────────────────
+  // ─── Title badge (summary board removed for a minimal UI) ────
   const updateSummary = () => {
-    const t    = today0();
-    const tm   = new Date(t); tm.setDate(tm.getDate() + 1);
-    // BD week starts on Sunday
-    const dow    = t.getDay();               // 0 = Sunday
-    const wStart = new Date(t); wStart.setDate(t.getDate() - dow);
-    const wEnd   = new Date(wStart); wEnd.setDate(wStart.getDate() + 6);
-    let tc = 0, bc = 0, wc = 0, pc = 0, dc = 0, dlc = 0;
-
-    orders.forEach(o => {
-      if (o.status === 'delivered' || o.status === 'cancelled') { dc++; return; }
-      pc++;
-      const d = toDate(o.date || '2099-01-01');
-      const tt = d.getTime();
-      if (tt === t.getTime())          tc++;
-      if (tt === tm.getTime())         bc++;
-      if (tt >= wStart.getTime() && tt <= wEnd.getTime()) wc++;
-      if (tt < t.getTime())            dlc++;
-    });
-
-    document.getElementById('s-today').textContent = tc;
-    document.getElementById('s-bake').textContent  = bc;
-    document.getElementById('s-week').textContent  = wc;
-    document.getElementById('s-pending').textContent = pc;
-    document.getElementById('s-done').textContent  = dc;
-    document.getElementById('s-delayed').textContent = dlc;
-
-    const n = orders.length;
-    document.title = `🎂 নিতুর বেকারি (${n} অর্ডার)`;
+    document.title = `🎂 নিতুর বেকারি (${orders.length} অর্ডার)`;
   };
 
   // ─── Mini calendar (daily order capacity) ─────────────────────
@@ -3113,13 +3007,6 @@ window.App = (() => {
     if (t === 'all')     renderAll();
     if (t === 'done')    renderDone();
     if (t === 'revenue') renderRevenue();
-
-    // Highlight summary card
-    document.getElementById('sum-today').classList.toggle('active', t === 'plan');
-    document.getElementById('sum-week').classList.toggle('active',  t === 'revenue');
-    document.getElementById('sum-pending').classList.toggle('active', t === 'plan' || t === 'all');
-    document.getElementById('sum-done').classList.toggle('active', t === 'done');
-    document.getElementById('sum-delayed').classList.toggle('active', t === 'plan');
   };
 
   // ─── Toggle card expand ──────────────────────────────────────
