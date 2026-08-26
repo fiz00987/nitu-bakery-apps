@@ -209,17 +209,26 @@ button{cursor:pointer}
       <div class="hint-box">Facebook প্রোফাইলে যে নাম আছে, ঠিক সেভাবে লিখুন — যেন আমরা আপনাকে সহজে খুঁজে পাই।</div>
     </div>
     <div class="field">
-      <label data-bn="ওজন * (পাউন্ড বা KG)" data-en="Weight * (pound or KG)">ওজন * (পাউন্ড বা KG)</label>
+      <div style="display:flex;align-items:center;gap:5px">
+        <label data-bn="ওজন * (পাউন্ড বা KG)" data-en="Weight * (pound or KG)">ওজন * (পাউন্ড বা KG)</label>
+        <button type="button" title="বেস মূল্য নির্দেশিকা / Base price guide" onclick="showTextPopup('base price.txt', 'বেস মূল্য নির্দেশিকা')" style="background:none;border:none;font-size:13px;line-height:1;cursor:pointer;padding:0 2px;color:var(--pink)">❗</button>
+      </div>
       <input type="text" id="f-weight" placeholder="যেমন: 2 pound, 2.5 pound, 1 KG" data-bn-placeholder="যেমন: 2 pound, 2.5 pound, 1 KG" data-en-placeholder="Example: 2 pound, 2.5 pound, 1 KG" autocomplete="off" oninput="updateWeightHint();recalcPrice()">
       <div class="hint-box" id="weight-hint"></div>
     </div>
     <div class="field">
-      <label data-bn="ফ্লেভার *" data-en="Flavour *">ফ্লেভার *</label>
+      <div style="display:flex;align-items:center;gap:5px">
+        <label data-bn="ফ্লেভার *" data-en="Flavour *">ফ্লেভার *</label>
+        <button type="button" title="ফ্লেভার নির্দেশিকা / Flavour guide" onclick="showFlavourPopup()" style="background:none;border:none;font-size:13px;line-height:1;cursor:pointer;padding:0 2px;color:var(--pink)">❗</button>
+      </div>
       <select id="f-flavour" onchange="showFlavourPopup()"><option value="">নির্বাচন করুন</option></select>
       <div class="note-box">সব ফ্লেভার সব সময় পাওয়া নাও যেতে পারে। কিছু ফ্লেভারের জন্য নির্দিষ্ট ওজন প্রয়োজন। বিস্তারিত জানতে আমাদের Facebook পেজে যোগাযোগ করুন।</div>
     </div>
     <div class="field">
-      <label data-bn="কেকে কী লিখতে চান? (ঐচ্ছিক)" data-en="Cake writing text (Optional)">কেকে কী লিখতে চান? (ঐচ্ছিক)</label>
+      <div style="display:flex;align-items:center;gap:5px">
+        <label data-bn="কেকে কী লিখতে চান? (ঐচ্ছিক)" data-en="Cake writing text (Optional)">কেকে কী লিখতে চান? (ঐচ্ছিক)</label>
+        <button type="button" title="লেখার নীতিমালা / Writing policy" onclick="showCakeWritingPolicy()" style="background:none;border:none;font-size:13px;line-height:1;cursor:pointer;padding:0 2px;color:var(--pink)">❗</button>
+      </div>
       <textarea id="f-writing" placeholder="যেমন: তোমার হাসিই আমাদের ঘরের আলো" onfocus="showCakeWritingNotice()" onclick="showCakeWritingNotice()" oninput="updateWritingCount()"></textarea>
       <div id="writing-count" style="font-size:10.5px;color:var(--text3);text-align:right;margin-top:3px">0 / 500</div>
       <div class="hint-box">জন্মদিন/বার্ষিকী/Happy ধরনের লেখা নেওয়া হয় না। সুন্দর নোট, কোট বা স্মরণীয় কথা লিখতে পারেন।</div>
@@ -254,7 +263,14 @@ button{cursor:pointer}
       </div>
       <div class="field">
         <label data-bn="ডেলিভারির সময় *" data-en="Delivery Time *">ডেলিভারির সময় *</label>
-        <input type="text" id="f-timeslot" placeholder="যেমন: 3.00 PM" data-bn-placeholder="যেমন: 3.00 PM" data-en-placeholder="Example: 3.00 PM" autocomplete="off">
+        <div style="display:flex;gap:6px">
+          <input type="text" id="f-timeslot" inputmode="decimal" placeholder="যেমন: 3.00" data-bn-placeholder="যেমন: 3.00" data-en-placeholder="Example: 3.00" autocomplete="off" style="flex:1;min-width:0" onblur="normalizeTimeInput()">
+          <select id="f-time-ampm" style="width:84px;flex-shrink:0">
+            <option value="">--</option>
+            <option value="AM">AM</option>
+            <option value="PM">PM</option>
+          </select>
+        </div>
         <div class="note-box">নিরাপত্তার জন্য ডেলিভারি সর্বোচ্চ রাত ৮টা পর্যন্ত করা হয়।</div>
       </div>
     </div>
@@ -465,7 +481,7 @@ function setLang(l) {
   if (l === 'en') {
     document.getElementById('f-cake-price').placeholder = 'Enter cake price';
     document.getElementById('f-weight').placeholder = 'Example: 2 pound, 2.5 pound, 1 KG';
-    document.getElementById('f-timeslot').placeholder = 'Example: 3.00 PM';
+    document.getElementById('f-timeslot').placeholder = 'Example: 3.00';
     document.getElementById('f-writing').placeholder = 'Example: Your smile is our home\'s light';
     document.querySelector('#f-flavour option[value=""]').textContent = 'Select flavour';
     document.querySelector('#f-payment-method option[value=""]').textContent = 'Select payment method';
@@ -478,7 +494,7 @@ function setLang(l) {
   } else {
     document.getElementById('f-cake-price').placeholder = 'কেকের মূল্য লিখুন';
     document.getElementById('f-weight').placeholder = 'যেমন: 2 pound, 2.5 pound, 1 KG';
-    document.getElementById('f-timeslot').placeholder = 'যেমন: 3.00 PM';
+    document.getElementById('f-timeslot').placeholder = 'যেমন: 3.00';
     document.getElementById('f-writing').placeholder = 'যেমন: তোমার হাসিই আমাদের ঘরের আলো';
     FLAVOURS.forEach(f => { const option = document.querySelector(`#f-flavour option[value="${f.value}"]`); if (option) option.textContent = f.label; });
     PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.name; });
@@ -762,16 +778,29 @@ function copyValue(value) {
 }
 
 let popupText = '';
+const textPopupCache = {}; // .txt contents cached in memory after first load
 async function showTextPopup(fileName, title) {
   try {
-    const response = await fetch(`./${encodeURIComponent(fileName)}`);
-    if (!response.ok) throw new Error('Text file unavailable');
-    popupText = await response.text();
+    // Cached after first load -> popup opens instantly on every later click
+    if (!textPopupCache[fileName]) {
+      const response = await fetch(`./${encodeURIComponent(fileName)}`);
+      if (!response.ok) throw new Error('Text file unavailable');
+      textPopupCache[fileName] = await response.text();
+    }
+    popupText = textPopupCache[fileName];
     document.getElementById('popup-title').textContent = title;
     document.getElementById('popup-content').textContent = popupText;
     document.getElementById('text-popup').classList.add('show');
   } catch (e) { showToast('তথ্য লোড করা যায়নি'); }
 }
+
+// Prefetch the guide texts in the background so even the FIRST click is instant
+['base price.txt', 'flavours.txt'].forEach(f => {
+  fetch(`./${encodeURIComponent(f)}`)
+    .then(r => r.ok ? r.text() : '')
+    .then(t => { if (t && !textPopupCache[f]) textPopupCache[f] = t; })
+    .catch(() => {});
+});
 
 function showDeliveryPopup() {
   document.getElementById('popup-title').textContent = 'ডেলিভারি তথ্য';
@@ -781,7 +810,8 @@ function showDeliveryPopup() {
 }
 
 function showFlavourPopup() {
-  if (document.getElementById('f-flavour').value) showTextPopup('flavours.txt', 'ফ্লেভার নির্দেশিকা');
+  // Always available: fires on flavour change AND via the ❗ info button
+  showTextPopup('flavours.txt', 'ফ্লেভার নির্দেশিকা');
 }
 
 // ─── Cake writing: 500-word limit ─────────────────────────────
@@ -812,15 +842,20 @@ function updateWritingCount() {
   if (counter) counter.textContent = `${words} / ${WRITING_MAX_WORDS}`;
 }
 
-function showCakeWritingNotice() {
-  if (cakeWritingNoticeShown) return;
-  cakeWritingNoticeShown = true;
+function showCakeWritingPolicy() {
+  // Always available — used by the ❗ info button and the first-focus auto-popup
   document.getElementById('popup-title').textContent = lang === 'en' ? 'Cake Writing Policy' : 'কেকের লেখার নীতিমালা';
   popupText = lang === 'en'
     ? 'From our religious perspective, we do not write birthday, anniversary, or any “Happy ...” message on cakes.\n\nYou may write cute notes, meaningful quotes, names, duas, or memorable words said by the customer. Please keep the text respectful and short so it fits neatly on the cake.'
     : 'আমাদের ধর্মীয় দৃষ্টিকোণ থেকে কেকে জন্মদিন, বার্ষিকী বা “Happy ...” ধরনের কোনো লেখা লেখা হয় না।\n\nআপনি চাইলে সুন্দর নোট, অর্থপূর্ণ কোট, নাম, দোয়া বা কাস্টমারের বলা কোনো স্মরণীয় কথা লিখতে পারেন। লেখাটি সম্মানজনক ও সংক্ষিপ্ত রাখুন, যাতে কেকের ওপর সুন্দরভাবে বসানো যায়।';
   document.getElementById('popup-content').textContent = popupText;
   document.getElementById('text-popup').classList.add('show');
+}
+
+function showCakeWritingNotice() {
+  if (cakeWritingNoticeShown) return; // auto-popup only once per session
+  cakeWritingNoticeShown = true;
+  showCakeWritingPolicy();
 }
 
 function closeTextPopup(event) {
@@ -996,7 +1031,8 @@ function validate() {
   if (!validateBangladeshPhone(document.getElementById('f-receiver-phone').value.trim())) {
     showToast('সঠিক রিসিভার ফোন দিন'); return false;
   }
-  if (!getSelectedTime()) { showToast('ডেলিভারির সময় দিন'); return false; }
+  const timeError = getTimeError();
+if (timeError) { showToast(timeError); document.getElementById('f-timeslot').focus(); return false; }
   const writingError = getCakeWritingError(document.getElementById('f-writing').value);
   if (writingError) { showToast(writingError); document.getElementById('f-writing').focus(); return false; }
   if (isSurprise) {
@@ -1093,8 +1129,56 @@ function submitOrder() {
   });
 }
 
+// ─── Delivery time: auto-minutes + AM/PM ─────────────────────
+function parseTimeParts(raw) {
+  const t = String(raw || '').trim().replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+  const m = t.match(/^(\d{1,2})(?:\s*[:.\-]\s*(\d{1,2}))?$/);
+  if (!m) return null;
+  const h = parseInt(m[1], 10);
+  const min = m[2] != null ? parseInt(m[2], 10) : null;
+  if (h < 1 || h > 12) return null;
+  if (min != null && min > 59) return null;
+  return { h, min };
+}
+
+function normalizeTimeInput() {
+  const el = document.getElementById('f-timeslot');
+  if (!el) return;
+  const raw = el.value.trim();
+  if (!raw) return;
+  // If the customer typed AM/PM manually, drop it — there is a selector now
+  const cleaned = raw.replace(/\s*(?:a\.?m\.?|p\.?m\.?|এএম|পিএম)\.?$/i, '').trim();
+  const p = parseTimeParts(cleaned);
+  if (!p) return; // leave as-is; validation will catch it
+  // Minutes missing? Auto-set them to 00 (e.g. "3" or "3." -> "3.00")
+  el.value = `${p.h}.${String(p.min == null ? 0 : p.min).padStart(2, '0')}`;
+}
+
 function getSelectedTime() {
-  return document.getElementById('f-timeslot').value.trim();
+  const p = parseTimeParts(document.getElementById('f-timeslot').value);
+  const apEl = document.getElementById('f-time-ampm');
+  const ap = apEl ? apEl.value : '';
+  if (!p || !ap) return '';
+  return `${p.h}:${String(p.min == null ? 0 : p.min).padStart(2, '0')} ${ap}`;
+}
+
+function getTimeError() {
+  const raw = document.getElementById('f-timeslot').value.trim();
+  const apEl = document.getElementById('f-time-ampm');
+  const ap = apEl ? apEl.value : '';
+  if (!raw && !ap) {
+    return lang === 'en' ? 'Please enter the delivery time' : 'ডেলিভারির সময় দিন';
+  }
+  const cleaned = raw.replace(/\s*(?:a\.?m\.?|p\.?m\.?|এএম|পিএম)\.?$/i, '').trim();
+  if (!parseTimeParts(cleaned)) {
+    return lang === 'en'
+      ? 'Enter a valid time like 3.00 (hour 1-12, minutes 0-59)'
+      : 'সঠিক সময় লিখুন — যেমন 3.00 (ঘণ্টা ১-১২, মিনিট ০-৫৯)';
+  }
+  if (!ap) {
+    return lang === 'en' ? 'Please select AM or PM' : 'AM অথবা PM নির্বাচন করুন';
+  }
+  return '';
 }
 
 // Success
