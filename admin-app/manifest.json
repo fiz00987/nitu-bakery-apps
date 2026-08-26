@@ -4,8 +4,8 @@
   "description": "নিতুবাবুর্চীর পোর্টফোলিও — অর্ডার ম্যানেজার",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#c2185b",
-  "theme_color": "#c2185b",
+  "background_color": "#0f5a50",
+  "theme_color": "#0f5a50",
   "orientation": "portrait",
   "icons": [
     { "src": "home-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },

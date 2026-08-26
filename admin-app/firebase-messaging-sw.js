@@ -56,7 +56,7 @@ self.addEventListener('notificationclick', function (event) {
    Offline app-shell caching (kept in this worker so the single
    service worker covers BOTH push messages and offline startup).
    ============================================================ */
-var CACHE_NAME = 'nitu-bakery-v4';
+var CACHE_NAME = 'nitu-bakery-v5';
 var APP_SHELL = [
   './',
   './index.html',
