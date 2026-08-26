@@ -28,7 +28,7 @@ messaging.onBackgroundMessage(function (payload) {
   var options = {
     body: body,
     icon: './logo.png',
-    badge: './icon-192.png',
+    badge: './icons/icon-192.png',
     tag: data && data.tag ? data.tag : ('nitu-' + Date.now()),
     renotify: true,
     data: {
@@ -56,7 +56,7 @@ self.addEventListener('notificationclick', function (event) {
    Offline app-shell caching (kept in this worker so the single
    service worker covers BOTH push messages and offline startup).
    ============================================================ */
-var CACHE_NAME = 'nitu-bakery-v3';
+var CACHE_NAME = 'nitu-bakery-v4';
 var APP_SHELL = [
   './',
   './index.html',

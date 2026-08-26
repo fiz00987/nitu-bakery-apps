@@ -28,3 +28,6 @@ Thumbs.db
 tmp/
 temp/
 _dev_server.js
+
+# Local logo backups (not for deployment/repo)
+_old-logo-backup/
