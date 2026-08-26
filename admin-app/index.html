@@ -3061,9 +3061,22 @@ window.App = (() => {
     if (newVal === oldVal) return;
 
     if (newVal === 'delivered' || newVal === 'cancelled') {
+      let msg;
+      if (newVal === 'delivered') {
+        msg = lang === 'bn'
+          ? 'অর্ডারটি সম্পন্ন ট্যাবে চলে যাবে।'
+          : 'The order will move to the Done tab.';
+        if (o && dueAmt(o) > 0) {
+          msg += lang === 'bn'
+            ? `\n💰 বকেয়া ৳${fmtMoney(dueAmt(o))} স্বয়ংক্রিয়ভাবে সম্পূর্ণ পরিশোধিত হিসেবে চিহ্নিত হবে।`
+            : `\n💰 The remaining due of ৳${fmtMoney(dueAmt(o))} will be marked fully paid automatically.`;
+        }
+      } else {
+        msg = 'অর্ডারটি সম্পন্ন ট্যাবে আর্কাইভ হবে।';
+      }
       showConfirm(
         newVal === 'delivered' ? 'ডেলিভার হিসেবে মার্ক করুন? 🎉' : 'বাতিল করবেন? ❌',
-        newVal === 'delivered' ? 'অর্ডারটি সম্পন্ন ট্যাবে চলে যাবে।' : 'অর্ডারটি সম্পন্ন ট্যাবে আর্কাইভ হবে।',
+        msg,
         newVal === 'delivered',
         ok => { if (ok) updateStatus(key, newVal); else sel.value = oldVal; }
       );
@@ -3074,6 +3087,18 @@ window.App = (() => {
 
   const updateStatus = (key, val) => {
     setSyncStatus('syncing', 'সেভ হচ্ছে...');
+    // Marking delivered also settles any remaining cake balance in the
+    // same write: paid is set so that effectivePaid == total (keeping
+    // the existing bKash charge), mirroring the "Mark Fully Paid" action.
+    if (val === 'delivered') {
+      const o = orders.find(x => x.firebaseKey === key);
+      const newPaid = o ? (o.total || 0) + bkashCharge(o) : null;
+      if (newPaid != null) {
+        ordersRef.child(key).update({ status: val, paid: newPaid, updatedAt: Date.now() });
+        showToast(lang === 'bn' ? '🎉 ডেলিভার্ড — বকেয়া স্বতঃ পরিশোধিত!' : '🎉 Delivered — due auto-settled!');
+        return;
+      }
+    }
     ordersRef.child(key).update({ status: val, updatedAt: Date.now() });
     showToast('স্ট্যাটাস আপডেট হয়েছে ✅');
   };
