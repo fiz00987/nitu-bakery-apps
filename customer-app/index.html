@@ -220,7 +220,8 @@ button{cursor:pointer}
     </div>
     <div class="field">
       <label data-bn="কেকে কী লিখতে চান? (ঐচ্ছিক)" data-en="Cake writing text (Optional)">কেকে কী লিখতে চান? (ঐচ্ছিক)</label>
-      <textarea id="f-writing" maxlength="120" placeholder="যেমন: তোমার হাসিই আমাদের ঘরের আলো" onfocus="showCakeWritingNotice()" onclick="showCakeWritingNotice()"></textarea>
+      <textarea id="f-writing" placeholder="যেমন: তোমার হাসিই আমাদের ঘরের আলো" onfocus="showCakeWritingNotice()" onclick="showCakeWritingNotice()" oninput="updateWritingCount()"></textarea>
+      <div id="writing-count" style="font-size:10.5px;color:var(--text3);text-align:right;margin-top:3px">0 / 500</div>
       <div class="hint-box">জন্মদিন/বার্ষিকী/Happy ধরনের লেখা নেওয়া হয় না। সুন্দর নোট, কোট বা স্মরণীয় কথা লিখতে পারেন।</div>
     </div>
     <div class="field">
@@ -783,6 +784,34 @@ function showFlavourPopup() {
   if (document.getElementById('f-flavour').value) showTextPopup('flavours.txt', 'ফ্লেভার নির্দেশিকা');
 }
 
+// ─── Cake writing: 500-word limit ─────────────────────────────
+const WRITING_MAX_WORDS = 500;
+let writingLimitWarned = false;
+
+function countWritingWords(text) {
+  const t = String(text || '').trim();
+  return t ? t.split(/\s+/).length : 0;
+}
+
+function updateWritingCount() {
+  const el = document.getElementById('f-writing');
+  if (!el) return;
+  let words = countWritingWords(el.value);
+  if (words > WRITING_MAX_WORDS) {
+    // Hard-trim back to the first 500 words (keeps any trailing space mid-typing)
+    el.value = el.value.trim().split(/\s+/).slice(0, WRITING_MAX_WORDS).join(' ') + (/\s$/.test(el.value) ? ' ' : '');
+    words = WRITING_MAX_WORDS;
+    if (!writingLimitWarned) {
+      writingLimitWarned = true;
+      showToast(lang === 'en' ? 'Maximum 500 words allowed' : 'সর্বোচ্চ ৫০০ শব্দ পর্যন্ত লেখা যাবে');
+    }
+  } else if (words < WRITING_MAX_WORDS) {
+    writingLimitWarned = false; // re-arm the warning once back under the limit
+  }
+  const counter = document.getElementById('writing-count');
+  if (counter) counter.textContent = `${words} / ${WRITING_MAX_WORDS}`;
+}
+
 function showCakeWritingNotice() {
   if (cakeWritingNoticeShown) return;
   cakeWritingNoticeShown = true;
@@ -805,6 +834,11 @@ function copyPopupText() {
 function getCakeWritingError(text) {
   const raw = String(text || '').trim();
   if (!raw) return '';
+  if (countWritingWords(raw) > WRITING_MAX_WORDS) {
+    return lang === 'en'
+      ? 'Cake writing can be at most 500 words.'
+      : 'কেকের লেখা সর্বোচ্চ ৫০০ শব্দের হতে পারবে।';
+  }
   const normalized = raw.toLowerCase().replace(/[.,!?;:()\[\]{}'"“”‘’_-]+/g, ' ').replace(/\s+/g, ' ');
   const blocked = [
     /\bhappy\b/,
@@ -1232,6 +1266,7 @@ function resetForm() {
   document.querySelectorAll('#form-screen input:not(#entry-phone), #form-screen textarea').forEach(el => el.value = '');
   document.querySelectorAll('#form-screen select').forEach(el => el.selectedIndex = 0);
   currentPhotos = []; renderPhotos(); advanceType = ''; isSurprise = false; cakeWritingNoticeShown = false;
+  updateWritingCount();
   document.getElementById('calc-box').classList.remove('show');
   document.getElementById('surprise-note').classList.remove('show');
   document.getElementById('payment-info').classList.remove('show');
