@@ -186,7 +186,6 @@ async function pollNewOrders() {
   for (const key of fresh) {
     const o = data[key] || {};
     const name    = o.customerName || o.name || 'Unknown';
-    const source  = o.source === 'tally' ? ' (Tally)' : '';
     const wRaw    = String(o.weightLabel || o.weight || '').trim();
     const weight  = (wRaw && wRaw.toLowerCase() !== 'custom') ? wRaw : '';
     const flavour = String(o.flavourName || o.flavour || '').trim();
@@ -207,7 +206,7 @@ async function pollNewOrders() {
     // Channel #2 — FCM web-push to registered devices
     await sendToAll(
       {
-        title: '🎂 নতুন অর্ডার' + source + ': ' + name,
+        title: '🎂 নতুন অর্ডার: ' + name,
         body: body || 'নতুন অর্ডার!',
         icon: './logo.png',
         badge: './icons/icon-192.png',

@@ -30,4 +30,11 @@ temp/
 _dev_server.js
 
 # Local logo backups (not for deployment/repo)
+
+# Local logo backups (not for deployment/repo)
+_old-logo-backup/
+
+# Telegram alert secrets — NEVER commit these
+customer-app/telegram-config.json
+blaze-free-notifier/notifier-secrets.json
 _old-logo-backup/
