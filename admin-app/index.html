@@ -3191,18 +3191,40 @@ window.App = (() => {
       const o = orders.find(x => x.firebaseKey === key);
       const newPaid = o ? (o.total || 0) + bkashCharge(o) : null;
       if (newPaid != null) {
-        ordersRef.child(key).update({ status: val, paid: newPaid, updatedAt: Date.now() });
-        showToast(lang === 'bn' ? '🎉 ডেলিভার্ড — বকেয়া স্বতঃ পরিশোধিত!' : '🎉 Delivered — due auto-settled!');
+        ordersRef.child(key).update({ status: val, paid: newPaid, updatedAt: Date.now() })
+          .then(() => {
+            setSyncStatus('ok');
+            showToast(lang === 'bn' ? '🎉 ডেলিভার্ড — বকেয়া স্বতঃ পরিশোধিত!' : '🎉 Delivered — due auto-settled!');
+          })
+          .catch(err => {
+            console.error('Delivered-save failed:', err);
+            setSyncStatus('error', '❌ সংরক্ষণ ব্যর্থ — আবার চেষ্টা করুন');
+            showToast(lang === 'bn' ? '❌ স্ট্যাটাস সেভ হয়নি — আবার চেষ্টা করুন' : '❌ Status not saved — try again');
+          });
         return;
       }
     }
-    ordersRef.child(key).update({ status: val, updatedAt: Date.now() });
-    showToast('স্ট্যাটাস আপডেট হয়েছে ✅');
+    ordersRef.child(key).update({ status: val, updatedAt: Date.now() })
+      .then(() => {
+        setSyncStatus('ok');
+        showToast('স্ট্যাটাস আপডেট হয়েছে ✅');
+      })
+      .catch(err => {
+        console.error('Status save failed:', err);
+        setSyncStatus('error', '❌ সংরক্ষণ ব্যর্থ — আবার চেষ্টা করুন');
+        showToast(lang === 'bn' ? '❌ স্ট্যাটাস সেভ হয়নি — আবার চেষ্টা করুন' : '❌ Status not saved — try again');
+      });
   };
 
   const updateNotes = (key, val) => {
     setSyncStatus('syncing', 'নোটস সেভ হচ্ছে...');
-    ordersRef.child(key).update({ bakingnotes: val, updatedAt: Date.now() });
+    ordersRef.child(key).update({ bakingnotes: val, updatedAt: Date.now() })
+      .then(() => setSyncStatus('ok'))
+      .catch(err => {
+        console.error('Notes save failed:', err);
+        setSyncStatus('error', '❌ নোট সেভ হয়নি — আবার চেষ্টা করুন');
+        showToast(lang === 'bn' ? '❌ নোট সেভ হয়নি!' : '❌ Note not saved!');
+      });
   };
 
   const markFullyPaid = key => {
@@ -3217,8 +3239,16 @@ window.App = (() => {
       // Set paid so that effectivePaid == total (keep existing bKash charge)
       const newPaid = (o.total || 0) + bkashCharge(o);
       setSyncStatus('syncing', tr('saving'));
-      ordersRef.child(key).update({ paid: newPaid, updatedAt: Date.now() });
-      showToast(lang === 'bn' ? '✅ সম্পূর্ণ পরিশোধিত!' : '✅ Marked fully paid!');
+      ordersRef.child(key).update({ paid: newPaid, updatedAt: Date.now() })
+        .then(() => {
+          setSyncStatus('ok');
+          showToast(lang === 'bn' ? '✅ সম্পূর্ণ পরিশোধিত!' : '✅ Marked fully paid!');
+        })
+        .catch(err => {
+          console.error('Mark-paid failed:', err);
+          setSyncStatus('error', '❌ সংরক্ষণ ব্যর্থ — আবার চেষ্টা করুন');
+          showToast(lang === 'bn' ? '❌ সেভ হয়নি — আবার চেষ্টা করুন' : '❌ Not saved — try again');
+        });
     });
   };
 
@@ -3480,16 +3510,31 @@ window.App = (() => {
     };
 
     setSyncStatus('syncing', 'ক্লাউডে সেভ হচ্ছে...');
+    const failSave = err => {
+      console.error('Order save failed:', err);
+      setSyncStatus('error', '❌ সংরক্ষণ ব্যর্থ — ইন্টারনেট চেক করুন');
+      showToast(lang === 'bn' ? '❌ সংরক্ষণ ব্যর্থ! ইন্টারনেট দেখে আবার সেভ করুন।' : '❌ Save failed! Check internet and save again.');
+    };
     if (editingId) {
-      ordersRef.child(editingId).update(o);
-      showToast('✅ অর্ডার আপডেট হয়েছে!');
+      ordersRef.child(editingId).update(o)
+        .then(() => {
+          setSyncStatus('ok');
+          showToast('✅ অর্ডার আপডেট হয়েছে!');
+          currentPhoto = '';
+          closeModal();
+        })
+        .catch(failSave);
     } else {
       o.createdAt = Date.now();
-      ordersRef.push(o);
-      showToast('✅ নতুন অর্ডার সেভ হয়েছে!');
+      ordersRef.push(o)
+        .then(() => {
+          setSyncStatus('ok');
+          showToast('✅ নতুন অর্ডার সেভ হয়েছে!');
+          currentPhoto = '';
+          closeModal();
+        })
+        .catch(failSave);
     }
-    currentPhoto = '';
-    closeModal();
   };
 
   // ─── Backup / Restore ─────────────────────────────────────────
