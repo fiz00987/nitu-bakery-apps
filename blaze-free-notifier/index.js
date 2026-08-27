@@ -58,6 +58,63 @@ function bdDateString(now) {
   return new Date(now.getTime() + 6 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
+// ─── Redundant channel #1: Telegram ─────────────────────────
+// Works even with zero registered push devices, arrives instantly,
+// and the message stays in the chat until you delete it yourself.
+const TG_TOKEN = process.env.TG_BOT_TOKEN || '';
+const TG_CHAT  = process.env.TG_CHAT_ID  || '';
+
+async function sendTelegram(text) {
+  if (!TG_TOKEN || !TG_CHAT) return; // channel not configured yet — skip quietly
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: TG_CHAT, text, disable_web_page_preview: true })
+    });
+    const j = await res.json();
+    console.log(j.ok ? '📨 Telegram delivered.' : `⚠️ Telegram failed: ${j.description}`);
+  } catch (e) {
+    console.warn('⚠️ Telegram network error:', e && e.message);
+  }
+}
+
+// '2026-09-01' → '1st September'
+function humanDate(iso) {
+  const m = String(iso || '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return '';
+  const MONTHS = ['January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+  const d = parseInt(m[3], 10);
+  const suf = (d % 10 === 1 && d !== 11) ? 'st'
+            : (d % 10 === 2 && d !== 12) ? 'nd'
+            : (d % 10 === 3 && d !== 13) ? 'rd' : 'th';
+  return `${d}${suf} ${MONTHS[parseInt(m[2], 10) - 1]}`;
+}
+
+// Machine flavour id → English display name (matches the example
+// "2 pound chocolate sponge cake"); falls back to stored names.
+const FLAVOUR_EN = {
+  'vanilla-sponge': 'vanilla sponge',
+  'chocolate-sponge': 'chocolate sponge',
+  'double-layer-chocolate': 'double layered chocolate',
+  'black-forest': 'black forest',
+  'white-forest': 'white forest',
+  'lemon': 'lemon',
+  'orange': 'orange',
+  'strawberry': 'strawberry',
+  'blueberry': 'blueberry',
+  'malai': 'malai',
+  'butterscotch': 'butterscotch',
+  'special-vanilla': 'special vanilla',
+  'chocolate-mud': 'chocolate mud',
+  'red-velvet': 'red velvet',
+  'cream-cheese-fruit': 'cream cheese fruit'
+};
+const flavourEnglish = o => FLAVOUR_EN[String(o.flavour || '').trim()] ||
+  String(o.flavourName || o.flavour || '').trim();
+
+
 async function loadDevices() {
   const snap = await TOKENS_REF.once('value');
   const devices = [];
@@ -136,6 +193,18 @@ async function pollNewOrders() {
     const body = [weight, flavour, o.total ? '৳' + Math.round(o.total) : '']
       .filter(Boolean).join(' · ');
 
+    // Channel #1 — Telegram pop-up (persists until you remove it)
+    if (TG_TOKEN && TG_CHAT) {
+      const cakeDesc = [weight, flavourEnglish(o)].filter(Boolean).join(' ') || 'cake';
+      const when     = humanDate(o.deliveryDate || o.date);
+      const tmsg     = `🎂 ${name} just placed a ${cakeDesc} cake` +
+                       (when ? ` for ${when}` : '') +
+                       (o.total ? `\n💰 Total: ৳${Math.round(o.total)}` : '') +
+                       `\n🕐 Order ID: ${o.orderId || key.slice(-6)}`;
+      await sendTelegram(tmsg);
+    }
+
+    // Channel #2 — FCM web-push to registered devices
     await sendToAll(
       {
         title: '🎂 নতুন অর্ডার' + source + ': ' + name,
@@ -201,6 +270,7 @@ async function dailySummary() {
     { title: `🚚 ${dow} — আজকের ডেলিভারি (${names.length})`, body },
     { url: './', tag: 'nitu-daily-' + today }
   );
+  await sendTelegram(`🚚 Today (${today}): ${names.length} delivery(s) — ${names.join(', ')}`);
 }
 
 /* ─── Entry point ──────────────────────────────────────────── */

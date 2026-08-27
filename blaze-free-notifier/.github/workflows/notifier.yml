@@ -2,8 +2,8 @@ name: Bakery notifier
 
 on:
   schedule:
-    # New-order checker — every 15 min, offset from busy :00 slots
-    - cron: '7,22,37,52 * * * *'
+    # New-order checker — every 5 min (GitHub minimum cron step)
+    - cron: '*/5 * * * *'
     # Morning summary 09:00 Asia/Dhaka (03:35 UTC) + retry slot
     - cron: '35 3 * * *'
     - cron: '10 4 * * *'
@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   new-orders:
-    if: github.event_name != 'schedule' || github.event.schedule != '35 3 * * *'
+    if: github.event_name != 'schedule' || (github.event.schedule != '35 3 * * *' && github.event.schedule != '10 4 * * *')
     timeout-minutes: 8
     runs-on: ubuntu-latest
     steps:
@@ -27,6 +27,8 @@ jobs:
       - run: node index.js
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
 
   daily-summary:
     # Runs only for the two morning crons; --daily is idempotent per day,
@@ -43,3 +45,5 @@ jobs:
       - run: node index.js --daily
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
