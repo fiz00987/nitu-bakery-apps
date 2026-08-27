@@ -12,6 +12,13 @@
   "lang": "bn",
   "dir": "ltr",
   "categories": ["business", "productivity"],
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "screenshots": [
+    { "src": "screenshots/admin-wide.png", "sizes": "1280x720", "type": "image/png", "form_factor": "wide", "label": "নিতুর বেকারি অর্ডার ম্যানেজার — ড্যাশবোর্ড ও অর্ডার তালিকা" },
+    { "src": "screenshots/admin-narrow.png", "sizes": "720x1280", "type": "image/png", "form_factor": "narrow", "label": "নিতুর বেকারি অর্ডার ম্যানেজার — মোবাইল ভিউ" }
+  ],
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
