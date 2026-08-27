@@ -1,0 +1,45 @@
+name: Bakery notifier
+
+on:
+  schedule:
+    # New-order checker — every 15 min, offset from busy :00 slots
+    - cron: '7,22,37,52 * * * *'
+    # Morning summary 09:00 Asia/Dhaka (03:35 UTC) + retry slot
+    - cron: '35 3 * * *'
+    - cron: '10 4 * * *'
+  workflow_dispatch: {}   # lets you press "Run workflow" manually
+
+concurrency:
+  group: bakery-notifier
+  cancel-in-progress: false
+
+jobs:
+  new-orders:
+    if: github.event_name != 'schedule' || github.event.schedule != '35 3 * * *'
+    timeout-minutes: 8
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm ci --omit=dev
+      - run: node index.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+
+  daily-summary:
+    # Runs only for the two morning crons; --daily is idempotent per day,
+    # so the retry slot cannot double-send.
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '35 3 * * *' || github.event.schedule == '10 4 * * *'
+    timeout-minutes: 8
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm ci --omit=dev
+      - run: node index.js --daily
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}

@@ -1,14 +1,20 @@
 {
-  "name": "নিতুবাবুর্চীর পোর্টফোলিও",
-  "short_name": "নিতুবাবুর্চীর পোর্টফোলিও",
-  "description": "নিতুবাবুর্চীর পোর্টফোলিও — অর্ডার ম্যানেজার",
+  "name": "নিতুর বেকারি — অর্ডার ম্যানেজার",
+  "short_name": "নিতুর বেকারি",
+  "description": "নিতুর বেকারির অর্ডার ম্যানেজার — কেকের অর্ডার, পেমেন্ট ও ডেলিভারি ট্র্যাকিং",
+  "id": "./",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0f5a50",
   "theme_color": "#0f5a50",
   "orientation": "portrait",
+  "lang": "bn",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
   "icons": [
-    { "src": "home-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "home-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

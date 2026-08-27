@@ -1,12 +1,17 @@
 {
-  "name": "নিতুবাবুর্চীর পোর্টফোলিও",
-  "short_name": "নিতুবাবুর্চীর পোর্টফোলিও",
-  "description": "নিতুবাবুর্চীর পোর্টফোলিও — অর্ডার ফর্ম",
+  "name": "নিতুর বেকারি — অর্ডার ফর্ম",
+  "short_name": "নিতুর বেকারি",
+  "description": "নিতুর বেকারি থেকে সহজে কেক অর্ডার করুন — ফ্লেভার, ওজন ও ডেলিভারি সময় বেছে নিন",
+  "id": "./",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#c2185b",
   "theme_color": "#c2185b",
   "orientation": "portrait",
+  "lang": "bn",
+  "dir": "ltr",
+  "categories": ["food", "shopping"],
   "icons": [
     { "src": "home-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "home-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }

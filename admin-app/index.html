@@ -10,6 +10,7 @@
 <title>🎂 নিতুর বেকারি — অর্ডার ম্যানেজার</title>
 <link rel="icon" type="image/png" href="logo.png">
 <link rel="apple-touch-icon" href="logo.png">
+<link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1754,12 +1755,25 @@ select:focus {
   #alert-banner .ab-close{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;line-height:1}
   #alert-banner .ab-badge{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--red);margin-right:4px;box-shadow:0 0 8px var(--red);animation:pulse 1s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+  /* ─── Today's-delivery banner (names list) ─── */
+  #today-banner{position:fixed;top:56px;left:50%;transform:translateX(-50%) translateY(-16px);background:#fff;border:2px solid var(--pink);border-radius:14px;padding:12px 40px 12px 16px;min-width:min(320px,92vw);max-width:92vw;z-index:2999;box-shadow:0 8px 24px rgba(0,0,0,.22);opacity:0;pointer-events:none;transition:all .25s ease;font-size:13px}
+  #today-banner.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  #today-banner .tb-title{font-weight:800;color:var(--pink);margin-bottom:6px;font-size:14px}
+  #today-banner .tb-item{padding:2px 0;color:#333;font-weight:600}
+  #today-banner .tb-close{position:absolute;top:8px;right:10px;background:none;border:none;font-size:15px;color:#999;cursor:pointer;line-height:1}
 </style>
 </head>
 <body>
 
 <!-- New-order alert banner (free, cross-platform sound + banner) -->
 <div id="alert-banner"><span class="ab-badge"></span><span id="ab-text"></span><span class="ab-close" id="ab-close">✕</span></div>
+
+<!-- Today's deliveries banner (shows names of everyone due today) -->
+<div id="today-banner" role="status">
+  <div class="tb-title" id="tb-title"></div>
+  <div id="tb-list"></div>
+  <button class="tb-close" id="tb-close" aria-label="বন্ধ করুন">✕</button>
+</div>
 
 <!-- LOGIN SCREEN -->
 <div class="login-screen" id="login-screen">
@@ -2165,12 +2179,20 @@ select:focus {
    Only then will the bell be able to ring on iPhone. Normal
    Safari tabs cannot ring on iOS (Apple restriction).
 
-   To finish enabling push you MUST put your VAPID key below
-   (Firebase Console -> Project Settings -> Cloud Messaging ->
-    Web Push certificates -> copy the "Key pair"). It looks like
-   "BAA...ABCDEF...-....".
+   VAPID KEY STATUS: ✅ CONFIGURED (see FCM_VAPID_KEY below).
+   If push ever stops working on all devices at once, regenerate the
+   key pair in (Firebase Console -> Project Settings -> Cloud Messaging
+    -> Web Push certificates), paste the new "Key pair" below, and tap
+   🔔 once on every device to re-subscribe.
 ============================================================= */
-var FCM_VAPID_KEY = "REPLACE_WITH_YOUR_VAPID_KEY";
+var FCM_VAPID_KEY = "BBacqw-SjR_gR2tMoQRTnSz7WFeOZ9A2KA_VizN_T__LkUUE-D2MZKiciUeSfod7E2FrU601kKFfStzcdThWTMc";
+// Web Push application server key (VAPID) — CONFIGURED ✅
+// (Firebase Console → Project settings → Cloud Messaging → Web Push
+//  certificates). If you ever regenerate the key pair there, paste the
+// new one here AND have every device tap 🔔 once more to re-subscribe,
+// because old push subscriptions stop working when the key changes.
+// Auto-detects a missing/placeholder key:
+var FCM_VAPID_MISSING = !FCM_VAPID_KEY || FCM_VAPID_KEY.indexOf("REPLACE") === 0;
 var FCM_APP_NAME  = "nitusbakingplanv2";
 var FCM_INIT_DONE = false;
 var FCM_SW_REGISTERED = false;
@@ -2275,6 +2297,7 @@ window.App = (() => {
       cakePayment: 'কেকের পেমেন্ট', bkashDeducted: 'bKash চার্জ বাদ',
       call: '📞 কল', markPaid: '✅ সম্পূর্ণ পরিশোধ', copyPhone: '📱 ফোন কপি',
       due: 'বকেয়া', paidFull: 'পরিশোধিত ✅', delCharge: 'ডেলিভারি চার্জ',
+      todayTitle: '🚚 আজকের ডেলিভারি ({n})',
     },
     en: {
       brand: 'Order Manager', connecting: 'Connecting to cloud...',
@@ -2301,6 +2324,7 @@ window.App = (() => {
       cakePayment: 'Cake Payment', bkashDeducted: 'bKash charge deducted',
       call: '📞 Call', markPaid: '✅ Mark Fully Paid', copyPhone: '📱 Copy Phone',
       due: 'Due', paidFull: 'Paid ✅', delCharge: 'Delivery Charge',
+      todayTitle: "Today's deliveries ({n})",
     }
   };
 
@@ -2412,6 +2436,42 @@ window.App = (() => {
     }
   };
 
+  // ─── Today's-delivery banner (always visible in-app) ─────────
+  // Sticky: stays open until nothing active is left for today.
+  let todayBannerTimer = null;
+  const showTodayBanner = (title, namesText) => {
+    try {
+      const el  = document.getElementById('today-banner');
+      const ttl = document.getElementById('tb-title');
+      const lst = document.getElementById('tb-list');
+      if (!el) return;
+      if (ttl) ttl.textContent = title;
+      if (lst) {
+        lst.innerHTML = '';
+        String(namesText).split('\n').forEach(line => {
+          const d = document.createElement('div');
+          d.className   = 'tb-item';
+          d.textContent = line;
+          lst.appendChild(d);
+        });
+      }
+      el.classList.add('show');
+      clearTimeout(todayBannerTimer);
+      // Auto-hide after 10s ONLY when every order for today is done,
+      // otherwise it keeps pulsing as a reminder that work remains.
+      const stillOpen = orders.some(isActiveOrder);
+      if (!stillOpen) todayBannerTimer = setTimeout(() => el.classList.remove('show'), 10000);
+      document.getElementById('tb-close').onclick = () => el.classList.remove('show');
+    } catch (e) {}
+
+    // System notification on top (bell icon already granted permission)
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body: namesText, tag: 'nitu-today-' + new Date().toISOString().slice(0, 10), renotify: true });
+      }
+    } catch (e) {}
+  };
+
   // ─── Toast ───────────────────────────────────────────────────
   let toastTimer = null;
   const showToast = msg => {
@@ -2454,6 +2514,7 @@ window.App = (() => {
       // User is signed out - show login screen
       document.getElementById('login-screen').classList.remove('hidden');
       orders = [];
+      lastTodaysNotifyKey = '';  // allow the banner again next login/day
       render();
     }
   });
@@ -2807,7 +2868,7 @@ window.App = (() => {
     </div>`;
 
     document.getElementById('view-plan').innerHTML = html;
-    document.getElementById('tc-plan').textContent = pool.length;
+    document.getElementById('tc-plan').textContent = pool.length + (document.getElementById('search-input').value.trim() ? '/' : '');
   };
 
   const renderAll = () => {
@@ -2912,10 +2973,46 @@ window.App = (() => {
     document.getElementById('view-revenue').innerHTML = html;
   };
 
-  // ─── Title badge (summary board removed for a minimal UI) ────
+  // ─── Title badge + pending counter ────────────────────────────
+  // "Pending" = every order that still needs action (not delivered,
+  // not cancelled), exactly like the প্ল্যান tab — INCLUDING overdue
+  // orders sitting on past dates.
+  const INACTIVE_STATUSES = ['delivered', 'cancelled', 'completed', 'complete'];
+  const isActiveOrder = o => !INACTIVE_STATUSES.includes(String(o.status || '').toLowerCase());
+  const pendingCount  = () => orders.filter(isActiveOrder).length;
+
   const updateSummary = () => {
-    document.title = `🎂 নিতুর বেকারি (${orders.length} অর্ডার)`;
+    const p = pendingCount();
+    document.title = p > 0 ? `🔴 ${p} পেন্ডিং — নিতুর বেকারি` : '🎂 নিতুর বেকারি';
   };
+
+  // Names of active orders due TODAY (max 5) — used by the morning
+  // "you have N deliveries today" alert so it says WHO, not just how many.
+  const todayOrderNames = () => {
+    const t = today0();
+    return orders
+      .filter(isActiveOrder)
+      .filter(o => o.date && !Number.isNaN(toDate(o.date).getTime()))
+      .filter(o => toDate(o.date).getTime() === t.getTime())
+      .map(o => o.name)
+      .slice(0, 5);
+  };
+
+  // Fires once per day with today's delivery list. If a NEW order for
+  // today arrives later, the changed name set re-triggers it once more.
+  let lastTodaysNotifyKey = '';
+  const notifyTodaysOrders = () => {
+    const names = todayOrderNames();
+    if (!names.length) return;
+    const key = new Date().toISOString().slice(0, 10) + '|' + names.join(',');
+    if (key === lastTodaysNotifyKey) return;
+    lastTodaysNotifyKey = key;
+    showTodayBanner(
+      tr('todayTitle').replace('{n}', String(names.length)),
+      names.map(n => '• ' + n).join('\n')
+    );
+  };
+  setInterval(notifyTodaysOrders, 60000);
 
   // ─── Mini calendar (daily order capacity) ─────────────────────
   let calCursor = today0(); calCursor.setDate(1);
@@ -3791,6 +3888,21 @@ window.App = (() => {
   function supportsNotification(){ return ("Notification" in window); }
   var isIos = isIosDevice && isIosDevice();
 
+  // Tag every registered device with WHERE it subscribed from, so the
+  // /pushTokens table instantly shows whether your APK wrapper,
+  // Chrome PWA or desktop browser holds each token.
+  function platformKind() {
+    var ua = navigator.userAgent || "";
+    var standalone = navigator.standalone ||
+      (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+    if (isIos) return standalone ? "ios-standalone" : "ios-browser";
+    if (/android/i.test(ua)) {
+      if (/;\s*wv\)/i.test(ua)) return "android-webview";   // wrapped APK
+      return standalone ? "android-standalone" : "android-browser";
+    }
+    return "desktop";
+  }
+
   // Self-contained toast (does not depend on the main App scope)
   function showNotifToast(msg) {
     try {
@@ -3804,28 +3916,87 @@ window.App = (() => {
   }
 
   // ─── Registration + FCM token (Web Push) ─────────────────────
-  function subscribePush() {
-    if (FCM_VAPID_KEY && FCM_VAPID_KEY.indexOf("REPLACE") === 0) {
-      // VAPID not set yet: fall back to the standard Notification API (Android).
-      updateBellUI();
-      return;
+  // On iOS the push subscription is only ready a moment AFTER the
+  // service worker registers, so one immediate getToken() call often
+  // fails with "notification permission has not been requested yet"
+  // or "storage unavailable". We therefore RETRY quietly.
+  var PUSH_RETRIES_LEFT = 10;
+  function deviceKey() {
+    var uid = lsGet("nitu-uid");
+    if (!uid) { uid = "u" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); lsSet("nitu-uid", uid); }
+    var uaId = "";
+    try { uaId = btoa((navigator.userAgent || "dev").slice(-24)).replace(/[^A-Za-z0-9]/g, ""); } catch(e) { uaId = "ua"; }
+    return ("d-" + uid.slice(0, 8) + "-" + uaId.slice(0, 10)).toLowerCase();
+  }
+  function savePushToken(token) {
+    fcmToken = token;
+    lsSet("nitu-fcm-token", token);
+    if (isIos && lsGet("nitu-ios-push-prompted") !== "1") {
+      lsSet("nitu-ios-push-prompted", "1");
+      showNotifToast("🍎 নোটিফিকেশন চালু হয়েছে — এখন অ্যাপটি বন্ধ থাকলেও খবর পাবেন!");
     }
-    if (!window.firebase.messaging) { updateBellUI(); return; }
-    registerServiceWorkers().then(function(reg) {
-      if (!reg) { updateBellUI(); return; }
-      var messaging = firebase.messaging();
-      try {
-        messaging.getToken({ vapidKey: FCM_VAPID_KEY }).then(function(token) {
-          if (!token) { updateBellUI(); return; }
-          fcmToken = token;
-          lsSet("nitu-fcm-token", token);
-          // Persist this device token so a future sender can target it.
-          var devKey = (navigator.userAgent || "").slice(0, 40).replace(/[^\w]+/g, "-") + "-" + lsGet("nitu-uid");
-          tokRef.child(devKey).set({ token: token, ts: Date.now(), ua: (navigator.userAgent||"").slice(0,80) });
-          notifEnabled = true;
-        }).catch(function(){ updateBellUI(); });
-      } catch(e){ updateBellUI(); }
-    });
+    // Persist this device token so the cloud function can target it.
+    var key = deviceKey();
+    tokRef.child(key).set({
+      token: token,
+      ts: Date.now(),
+      ua: (navigator.userAgent || "").slice(0, 80),
+      platform: platformKind()
+    }).then(function () {
+      // Remove any OTHER entries pointing at a DIFFERENT token — stale
+      // tokens make FCM deliveries fail silently over time.
+      return tokRef.once("value").then(function (snapTokens) {
+        var removes = [];
+        snapTokens.forEach(function (child) {
+          var v = child.val();
+          if (v && v.token && v.token !== token && child.key !== key) removes.push(child.ref.remove());
+        });
+        return Promise.all(removes);
+      });
+    }).catch(function () {});
+    notifEnabled = true;
+    updateBellUI();
+  }
+  function updateBellDenied(msg) {
+    var bell = document.getElementById("notif-bell");
+    if (bell) bell.classList.add("denied");
+    if (msg) console.warn("[push]", msg);
+  }
+  function attemptPushSubscription(isRetry) {
+    // VAPID key missing: Web Push can never work. Fall back to the old
+    // standard Notification API behaviour (Android foreground only).
+    if (FCM_VAPID_MISSING) { updateBellUI(); return; }
+    if (!(window.Notification && Notification.permission === "granted")) { updateBellUI(); return; }
+    if (fcmToken || PUSH_RETRIES_LEFT <= 0) { updateBellUI(); return; }
+    if (isRetry) PUSH_RETRIES_LEFT--;
+    var delay = isRetry ? Math.min(200 * Math.pow(1.6, 10 - PUSH_RETRIES_LEFT), 4000) : 0;
+    setTimeout(function () {
+      registerServiceWorkers().then(function (reg) {
+        if (!reg) {
+          if (PUSH_RETRIES_LEFT > 0) attemptPushSubscription(true);
+          else updateBellDenied("service worker registration failed");
+          return;
+        }
+        var messaging = firebase.messaging();
+        messaging.getToken({ vapidKey: FCM_VAPID_KEY }).then(function (token) {
+          if (token) savePushToken(token);
+          else if (PUSH_RETRIES_LEFT > 0) attemptPushSubscription(true);
+          else updateBellDenied("empty FCM token");
+        }).catch(function (err) {
+          if (PUSH_RETRIES_LEFT > 0) attemptPushSubscription(true);
+          else {
+            updateBellDenied(err && err.message ? err.message : "getToken failed");
+            if (isIos && !lsGet("nitu-push-error-shown")) {
+              lsSet("nitu-push-error-shown", "1");
+              alert("⚠️ iPhone-এ নোটিফিকেশন সেটআপ সম্ভব হয়নি।\n\nঅ্যাপটি বন্ধ করে Home Screen আইকন থেকে নতুন করে খুলুন এবং 🔔 বাটনে আবার চাপুন।\n\nসমস্যা থাকলে: Settings → Safari → Advanced → Experimental Features → 'Web Push' চালু আছে কিনা দেখুন।");
+            }
+          }
+        });
+      });
+    }, delay);
+  }
+  function subscribePush() {
+    attemptPushSubscription(false);
   }
 
   // ─── Foreground message handler (app is open) ────────────────
@@ -3864,6 +4035,10 @@ window.App = (() => {
   window.App.toggleNotifications = function() {
     var iosInstallTip = "\n\niPhone-এ নোটিফিকেশন পেতে:\n1. Safari-তে এই অ্যাপ খুলুন\n2. শেয়ার (Share) বাটনে চাপুন\n3. \"হোম স্ক্রিনে যোগ করুন\" (Add to Home Screen)\n4. হোম স্ক্রিন আইকন থেকে অ্যাপ খুলুন";
 
+    if (platformKind() === "android-webview") {
+      alert("ℹ️ এই APK (WebView) অ্যাপ বন্ধ থাকলে push notification সাধারণত পাঠাতে পারে না — এটি Android-এর টেকনিক্যাল সীমাবদ্ধতা, আপনার সেটআপের সমস্যা নয়।\n\nনির্ভরযোগ্য উপায়:\n১. Chrome ব্রাউজারে অ্যাডমিন পেজটি খুলুন\n২. ⋮ মেনু → \"Add to Home screen\"\n৩. ওই নতুন আইকন থেকে অ্যাপ খুলে 🔔 একবার চাপুন\n\nতবুও এই APK খোলা থাকা অবস্থায় নতুন অর্ডারে লাল ব্যানার + শব্দ + 🔔 রিং পাবেন।");
+    }
+
     if (isIos && !navigator.standalone) {
       alert("🔔 iPhone-এ নোটিফিকেশন পেতে অ্যাপ হিসেবে ইনস্টল করুন" + iosInstallTip);
       return;
@@ -3882,6 +4057,10 @@ window.App = (() => {
     }
 
     if (Notification.permission === "granted") {
+      if (FCM_VAPID_MISSING && !isIos) {
+        alert("⚠️ Push notification key (VAPID) এখনো সেট করা হয়নি!\n\nFirebase Console → Project Settings → Cloud Messaging → Web Push certificates থেকে Key pair কপি করে admin-app/index.html-এর FCM_VAPID_KEY-এ বসান।\n\nতার আগে অ্যাপ বন্ধ থাকা অবস্থায় নোটিফিকেশন আসবে না।");
+        return;
+      }
       subscribePush();
       alert("✅ নোটিফিকেশন চালু আছে! নতুন অর্ডার ও প্রতিদিন ২ বার রিমাইন্ড পাবেন।");
       return;
