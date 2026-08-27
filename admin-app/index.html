@@ -2515,6 +2515,61 @@ window.App = (() => {
     toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
   };
 
+  // ─── Instant Telegram bridge + heartbeat (channel #1 backup) ─────
+  // NOTE: lives in the same closure as the Firebase listeners below
+  // (moved from script block #3 — cross-block calls were crashing render).
+  var TG_CFG = null, tgCfgFetched = false;
+  function fetchTgConfig() {
+    if (!tgCfgFetched) {
+      tgCfgFetched = true;
+      fetch('./telegram-config.json?cb=' + Date.now())
+        .then(r => r.ok ? r.json() : null)
+        .then(cfg => { TG_CFG = (cfg && cfg.botToken && cfg.chatId) ? cfg : null; })
+        .catch(() => { TG_CFG = null; });
+    }
+    return Promise.resolve(TG_CFG);
+  }
+  fetchTgConfig();
+  setInterval(fetchTgConfig, 6 * 60 * 60 * 1000);
+
+  function _tgHtml(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  var _tgEscapeSafe = _tgHtml;
+  function sendTelegramNow(text) {
+    return fetchTgConfig().then(cfg => {
+      if (!cfg) return false;
+      try {
+        var ctl = new AbortController();
+        setTimeout(() => ctl.abort(), 8000);
+        return fetch('https://api.telegram.org/bot' + cfg.botToken + '/sendMessage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: cfg.chatId, text: text }),
+          signal: ctl.signal
+        }).then(r => r.ok).catch(() => false);
+      } catch (e) { return false; }
+    });
+  }
+  const HB_FLAV_EN = {
+    'vanilla-sponge': 'Vanilla Sponge', 'chocolate-sponge': 'Chocolate Sponge',
+    'double-layer-chocolate': 'Double Layered Chocolate', 'black-forest': 'Black Forest',
+    'white-forest': 'White Forest', 'lemon': 'Lemon Cake', 'orange': 'Orange Cake',
+    'strawberry': 'Strawberry Cake', 'blueberry': 'Blueberry', 'malai': 'Malai Cake',
+    'butterscotch': 'Butterscotch Cake', 'special-vanilla': 'Special Vanilla',
+    'chocolate-mud': 'Chocolate Mud Cake', 'red-velvet': 'Red Velvet',
+    'cream-cheese-fruit': 'Cream Cheese Fruit'
+  };
+  const HB_MO_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function hbHumanWhen(dstr) {
+    var d = String(dstr || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      var p = d.split('-');
+      return (+p[2]) + ' ' + HB_MO_EN[(+p[1]) - 1] + ' ' + p[0];
+    }
+    return d;
+  }
+
   // ─── Firebase listeners ──────────────────────────────────────
   // Auth state listener - MUST be set up before database listeners
   auth.onAuthStateChanged(user => {
@@ -2552,6 +2607,96 @@ window.App = (() => {
       render();
     }
   });
+
+  // ─── Heartbeat engine (Telegram channel; lives in THIS closure so the
+  //     live listener above can always reach it — never move to block #3) ──
+  var hbKnownIds = {};
+  try { hbKnownIds = JSON.parse(localStorage.getItem('nitu_hb_known') || '{}'); } catch (e) { hbKnownIds = {}; }
+  var HB_BOOT_DONE = false;
+
+  function trimHbMemory() {
+    try {
+      var ids = Object.keys(hbKnownIds);
+      if (ids.length <= 300) return;
+      hbKnownIds = {};
+      ids.slice(-300).forEach(k => { hbKnownIds[k] = true; });
+    } catch (e) {}
+  }
+
+  function orderAlertText(o) {
+    var name  = o.customerName || o.name || 'Unknown';
+    var wRaw  = String(o.weightLabel || o.weight || '').trim();
+    var w     = (wRaw && wRaw.toLowerCase() !== 'custom') ? wRaw : '';
+    var flavN = o.flavourName || HB_FLAV_EN[o.flavour] || '';
+    var when  = hbHumanWhen(o.deliveryDate || o.date);
+    var due   = Math.max(0, Math.round((o.total || 0) - ((o.advanceTotal != null ? o.advanceTotal : o.advance) || 0)));
+    return '🎂 ' + _tgHtml(name) + ' just placed a ' +
+      _tgEscapeSafe(((w ? w + ' ' : '') + (flavN || '')).trim() || 'cake') + ' cake' +
+      (when ? ' for ' + _tgEscapeSafe(when) : '') +
+      (o.total ? '\n💰 Total: ৳' + Math.round(o.total) : '') +
+      (due > 0 ? '\n⚠️ Due: ৳' + due : '') +
+      '\n🕐 Order ID: ' + _tgEscapeSafe(o.orderId || '');
+  }
+
+  function detectNewOrdersRealtime(ordersArr) {
+    try {
+      if (!HB_BOOT_DONE) {
+        HB_BOOT_DONE = true;
+        (ordersArr || []).forEach(o => { if (o && o.firebaseKey) hbKnownIds[o.firebaseKey] = true; });
+        trimHbMemory();
+        try { localStorage.setItem('nitu_hb_known', JSON.stringify(hbKnownIds)); } catch (e) {}
+        repairStuckDeliveries(null);
+        return;
+      }
+      var unseen = (ordersArr || []).filter(o => o && o.firebaseKey && !hbKnownIds[o.firebaseKey]);
+      unseen.forEach(o => { hbKnownIds[o.firebaseKey] = true; });
+      if (unseen.length) {
+        trimHbMemory();
+        try { localStorage.setItem('nitu_hb_known', JSON.stringify(hbKnownIds)); } catch (e) {}
+        unseen.forEach(o => { console.log('[heartbeat] new order:', o.orderId || o.firebaseKey); });
+        unseen.forEach(o => { sendTelegramNow(orderAlertText(o)); });
+      }
+    } catch (hbErr) { console.error('[heartbeat] fault contained:', hbErr); }
+  }
+
+  // Every 10 min: ensure Telegram knows about every pending customer order.
+  // If any other layer ever stalls, this sweep guarantees delivery.
+  function repairStuckDeliveries(listOverride) {
+    var job = listOverride ? Promise.resolve(listOverride)
+      : Promise.resolve().then(() => {
+          if (!currentUser) return null;
+          return ordersRef.once('value').then(snap => {
+            var out = [];
+            var data = snap.val() || {};
+            Object.keys(data).forEach(k => {
+              var o = normalizeCustomerOrder(data[k]);
+              o.firebaseKey = k;
+              out.push(o);
+            });
+            return out;
+          });
+        });
+    return job.then(list => {
+      if (!list || !list.length) return;
+      var missing = [];
+      list.forEach(o => {
+        if (o && o.firebaseKey &&
+            o.source === 'customer' &&
+            String(o.status || '') !== 'delivered' &&
+            String(o.status || '') !== 'cancelled' &&
+            !hbKnownIds[o.firebaseKey]) {
+          missing.push(o);
+        }
+      });
+      if (!missing.length) return;
+      console.log('[heartbeat] repairing ' + missing.length + ' stuck order(s)');
+      missing.forEach(o => { sendTelegramNow(orderAlertText(o)); });
+      missing.forEach(o => { hbKnownIds[o.firebaseKey] = true; });
+      trimHbMemory();
+      try { localStorage.setItem('nitu_hb_known', JSON.stringify(hbKnownIds)); } catch (e) {}
+    }).catch(() => {});
+  }
+  setInterval(() => { try { repairStuckDeliveries(null); } catch (e) {} }, 10 * 60 * 1000);
 
   setTimeout(() => {
     if (!isConnected) setSyncStatus('error', '❌ সংযোগ ব্যর্থ হয়েছে');
@@ -4182,148 +4327,6 @@ window.App = (() => {
       }
     });
   };
-
-  // ─── Instant Telegram bridge + heartbeat (channel #1 backup) ─────
-  var TG_CFG = null, tgCfgFetched = false;
-  function fetchTgConfig() {
-    if (!tgCfgFetched) {
-      tgCfgFetched = true;
-      fetch('./telegram-config.json?cb=' + Date.now())
-        .then(r => r.ok ? r.json() : null)
-        .then(cfg => { TG_CFG = (cfg && cfg.botToken && cfg.chatId) ? cfg : null; })
-        .catch(() => { TG_CFG = null; });
-    }
-    return Promise.resolve(TG_CFG);
-  }
-  fetchTgConfig();
-  setInterval(fetchTgConfig, 6 * 60 * 60 * 1000);
-
-  function _tgHtml(s) {
-    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
-  var _tgEscapeSafe = _tgHtml;
-  function sendTelegramNow(text) {
-    return fetchTgConfig().then(cfg => {
-      if (!cfg) return false;
-      try {
-        var ctl = new AbortController();
-        setTimeout(() => ctl.abort(), 8000);
-        return fetch('https://api.telegram.org/bot' + cfg.botToken + '/sendMessage', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: cfg.chatId, text: text }),
-          signal: ctl.signal
-        }).then(r => r.ok).catch(() => false);
-      } catch (e) { return false; }
-    });
-  }
-  const FLAV_EN = {
-    'vanilla-sponge': 'Vanilla Sponge', 'chocolate-sponge': 'Chocolate Sponge',
-    'double-layer-chocolate': 'Double Layered Chocolate', 'black-forest': 'Black Forest',
-    'white-forest': 'White Forest', 'lemon': 'Lemon Cake', 'orange': 'Orange Cake',
-    'strawberry': 'Strawberry Cake', 'blueberry': 'Blueberry', 'malai': 'Malai Cake',
-    'butterscotch': 'Butterscotch Cake', 'special-vanilla': 'Special Vanilla',
-    'chocolate-mud': 'Chocolate Mud Cake', 'red-velvet': 'Red Velvet',
-    'cream-cheese-fruit': 'Cream Cheese Fruit'
-  };
-  const MO_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  function humanWhen(dstr) {
-    var d = String(dstr || '').trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
-      var p = d.split('-');
-      return (+p[2]) + ' ' + MO_EN[(+p[1]) - 1] + ' ' + p[0];
-    }
-    return d;
-  }
-
-  function orderAlertText(o) {
-    var name  = o.customerName || o.name || 'Unknown';
-    var wRaw  = String(o.weightLabel || o.weight || '').trim();
-    var w     = (wRaw && wRaw.toLowerCase() !== 'custom') ? wRaw : '';
-    var flavN = o.flavourName || FLAV_EN[o.flavour] || '';
-    var when  = humanWhen(o.deliveryDate || o.date);
-    var due   = Math.max(0, Math.round((o.total || 0) - ((o.advanceTotal != null ? o.advanceTotal : o.advance) || 0)));
-    return '🎂 ' + _tgHtml(name) + ' just placed a ' +
-      _tgEscapeSafe(((w ? w + ' ' : '') + (flavN || '')).trim() || 'cake') + ' cake' +
-      (when ? ' for ' + _tgEscapeSafe(when) : '') +
-      (o.total ? '\n💰 Total: ৳' + Math.round(o.total) : '') +
-      (due > 0 ? '\n⚠️ Due: ৳' + due : '') +
-      '\n🕐 Order ID: ' + _tgEscapeSafe(o.orderId || '');
-  }
-
-  // Detect orders that arrived while NO admin screen was open anywhere.
-  var hbKnownIds = {};
-  try { hbKnownIds = JSON.parse(localStorage.getItem('nitu_hb_known') || '{}'); } catch (e) { hbKnownIds = {}; }
-  var HB_BOOT_DONE = false;
-
-  function trimHbMemory() {
-    try {
-      var ids = Object.keys(hbKnownIds);
-      if (ids.length <= 300) return;
-      hbKnownIds = {};
-      ids.slice(-300).forEach(k => { hbKnownIds[k] = true; });
-    } catch (e) {}
-  }
-
-  function detectNewOrdersRealtime(ordersArr) {
-    if (!HB_BOOT_DONE) {
-      // First snapshot after login = baseline; never alert on history.
-      HB_BOOT_DONE = true;
-      (ordersArr || []).forEach(o => { if (o && o.firebaseKey) hbKnownIds[o.firebaseKey] = true; });
-      trimHbMemory();
-      try { localStorage.setItem('nitu_hb_known', JSON.stringify(hbKnownIds)); } catch (e) {}
-      repairStuckDeliveries(ordersArr);
-      return;
-    }
-    var unseen = (ordersArr || []).filter(o => o && o.firebaseKey && !hbKnownIds[o.firebaseKey]);
-    unseen.forEach(o => { hbKnownIds[o.firebaseKey] = true; });
-    if (unseen.length) {
-      trimHbMemory();
-      try { localStorage.setItem('nitu_hb_known', JSON.stringify(hbKnownIds)); } catch (e) {}
-      unseen.forEach(o => {
-        console.log('[heartbeat] new order:', o.orderId || o.firebaseKey);
-        sendNotification(o);
-        sendTelegramNow(orderAlertText(o));
-      });
-    }
-  }
-
-  // Every 10 min: ensure Telegram knows about every pending customer order.
-  // If GitHub's free scheduler ever stalls again, this safety net guarantees
-  // nothing stays un-notified for more than a few minutes.
-  function repairStuckDeliveries(listOverride) {
-    var job = listOverride ? Promise.resolve(listOverride)
-      : Promise.resolve().then(() => {
-          if (!currentUser) return null;
-          return ordersRef.once('value').then(snap => {
-            var out = [];
-            var data = snap.val() || {};
-            Object.keys(data).forEach(k => {
-              var o = normalizeCustomerOrder(data[k]);
-              o.firebaseKey = k;
-              out.push(o);
-            });
-            return out;
-          });
-        });
-    return job.then(list => {
-      if (!list || !list.length) return;
-      var missing = [];
-      list.forEach(o => {
-        if (o && o.firebaseKey &&
-            o.source === 'customer' &&
-            String(o.status || '') !== 'delivered' &&
-            String(o.status || '') !== 'cancelled' &&
-            !hbKnownIds[o.firebaseKey]) {
-          missing.push(o);
-        }
-      });
-      if (!missing.length) return;
-      console.log('[heartbeat] repairing ' + missing.length + ' stuck order(s)');
-      missing.forEach(o => { sendTelegramNow(orderAlertText(o)); });
-    }).catch(() => {});
-  }
-  setInterval(() => repairStuckDeliveries(null), 10 * 60 * 1000);
 
   // ─── Order notifications ─────────────────────────────────────
   function wt(o) {
