@@ -1944,24 +1944,24 @@ select:focus {
           <div class="field">
             <label>ফ্লেভার</label>
             <select id="f-flavour">
-              <option>Chocolate Sponge</option>
-              <option>Vanilla Sponge</option>
-              <option>Vanilla with Whipped Cream</option>
-              <option>Red Velvet</option>
-              <option>Black Forest</option>
-              <option>White Forest</option>
-              <option>Lemon Cake</option>
-              <option>Orange Cake</option>
-              <option>Strawberry Cake</option>
-              <option>Blueberry Cake</option>
-              <option>Malai Cake</option>
-              <option>Butterscotch</option>
-              <option>Special Vanilla</option>
-              <option>Chocolate Mudcake</option>
-              <option>Double Chocolate</option>
-              <option>Choco Truffle</option>
-              <option>Mango Mousse</option>
-              <option>Custom</option>
+              <option value="vanilla-sponge">Vanilla Sponge</option>
+              <option value="chocolate-sponge">Chocolate Sponge</option>
+              <option value="vanilla-whipped-cream">Vanilla with Whipped Cream</option>
+              <option value="red-velvet">Red Velvet</option>
+              <option value="black-forest">Black Forest</option>
+              <option value="white-forest">White Forest</option>
+              <option value="lemon">Lemon Cake</option>
+              <option value="orange">Orange Cake</option>
+              <option value="strawberry">Strawberry Cake</option>
+              <option value="blueberry">Blueberry Cake</option>
+              <option value="malai">Malai Cake</option>
+              <option value="butterscotch">Butterscotch</option>
+              <option value="special-vanilla">Special Vanilla</option>
+              <option value="chocolate-mud">Chocolate Mudcake</option>
+              <option value="double-layer-chocolate">Double Chocolate</option>
+              <option value="choco-truffle">Choco Truffle</option>
+              <option value="mango-mousse">Mango Mousse</option>
+              <option value="custom">Custom</option>
             </select>
           </div>
         </div>
@@ -2361,6 +2361,12 @@ window.App = (() => {
     if (o.timeSlotLabel && !o.time) o.time = o.timeSlotLabel;
     if (o.weightLabel && (!o.weight || String(o.weight).toLowerCase() === 'custom')) o.weight = o.weightLabel;
     if (o.flavourName && !o.flavour) o.flavour = o.flavourName;
+    // Repair/upgrade flavour data: fill a blank flavour from its Bengali
+    // label (e.g. orders damaged by old edit-modal bug), derive a missing
+    // Bengali name from a known id, and convert known ids to their display
+    // name so the card shows what the customer actually chose.
+    if (!o.flavourName && o.flavour && FLAVOUR_MAP[o.flavour]) o.flavourName = FLAVOUR_MAP[o.flavour];
+    if (o.flavour && FLAVOUR_MAP[o.flavour]) o.flavour = FLAVOUR_MAP[o.flavour];
     if (o.cakeWriting && !o.writing) o.writing = o.cakeWriting;
     if (o.cakePrice != null && !o.total) o.total = Number(o.cakePrice);
     if (o.deliveryCharge != null && o.deliveryAmount == null) o.deliveryAmount = Number(o.deliveryCharge);
@@ -2371,6 +2377,33 @@ window.App = (() => {
     if (o.fulfilment === 'pickup' && !o.address) o.address = 'Self pickup: Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram';
     return o;
   };
+
+  // Flavour map mirrors customer-app utils.js: converts machine ids like
+  // 'white-forest' to display names, so admin edits can never blank out a
+  // stored flavour and cards always show the Bengali name customers chose.
+  const FLAVOUR_MAP = {
+    'vanilla-sponge': 'ভ্যানিলা স্পঞ্জ',
+    'chocolate-sponge': 'চক্লেট স্পঞ্জ',
+    'double-layer-chocolate': 'ডাবল লেয়ারড চকলেট',
+    'black-forest': 'ব্ল্যাক ফরেস্ট',
+    'white-forest': 'হোয়াইট ফরেস্ট',
+    'lemon': 'লেমন কেক',
+    'orange': 'অরেঞ্জ কেক',
+    'strawberry': 'স্ট্রবেরি কেক',
+    'blueberry': 'ব্লুবেরি',
+    'malai': 'মালাই কেক',
+    'butterscotch': 'বাটারস্কচ কেক',
+    'special-vanilla': 'স্পেশাল ভ্যানিলা',
+    'chocolate-mud': 'চকলেট মাডকেক',
+    'red-velvet': 'রেড ভেলভেট',
+    'cream-cheese-fruit': 'ক্রিম চিজ ফ্রস্টিং উইথ ফ্রুট ফিলিং',
+    'vanilla-whipped-cream': 'ভ্যানিলা হুইপড ক্রিম',
+    'choco-truffle': 'চকো ট্রাফল',
+    'mango-mousse': 'ম্যাংগো মুস'
+  };
+  // Single source of truth for displaying a flavour on cards/messages:
+  // known id → mapped Bengali name; else stored Bengali name; else raw text.
+  const flavourLabel = o => FLAVOUR_MAP[o.flavour] || o.flavourName || o.flavour || '';
 
   // Weight display: prefer the raw weight text written by the customer.
   // Legacy customer orders stored weight='custom' with the real text in
@@ -2626,7 +2659,7 @@ window.App = (() => {
     L.push(`${o.name || ''}`);
     L.push('');
     // Weight + flavour
-    L.push(`${weightText(o)}${weightText(o) && o.flavour ? ' ' : ''}${o.flavour || ''}`);
+    L.push(`${weightText(o)}${weightText(o) && o.flavour ? ' ' : ''}${flavourLabel(o)}`);
     L.push('');
     // Size
     if (o.size) { L.push(`size- ${o.size}`); L.push(''); }
@@ -2734,7 +2767,7 @@ window.App = (() => {
     <div class="card-head-body">
       ${o.orderId ? `<div class="card-order-id">🆔 ${esc(o.orderId)}</div>` : ''}
       <div class="card-name"><span class="card-name-text">${esc(o.name)}</span>${tallyBadge}${customerBadge}<button class="name-copy-btn" type="button" onclick="event.stopPropagation();App.copyCardName(this)" title="নাম কপি করুন">📋 কপি</button></div>
-      <div class="card-meta">${esc(weightText(o))}${weightText(o) && o.flavour ? ' · ' : ''}${esc(o.flavour || '')}${o.time ? ' · ' + esc(o.time) : ''}</div>
+      <div class="card-meta">${esc(weightText(o))}${weightText(o) && o.flavour ? ' · ' : ''}${esc(flavourLabel(o))}${o.time ? ' · ' + esc(o.time) : ''}</div>
       ${cdChip}
       <div class="card-chips">${statusChip(o)}${dueChip}${surpriseChip}${deliveryChip}${delayedChip}</div>
     </div>
@@ -2751,7 +2784,7 @@ window.App = (() => {
 
     <div class="detail-section">
       <div class="detail-title">🎂 কেক বিবরণ</div>
-      ${drow('⚖️', 'ওজন ও ফ্লেভার', `${weightText(o)} — ${o.flavour || ''}`)}
+      ${drow('⚖️', 'ওজন ও ফ্লেভার', `${weightText(o)} — ${flavourLabel(o)}`)}
       ${drow('📐', 'সাইজ', o.size)}
       ${drow('🎨', 'ডিজাইন', o.design)}
       ${o.photoNote ? drow('📝', 'ছবির নোট', o.photoNote) : ''}
@@ -3333,7 +3366,35 @@ window.App = (() => {
     g('f-name').value           = o.name      || '';
     g('f-phone').value          = o.phone     || '';
     g('f-weight').value         = weightText(o);
-    g('f-flavour').value        = o.flavour   || 'Chocolate Sponge';
+    // Match stored flavour no matter how it was saved over the years:
+    // machine id (customer form) → Bengali name → legacy English label.
+    // Falls back to 'Custom' so an edit can NEVER silently blank a flavour.
+    {
+      const flSel    = g('f-flavour');
+      const stored   = String(o.flavour || '').trim();
+      const storedBn = String(o.flavourName || '').trim();
+      let pick       = '';
+      Array.from(flSel.options).forEach(opt => {
+        if (!pick && opt.value && (opt.value === stored)) pick = opt.value;
+        if (!pick && storedBn && opt.textContent === storedBn) pick = opt.value;
+      });
+      if (!pick) {
+        for (const entry of Object.entries(FLAVOUR_MAP)) {
+          if (entry[1] === stored || entry[1] === storedBn) { pick = entry[0]; break; }
+        }
+      }
+      if (!pick) {
+        const LEGACY = { 'Chocolate Sponge': 'chocolate-sponge', 'Vanilla Sponge': 'vanilla-sponge',
+          'Vanilla with Whipped Cream': 'vanilla-whipped-cream', 'Red Velvet': 'red-velvet',
+          'Black Forest': 'black-forest', 'White Forest': 'white-forest', 'Lemon Cake': 'lemon',
+          'Orange Cake': 'orange', 'Strawberry Cake': 'strawberry', 'Blueberry Cake': 'blueberry',
+          'Malai Cake': 'malai', 'Butterscotch': 'butterscotch', 'Special Vanilla': 'special-vanilla',
+          'Chocolate Mudcake': 'chocolate-mud', 'Double Chocolate': 'double-layer-chocolate',
+          'Choco Truffle': 'choco-truffle', 'Mango Mousse': 'mango-mousse' };
+        pick = LEGACY[stored] || 'custom';
+      }
+      flSel.value = pick;
+    }
     g('f-size').value           = o.size      || '';
     g('f-design').value         = o.design    || '';
     g('f-writing').value        = o.writing   || '';
@@ -4133,7 +4194,8 @@ window.App = (() => {
     var granted = supported && Notification.permission === "granted";
     var name = orderData.name || "Unknown";
     var source = orderData.source === "tally" ? " (Tally)" : "";
-    var body = [wt(orderData), orderData.flavour, orderData.total ? "৳" + Math.round(orderData.total) : ""].filter(Boolean).join(" · ");
+    var flav = orderData.flavourName || orderData.flavour || "";
+    var body = [wt(orderData), flav, orderData.total ? "৳" + Math.round(orderData.total) : ""].filter(Boolean).join(" · ");
     // Android: native notification (free). iPhone: in-app banner handles it (no billing needed).
     if (granted && !isIos) {
       try {
