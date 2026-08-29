@@ -9,16 +9,21 @@ const WEIGHTS = [
 ];
 
 const FLAVOURS = [
+  { value: 'vanilla-sponge', label: 'ভ্যানিলা স্পঞ্জ', labelEn: 'Vanilla Sponge' },
   { value: 'chocolate-sponge', label: 'চকলেট স্পঞ্জ', labelEn: 'Chocolate Sponge' },
-  { value: 'vanilla', label: 'ভ্যানিলা', labelEn: 'Vanilla' },
-  { value: 'red-velvet', label: 'রেড ভেলভেট', labelEn: 'Red Velvet' },
+  { value: 'double-layer-chocolate', label: 'ডাবল লেয়ারড চকলেট', labelEn: 'Double Layered Chocolate' },
   { value: 'black-forest', label: 'ব্ল্যাক ফরেস্ট', labelEn: 'Black Forest' },
-  { value: 'butter-scotch', label: 'বাটার স্কচ', labelEn: 'Butter Scotch' },
-  { value: 'strawberry', label: 'স্ট্রবেরি', labelEn: 'Strawberry' },
-  { value: 'pineapple', label: 'পাইনএপেল', labelEn: 'Pineapple' },
-  { value: 'mixed-fruit', label: 'মিক্সড ফ্রুট', labelEn: 'Mixed Fruit' },
-  { value: 'cheesecake', label: 'চিজ কেক', labelEn: 'Cheesecake' },
-  { value: 'coffee', label: 'কফি', labelEn: 'Coffee' }
+  { value: 'white-forest', label: 'হোয়াইট ফরেস্ট', labelEn: 'White Forest' },
+  { value: 'lemon', label: 'লেমন কেক', labelEn: 'Lemon Cake' },
+  { value: 'orange', label: 'অরেঞ্জ কেক', labelEn: 'Orange Cake' },
+  { value: 'strawberry', label: 'স্ট্রবেরি কেক', labelEn: 'Strawberry Cake' },
+  { value: 'blueberry', label: 'ব্লুবেরি', labelEn: 'Blueberry' },
+  { value: 'malai', label: 'মালাই কেক', labelEn: 'Malai Cake' },
+  { value: 'butterscotch', label: 'বাটারস্কচ কেক', labelEn: 'Butterscotch Cake' },
+  { value: 'special-vanilla', label: 'স্পেশাল ভ্যানিলা', labelEn: 'Special Vanilla' },
+  { value: 'chocolate-mud', label: 'চকলেট মাডকেক', labelEn: 'Chocolate Mud Cake' },
+  { value: 'red-velvet', label: 'রেড ভেলভেট', labelEn: 'Red Velvet' },
+  { value: 'cream-cheese-fruit', label: 'ক্রিম চিজ ফ্রস্টিং উইথ ফ্রুট ফিলিং', labelEn: 'Cream Cheese Frosting with Fruit Filling' }
 ];
 
 const TIME_SLOTS = [];

@@ -83,6 +83,10 @@ button{cursor:pointer}
 .photo-upload{border:2px dashed var(--border);border-radius:var(--radius-sm);padding:24px;text-align:center;cursor:pointer;color:var(--text3);font-size:13px}
 .photo-upload:active{border-color:var(--pink)}
 .hint-box{font-size:11px;color:var(--blue);margin-top:4px;line-height:1.4}
+.weight-presets{display:flex;gap:8px;margin-top:6px}
+.weight-preset{flex:1;padding:9px 6px;border:2px dashed var(--pink);border-radius:var(--radius-sm);background:var(--pink-light);color:var(--pink-dark);font-size:13px;font-weight:700;cursor:pointer;line-height:1.3}
+.weight-preset:active{transform:scale(.98)}
+.weight-preset.active{border-style:solid;background:var(--pink);color:#fff}
 .photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-top:10px}
 .photo-thumb{position:relative}
 .photo-thumb img{width:100%;height:80px;object-fit:cover;border-radius:var(--radius-xs)}
@@ -152,7 +156,6 @@ button{cursor:pointer}
 .order-history-date{color:var(--pink-dark);font-size:14px;font-weight:700;margin-bottom:10px}
 .order-history-row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--border);font-size:13px}
 .order-history-row span:first-child{color:var(--text3);flex-shrink:0}.order-history-row span:last-child{font-weight:600;text-align:right;word-break:break-word}
-.order-history-status{display:inline-block;padding:3px 8px;border-radius:99px;background:var(--pink-light);color:var(--pink-dark);font-size:11px;font-weight:700}
 .order-history-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-top:1px solid var(--border);flex-shrink:0}
 .order-history-nav button{min-width:84px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-xs);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:700}.order-history-nav button:disabled{opacity:.45}.order-history-nav span{font-size:12px;color:var(--text3);font-weight:600}
 
@@ -218,6 +221,10 @@ button{cursor:pointer}
         <button type="button" title="বেস মূল্য নির্দেশিকা / Base price guide" onclick="showTextPopup('base price.txt', 'বেস মূল্য নির্দেশিকা')" style="background:none;border:none;font-size:13px;line-height:1;cursor:pointer;padding:0 2px;color:var(--pink)">❗</button>
       </div>
       <input type="text" id="f-weight" placeholder="যেমন: 2 pound, 2.5 pound, 1 KG" data-bn-placeholder="যেমন: 2 pound, 2.5 pound, 1 KG" data-en-placeholder="Example: 2 pound, 2.5 pound, 1 KG" autocomplete="off" oninput="updateWeightHint();recalcPrice()">
+      <div class="weight-presets">
+        <button type="button" class="weight-preset" id="wp-mini" onclick="setWeightPreset('mini', this)">🍰 <span data-bn="মিনি কেক" data-en="Mini Cake">মিনি কেক</span></button>
+        <button type="button" class="weight-preset" id="wp-medium" onclick="setWeightPreset('medium', this)">🎂 <span data-bn="মিডিয়াম কেক" data-en="Medium Cake">মিডিয়াম কেক</span></button>
+      </div>
       <div class="hint-box" id="weight-hint"></div>
     </div>
     <div class="field">
@@ -571,8 +578,8 @@ async function trackOrder() {
     const snap = await db.ref('orders').orderByChild('orderId').equalTo(orderId).once('value');
     if (!snap.exists()) { showToast('অর্ডার পাওয়া যায়নি'); return; }
     const order = Object.values(snap.val())[0];
-    document.getElementById('prev-title').textContent = 'অর্ডার স্ট্যাটাস';
-    document.getElementById('prev-list').innerHTML = `<div class="previous-order"><strong>${esc(order.orderId)}</strong><br>${esc(order.status || 'pending')} · মোট ৳${order.total || 0}<br>ডেলিভারি: ${esc(fmtDate(order.deliveryDate || ''))}</div>`;
+    document.getElementById('prev-title').textContent = 'আপনার অর্ডার';
+    document.getElementById('prev-list').innerHTML = `<div class="previous-order"><strong>${esc(order.orderId)}</strong><br>মোট ৳${order.total || 0}<br>ডেলিভারি: ${esc(fmtDate(order.deliveryDate || ''))}</div>`;
     document.getElementById('previous-orders').classList.add('show');
   } catch (e) { showToast('অর্ডার খুঁজতে সমস্যা হয়েছে'); console.error(e); }
 }
@@ -606,15 +613,6 @@ function previousOrderDateValue(order) {
   return Number.isNaN(parsed) ? Number(order.createdAt || 0) : parsed;
 }
 
-function previousOrderStatus(order) {
-  const labels = {
-    pending: 'পেন্ডিং', confirmed: 'কনফার্মড', baking: 'বেক হচ্ছে',
-    delivered: 'ডেলিভার্ড', cancelled: 'বাতিল', completed: 'সম্পন্ন'
-  };
-  const status = String(order.status || 'pending').toLowerCase();
-  return lang === 'en' ? status.charAt(0).toUpperCase() + status.slice(1) : (labels[status] || 'পেন্ডিং');
-}
-
 function renderPreviousOrder() {
   const order = previousOrderHistory[previousOrderCursor];
   const content = document.getElementById('previous-orders-content');
@@ -625,9 +623,17 @@ function renderPreviousOrder() {
     return;
   }
 
+  // Recompute the payment figures fresh from the order instead of trusting the
+  // stale advanceTotal/dueAmount saved at submit time. This way any payment
+  // amount corrected by the bakery (admin edit) is reflected here immediately.
+  // `paid` counts only money that went toward the cake — cash-out fees
+  // (bKash/Nagad) sent with the transfer are excluded, matching the bakery's
+  // own books (admin subtracts the same charge from `paid`).
   const total = Number(order.total != null ? order.total : order.cakePrice) || 0;
-  const paid = Number(order.advanceTotal != null ? order.advanceTotal : (order.advance != null ? order.advance : order.paid)) || 0;
-  const due = Number(order.dueAmount != null ? order.dueAmount : Math.max(0, total - paid)) || 0;
+  const sent = Number(order.advanceTotal != null ? order.advanceTotal : (order.advance != null ? order.advance : order.paid)) || 0;
+  const fee = Number(order.paymentCharges != null ? order.paymentCharges : order.bkashCharge) || 0;
+  const paid = Math.max(0, sent - fee);
+  const due = Math.max(0, total - paid);
   const cake = [order.weightLabel || order.weight, order.flavourName || order.flavour].filter(Boolean).join(' · ') || '—';
   const writing = order.writing || order.cakeWriting || '';
   const deliveryDate = fmtDate(order.deliveryDate || order.date || '') || 'তারিখ নির্ধারিত হয়নি';
@@ -644,7 +650,6 @@ function renderPreviousOrder() {
       <div class="order-history-row"><span>${lang === 'en' ? 'Total' : 'মোট'}</span><span>৳${Math.round(total)}</span></div>
       <div class="order-history-row"><span>${lang === 'en' ? 'Paid' : 'প্রদান'}</span><span>৳${Math.round(paid)}</span></div>
       <div class="order-history-row"><span>${lang === 'en' ? 'Due' : 'বাকি'}</span><span>৳${Math.round(due)}</span></div>
-      <div class="order-history-row"><span>${lang === 'en' ? 'Status' : 'অবস্থা'}</span><span class="order-history-status">${esc(previousOrderStatus(order))}</span></div>
     </article>`;
   nav.hidden = false;
   document.getElementById('previous-order-position').textContent = lang === 'en'
@@ -799,7 +804,7 @@ async function showTextPopup(fileName, title) {
 }
 
 // Prefetch the guide texts in the background so even the FIRST click is instant
-['base price.txt', 'flavours.txt'].forEach(f => {
+['base price.txt', 'flavours.txt', 'mini cake.txt', 'medium cake.txt'].forEach(f => {
   fetch(`./${encodeURIComponent(f)}`)
     .then(r => r.ok ? r.text() : '')
     .then(t => { if (t && !textPopupCache[f]) textPopupCache[f] = t; })
@@ -949,9 +954,12 @@ function recalcPrice() {
 }
 
 function resolveWeight() {
-  const p = parseWeightText(document.getElementById('f-weight').value);
-  if (!p) return null;
   const raw = document.getElementById('f-weight').value.trim();
+  if (!raw) return null;
+  // Mini/Medium quick-select sizes carry their own info popup instead of a
+  // numeric weight, but they are valid weight choices for the order.
+  if (isPresetWeight(raw)) return { value: raw.toLowerCase(), label: raw, price: 0 };
+  if (!parseWeightText(raw)) return null;
   return { value: raw.toLowerCase(), label: raw, price: 0 };
 }
 
@@ -971,6 +979,40 @@ function updateWeightHint() {
   if (!p) { el.textContent = ''; return; }
   el.textContent = p.isKg ? `≈ ${(p.num * 2.20462).toFixed(1)} pound+` : `≈ ${(p.num / 2.20462).toFixed(2)} KG`;
 }
+
+// ─── Mini / Medium cake quick-select ─────────────────────────
+// One-tap options for the small sizes that don't fit the pound/KG box.
+// Fills the weight with the size name and opens the matching info popup
+// (mini cake.txt / medium cake.txt) with size, weight range and price range.
+const WEIGHT_PRESETS = {
+  mini:   { file: 'mini cake.txt',   title: 'মিনি কেক তথ্য',    titleEn: 'Mini Cake Info',    fill: 'মিনি কেক',     fillEn: 'Mini cake' },
+  medium: { file: 'medium cake.txt', title: 'মিডিয়াম কেক তথ্য', titleEn: 'Medium Cake Info',  fill: 'মিডিয়াম কেক', fillEn: 'Medium cake' }
+};
+
+// Accepted spellings (spaces removed, lowercase) so the submit validation
+// also accepts the size name — and close variants — typed or filled.
+const WEIGHT_PRESET_ALIASES = ['মিনিকেক', 'মিনি', 'মিডিয়ামকেক', 'মিডিয়াম', 'মিডিয়ামসাইজকেক', 'minicake', 'mini', 'mediumcake', 'medium', 'mediumsizecake'];
+
+function isPresetWeight(raw) {
+  return WEIGHT_PRESET_ALIASES.includes(String(raw || '').toLowerCase().replace(/\s+/g, ''));
+}
+
+function setWeightPreset(kind, btn) {
+  const p = WEIGHT_PRESETS[kind];
+  if (!p) return;
+  document.getElementById('f-weight').value = lang === 'en' ? p.fillEn : p.fill;
+  document.querySelectorAll('.weight-preset').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  updateWeightHint();
+  recalcPrice();
+  updateProgress();
+  showTextPopup(p.file, lang === 'en' ? p.titleEn : p.title);
+}
+
+document.getElementById('f-weight').addEventListener('input', function() {
+  // Keep the quick-select highlight in sync when the user edits the box by hand
+  if (!isPresetWeight(this.value)) document.querySelectorAll('.weight-preset').forEach(b => b.classList.remove('active'));
+});
 
 document.getElementById('f-weight').addEventListener('change', function() {
   if (parseWeightText(this.value)) showTextPopup('base price.txt', 'বেস মূল্য নির্দেশিকা');
@@ -1401,6 +1443,7 @@ function resetForm() {
   document.getElementById('surprise-note').classList.remove('show');
   document.getElementById('payment-info').classList.remove('show');
   document.querySelectorAll('.advance-opt').forEach(el => { el.classList.remove('active'); el.style.opacity = '1'; });
+  document.querySelectorAll('.weight-preset').forEach(el => el.classList.remove('active'));
   document.getElementById('entry-btn').textContent = 'অর্ডার শুরু করুন';
   document.getElementById('entry-btn').onclick = handleEntry;
   updateProgress();

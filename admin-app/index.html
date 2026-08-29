@@ -1626,6 +1626,24 @@ select:focus {
   align-items: center;
   justify-content: center;
 }
+/* Multi-photo grid (mirrors customer app) */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.photo-thumb { position: relative; }
+.photo-thumb img {
+  width: 100%;
+  height: 84px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  display: block;
+  cursor: zoom-in;
+}
+.photo-thumb .photo-remove-btn { width: 24px; height: 24px; font-size: 13px; top: 4px; right: 4px; }
 
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
@@ -1761,6 +1779,23 @@ select:focus {
   #today-banner .tb-title{font-weight:800;color:var(--pink);margin-bottom:6px;font-size:14px}
   #today-banner .tb-item{padding:2px 0;color:#333;font-weight:600}
   #today-banner .tb-close{position:absolute;top:8px;right:10px;background:none;border:none;font-size:15px;color:#999;cursor:pointer;line-height:1}
+  /* ─── Daily "orders placed today" popup (resets at 12 AM) ─── */
+  #daily-popup-overlay{position:fixed;inset:0;background:rgba(10,8,30,.55);backdrop-filter:blur(3px);z-index:3500;display:none;align-items:center;justify-content:center;padding:18px}
+  #daily-popup-overlay.open{display:flex}
+  .daily-popup{background:var(--surface);border-radius:18px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:dpop .25s var(--ease)}
+  @keyframes dpop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+  .daily-popup-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 10px;border-bottom:1px solid var(--border)}
+  .daily-popup-title{font-weight:800;font-size:16px;color:var(--pink)}
+  .daily-popup-close{background:none;border:none;font-size:18px;color:var(--text3);cursor:pointer;line-height:1}
+  .daily-popup-list{padding:10px 18px}
+  .daily-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px dashed var(--border);font-size:13px;line-height:1.55}
+  .daily-item:last-child{border-bottom:none}
+  .daily-item .d-num{flex-shrink:0;width:24px;height:24px;border-radius:50%;background:var(--pink-light);color:var(--pink);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:2px}
+  .daily-item .d-name{font-weight:700;color:var(--text)}
+  .daily-item .d-meta{color:var(--text2)}
+  .daily-item .d-price{color:var(--green);font-weight:700}
+  .daily-popup-foot{padding:10px 18px 16px}
+  .daily-popup-foot button{width:100%;padding:12px;border:none;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--pink-dark),var(--pink-mid));color:#fff;font-weight:700;font-size:14px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -1773,6 +1808,20 @@ select:focus {
   <div class="tb-title" id="tb-title"></div>
   <div id="tb-list"></div>
   <button class="tb-close" id="tb-close" aria-label="বন্ধ করুন">✕</button>
+</div>
+
+<!-- Daily "orders placed today" popup (shows on open, resets at 12 AM) -->
+<div id="daily-popup-overlay" onclick="App.closeDailyPopupBg(event)" role="dialog" aria-modal="true" aria-label="আজকের নতুন অর্ডার">
+  <div class="daily-popup">
+    <div class="daily-popup-head">
+      <div class="daily-popup-title" id="daily-popup-title">🎉 আজকের নতুন অর্ডার</div>
+      <button class="daily-popup-close" onclick="App.closeDailyPopup()" aria-label="বন্ধ করুন">✕</button>
+    </div>
+    <div class="daily-popup-list" id="daily-popup-list"></div>
+    <div class="daily-popup-foot">
+      <button onclick="App.closeDailyPopup()">ঠিক আছে 👍</button>
+    </div>
+  </div>
 </div>
 
 <!-- LOGIN SCREEN -->
@@ -1836,6 +1885,7 @@ select:focus {
     <input type="file" id="import-file" accept=".json" class="hidden" aria-hidden="true">
     <button class="action-btn" id="sort-btn" onclick="App.toggleSort()" aria-label="Change sort">⇅ <span id="sort-label">তারিখ</span></button>
     <button class="cal-btn" onclick="App.openCalendar()" aria-label="Order Calendar">📅 <span>অর্ডার ক্যালেন্ডার</span></button>
+    <button class="cal-btn" id="daily-log-btn" onclick="App.showDailyPopup()" aria-label="আজকের নতুন অর্ডার" style="display:none">🆕 <span data-i18n="dailyNew">আজকের নতুন</span> <span id="daily-count" style="background:var(--red);color:#fff;border-radius:999px;padding:0 6px;font-size:11px;font-weight:700">0</span></button>
   </div>
 </header>
 
@@ -1944,24 +1994,23 @@ select:focus {
           <div class="field">
             <label>ফ্লেভার</label>
             <select id="f-flavour">
-              <option value="vanilla-sponge">Vanilla Sponge</option>
-              <option value="chocolate-sponge">Chocolate Sponge</option>
-              <option value="vanilla-whipped-cream">Vanilla with Whipped Cream</option>
-              <option value="red-velvet">Red Velvet</option>
-              <option value="black-forest">Black Forest</option>
-              <option value="white-forest">White Forest</option>
-              <option value="lemon">Lemon Cake</option>
-              <option value="orange">Orange Cake</option>
-              <option value="strawberry">Strawberry Cake</option>
-              <option value="blueberry">Blueberry Cake</option>
-              <option value="malai">Malai Cake</option>
-              <option value="butterscotch">Butterscotch</option>
-              <option value="special-vanilla">Special Vanilla</option>
-              <option value="chocolate-mud">Chocolate Mudcake</option>
-              <option value="double-layer-chocolate">Double Chocolate</option>
-              <option value="choco-truffle">Choco Truffle</option>
-              <option value="mango-mousse">Mango Mousse</option>
-              <option value="custom">Custom</option>
+              <option value="">নির্বাচন করুন</option>
+              <option value="vanilla-sponge">ভ্যানিলা স্পঞ্জ</option>
+              <option value="chocolate-sponge">চক্লেট স্পঞ্জ</option>
+              <option value="double-layer-chocolate">ডাবল লেয়ারড চকলেট</option>
+              <option value="black-forest">ব্ল্যাক ফরেস্ট</option>
+              <option value="white-forest">হোয়াইট ফরেস্ট</option>
+              <option value="lemon">লেমন কেক</option>
+              <option value="orange">অরেঞ্জ কেক</option>
+              <option value="strawberry">স্ট্রবেরি কেক</option>
+              <option value="blueberry">ব্লুবেরি</option>
+              <option value="malai">মালাই কেক</option>
+              <option value="butterscotch">বাটারস্কচ কেক</option>
+              <option value="special-vanilla">স্পেশাল ভ্যানিলা</option>
+              <option value="chocolate-mud">চকলেট মাডকেক</option>
+              <option value="red-velvet">রেড ভেলভেট</option>
+              <option value="cream-cheese-fruit">ক্রিম চিজ ফ্রস্টিং উইথ ফ্রুট ফিলিং</option>
+              <option value="custom">কাস্টম</option>
             </select>
           </div>
         </div>
@@ -1982,31 +2031,48 @@ select:focus {
           <div class="photo-upload-btn" onclick="document.getElementById('f-photo-file').click()" role="button" tabindex="0">
             <span>📎</span> ছবি আপলোড করুন
           </div>
-          <input type="file" id="f-photo-file" accept="image/*" class="hidden" aria-hidden="true">
-          <div id="modal-photo-preview" class="photo-preview hidden">
-            <img id="modal-photo-img" src="" alt="রেফারেন্স">
-            <button class="photo-remove-btn" onclick="App.removePhoto()" aria-label="ছবি সরান">✕</button>
-          </div>
+          <input type="file" id="f-photo-file" accept="image/*" multiple class="hidden" aria-hidden="true">
+          <div id="modal-photo-grid" class="photo-grid"></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">📸 একাধিক ছবি দিতে পারেন (সর্বোচ্চ ৪টি)</div>
+        </div>
+        <div class="field">
+          <label>📝 ছবির নোট / ডিজাইন নোট</label>
+          <textarea id="f-photo-note" placeholder="যেমন: কেকের কালার থিমটা রেড থেকে পিংক করতে চাচ্ছি" style="min-height:44px"></textarea>
         </div>
       </div>
 
       <!-- Delivery -->
       <div class="modal-section">
         <div class="modal-section-title">🚚 ডেলিভারি তথ্য</div>
+        <div class="field">
+          <label>ডেলিভারি ধরন <span class="req">*</span></label>
+          <select id="f-fulfilment" onchange="App.onFulfilmentChange()">
+            <option value="delivery">ডেলিভারি</option>
+            <option value="pickup">সেলফ পিকআপ</option>
+          </select>
+        </div>
         <div class="row2">
           <div class="field"><label>তারিখ<span class="req">*</span></label><input id="f-date" type="date"></div>
           <div class="field">
-            <label>সময়</label>
+            <label>সময় (ঘণ্টা ১-১২)</label>
             <div class="row2" style="gap:8px">
-              <input id="f-time" placeholder="বিকাল ৪টা" type="text" style="flex:1">
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;margin:0">
-                <input type="checkbox" id="f-no-time" onchange="App.toggleTime()" style="width:auto;margin:0">
-                <span>নির্ধারিত নয়</span>
-              </label>
+              <input id="f-time" inputmode="decimal" placeholder="যেমন: 3.00" type="text" autocomplete="off" style="flex:1;min-width:0" onblur="App.normalizeTimeInput()">
+              <select id="f-time-ampm" style="width:84px;flex-shrink:0">
+                <option value="">--</option>
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
             </div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;margin:6px 0 0">
+              <input type="checkbox" id="f-no-time" onchange="App.toggleTime()" style="width:auto;margin:0">
+              <span>নির্ধারিত নয়</span>
+            </label>
           </div>
         </div>
-        <div class="field"><label>রিসিভার নাম ও ফোন</label><input id="f-receiver" placeholder="অনহারা, ০১৩১২-৫৭৭৭৬৫" type="text"></div>
+        <div class="row2">
+          <div class="field"><label data-i18n="fReceiver">রিসিভারের নাম</label><input id="f-receiver" placeholder="কে নেবেন" type="text"></div>
+          <div class="field"><label data-i18n="fReceiverPhone">রিসিভারের ফোন</label><input id="f-receiver-phone" placeholder="017xx-xxxxxx" type="tel" maxlength="14"></div>
+        </div>
         <div class="field"><label>ডেলিভারি ঠিকানা</label><textarea id="f-address" placeholder="কান্টা গার্লস হোস্টেল, চট্টগ্রাম মেডিকেল" style="min-height:52px"></textarea></div>
         <div class="row2">
           <div class="field">
@@ -2044,8 +2110,8 @@ select:focus {
           <select id="f-payment-method" onchange="App.calculatePayment()">
             <option value="bkash">📱 bKash (Cash Out ~1.82%)</option>
             <option value="nagad">📱 Nagad (Cash Out ~1.49%)</option>
-            <option value="rocket">🚀 Rocket (Cash Out ~1.80%)</option>
             <option value="bank">🏦 Bank Transfer (No Charge)</option>
+            <option value="full" data-i18n="payFullOpt">✅ ফুল পেমেন্ট — bKash চার্জ + ডেলিভারি চার্জ সহ</option>
           </select>
         </div>
 
@@ -2101,9 +2167,12 @@ select:focus {
         </div>
 
         <div class="field"><label data-i18n="fPaynote">পেমেন্ট নোট</label><input id="f-paynote" placeholder="bKash, শেষ ৩ সংখ্যা: 765" type="text"></div>
+        <div class="field"><label>ট্রানজেকশন আইডি / পেমেন্ট নম্বরের শেষ ৩ ডিজিট</label><input id="f-trx" placeholder="যেমন: 8K3N বা 456" type="text"></div>
+        <div class="field"><label>অতিরিক্ত নোট (ঐচ্ছিক)</label><textarea id="f-notes" placeholder="বিশেষ কোনো নির্দেশনা থাকলে লিখুন..." style="min-height:40px"></textarea></div>
         <div class="field">
           <label>অর্ডার স্ট্যাটাস</label>
           <select id="f-status">
+            <option value="pending">⏳ পেন্ডিং — রিভিউ দরকার</option>
             <option value="confirmed">কনফার্মড ✅</option>
             <option value="baking">আজ রাতে বেক 🔄</option>
             <option value="delivered">ডেলিভার দেওয়া হয়েছে 🎉</option>
@@ -2258,14 +2327,14 @@ window.App = (() => {
   let isConnected   = false;
   let confirmCb     = null;
   let currentPhoto  = '';
+  let currentPhotos = [];           // multi-photo (mirrors customer app)
   let sortMode      = 'date';       // 'date' | 'name' | 'due'
   let searchTimer   = null;
   let lang          = localStorage.getItem('nitu-lang') || 'bn';  // 'bn' | 'en'
 
-  // bKash Cash Out charge rate (agent cash out ≈ 1.85%)
+  // bKash Cash Out charge rate (agent cash out ≈ 1.82%)
   const BKASH_RATE = 0.0182;
   const NAGAD_RATE = 0.0149;
-  const ROCKET_RATE = 0.0180;
 
   // Payment calculator state
   let paymentApproved = false;
@@ -2295,9 +2364,12 @@ window.App = (() => {
       fPaynote: 'পেমেন্ট নোট',
       live: 'লাইভ', offline: 'সংযোগ নেই', saving: 'সেভ হচ্ছে...', conn: 'সংযোগ...',
       cakePayment: 'কেকের পেমেন্ট', bkashDeducted: 'bKash চার্জ বাদ',
+      payFullOpt: '✅ ফুল পেমেন্ট — bKash চার্জ + ডেলিভারি চার্জ সহ',
+      fReceiver: 'রিসিভারের নাম', fReceiverPhone: 'রিসিভারের ফোন',
       call: '📞 কল', markPaid: '✅ সম্পূর্ণ পরিশোধ', copyPhone: '📱 ফোন কপি',
       due: 'বকেয়া', paidFull: 'পরিশোধিত ✅', delCharge: 'ডেলিভারি চার্জ',
       todayTitle: '🚚 আজকের ডেলিভারি ({n})',
+      dailyNew: 'আজকের নতুন',
     },
     en: {
       brand: 'Order Manager', connecting: 'Connecting to cloud...',
@@ -2322,9 +2394,12 @@ window.App = (() => {
       fPaynote: 'Payment Note',
       live: 'Live', offline: 'Offline', saving: 'Saving...', conn: 'Connecting...',
       cakePayment: 'Cake Payment', bkashDeducted: 'bKash charge deducted',
+      payFullOpt: '✅ Full Payment — incl. bKash charge + delivery',
+      fReceiver: 'Receiver Name', fReceiverPhone: 'Receiver Phone',
       call: '📞 Call', markPaid: '✅ Mark Fully Paid', copyPhone: '📱 Copy Phone',
       due: 'Due', paidFull: 'Paid ✅', delCharge: 'Delivery Charge',
       todayTitle: "Today's deliveries ({n})",
+      dailyNew: "Today's New",
     }
   };
 
@@ -2384,9 +2459,9 @@ window.App = (() => {
   const FLAVOUR_MAP = {
     'vanilla-sponge': 'ভ্যানিলা স্পঞ্জ',
     'chocolate-sponge': 'চক্লেট স্পঞ্জ',
-    'double-layer-chocolate': 'ডাবল লেয়ারড চকলেট',
+    'double-layer-chocolate': 'ডাবল লেয়ারড চকলেট',
     'black-forest': 'ব্ল্যাক ফরেস্ট',
-    'white-forest': 'হোয়াইট ফরেস্ট',
+    'white-forest': 'হোয়াইট ফরেস্ট',
     'lemon': 'লেমন কেক',
     'orange': 'অরেঞ্জ কেক',
     'strawberry': 'স্ট্রবেরি কেক',
@@ -2594,6 +2669,13 @@ window.App = (() => {
         detectNewOrdersRealtime(orders);
         sortOrders();
         render();
+        updateDailyBadge();
+        // On the very first snapshot of a session, pop the daily
+        // "orders placed today" list (only when there is something to show)
+        if (!dailyPopupShownThisSession) {
+          dailyPopupShownThisSession = true;
+          if (todaysPlacedOrders().length > 0) showDailyPopup();
+        }
       }, err => {
         console.error('Firebase error:', err);
         setSyncStatus('error', '❌ সংযোগ বিচ্ছিন্ন — ইন্টারনেট চেক করুন');
@@ -2780,12 +2862,18 @@ window.App = (() => {
 
   // ─── SRS message builder ─────────────────────────────────────
   const buildSrsMsg = o => {
-    const rp = o.receiver || o.phone || '';
+    // Receiver name and phone are stored separately now; combine them so the
+    // phone regex below still finds the receiver's number.
+    const rp = [o.receiver, o.receiverPhone].filter(Boolean).join(' ');
     const pm = rp.match(/(\+?880)?0?1[0-9]{9}/);
     let msg = `আপনার নামঃ ${o.name}\n`;
     msg += `ডেলিভারি পয়েন্টঃ ${o.address || ''}\n`;
     msg += `ডেলিভারির তারিখ এবং সময়ঃ ${o.date ? fmtDate(o.date) : ''} — ${o.time || ''}\n`;
     msg += `রিসিভার এর ফোন নাম্বারঃ ${pm ? pm[0] : rp}\n\nCake ${weightText(o)}\n`;
+    // Cake due (total minus what actually counts toward the cake, i.e. excluding
+    // any bKash cash-out charge) so the SRS message states the full-payment due.
+    const cakeDue = Math.max(0, (Number(o.total) || 0) - Math.max(0, (Number(o.paid) || 0) - bkashCharge(o)));
+    if (cakeDue > 0) msg += `Cake due: ${fmtMoney(cakeDue)}/-\n`;
     if (o.deliveryPaid === 'unpaid' && o.deliveryAmount > 0) msg += `due: Delivery charge (${o.deliveryAmount}/-)`;
     else if (o.deliveryPaid === 'unpaid') msg += `due: Delivery charge`;
     else msg += `Delivery charge: Paid`;
@@ -2933,7 +3021,7 @@ window.App = (() => {
       ${drow('⚖️', 'ওজন ও ফ্লেভার', `${weightText(o)} — ${flavourLabel(o)}`)}
       ${drow('📐', 'সাইজ', o.size)}
       ${drow('🎨', 'ডিজাইন', o.design)}
-      ${o.photoNote ? drow('📝', 'ছবির নোট', o.photoNote) : ''}
+      ${o.photoNote ? `<div class="pay-note" style="border-left:3px solid var(--amber);background:var(--amber-light, #fff7e6)">📝 <strong>${lang==='bn'?'ছবির নোট:':'Photo note:'}</strong> ${esc(o.photoNote)}</div>` : ''}
       ${drow('✍️', 'লেখা', o.writing)}
     </div>
 
@@ -2969,6 +3057,7 @@ window.App = (() => {
     <div class="status-select-wrap">
       <div class="detail-title" style="padding:0;margin-bottom:6px">🔄 স্ট্যাটাস পরিবর্তন</div>
       <select class="status-select" onchange="App.confirmStatusChange('${fk}', this)" onclick="event.stopPropagation()">
+        <option value="pending"   ${o.status === 'pending'   ? 'selected' : ''}>পেন্ডিং ⏳</option>
         <option value="confirmed" ${o.status === 'confirmed' ? 'selected' : ''}>কনফার্মড ✅</option>
         <option value="baking"    ${o.status === 'baking'    ? 'selected' : ''}>আজ রাতে বেক 🔄</option>
         <option value="delivered" ${o.status === 'delivered' ? 'selected' : ''}>ডেলিভার হয়েছে 🎉</option>
@@ -3471,8 +3560,9 @@ window.App = (() => {
   const duplicateOrder = key => {
     const o = orders.find(x => x.firebaseKey === key);
     if (!o) return;
-    editingId    = null;
-    currentPhoto = '';
+    editingId     = null;
+    currentPhoto  = '';
+    currentPhotos = [];
     populateForm({
       ...o,
       date:      '',
@@ -3537,7 +3627,7 @@ window.App = (() => {
           'Malai Cake': 'malai', 'Butterscotch': 'butterscotch', 'Special Vanilla': 'special-vanilla',
           'Chocolate Mudcake': 'chocolate-mud', 'Double Chocolate': 'double-layer-chocolate',
           'Choco Truffle': 'choco-truffle', 'Mango Mousse': 'mango-mousse' };
-        pick = LEGACY[stored] || 'custom';
+        pick = LEGACY[stored] || LEGACY[storedBn] || 'custom';
       }
       flSel.value = pick;
     }
@@ -3545,19 +3635,51 @@ window.App = (() => {
     g('f-design').value         = o.design    || '';
     g('f-writing').value        = o.writing   || '';
     g('f-date').value           = o.date      || '';
-    g('f-time').value           = o.time      || '';
+    // Structured time (same as the customer app): hour + AM/PM selector.
+    // Legacy free-text times that don't parse are kept as-is in the input.
+    {
+      const tIn  = g('f-time');
+      const ampm = g('f-time-ampm');
+      const noCb = g('f-no-time');
+      const rawT = String(o.timeSlot || o.time || '').trim();
+      if (rawT === 'TIME NOT CONFIRMED') {
+        noCb.checked = true;
+        tIn.value = ''; if (ampm) ampm.value = '';
+        toggleTime();
+      } else {
+        noCb.checked = false;
+        tIn.disabled = false; tIn.style.opacity = '1';
+        if (ampm) { ampm.disabled = false; ampm.style.opacity = '1'; }
+        const m = rawT.match(/^(\d{1,2})\s*[:.\-]\s*(\d{1,2})\s*(AM|PM|এএম|পিএম)?$/i);
+        if (m) {
+          tIn.value = `${parseInt(m[1], 10)}.${String(parseInt(m[2], 10)).padStart(2, '0')}`;
+          if (ampm) ampm.value = m[3] && /p/i.test(m[3]) ? 'PM' : (m[3] ? 'AM' : '');
+        } else {
+          tIn.value = rawT;
+          if (ampm) ampm.value = '';
+        }
+      }
+    }
+    g('f-fulfilment').value     = o.fulfilment || 'delivery';
     g('f-receiver').value       = o.receiver  || '';
+    g('f-receiver-phone').value = o.receiverPhone || '';
     g('f-address').value        = o.address   || '';
     g('f-surprise').value       = o.surprise  || 'no';
     g('f-delivery-paid').value  = o.deliveryPaid    || 'unpaid';
     g('f-delivery-amount').value = o.deliveryAmount || '';
     g('f-total').value          = o.total     || '';
     g('f-paid').value           = o.paid      || '';
+    g('f-charge-deduct').value  = (o.paymentCharges != null ? o.paymentCharges : o.bkashCharge) || '';
+    g('f-payment-method').value = o.paymentMethod || 'bkash';
     g('f-bkash-mode').value     = o.bkashMode || 'none';
     g('f-bkash-charge').value   = o.bkashCharge ? o.bkashCharge : '';
     onBkashModeChange();
     g('f-paynote').value        = o.paynote   || '';
-    g('f-status').value         = o.status    || 'confirmed';
+    g('f-trx').value            = o.trx       || '';
+    g('f-notes').value          = o.notes     || '';
+    g('f-photo-note').value     = o.photoNote || '';
+    // New manual orders start as PENDING — the admin confirms after review
+    g('f-status').value         = o.status    || 'pending';
     g('f-bakingnotes').value    = o.bakingnotes || '';
     
     // Delay tracking
@@ -3566,20 +3688,17 @@ window.App = (() => {
     g('f-expected-date').value   = o.expectedDate || '';
     toggleDelayFields();
 
-    if (o.photo) {
-      g('modal-photo-img').src = o.photo;
-      g('modal-photo-preview').classList.remove('hidden');
-      currentPhoto = o.photo;
-    } else {
-      g('modal-photo-preview').classList.add('hidden');
-      g('modal-photo-img').src = '';
-      currentPhoto = '';
-    }
+    // Multi-photo: prefer the photos array, fall back to the single legacy photo
+    currentPhotos = Array.isArray(o.photos) && o.photos.length
+      ? o.photos.filter(Boolean)
+      : (o.photo ? [o.photo] : []);
+    renderModalPhotos();
   };
 
   const openModal = key => {
     editingId    = key;
     currentPhoto = '';
+    currentPhotos = [];
     const o = key ? orders.find(x => x.firebaseKey === key) : null;
     document.getElementById('modal-title').textContent =
       o ? 'অর্ডার সম্পাদনা করুন' : 'নতুন অর্ডার';
@@ -3600,36 +3719,60 @@ window.App = (() => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
   };
 
-  // ─── Photo handling ──────────────────────────────────────────
+  // ─── Photo handling (multi, mirrors customer app) ────────────
+  const MAX_PHOTOS = 4;
+  const renderModalPhotos = () => {
+    const grid = document.getElementById('modal-photo-grid');
+    if (!grid) return;
+    grid.innerHTML = currentPhotos.map((src, i) => `
+      <div class="photo-thumb">
+        <img src="${src}" alt="রেফারেন্স কেক ${i + 1}" loading="lazy" onclick="App.openPhotoLightbox(${i})">
+        <button type="button" class="photo-remove-btn" onclick="App.removePhoto(${i})" aria-label="ছবি সরান">✕</button>
+      </div>`).join('');
+  };
+
   document.getElementById('f-photo-file').addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const img = new Image();
-      img.onload = () => {
-        const MAX = 900;
-        let { width: w, height: h } = img;
-        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
-        if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        const compressed = canvas.toDataURL('image/jpeg', 0.78);
-        currentPhoto = compressed;
-        document.getElementById('modal-photo-img').src = compressed;
-        document.getElementById('modal-photo-preview').classList.remove('hidden');
+    const files = [...e.target.files];
+    e.target.value = '';
+    if (!files.length) return;
+    const slots = MAX_PHOTOS - currentPhotos.length;
+    if (slots <= 0) { showToast(`সর্বোচ্চ ${MAX_PHOTOS}টি ছবি দেওয়া যাবে`); return; }
+    if (files.length > slots) showToast(`প্রথম ${slots}টি ছবি নেওয়া হলো`);
+    let pending = files.slice(0, slots).length;
+    files.slice(0, slots).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 900;
+          let { width: w, height: h } = img;
+          if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+          if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          currentPhotos.push(canvas.toDataURL('image/jpeg', 0.78));
+          if (--pending <= 0) renderModalPhotos();
+        };
+        img.onerror = () => { if (--pending <= 0) renderModalPhotos(); };
+        img.src = ev.target.result;
       };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
+    });
   });
 
-  const removePhoto = () => {
-    currentPhoto = '';
-    document.getElementById('modal-photo-img').src = '';
-    document.getElementById('modal-photo-preview').classList.add('hidden');
-    document.getElementById('f-photo-file').value = '';
+  const removePhoto = i => {
+    currentPhotos.splice(i, 1);
+    renderModalPhotos();
+  };
+
+  // Zoom a modal photo in the existing full-screen lightbox
+  const openPhotoLightbox = i => {
+    const src = currentPhotos[i];
+    if (!src) return;
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox').classList.add('open');
+    document.body.style.overflow = 'hidden';
   };
 
   // Recalc bKash charge live when paid amount changes (auto mode)
@@ -3683,29 +3826,99 @@ window.App = (() => {
     if (!date) { showToast('⚠️ ডেলিভারির তারিখ দিন।'); g('f-date').focus(); return; }
 
     const existing   = editingId ? orders.find(x => x.firebaseKey === editingId) : null;
-    const photoHidden = g('modal-photo-preview').classList.contains('hidden');
-    const photoToSave = photoHidden ? '' : (currentPhoto || (existing?.photo || ''));
+    // Multi-photo: keep whatever is currently in the modal grid; fall back to
+    // the stored array / single legacy photo if the admin didn't touch photos.
+    const photosToSave = currentPhotos.length
+      ? currentPhotos
+      : (Array.isArray(existing?.photos) && existing.photos.length ? existing.photos.filter(Boolean)
+        : (existing?.photo ? [existing.photo] : []));
+    const photoHidden = photosToSave.length === 0;
+    const photoToSave = photosToSave[0] || '';
+
+    // ─── Time (structured like the customer app: hour + AM/PM) ───
+    // "নির্ধারিত নয়" keeps the legacy 'TIME NOT CONFIRMED' value. Legacy
+    // free-text times (e.g. "বিকাল ৪টা") are kept as-is instead of forcing
+    // re-entry when an old order is edited.
+    let timeVal = '';
+    if (g('f-no-time').checked) {
+      timeVal = 'TIME NOT CONFIRMED';
+    } else {
+      const rawTime   = g('f-time').value.trim();
+      const legacyText = rawTime && !parseTimeParts(rawTime.replace(/\s*(?:a\.?m\.?|p\.?m\.?|এএম|পিএম)\.?$/i, '').trim());
+      if (legacyText) {
+        // Legacy free-text time (e.g. "বিকাল ৪টা") — keep as-is
+        timeVal = rawTime;
+      } else if (getTimeError()) {
+        showToast('⚠️ ' + getTimeError());
+        g('f-time').focus();
+        return;
+      } else {
+        timeVal = getSelectedTime();
+      }
+      if (!timeVal) {
+        showToast('⚠️ ডেলিভারির সময় দিন — যেমন 3.00 + PM।');
+        g('f-time').focus();
+        return;
+      }
+    }
+
+    const cakePrice      = parseFloat(g('f-total').value) || 0;
+    const deliveryAmt    = parseFloat(g('f-delivery-amount').value) || 0;
+    const fulfilmentVal  = g('f-fulfilment').value;
+    const methodSel      = g('f-payment-method');
+    // Charge money actually deducted: prefer the approved auto-calc value
+    // (f-charge-deduct), fall back to the legacy bKash-charge field.
+    const chargeToDeduct = parseFloat(g('f-charge-deduct').value) || 0 ||
+                           (g('f-bkash-mode').value === 'none' ? 0 : (parseFloat(g('f-bkash-charge').value) || 0));
 
     const o = {
+      // ── Customer-app compatible identity & aliases (so manual orders
+      //    look exactly like online orders in every view) ──
+      orderId:        (existing && existing.orderId) || generateAdminOrderId(),
       name,
+      customerName:   name,
       phone:          g('f-phone').value.trim(),
+      customerPhone:  g('f-phone').value.trim(),
+      category:       'custom',
+      categoryName:   'কাস্টম কেক',
       weight:         g('f-weight').value.trim(),
+      weightLabel:    g('f-weight').value.trim(),
       flavour:        g('f-flavour').value,
+      flavourName:    g('f-flavour').options[g('f-flavour').selectedIndex]?.textContent || '',
       size:           g('f-size').value.trim(),
       design:         g('f-design').value.trim(),
       writing:        g('f-writing').value.trim(),
+      cakeWriting:    g('f-writing').value.trim(),
       photo:          photoToSave,
+      photos:         photosToSave,
+      photoNote:      g('f-photo-note').value.trim(),
       date,
-      time:           g('f-time').value.trim(),
+      deliveryDate:   date,
+      time:           timeVal,
+      timeSlot:       timeVal === 'TIME NOT CONFIRMED' ? '' : timeVal,
+      timeSlotLabel:  timeVal === 'TIME NOT CONFIRMED' ? '' : timeVal,
       receiver:       g('f-receiver').value.trim(),
+      receiverPhone:  g('f-receiver-phone').value.trim(),
       address:        g('f-address').value.trim(),
+      deliveryAddress: g('f-address').value.trim(),
       surprise:       g('f-surprise').value,
-      deliveryPaid:   g('f-delivery-paid').value,
-      deliveryAmount: parseFloat(g('f-delivery-amount').value) || 0,
-      total:          parseFloat(g('f-total').value) || 0,
+      fulfilment:     fulfilmentVal,
+      deliveryPaid:   fulfilmentVal === 'pickup' ? 'na' : g('f-delivery-paid').value,
+      deliveryAmount: fulfilmentVal === 'pickup' ? 0 : deliveryAmt,
+      deliveryCharge: fulfilmentVal === 'pickup' ? 0 : deliveryAmt,
+      total:          cakePrice,
+      basePrice:      cakePrice,
+      cakePrice:      cakePrice,
+      weightPrice:    0,
+      subtotal:       cakePrice,
       paid:           parseFloat(g('f-paid').value)  || 0,
       bkashMode:      g('f-bkash-mode').value,
-      bkashCharge:    g('f-bkash-mode').value === 'none' ? 0 : (parseFloat(g('f-bkash-charge').value) || 0),
+      bkashCharge:    chargeToDeduct,
+      paymentCharges: chargeToDeduct,
+      paymentMethod:  methodSel.value,
+      paymentMethodName: methodSel.options[methodSel.selectedIndex]?.textContent || '',
+      trx:            g('f-trx').value.trim(),
+      notes:          g('f-notes').value.trim(),
       paynote:        g('f-paynote').value.trim(),
       status:         g('f-status').value,
       bakingnotes:    g('f-bakingnotes').value.trim(),
@@ -3713,8 +3926,22 @@ window.App = (() => {
       clientInformed: g('f-client-informed').value,
       expectedDate:   g('f-expected-date').value || '',
       source:         existing ? (existing.source || 'manual') : 'manual',
+      createdAt:      (existing && existing.createdAt) || Date.now(),
       updatedAt:      Date.now()
     };
+
+    // Keep the customer-app payment fields in sync. Customer-submitted orders
+    // store the money in advance/advanceTotal/dueAmount, and the customer's
+    // "Previous Orders" screen reads those fields. Without this sync, editing
+    // the payment here updated `paid`/`total` but the customer kept seeing the
+    // stale submitted due forever. advance = money that actually counts toward
+    // the cake (received amount minus any bKash cash-out charge).
+    const paidNum   = Number(o.paid) || 0;
+    const chargeNum = Number(o.bkashCharge) || 0;
+    o.advance        = Math.max(0, paidNum - chargeNum);
+    o.advanceTotal   = paidNum;
+    o.paymentCharges = chargeNum;
+    o.dueAmount      = Math.max(0, (Number(o.total) || 0) - o.advance);
 
     setSyncStatus('syncing', 'ক্লাউডে সেভ হচ্ছে...');
     const failSave = err => {
@@ -3728,6 +3955,7 @@ window.App = (() => {
           setSyncStatus('ok');
           showToast('✅ অর্ডার আপডেট হয়েছে!');
           currentPhoto = '';
+          currentPhotos = [];
           closeModal();
         })
         .catch(failSave);
@@ -3738,6 +3966,7 @@ window.App = (() => {
           setSyncStatus('ok');
           showToast('✅ নতুন অর্ডার সেভ হয়েছে!');
           currentPhoto = '';
+          currentPhotos = [];
           closeModal();
         })
         .catch(failSave);
@@ -3975,16 +4204,97 @@ window.App = (() => {
   // ─── Time toggle ────────────────────────────────────────────────
   const toggleTime = function() {
     const checkbox = document.getElementById('f-no-time');
-    const input = document.getElementById('f-time');
+    const input    = document.getElementById('f-time');
+    const ampm     = document.getElementById('f-time-ampm');
     if (checkbox.checked) {
-      input.value = 'TIME NOT CONFIRMED';
+      input.value = '';
       input.disabled = true;
       input.style.opacity = '0.5';
+      if (ampm) { ampm.value = ''; ampm.disabled = true; ampm.style.opacity = '0.5'; }
     } else {
-      if (input.value === 'TIME NOT CONFIRMED') input.value = '';
       input.disabled = false;
       input.style.opacity = '1';
+      if (ampm) { ampm.disabled = false; ampm.style.opacity = '1'; }
     }
+  };
+
+  // ─── Delivery time helpers (identical rules to the customer app) ─
+  // Hour (1-12) + optional minutes + AM/PM selector. Minutes missing?
+  // Auto-set to 00 ("3" or "3." → "3.00").
+  function parseTimeParts(raw) {
+    const t = String(raw || '').trim().replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+    const m = t.match(/^(\d{1,2})(?:\s*[:.\-]\s*(\d{1,2}))?$/);
+    if (!m) return null;
+    const h = parseInt(m[1], 10);
+    const min = m[2] != null ? parseInt(m[2], 10) : null;
+    if (h < 1 || h > 12) return null;
+    if (min != null && min > 59) return null;
+    return { h, min };
+  }
+
+  const normalizeTimeInput = function() {
+    const el = document.getElementById('f-time');
+    if (!el) return;
+    const raw = el.value.trim();
+    if (!raw) return;
+    // If AM/PM was typed manually, drop it — there is a selector now
+    const cleaned = raw.replace(/\s*(?:a\.?m\.?|p\.?m\.?|এএম|পিএম)\.?$/i, '').trim();
+    const p = parseTimeParts(cleaned);
+    if (!p) return; // leave as-is; validation will catch it
+    el.value = `${p.h}.${String(p.min == null ? 0 : p.min).padStart(2, '0')}`;
+  };
+
+  const getSelectedTime = function() {
+    const p = parseTimeParts(document.getElementById('f-time')?.value);
+    const apEl = document.getElementById('f-time-ampm');
+    const ap = apEl ? apEl.value : '';
+    if (!p || !ap) return '';
+    return `${p.h}:${String(p.min == null ? 0 : p.min).padStart(2, '0')} ${ap}`;
+  };
+
+  const getTimeError = function() {
+    const raw = document.getElementById('f-time')?.value.trim() || '';
+    const apEl = document.getElementById('f-time-ampm');
+    const ap = apEl ? apEl.value : '';
+    if (!raw && !ap) {
+      return lang === 'en' ? 'Please enter the delivery time' : 'ডেলিভারির সময় দিন';
+    }
+    const cleaned = raw.replace(/\s*(?:a\.?m\.?|p\.?m\.?|এএম|পিএম)\.?$/i, '').trim();
+    if (!parseTimeParts(cleaned)) {
+      return lang === 'en'
+        ? 'Enter a valid time like 3.00 (hour 1-12, minutes 0-59)'
+        : 'সঠিক সময় লিখুন — যেমন 3.00 (ঘণ্টা ১-১২, মিনিট ০-৫৯)';
+    }
+    if (!ap) {
+      return lang === 'en' ? 'Please select AM or PM' : 'AM অথবা PM নির্বাচন করুন';
+    }
+    return '';
+  };
+
+  // ─── Fulfilment (delivery / self-pickup, mirrors customer app) ───
+  const PICKUP_ADDRESS = 'রঙধনু অ্যাপার্টমেন্ট, খোশালশাহ রোড, আমানবাজার, হাটহাজারী রোড, চট্টগ্রাম';
+  const onFulfilmentChange = function() {
+    const fulfil = document.getElementById('f-fulfilment').value;
+    const addr   = document.getElementById('f-address');
+    const damt   = document.getElementById('f-delivery-amount');
+    const dpaid  = document.getElementById('f-delivery-paid');
+    if (fulfil === 'pickup') {
+      if (!addr.value.trim()) addr.value = PICKUP_ADDRESS;
+      damt.value = '';
+      dpaid.value = 'na';
+    } else {
+      if (addr.value.trim() === PICKUP_ADDRESS) addr.value = '';
+      if (dpaid.value === 'na') dpaid.value = 'unpaid';
+    }
+    calculatePayment();
+  };
+
+  // Order ID — same NB + date + random format as the customer app
+  const generateAdminOrderId = function() {
+    const d = new Date();
+    const dateStr = d.toISOString().slice(0, 10).replace(/-/g, '');
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `NB${dateStr}${random}`;
   };
 
   // ─── Payment calculator ─────────────────────────────────────────
@@ -4002,6 +4312,35 @@ window.App = (() => {
     let chargeRate = 0;
     let chargeLabel = '';
 
+    // "Full" = customer pays everything at once: cake + gateway charge AND
+    // the delivery charge, in a single bKash/Nagad/bank transfer.
+    if (method === 'full') {
+      const delivery = parseFloat(document.getElementById('f-delivery-amount').value) || 0;
+      const grandBase = cakePrice + delivery;
+      switch(document.getElementById('f-bkash-mode').value) {
+        case 'nagad':  chargeRate = NAGAD_RATE;  chargeLabel = '+ Nagad চার্জ (1.49%)'; break;
+        case 'bank':   chargeRate = 0;           chargeLabel = ''; break;
+        default:       chargeRate = BKASH_RATE;  chargeLabel = '+ bKash চার্জ (1.82%)';
+      }
+      // Same formula as the customer app: charge = base × rate, rounded up
+      const charge = chargeRate > 0 ? Math.ceil(grandBase * chargeRate) : 0;
+      const customerPays = grandBase + charge;
+
+      document.getElementById('calc-cake-price').textContent = `৳${Math.round(cakePrice)} + ডেলিভারি ৳${Math.round(delivery)}`;
+      document.getElementById('calc-charge-label').textContent = chargeLabel || '+ চার্জ';
+      document.getElementById('calc-charge').textContent = `৳${charge}`;
+      document.getElementById('calc-customer-pays').textContent = `৳${Math.round(customerPays)}`;
+
+      const chargeRowFull = breakdown.querySelector('.charge-row');
+      if (chargeRowFull) chargeRowFull.style.display = charge > 0 ? 'flex' : 'none';
+
+      breakdown.classList.remove('hidden');
+      paymentApproved = false;
+      document.getElementById('btn-approve').style.display = 'block';
+      document.getElementById('btn-edit-payment').style.display = 'none';
+      return;
+    }
+
     switch(method) {
       case 'bkash':
         chargeRate = 0.0182;
@@ -4011,16 +4350,13 @@ window.App = (() => {
         chargeRate = 0.0149;
         chargeLabel = '+ Nagad চার্জ (1.49%)';
         break;
-      case 'rocket':
-        chargeRate = 0.0180;
-        chargeLabel = '+ Rocket চার্জ (1.80%)';
-        break;
       default:
         chargeRate = 0;
         chargeLabel = '+ চার্জ';
     }
 
-    const charge = chargeRate > 0 ? Math.round(cakePrice * chargeRate) : 0;
+    // Same formula as the customer app: charge = base × rate, rounded up
+    const charge = chargeRate > 0 ? Math.ceil(cakePrice * chargeRate) : 0;
     const customerPays = cakePrice + charge;
 
     document.getElementById('calc-cake-price').textContent = `৳${Math.round(cakePrice)}`;
@@ -4044,21 +4380,45 @@ window.App = (() => {
 
   // ─── Approve payment calculation ────────────────────────────────
   const approveCalculation = function() {
-    const cakePrice = parseFloat(document.getElementById('f-total').value) || 0;
+    let chargeRate = 0;
     const method = document.getElementById('f-payment-method').value;
 
-    let chargeRate = 0;
-    switch(method) {
-      case 'bkash': chargeRate = 0.0182; break;
-      case 'nagad': chargeRate = 0.0149; break;
-      case 'rocket': chargeRate = 0.0180; break;
+    // Full payment: cake + delivery + gateway charge, all in one transfer
+    if (method === 'full') {
+      const cakePriceF  = parseFloat(document.getElementById('f-total').value) || 0;
+      const deliveryF   = parseFloat(document.getElementById('f-delivery-amount').value) || 0;
+      const grandBaseF  = cakePriceF + deliveryF;
+      let rateF = 0;
+      switch(document.getElementById('f-bkash-mode').value) {
+        case 'nagad':  rateF = NAGAD_RATE;  break;
+        case 'bank':   rateF = 0;           break;
+        default:       rateF = BKASH_RATE;
+      }
+      // Same formula as the customer app: charge = base × rate, rounded up
+      const chargeF = rateF > 0 ? Math.ceil(grandBaseF * rateF) : 0;
+      document.getElementById('f-paid').value = grandBaseF + chargeF;
+      document.getElementById('f-charge-deduct').value = chargeF;
+      paymentApproved = true;
+      document.getElementById('btn-approve').style.display = 'none';
+      document.getElementById('btn-edit-payment').style.display = 'block';
+      showToast('✅ ফুল পেমেন্ট হিসাব অনুমোদিত (কেক + ডেলিভারি + চার্জ)');
+      return;
     }
 
-    const charge = chargeRate > 0 ? +(cakePrice * chargeRate).toFixed(2) : 0;
-    const customerPays = Math.round(cakePrice + charge);
+    const cakePrice = parseFloat(document.getElementById('f-total').value) || 0;
+
+    let chargeRate2 = 0;
+    switch(method) {
+      case 'bkash': chargeRate2 = 0.0182; break;
+      case 'nagad': chargeRate2 = 0.0149; break;
+    }
+
+    // Same formula as the customer app: charge = base × rate, rounded up
+    const charge = chargeRate2 > 0 ? Math.ceil(cakePrice * chargeRate2) : 0;
+    const customerPays = cakePrice + charge;
 
     document.getElementById('f-paid').value = customerPays;
-    document.getElementById('f-charge-deduct').value = Math.round(charge);
+    document.getElementById('f-charge-deduct').value = charge;
 
     paymentApproved = true;
 
@@ -4074,6 +4434,72 @@ window.App = (() => {
     manualSection.classList.remove('hidden');
     showToast('এখন আপনি ম্যানুয়ালি পরিবর্তন করতে পারবেন');
   };
+
+  // ─── Daily "orders placed today" popup ───────────────────────────
+  // Every time the app is opened it lists all orders created TODAY
+  // (Bangladesh time, UTC+6). The list accumulates through the day and
+  // resets automatically at 12 AM because createdAt moves to yesterday.
+  let dailyPopupShownThisSession = false;
+  const bdTodayStr = () => new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const bdCreatedToday = o => {
+    const ts = Number(o.createdAt);
+    if (!ts) return false;
+    return new Date(ts + 6 * 60 * 60 * 1000).toISOString().slice(0, 10) === bdTodayStr();
+  };
+  const MONTHS_EN_D = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const DAYS_EN_D   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const MONTHS_BN_D = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+  const DAYS_BN_D   = ['রবিবার','সোমবার','মঙ্গলবার','বুধবার','বৃহস্পতিবার','শুক্রবার','শনিবার'];
+  const dailyFmtDate = dstr => {
+    const d = toDate(dstr);
+    if (!d || Number.isNaN(d.getTime())) return dstr || '';
+    return lang === 'bn'
+      ? `${d.getDate()} ${MONTHS_BN_D[d.getMonth()]} ${DAYS_BN_D[d.getDay()]} ${d.getFullYear()}`
+      : `${d.getDate()} ${MONTHS_EN_D[d.getMonth()]} ${DAYS_EN_D[d.getDay()]} ${d.getFullYear()}`;
+  };
+  const todaysPlacedOrders = () => orders
+    .filter(o => bdCreatedToday(o) && o.status !== 'cancelled')
+    .sort((a, b) => (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0));
+
+  const updateDailyBadge = () => {
+    const btn = document.getElementById('daily-log-btn');
+    const cnt = document.getElementById('daily-count');
+    if (!btn || !cnt) return;
+    const n = todaysPlacedOrders().length;
+    cnt.textContent = n;
+    btn.style.display = n > 0 ? '' : 'none';
+  };
+
+  const showDailyPopup = () => {
+    const wrap  = document.getElementById('daily-popup-overlay');
+    const title = document.getElementById('daily-popup-title');
+    const body  = document.getElementById('daily-popup-list');
+    if (!wrap || !body) return;
+    const list = todaysPlacedOrders();
+    title.textContent = lang === 'bn'
+      ? `🎉 আজকের নতুন অর্ডার (${list.length}টি)`
+      : `🎉 New orders placed today (${list.length})`;
+    body.innerHTML = list.length ? list.map((o, i) => {
+      const nm = o.customerName || o.name || '—';
+      const wt = weightText(o) || '';
+      const fl = flavourLabel(o) || '';
+      const dstr = o.deliveryDate || o.date || '';
+      return `<div class="daily-item">
+        <span class="d-num">${i + 1}</span>
+        <div>
+          <div class="d-name">${esc(nm)}</div>
+          <div class="d-meta">${lang === 'bn' ? 'অর্ডার করেছে' : 'Ordered'} ${esc(wt)} ${esc(fl)} ${lang === 'bn' ? 'কেক' : 'cake'}</div>
+          <div class="d-meta">${lang === 'bn' ? 'মূল্য' : 'price'}: <span class="d-price">৳${fmtMoney(o.total)}</span> · ${lang === 'bn' ? 'ডেলিভারির তারিখ' : 'delivery date'}: ${esc(dailyFmtDate(dstr))}</div>
+        </div>
+      </div>`;
+    }).join('') : `<div style="text-align:center;color:var(--text3);padding:22px 0">${lang === 'bn' ? 'আজ কোনো নতুন অর্ডার আসেনি।' : 'No new orders placed today yet.'}</div>`;
+    wrap.classList.add('open');
+  };
+  const closeDailyPopup = () => {
+    const w = document.getElementById('daily-popup-overlay');
+    if (w) w.classList.remove('open');
+  };
+  const closeDailyPopupBg = e => { if (e.target && e.target.id === 'daily-popup-overlay') closeDailyPopup(); };
 
   return {
     switchTab,
@@ -4103,6 +4529,7 @@ window.App = (() => {
     closeCalendar,
     closeCalendarBg,
     removePhoto,
+    openPhotoLightbox,
     setLang,
     onBkashModeChange,
     markFullyPaid,
@@ -4114,7 +4541,12 @@ window.App = (() => {
     toggleTime,
     calculatePayment,
     approveCalculation,
-    editPayment
+    editPayment,
+    normalizeTimeInput,
+    onFulfilmentChange,
+    showDailyPopup,
+    closeDailyPopup,
+    closeDailyPopupBg
   };
 
 })();
