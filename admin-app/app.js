@@ -37,13 +37,6 @@ window.App = (() => {
   let searchTimer   = null;
   let lang          = localStorage.getItem('nitu-lang') || 'bn';  // 'bn' | 'en'
 
-  // bKash Cash Out charge rate (agent cash out ≈ 1.82%)
-  const BKASH_RATE = 0.0182;
-  const NAGAD_RATE = 0.0149;
-
-  // Payment calculator state
-  let paymentApproved = false;
-
   // ─── i18n dictionary ─────────────────────────────────────────
   const I18N = {
     bn: {
@@ -61,12 +54,6 @@ window.App = (() => {
       tabPlan: 'প্ল্যান', tabAll: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'আয়',
       sort_date: 'তারিখ', sort_name: 'নাম', sort_due: 'বকেয়া',
       secPayment: '💳 পেমেন্ট', fTotal: 'মোট মূল্য (৳)', fPaid: 'পরিশোধিত (৳)',
-      fBkash: '💰 bKash চার্জ কি টাকার সাথে যোগ করা?',
-      bkNone: 'না — সরাসরি পেমেন্ট (নগদ/হাতে)',
-      bkAuto: 'হ্যাঁ — চার্জ অটো হিসাব (Cash Out ~1.82%)',
-      bkManual: 'হ্যাঁ — চার্জ আমি লিখব',
-      fBkashCharge: 'bKash চার্জ (৳) — এটি পেমেন্ট থেকে বাদ যাবে',
-      fPaynote: 'পেমেন্ট নোট',
       live: 'লাইভ', offline: 'সংযোগ নেই', saving: 'সেভ হচ্ছে...', conn: 'সংযোগ...',
       cakePayment: 'কেকের পেমেন্ট', bkashDeducted: 'bKash চার্জ বাদ',
       payFullOpt: '✅ ফুল পেমেন্ট — bKash চার্জ + ডেলিভারি চার্জ সহ',
@@ -91,12 +78,6 @@ window.App = (() => {
       tabPlan: 'Plan', tabAll: 'Orders', tabDone: 'Done', tabRev: 'Revenue',
       sort_date: 'Date', sort_name: 'Name', sort_due: 'Due',
       secPayment: '💳 Payment', fTotal: 'Total Price (৳)', fPaid: 'Paid (৳)',
-      fBkash: '💰 Is bKash charge added to the amount?',
-      bkNone: 'No — direct payment (cash/hand)',
-      bkAuto: 'Yes — auto-calc charge (Cash Out ~1.82%)',
-      bkManual: 'Yes — I\'ll enter the charge',
-      fBkashCharge: 'bKash charge (৳) — deducted from payment',
-      fPaynote: 'Payment Note',
       live: 'Live', offline: 'Offline', saving: 'Saving...', conn: 'Connecting...',
       cakePayment: 'Cake Payment', bkashDeducted: 'bKash charge deducted',
       payFullOpt: '✅ Full Payment — incl. bKash charge + delivery',
@@ -619,7 +600,7 @@ window.App = (() => {
     L.push('');
 
     // Payment summary
-    const methodName = (o.paymentMethodName || o.paymentMethod || '').toLowerCase();
+    const methodName = (o.paymentMethodName || o.paymentChargesLabel || o.paymentMethod || '').toLowerCase();
     L.push(`Total- ${Math.round(Number(o.total) || 0)}+ Delivery charge`);
     L.push('');
     L.push(`Paid- ${Math.round(Number(o.paid) || 0)}/- with ${methodName} charge`);
@@ -742,7 +723,7 @@ window.App = (() => {
         <div class="pay-cell"><div class="pay-lbl">${tr('cakePayment')}</div><div class="pay-val green">৳${fmtMoney(effectivePaid(o))}</div></div>
         <div class="pay-cell"><div class="pay-lbl">${tr('due')}</div><div class="pay-val ${d > 0 ? 'red' : 'green'}">৳${fmtMoney(d)}</div></div>
       </div>
-      ${bkashCharge(o) > 0 ? `<div class="pay-note">💰 ${tr('bkashDeducted')}: ৳${fmtMoney(o.paid)} − ৳${fmtMoney(bkashCharge(o))} (bKash) = ৳${fmtMoney(effectivePaid(o))}</div>` : ''}
+      ${bkashCharge(o) > 0 ? `<div class="pay-note">💰 ${tr('bkashDeducted')}: ৳${fmtMoney(o.paid)} − ৳${fmtMoney(bkashCharge(o))}${o.paymentChargesLabel ? ` (${esc(o.paymentChargesLabel)})` : ''} = ৳${fmtMoney(effectivePaid(o))}</div>` : ''}
       ${o.paynote ? `<div class="pay-note">💳 ${esc(o.paynote)}</div>` : ''}
       ${o.source === 'customer' && o.advance ? `<div class="pay-note">📱 কাস্টমার অগ্রিম: ৳${fmtMoney(o.advance)}${o.advanceCharge > 0 ? ` (+চার্জ ৳${fmtMoney(o.advanceCharge)})` : ''} = ৳${fmtMoney(o.advanceTotal)} | ট্রানজেকশন: ${esc(o.trx || '')}</div>` : ''}
     </div>
@@ -1260,7 +1241,6 @@ window.App = (() => {
       ...o,
       date:      '',
       paid:      0,
-      paynote:   '',
       status:    'confirmed',
       bakingnotes: o.bakingnotes || ''
     });
@@ -1362,11 +1342,6 @@ window.App = (() => {
     g('f-total').value          = o.total     || '';
     g('f-paid').value           = o.paid      || '';
     g('f-charge-deduct').value  = (o.paymentCharges != null ? o.paymentCharges : o.bkashCharge) || '';
-    g('f-payment-method').value = o.paymentMethod || 'bkash';
-    g('f-bkash-mode').value     = o.bkashMode || 'none';
-    g('f-bkash-charge').value   = o.bkashCharge ? o.bkashCharge : '';
-    onBkashModeChange();
-    g('f-paynote').value        = o.paynote   || '';
     g('f-trx').value            = o.trx       || '';
     g('f-notes').value          = o.notes     || '';
     g('f-photo-note').value     = o.photoNote || '';
@@ -1461,46 +1436,85 @@ window.App = (() => {
     document.body.style.overflow = 'hidden';
   };
 
-  // Recalc bKash charge live when paid amount changes (auto mode)
-  document.getElementById('f-paid').addEventListener('input', () => recalcAutoBkash());
+  // ─── Payment-charges popup (advance → gateway charges) ────────
+  // After the admin types how much the customer sent in advance, a popup
+  // asks which channel(s) the money came through and the actual market
+  // charge for each. paid = advance + total charges, so every downstream
+  // view (progress bar, due chip, revenue) keeps working unchanged.
+  let pcOpenForAdvance = 0;
 
-  // ─── bKash charge helpers (modal) ────────────────────────────
-  const onBkashModeChange = () => {
-    const mode  = document.getElementById('f-bkash-mode').value;
-    const wrap   = document.getElementById('f-bkash-charge-wrap');
-    const chargeI = document.getElementById('f-bkash-charge');
-    const hint    = document.getElementById('bkash-hint');
-
-    if (mode === 'none') {
-      wrap.classList.add('hidden');
-      chargeI.value = '';
+  const openPayCharge = () => {
+    const advance = parseFloat(document.getElementById('f-paid').value) || 0;
+    if (advance <= 0) {
+      showToast(lang === 'bn' ? '⚠️ আগে অ্যাডভান্সের পরিমাণ লিখুন।' : '⚠️ Enter the advance amount first.');
       return;
     }
-    wrap.classList.remove('hidden');
-
-    if (mode === 'auto') {
-      chargeI.readOnly = true;
-      recalcAutoBkash();
-    } else { // manual
-      chargeI.readOnly = false;
-      hint.textContent = lang === 'bn'
-        ? 'আপনি যে টাকা পেয়েছেন তার মধ্যে চার্জ কত ছিল লিখুন।'
-        : 'Enter how much of the received amount was the charge.';
-    }
+    pcOpenForAdvance = advance;
+    ['bkash', 'nagad', 'bank'].forEach(ch => {
+      document.getElementById('pc-' + ch).checked = false;
+      const amt = document.getElementById('pc-' + ch + '-amt');
+      amt.value = '';
+      amt.disabled = true;
+    });
+    document.getElementById('pay-charge-overlay').classList.add('open');
   };
 
-  const recalcAutoBkash = () => {
-    const mode = document.getElementById('f-bkash-mode').value;
-    if (mode !== 'auto') return;
-    const paid    = parseFloat(document.getElementById('f-paid').value) || 0;
-    // paid = base + base*rate  →  charge = paid - paid/(1+rate)
-    const charge  = paid > 0 ? Math.round(paid - paid / (1 + BKASH_RATE)) : 0;
-    document.getElementById('f-bkash-charge').value = charge || '';
-    const net = paid - charge;
-    document.getElementById('bkash-hint').textContent = lang === 'bn'
-      ? `৳${fmtMoney(paid)} এর মধ্যে ৳${charge} চার্জ → কেকে জমা ৳${fmtMoney(net)}`
-      : `Of ৳${fmtMoney(paid)}, ৳${charge} is charge → ৳${fmtMoney(net)} to cake`;
+  const closePayCharge = () => {
+    document.getElementById('pay-charge-overlay').classList.remove('open');
+    pcOpenForAdvance = 0;
   };
+
+  const closePayChargeBg = e => {
+    if (e.target === document.getElementById('pay-charge-overlay')) closePayCharge();
+  };
+
+  const pcToggle = ch => {
+    const amt = document.getElementById('pc-' + ch + '-amt');
+    amt.disabled = !document.getElementById('pc-' + ch).checked;
+    if (amt.disabled) amt.value = '';
+    if (!amt.disabled) amt.focus();
+  };
+
+  const applyPayCharge = () => {
+    let totalCharge = 0;
+    ['bkash', 'nagad', 'bank'].forEach(ch => {
+      if (document.getElementById('pc-' + ch).checked) {
+        totalCharge += parseFloat(document.getElementById('pc-' + ch + '-amt').value) || 0;
+      }
+    });
+    document.getElementById('f-charge-deduct').value = totalCharge || '';
+    closePayCharge();
+    showToast(lang === 'bn'
+      ? `✅ মোট চার্জ ৳${fmtMoney(totalCharge)} — কেকে জমা ৳${fmtMoney(Math.max(0, pcOpenForAdvance - totalCharge))}`
+      : `✅ Total charge ৳${fmtMoney(totalCharge)} — ৳${fmtMoney(Math.max(0, pcOpenForAdvance - totalCharge))} toward cake`);
+  };
+
+  // Opens the charges popup automatically shortly after an advance is entered
+  let advanceDebounce = null;
+  const advanceInput = () => {
+    clearTimeout(advanceDebounce);
+    advanceDebounce = setTimeout(() => {
+      const advance = parseFloat(document.getElementById('f-paid').value) || 0;
+      const popupOpen = document.getElementById('pay-charge-overlay').classList.contains('open');
+      if (advance > 0 && !popupOpen) openPayCharge();
+    }, 800);
+  };
+
+  // Live recalculation while the popup is open — keeps the note accurate
+  // as the admin types each charge (without touching the saved fields).
+  ['pc-bkash-amt', 'pc-nagad-amt', 'pc-bank-amt'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+      let totalCharge = 0;
+      ['bkash', 'nagad', 'bank'].forEach(ch => {
+        if (document.getElementById('pc-' + ch).checked) {
+          totalCharge += parseFloat(document.getElementById('pc-' + ch + '-amt').value) || 0;
+        }
+      });
+      document.getElementById('pc-note').textContent = lang === 'bn'
+        ? `অ্যাডভান্স ৳${fmtMoney(pcOpenForAdvance)} — মোট চার্জ ৳${fmtMoney(totalCharge)} → কেকে জমা ৳${fmtMoney(Math.max(0, pcOpenForAdvance - totalCharge))}`
+        : `Advance ৳${fmtMoney(pcOpenForAdvance)} — total charge ৳${fmtMoney(totalCharge)} → ৳${fmtMoney(Math.max(0, pcOpenForAdvance - totalCharge))} toward cake`;
+    });
+  });
 
   // ─── Save order ──────────────────────────────────────────────
   const saveOrder = () => {
@@ -1551,11 +1565,13 @@ window.App = (() => {
     const cakePrice      = parseFloat(g('f-total').value) || 0;
     const deliveryAmt    = parseFloat(g('f-delivery-amount').value) || 0;
     const fulfilmentVal  = g('f-fulfilment').value;
-    const methodSel      = g('f-payment-method');
-    // Charge money actually deducted: prefer the approved auto-calc value
-    // (f-charge-deduct), fall back to the legacy bKash-charge field.
-    const chargeToDeduct = parseFloat(g('f-charge-deduct').value) || 0 ||
-                           (g('f-bkash-mode').value === 'none' ? 0 : (parseFloat(g('f-bkash-charge').value) || 0));
+    // Charges deducted from the received money (from the payment-charges popup)
+    const chargeToDeduct = parseFloat(g('f-charge-deduct').value) || 0;
+    // Channels chosen in the popup → a readable label like "বিকাশ + নগদ"
+    const PC_NAMES = { bkash: 'বিকাশ', nagad: 'নগদ', bank: 'ব্যাংক' };
+    const chargeLabel    = ['bkash', 'nagad', 'bank']
+      .filter(ch => document.getElementById('pc-' + ch).checked)
+      .map(ch => PC_NAMES[ch]).join(' + ');
 
     const o = {
       // ── Customer-app compatible identity & aliases (so manual orders
@@ -1597,14 +1613,11 @@ window.App = (() => {
       weightPrice:    0,
       subtotal:       cakePrice,
       paid:           parseFloat(g('f-paid').value)  || 0,
-      bkashMode:      g('f-bkash-mode').value,
       bkashCharge:    chargeToDeduct,
       paymentCharges: chargeToDeduct,
-      paymentMethod:  methodSel.value,
-      paymentMethodName: methodSel.options[methodSel.selectedIndex]?.textContent || '',
+      paymentChargesLabel: chargeLabel,
       trx:            g('f-trx').value.trim(),
       notes:          g('f-notes').value.trim(),
-      paynote:        g('f-paynote').value.trim(),
       status:         g('f-status').value,
       bakingnotes:    g('f-bakingnotes').value.trim(),
       source:         existing ? (existing.source || 'manual') : 'manual',
@@ -1617,9 +1630,9 @@ window.App = (() => {
     // "Previous Orders" screen reads those fields. Without this sync, editing
     // the payment here updated `paid`/`total` but the customer kept seeing the
     // stale submitted due forever. advance = money that actually counts toward
-    // the cake (received amount minus any bKash cash-out charge).
+    // the cake (received amount minus the gateway charges entered in the popup).
     const paidNum   = Number(o.paid) || 0;
-    const chargeNum = Number(o.bkashCharge) || 0;
+    const chargeNum = Number(o.paymentCharges) || 0;
     o.advance        = Math.max(0, paidNum - chargeNum);
     o.advanceTotal   = paidNum;
     o.paymentCharges = chargeNum;
@@ -1957,7 +1970,6 @@ window.App = (() => {
       if (addr.value.trim() === PICKUP_ADDRESS) addr.value = '';
       if (dpaid.value === 'na') dpaid.value = 'unpaid';
     }
-    calculatePayment();
   };
 
   // Order ID — same NB + date + random format as the customer app
@@ -1966,144 +1978,6 @@ window.App = (() => {
     const dateStr = d.toISOString().slice(0, 10).replace(/-/g, '');
     const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     return `NB${dateStr}${random}`;
-  };
-
-  // ─── Payment calculator ─────────────────────────────────────────
-  const calculatePayment = function() {
-    const cakePrice = parseFloat(document.getElementById('f-total').value) || 0;
-    const method = document.getElementById('f-payment-method').value;
-    const breakdown = document.getElementById('payment-breakdown');
-
-    if (cakePrice <= 0) {
-      breakdown.classList.add('hidden');
-      paymentApproved = false;
-      return;
-    }
-
-    let chargeRate = 0;
-    let chargeLabel = '';
-
-    // "Full" = customer pays everything at once: cake + gateway charge AND
-    // the delivery charge, in a single bKash/Nagad/bank transfer.
-    if (method === 'full') {
-      const delivery = parseFloat(document.getElementById('f-delivery-amount').value) || 0;
-      const grandBase = cakePrice + delivery;
-      switch(document.getElementById('f-bkash-mode').value) {
-        case 'nagad':  chargeRate = NAGAD_RATE;  chargeLabel = '+ Nagad চার্জ (1.49%)'; break;
-        case 'bank':   chargeRate = 0;           chargeLabel = ''; break;
-        default:       chargeRate = BKASH_RATE;  chargeLabel = '+ bKash চার্জ (1.82%)';
-      }
-      // Same formula as the customer app: charge = base × rate, rounded up
-      const charge = chargeRate > 0 ? Math.ceil(grandBase * chargeRate) : 0;
-      const customerPays = grandBase + charge;
-
-      document.getElementById('calc-cake-price').textContent = `৳${Math.round(cakePrice)} + ডেলিভারি ৳${Math.round(delivery)}`;
-      document.getElementById('calc-charge-label').textContent = chargeLabel || '+ চার্জ';
-      document.getElementById('calc-charge').textContent = `৳${charge}`;
-      document.getElementById('calc-customer-pays').textContent = `৳${Math.round(customerPays)}`;
-
-      const chargeRowFull = breakdown.querySelector('.charge-row');
-      if (chargeRowFull) chargeRowFull.style.display = charge > 0 ? 'flex' : 'none';
-
-      breakdown.classList.remove('hidden');
-      paymentApproved = false;
-      document.getElementById('btn-approve').style.display = 'block';
-      document.getElementById('btn-edit-payment').style.display = 'none';
-      return;
-    }
-
-    switch(method) {
-      case 'bkash':
-        chargeRate = 0.0182;
-        chargeLabel = '+ bKash চার্জ (1.82%)';
-        break;
-      case 'nagad':
-        chargeRate = 0.0149;
-        chargeLabel = '+ Nagad চার্জ (1.49%)';
-        break;
-      default:
-        chargeRate = 0;
-        chargeLabel = '+ চার্জ';
-    }
-
-    // Same formula as the customer app: charge = base × rate, rounded up
-    const charge = chargeRate > 0 ? Math.ceil(cakePrice * chargeRate) : 0;
-    const customerPays = cakePrice + charge;
-
-    document.getElementById('calc-cake-price').textContent = `৳${Math.round(cakePrice)}`;
-    document.getElementById('calc-charge-label').textContent = chargeLabel;
-    document.getElementById('calc-charge').textContent = `৳${charge}`;
-    document.getElementById('calc-customer-pays').textContent = `৳${Math.round(customerPays)}`;
-
-    const chargeRow = breakdown.querySelector('.charge-row');
-    if (charge > 0) {
-      chargeRow.style.display = 'flex';
-    } else {
-      chargeRow.style.display = 'none';
-    }
-
-    breakdown.classList.remove('hidden');
-    paymentApproved = false;
-
-    document.getElementById('btn-approve').style.display = 'block';
-    document.getElementById('btn-edit-payment').style.display = 'none';
-  };
-
-  // ─── Approve payment calculation ────────────────────────────────
-  const approveCalculation = function() {
-    let chargeRate = 0;
-    const method = document.getElementById('f-payment-method').value;
-
-    // Full payment: cake + delivery + gateway charge, all in one transfer
-    if (method === 'full') {
-      const cakePriceF  = parseFloat(document.getElementById('f-total').value) || 0;
-      const deliveryF   = parseFloat(document.getElementById('f-delivery-amount').value) || 0;
-      const grandBaseF  = cakePriceF + deliveryF;
-      let rateF = 0;
-      switch(document.getElementById('f-bkash-mode').value) {
-        case 'nagad':  rateF = NAGAD_RATE;  break;
-        case 'bank':   rateF = 0;           break;
-        default:       rateF = BKASH_RATE;
-      }
-      // Same formula as the customer app: charge = base × rate, rounded up
-      const chargeF = rateF > 0 ? Math.ceil(grandBaseF * rateF) : 0;
-      document.getElementById('f-paid').value = grandBaseF + chargeF;
-      document.getElementById('f-charge-deduct').value = chargeF;
-      paymentApproved = true;
-      document.getElementById('btn-approve').style.display = 'none';
-      document.getElementById('btn-edit-payment').style.display = 'block';
-      showToast('✅ ফুল পেমেন্ট হিসাব অনুমোদিত (কেক + ডেলিভারি + চার্জ)');
-      return;
-    }
-
-    const cakePrice = parseFloat(document.getElementById('f-total').value) || 0;
-
-    let chargeRate2 = 0;
-    switch(method) {
-      case 'bkash': chargeRate2 = 0.0182; break;
-      case 'nagad': chargeRate2 = 0.0149; break;
-    }
-
-    // Same formula as the customer app: charge = base × rate, rounded up
-    const charge = chargeRate2 > 0 ? Math.ceil(cakePrice * chargeRate2) : 0;
-    const customerPays = cakePrice + charge;
-
-    document.getElementById('f-paid').value = customerPays;
-    document.getElementById('f-charge-deduct').value = charge;
-
-    paymentApproved = true;
-
-    document.getElementById('btn-approve').style.display = 'none';
-    document.getElementById('btn-edit-payment').style.display = 'block';
-
-    showToast('✅ পেমেন্ট হিসাব অনুমোদিত');
-  };
-
-  // ─── Edit payment manually ────────────────────────────────────────
-  const editPayment = function() {
-    const manualSection = document.getElementById('manual-payment');
-    manualSection.classList.remove('hidden');
-    showToast('এখন আপনি ম্যানুয়ালি পরিবর্তন করতে পারবেন');
   };
 
   // ─── Daily "orders placed today" popup ───────────────────────────
@@ -2202,16 +2076,18 @@ window.App = (() => {
     removePhoto,
     openPhotoLightbox,
     setLang,
-    onBkashModeChange,
+    openPayCharge,
+    closePayCharge,
+    closePayChargeBg,
+    pcToggle,
+    applyPayCharge,
+    advanceInput,
     markFullyPaid,
     handleLogin,
     toggleAuthMode,
     handleLogout,
     toggleWriting,
     toggleTime,
-    calculatePayment,
-    approveCalculation,
-    editPayment,
     normalizeTimeInput,
     onFulfilmentChange,
     showDailyPopup,

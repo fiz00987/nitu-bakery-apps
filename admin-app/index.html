@@ -918,63 +918,6 @@ button { cursor: pointer; }
 .pay-val.zero  { color: var(--text3); }
 .pay-note { font-size: 11px; color: var(--text3); margin-top: 6px; line-height: 1.5; }
 
-/* Payment Calculator */
-.payment-breakdown {
-  background: var(--pink-light);
-  border: 1.5px solid var(--pink-soft);
-  border-radius: var(--radius-sm);
-  padding: 14px;
-  margin-top: 12px;
-}
-.payment-breakdown.hidden { display: none; }
-.pay-calc-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-  font-size: 13px;
-  color: var(--text2);
-}
-.pay-calc-row.charge-row {
-  color: var(--amber);
-  font-size: 12px;
-}
-.pay-calc-row.total-row {
-  border-top: 2px solid var(--pink);
-  margin-top: 6px;
-  padding-top: 10px;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
-}
-.btn-calc-approve, .btn-calc-edit {
-  width: 100%;
-  padding: 10px;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  margin-top: 10px;
-  transition: all var(--dur-fast);
-}
-.btn-calc-approve {
-  background: var(--green);
-  color: #fff;
-}
-.btn-calc-approve:active {
-  background: var(--green-mid);
-  transform: scale(0.98);
-}
-.btn-calc-edit {
-  background: var(--surface);
-  color: var(--text2);
-  border: 1.5px solid var(--border);
-}
-.btn-calc-edit:active {
-  background: var(--surface2);
-}
-
 .overdue-alert {
   display: flex;
   align-items: flex-start;
@@ -1796,6 +1739,29 @@ select:focus {
   .daily-item .d-price{color:var(--green);font-weight:700}
   .daily-popup-foot{padding:10px 18px 16px}
   .daily-popup-foot button{width:100%;padding:12px;border:none;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--pink-dark),var(--pink-mid));color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+
+/* Payment-charges popup (advance → gateway charges) */
+.pc-overlay{position:fixed;inset:0;background:rgba(10,8,30,.55);backdrop-filter:blur(3px);z-index:3600;display:none;align-items:center;justify-content:center;padding:18px;overscroll-behavior:contain}
+.pc-overlay.open{display:flex}
+.pc-box{background:var(--surface);border-radius:18px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 16px 50px rgba(0,0,0,.28)}
+.pc-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 10px;border-bottom:1px solid var(--border)}
+.pc-title{font-weight:800;font-size:16px;color:var(--pink)}
+.pc-close{background:none;border:none;font-size:18px;color:var(--text3);cursor:pointer;line-height:1}
+.pc-sub{padding:12px 18px 4px;font-size:12px;color:var(--text3);line-height:1.5}
+.pc-body{padding:10px 18px}
+.pc-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--border)}
+.pc-row:last-child{border-bottom:none}
+.pc-check{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text);flex:1;cursor:pointer}
+.pc-check input{width:18px;height:18px;accent-color:var(--pink)}
+.pc-amt{width:120px;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface2)}
+.pc-amt:disabled{opacity:.45}
+.pc-note{padding:0 18px 4px;font-size:11px;color:var(--text3);line-height:1.5}
+.pc-foot{display:flex;gap:10px;padding:12px 18px 16px}
+.pc-foot button{flex:1;padding:12px;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer}
+.pc-btn-cancel{background:var(--surface2);color:var(--text2)}
+.pc-btn-ok{background:linear-gradient(135deg,var(--green),var(--green-mid));color:#fff}
+.pc-open-btn{width:100%;margin-top:2px;padding:10px;border:1.5px dashed var(--pink-soft);background:var(--pink-light);color:var(--pink-dark);border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer}
+.pc-open-btn:active{background:var(--pink-soft)}
 </style>
 </head>
 <body>
@@ -1820,6 +1786,37 @@ select:focus {
     <div class="daily-popup-list" id="daily-popup-list"></div>
     <div class="daily-popup-foot">
       <button onclick="App.closeDailyPopup()">ঠিক আছে 👍</button>
+    </div>
+  </div>
+</div>
+
+<!-- Payment charges popup: pick the gateway(s) the advance came through,
+     enter the actual market charge for each — deducted from the payment. -->
+<div class="pc-overlay" id="pay-charge-overlay" onclick="App.closePayChargeBg(event)" role="dialog" aria-modal="true" aria-label="পেমেন্ট চার্জ">
+  <div class="pc-box">
+    <div class="pc-head">
+      <div class="pc-title">💰 পেমেন্ট চার্জ</div>
+      <button class="pc-close" onclick="App.closePayCharge()" aria-label="বন্ধ করুন">✕</button>
+    </div>
+    <div class="pc-sub">অ্যাডভান্স কোন পদ্ধতিতে এসেছে? চার্জ লিখে দিন — মোট পরিশোধিত থেকে বাদ যাবে।</div>
+    <div class="pc-body" id="pc-body">
+      <div class="pc-row" data-ch="bkash">
+        <label class="pc-check"><input type="checkbox" id="pc-bkash" onchange="App.pcToggle('bkash')"> 📱 bKash</label>
+        <input class="pc-amt" id="pc-bkash-amt" type="number" placeholder="চার্জ (৳)" min="0" step="0.01" disabled>
+      </div>
+      <div class="pc-row" data-ch="nagad">
+        <label class="pc-check"><input type="checkbox" id="pc-nagad" onchange="App.pcToggle('nagad')"> 📱 Nagad</label>
+        <input class="pc-amt" id="pc-nagad-amt" type="number" placeholder="চার্জ (৳)" min="0" step="0.01" disabled>
+      </div>
+      <div class="pc-row" data-ch="bank">
+        <label class="pc-check"><input type="checkbox" id="pc-bank" onchange="App.pcToggle('bank')"> 🏦 ব্যাংক (NPSB)</label>
+        <input class="pc-amt" id="pc-bank-amt" type="number" placeholder="চার্জ (৳)" min="0" step="0.01" disabled>
+      </div>
+    </div>
+    <div class="pc-note" id="pc-note">ব্যাংকে সাধারণত চার্জ নেই — ০ রেখে দিলেই হবে।</div>
+    <div class="pc-foot">
+      <button class="pc-btn-cancel" onclick="App.closePayCharge()">বাতিল</button>
+      <button class="pc-btn-ok" onclick="App.applyPayCharge()">✅ ঠিক আছে</button>
     </div>
   </div>
 </div>
@@ -2096,76 +2093,22 @@ select:focus {
       <!-- Payment -->
       <div class="modal-section">
         <div class="modal-section-title" data-i18n="secPayment">💳 পেমেন্ট</div>
-        
-        <!-- Step 1: Cake Price -->
+
         <div class="field">
           <label data-i18n="fTotal">কেকের মূল্য (৳)</label>
-          <input id="f-total" type="number" placeholder="1850" min="0" oninput="App.calculatePayment()">
+          <input id="f-total" type="number" placeholder="1850" min="0">
         </div>
 
-        <!-- Step 2: Payment Method -->
         <div class="field">
-          <label>💰 কাস্টমার কীভাবে পেমেন্ট দিবে?</label>
-          <select id="f-payment-method" onchange="App.calculatePayment()">
-            <option value="bkash">📱 bKash (Cash Out ~1.82%)</option>
-            <option value="nagad">📱 Nagad (Cash Out ~1.49%)</option>
-            <option value="bank">🏦 Bank Transfer (No Charge)</option>
-            <option value="full" data-i18n="payFullOpt">✅ ফুল পেমেন্ট — bKash চার্জ + ডেলিভারি চার্জ সহ</option>
-          </select>
+          <label data-i18n="fPaid">পরিশোধিত (৳)</label>
+          <input id="f-paid" type="number" placeholder="0" min="0" oninput="App.advanceInput()">
         </div>
 
-        <!-- Auto-calculated amounts (read-only display) -->
-        <div id="payment-breakdown" class="payment-breakdown hidden">
-          <div class="pay-calc-row">
-            <span>কেকের মূল্য:</span>
-            <strong id="calc-cake-price">৳0</strong>
-          </div>
-          <div class="pay-calc-row charge-row">
-            <span id="calc-charge-label">+ চার্জ:</span>
-            <strong id="calc-charge">৳0</strong>
-          </div>
-          <div class="pay-calc-row total-row">
-            <span>কাস্টমার দিবে:</span>
-            <strong id="calc-customer-pays" style="color:var(--pink);font-size:18px">৳0</strong>
-          </div>
-          <button type="button" class="btn-calc-approve" onclick="App.approveCalculation()" id="btn-approve">
-            ✅ এই হিসাব ঠিক আছে
-          </button>
-          <button type="button" class="btn-calc-edit" onclick="App.editPayment()" id="btn-edit-payment" style="display:none">
-            ✏️ পরিবর্তন করুন
-          </button>
-        </div>
+        <button type="button" class="pc-open-btn" onclick="App.openPayCharge()">💰 পেমেন্ট চার্জ হিসাব করুন</button>
 
-        <!-- Manual override (hidden by default) -->
-        <div id="manual-payment" class="hidden">
-          <div class="row2">
-            <div class="field">
-              <label>পরিশোধিত (৳)</label>
-              <input id="f-paid" type="number" placeholder="0" min="0">
-            </div>
-            <div class="field">
-              <label>চার্জ বাদ (৳)</label>
-              <input id="f-charge-deduct" type="number" placeholder="0" min="0" step="0.01">
-            </div>
-          </div>
-        </div>
+        <input id="f-charge-deduct" type="hidden">
+        <input id="f-bkash-charge" type="hidden">
 
-        <!-- bKash charge mode -->
-        <div class="field">
-          <label data-i18n="fBkash">💰 bKash চার্জ কি টাকার সাথে যোগ করা?</label>
-          <select id="f-bkash-mode" onchange="App.onBkashModeChange()">
-            <option value="none" data-i18n="bkNone">না — সরাসরি পেমেন্ট (নগদ/হাতে)</option>
-            <option value="auto" data-i18n="bkAuto">হ্যাঁ — চার্জ অটো হিসাব (Cash Out ~1.82%)</option>
-            <option value="manual" data-i18n="bkManual">হ্যাঁ — চার্জ আমি লিখব</option>
-          </select>
-        </div>
-        <div class="field hidden" id="f-bkash-charge-wrap">
-          <label data-i18n="fBkashCharge">bKash চার্জ (৳) — এটি পেমেন্ট থেকে বাদ যাবে</label>
-          <input id="f-bkash-charge" type="number" placeholder="0" min="0" step="0.01">
-          <div id="bkash-hint" style="font-size:11px;color:var(--text3);margin-top:4px"></div>
-        </div>
-
-        <div class="field"><label data-i18n="fPaynote">পেমেন্ট নোট</label><input id="f-paynote" placeholder="bKash, শেষ ৩ সংখ্যা: 765" type="text"></div>
         <div class="field"><label>ট্রানজেকশন আইডি / পেমেন্ট নম্বরের শেষ ৩ ডিজিট</label><input id="f-trx" placeholder="যেমন: 8K3N বা 456" type="text"></div>
         <div class="field"><label>অতিরিক্ত নোট (ঐচ্ছিক)</label><textarea id="f-notes" placeholder="বিশেষ কোনো নির্দেশনা থাকলে লিখুন..." style="min-height:40px"></textarea></div>
         <div class="field">
