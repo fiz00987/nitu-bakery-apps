@@ -520,7 +520,8 @@ function setAdvanceType(type) {
   document.querySelectorAll('.advance-opt').forEach(el => el.classList.remove('active'));
   document.getElementById('opt-' + type).classList.add('active');
   lastAutoSend = 0; lastAutoBase = 0;
-  if (getOrderTotal() <= 0) document.getElementById('f-advance').value = '';
+  const price = parseFloat(document.getElementById('f-cake-price').value) || 0;
+  if (price <= 0) document.getElementById('f-advance').value = '';
   recalcPrice(); // auto path fills the grey box with the charge-inclusive amount
 }
 
@@ -576,14 +577,15 @@ function showAdvanceWarn() {
 }
 
 function recalcPrice(manualEdit) {
-  const wtVal = document.getElementById('f-weight').value;
   const methodId = document.getElementById('f-payment-method').value;
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
   const advInput = document.getElementById('f-advance');
   const typedSend = parseFloat(advInput.value) || 0;
 
-  const wt = resolveWeight();
-  if (!wt || cakePrice <= 0) {
+  // The payment preview depends ONLY on the cake price — not on the weight
+  // field — so the auto-count works as soon as the customer types a price,
+  // even if the details section above is still empty.
+  if (cakePrice <= 0) {
     document.getElementById('calc-box').classList.remove('show');
     document.getElementById('due-field').classList.remove('show');
     document.getElementById('pay-footnote').classList.remove('show');
