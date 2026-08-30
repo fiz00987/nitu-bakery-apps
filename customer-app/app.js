@@ -541,10 +541,24 @@ function recalcPrice(manualEdit) {
   const wtVal = document.getElementById('f-weight').value;
   const methodId = document.getElementById('f-payment-method').value;
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
-  const advance = parseFloat(document.getElementById('f-advance').value) || 0;
+  let advance = parseFloat(document.getElementById('f-advance').value) || 0;
 
   const wt = resolveWeight();
-  if (!wt || cakePrice <= 0) { document.getElementById('calc-box').classList.remove('show'); document.getElementById('advance-calc-box').classList.remove('show'); return; }
+  if (!wt || cakePrice <= 0) {
+    document.getElementById('calc-box').classList.remove('show');
+    document.getElementById('advance-calc-box').classList.remove('show');
+    document.getElementById('pay-footnote').classList.remove('show');
+    return;
+  }
+
+  // Auto-recompute the chosen percentage when the cake price/weight changes,
+  // so picking 50%/100% always keeps counting against the current price.
+  if (advanceType && !manualEdit) {
+    const auto = advanceType === '50' ? Math.round(cakePrice / 2) : Math.round(cakePrice);
+    lastAutoAdvance = auto;
+    document.getElementById('f-advance').value = auto;
+    advance = auto;
+  }
 
   const base = cakePrice;
   const delivery = document.getElementById('f-fulfilment').value === 'pickup' ? 0 : (parseFloat(document.getElementById('f-delivery-charge').value) || 0);
