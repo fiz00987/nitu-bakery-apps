@@ -2180,33 +2180,6 @@ select:focus {
         </div>
       </div>
 
-      <!-- Delay Tracking -->
-      <div class="modal-section">
-        <div class="modal-section-title">⏰ ডিলে ট্র্যাকিং</div>
-        <div class="field">
-          <label>অর্ডার কি দেরি হয়েছে?</label>
-          <select id="f-delayed" onchange="App.toggleDelayFields()">
-            <option value="no">না — সময়মতো</option>
-            <option value="customer">কাস্টমারের কারণে</option>
-            <option value="me">আমার কারণে</option>
-          </select>
-        </div>
-        <div id="delay-fields" class="hidden">
-          <div class="field">
-            <label>কাস্টমারকে জানানো হয়েছে?</label>
-            <select id="f-client-informed">
-              <option value="informed">✅ জানানো হয়েছে</option>
-              <option value="pending">⏳ পরে জানাবো</option>
-              <option value="not-needed">— প্রয়োজন নেই</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>নতুন প্রত্যাশিত তারিখ (ঐচ্ছিক)</label>
-            <input id="f-expected-date" type="date">
-          </div>
-        </div>
-      </div>
-
       <!-- Notes -->
       <div class="modal-section">
         <div class="modal-section-title">✍️ নিতুর বেকিং নোটস</div>

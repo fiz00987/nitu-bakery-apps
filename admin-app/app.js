@@ -53,7 +53,7 @@ window.App = (() => {
       allStatus: 'সব স্ট্যাটাস', st_confirmed: 'কনফার্মড', st_baking: 'বেক হচ্ছে',
       st_delivered: 'ডেলিভার্ড', st_cancelled: 'বাতিল',
       sumToday: 'আজ ডেলিভারি', sumBake: 'আজ রাতে বেক', sumWeek: 'এই সপ্তাহে',
-      sumPending: 'পেন্ডিং', sumDone: 'সম্পন্ন', sumDelayed: 'দেরি',
+      sumPending: 'পেন্ডিং', sumDone: 'সম্পন্ন',
       monthPlanned: 'এই মাসে অর্ডার', monthCompleted: 'এই মাসে সম্পন্ন',
       monthEarn: 'আয় (মোট বিক্রি)',
       monthEarnNote: '💡 ডেলিভারি চার্জ ও bKash চার্জ বাদে কেকের মোট বিক্রি। ডেলিভারি চার্জ পুরোটা ডেলিভারি এজেন্ট পান।',
@@ -83,7 +83,7 @@ window.App = (() => {
       allStatus: 'All Status', st_confirmed: 'Confirmed', st_baking: 'Baking',
       st_delivered: 'Delivered', st_cancelled: 'Cancelled',
       sumToday: 'Today\'s Delivery', sumBake: 'Bake Tonight', sumWeek: 'This Week',
-      sumPending: 'Pending', sumDone: 'Done', sumDelayed: 'Delayed',
+      sumPending: 'Pending', sumDone: 'Done',
       monthPlanned: 'Orders This Month', monthCompleted: 'Completed This Month',
       monthEarn: 'Earn (Total Sale)',
       monthEarnNote: '💡 Total cake sale excluding delivery & bKash charges. The delivery fee goes fully to the delivery agent.',
@@ -681,10 +681,6 @@ window.App = (() => {
       ? `<span class="chip chip-green">🚚 ডেল. পরিশোধিত</span>`
       : o.deliveryPaid === 'unpaid'
       ? `<span class="chip chip-amber">🚚 ডেল. বাকি</span>` : '';
-    const delayedChip = o.delayed === 'customer'
-      ? `<span class="chip chip-amber">⏰ ডিলেড (কাস্টমার)</span>`
-      : o.delayed === 'me'
-      ? `<span class="chip chip-red">⏰ ডিলেড (আমি)</span>` : '';
     const cdChip = (o.status !== 'delivered' && o.status !== 'cancelled') ? countdownChip(o.date) : '';
 
     // WhatsApp link — customer's own phone is the primary contact
@@ -706,7 +702,7 @@ window.App = (() => {
       <div class="card-name"><span class="card-name-text">${esc(o.name)}</span>${tallyBadge}${customerBadge}<button class="name-copy-btn" type="button" onclick="event.stopPropagation();App.copyCardName(this)" title="নাম কপি করুন">📋 কপি</button></div>
       <div class="card-meta">${esc(weightText(o))}${weightText(o) && o.flavour ? ' · ' : ''}${esc(flavourLabel(o))}${o.time ? ' · ' + esc(o.time) : ''}</div>
       ${cdChip}
-      <div class="card-chips">${statusChip(o)}${dueChip}${surpriseChip}${deliveryChip}${delayedChip}</div>
+      <div class="card-chips">${statusChip(o)}${dueChip}${surpriseChip}${deliveryChip}</div>
     </div>
     <div class="card-chevron" aria-hidden="true">⌄</div>
   </div>
@@ -736,11 +732,6 @@ window.App = (() => {
       ${o.surprise === 'yes' ? drow('🎁', 'সারপ্রাইজ', 'হ্যাঁ — গোপন রাখুন!') : ''}
       ${o.deliveryPaid && o.deliveryPaid !== 'na'
         ? drow('🚚', 'ডেলিভারি চার্জ', (o.deliveryPaid === 'paid' ? 'পরিশোধিত' : 'বাকি') + (o.deliveryAmount ? ` — ৳${fmtMoney(o.deliveryAmount)}` : ''))
-        : ''}
-      ${o.delayed && o.delayed !== 'no'
-        ? drow('⏰', 'ডিলে', (o.delayed === 'customer' ? 'কাস্টমারের কারণে' : 'আমার কারণে')
-          + (o.expectedDate ? ` — নতুন তারিখ: ${fmtDate(o.expectedDate)}` : ' — নতুন তারিখ: জানানো হয়নি')
-          + (o.clientInformed === 'informed' ? ' (কাস্টমারকে জানানো হয়েছে)' : o.clientInformed === 'pending' ? ' (পরে জানাবো)' : ''))
         : ''}
     </div>
 
@@ -1382,12 +1373,6 @@ window.App = (() => {
     // New manual orders start as PENDING — the admin confirms after review
     g('f-status').value         = o.status    || 'pending';
     g('f-bakingnotes').value    = o.bakingnotes || '';
-    
-    // Delay tracking
-    g('f-delayed').value        = o.delayed   || 'no';
-    g('f-client-informed').value = o.clientInformed || 'informed';
-    g('f-expected-date').value   = o.expectedDate || '';
-    toggleDelayFields();
 
     // Multi-photo: prefer the photos array, fall back to the single legacy photo
     currentPhotos = Array.isArray(o.photos) && o.photos.length
@@ -1622,9 +1607,6 @@ window.App = (() => {
       paynote:        g('f-paynote').value.trim(),
       status:         g('f-status').value,
       bakingnotes:    g('f-bakingnotes').value.trim(),
-      delayed:        g('f-delayed').value,
-      clientInformed: g('f-client-informed').value,
-      expectedDate:   g('f-expected-date').value || '',
       source:         existing ? (existing.source || 'manual') : 'manual',
       createdAt:      (existing && existing.createdAt) || Date.now(),
       updatedAt:      Date.now()
@@ -1740,17 +1722,6 @@ window.App = (() => {
   document.getElementById('view-plan').innerHTML =
     `<div class="skeleton-wrap">${renderSkeletons(4)}</div>`;
   applyI18n();
-
-  // ─── Delay tracking helper ──────────────────────────────────
-  const toggleDelayFields = () => {
-    const delayed = document.getElementById('f-delayed').value;
-    const fields = document.getElementById('delay-fields');
-    if (delayed === 'customer' || delayed === 'me') {
-      fields.classList.remove('hidden');
-    } else {
-      fields.classList.add('hidden');
-    }
-  };
 
   // ─── Reminder Notification System ────────────────────────────
   const checkUpcomingOrders = () => {
@@ -2236,7 +2207,6 @@ window.App = (() => {
     handleLogin,
     toggleAuthMode,
     handleLogout,
-    toggleDelayFields,
     toggleWriting,
     toggleTime,
     calculatePayment,

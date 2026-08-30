@@ -61,7 +61,7 @@ self.addEventListener('notificationclick', function (event) {
 });
 
 /* ─── Offline caching (bulletproof edition) ────────────────── */
-var CACHE_NAME = 'nitu-bakery-v7';
+var CACHE_NAME = 'nitu-bakery-v8';
 var INDEX_KEY  = './index.html';
 var APP_SHELL = [
   './index.html',
