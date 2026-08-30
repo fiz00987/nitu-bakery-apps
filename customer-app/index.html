@@ -82,9 +82,10 @@ button{cursor:pointer}
 .req{color:var(--red)}
 .field input,.field select,.field textarea{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;background:var(--surface2);color:var(--text);transition:border-color .14s,box-shadow .14s}
 .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-glow)}
-/* Hide native number-input spinner arrows (delivery charge etc.) */
-#f-delivery-charge::-webkit-outer-spin-button,#f-delivery-charge::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-#f-delivery-charge{-moz-appearance:textfield;appearance:textfield}
+/* Hide native number-input spinner arrows (delivery charge, payment amount) */
+#f-delivery-charge::-webkit-outer-spin-button,#f-delivery-charge::-webkit-inner-spin-button,
+#f-advance::-webkit-outer-spin-button,#f-advance::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+#f-delivery-charge,#f-advance{-moz-appearance:textfield;appearance:textfield}
 .field textarea{min-height:60px;resize:vertical}
 .btn-primary{width:100%;padding:14px;background:linear-gradient(135deg,var(--pink-dark),var(--pink-mid));border:none;border-radius:var(--radius-sm);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px}
 .btn-primary:active{transform:scale(0.98)}
@@ -133,6 +134,14 @@ button{cursor:pointer}
 .advance-options{display:flex;gap:8px;margin-bottom:12px}
 .advance-opt{flex:1;padding:10px;border:2px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-size:13px;font-weight:600;cursor:pointer;color:var(--text2)}
 .advance-opt.active{border-color:var(--pink);background:var(--pink-light);color:var(--pink)}
+/* Auto-calculated payment amount — grey box, bold; editable but warns on tap */
+input.advance-input{background:#eeeeee;border:1.5px solid #cfcfcf;font-weight:700;font-size:16px;color:var(--text)}
+input.advance-input:focus{border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-glow)}
+/* Due amount — auto-calculated, greyed out, read-only */
+.due-field{display:none}
+.due-field.show{display:block}
+input.due-input{background:#eeeeee;border:1.5px solid #dcdcdc;color:#808080;font-weight:600;font-size:15px;cursor:not-allowed}
+input.due-input:focus{outline:none;border-color:#dcdcdc;box-shadow:none}
 .surprise-note{background:var(--red-light);border:1px solid #ef9a9a;border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;color:var(--red);margin-top:8px;display:none}
 .surprise-note.show{display:block}
 .payment-info-box{background:var(--green-light);border:1px solid #a5d6a7;border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--green);margin-top:8px;display:none}
@@ -149,8 +158,6 @@ button{cursor:pointer}
 .popup-content{flex:1 1 auto;min-height:0;padding:18px;white-space:pre-wrap;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;line-height:1.65;font-size:14px}
 .copy-button{margin:6px 4px 0 0;padding:5px 9px;border:1px solid currentColor;border-radius:var(--radius-xs);background:transparent;color:var(--green);font-size:12px;font-weight:600}
 .order-number-badge{display:inline-block;margin-top:8px;padding:6px 12px;border-radius:var(--radius-xs);background:var(--pink-light);color:var(--pink-dark);font-size:13px;font-weight:700}
-.due-panel{background:#eeeeee;border:1px solid #cfcfcf;border-radius:var(--radius-sm);padding:12px;margin-top:12px;display:none;color:#4a4a4a}
-.due-panel.show{display:block}
 .screenshot-note{background:var(--green-light);border:1px solid #a5d6a7;border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;color:var(--green);line-height:1.5;margin-bottom:14px}
 
 /* AUTO-CLOSE POPUP */
@@ -381,31 +388,23 @@ button{cursor:pointer}
     </div>
     <div class="payment-info-box" id="payment-info"></div>
     <div class="field">
-      <label data-bn="আপনি কত টাকা অগ্রিম দিতে চান? *" data-en="How much advance do you want to pay? *">আপনি কত টাকা অগ্রিম দিতে চান? *</label>
+      <label data-bn="আপনি কত টাকা পাঠাতে চান? *" data-en="How much do you want to send? *">আপনি কত টাকা পাঠাতে চান? *</label>
       <div class="advance-options" id="advance-options">
         <div class="advance-opt" id="opt-50" onclick="setAdvanceType('50')">৫০% অগ্রিম</div>
         <div class="advance-opt" id="opt-full" onclick="setAdvanceType('full')">১০০% পরিশোধ</div>
       </div>
-      <input type="number" id="f-advance" placeholder="৳ পরিমাণ লিখুন" min="0" oninput="recalcPrice(true)">
+      <input type="number" id="f-advance" class="advance-input" placeholder="৳ পরিমাণ লিখুন" min="0" oninput="recalcPrice(true)" onclick="onAdvanceClick()" onfocus="onAdvanceClick()">
       <div class="hint-box" id="advance-hint"></div>
     </div>
 
-    <div class="calc-box" id="advance-calc-box">
-      <div class="calc-row"><span>আপনার কেক পেমেন্ট:</span><span id="calc-advance">৳0</span></div>
-      <div class="calc-row" id="calc-charge-row" style="display:none"><span id="calc-charge-label">বিকাশ ক্যাশআউট চার্জ:</span><span id="calc-charge">৳0</span></div>
-      <div class="calc-row total"><span>চার্জসহ দিতে হবে:</span><span id="calc-advance-total">৳0</span></div>
-      <div class="calc-row due" id="calc-due-row"><span>বাকি:</span><span id="calc-due">৳0</span></div>
+    <!-- Due amount: auto-calculated (total − advance), greyed out, read-only -->
+    <div class="field due-field" id="due-field">
+      <label data-bn="বাকি পেমেন্ট (অটো হিসাব)" data-en="Due amount (auto-calculated)">বাকি পেমেন্ট (অটো হিসাব)</label>
+      <input type="text" id="f-due" class="due-input" readonly tabindex="-1" onfocus="this.blur()" placeholder="৳ 0">
+      <div class="hint-box" id="due-hint"></div>
     </div>
 
     <div class="pay-footnote" id="pay-footnote"></div>
-
-    <div class="due-panel" id="due-panel">
-      <strong>বাকি পেমেন্ট</strong><br>
-      কেকের মোট মূল্য: <span id="due-total">৳0</span><br>
-      ৫০% অগ্রিম: <span id="due-advance">৳0</span><br>
-      বাকি দিতে হবে: <strong id="due-amount">৳0</strong><br>
-      <span id="due-delivery-row">🚚 ডেলিভারি চার্জ (আলাদা): <strong id="due-delivery">৳0</strong></span>
-    </div>
 
     <div class="field" style="margin-top:12px">
       <label data-bn="ট্রানজেকশন আইডি / পেমেন্ট নম্বরের শেষ ৩ ডিজিট *" data-en="Transaction ID / Last 3 Digits of Payment Number *">ট্রানজেকশন আইডি / পেমেন্ট নম্বরের শেষ ৩ ডিজিট *</label>
@@ -468,15 +467,12 @@ button{cursor:pointer}
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
 <div class="toast" id="toast"></div>
 
-<!-- Advance-edit warning popup -->
+<!-- Advance-edit warning popup (payment auto-calculated incl. gateway charge) -->
 <div class="popup-overlay" id="advance-warn-popup" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="popup" style="max-width:380px" role="alertdialog" aria-modal="true">
     <div class="popup-header"><h3 style="font-size:16px">⚠️ অটো হিসাব</h3><button type="button" class="popup-close" onclick="closeAdvanceWarn()">×</button></div>
-    <div style="padding:16px 18px;font-size:13.5px;line-height:1.7;color:var(--text2)">
-      পেমেন্ট <strong>অটোমেটিক হিসাব করা</strong> — অ্যাডভান্সের পরিমাণ <strong>নিজে পরিবর্তন করবেন না</strong>।<br>
-      ভিন্ন পরিমাণ দিতে চাইলে অ্যাডমিনের সাথে কথা বলুন।
-    </div>
-    <div style="padding:0 18px 18px"><button type="button" class="btn-primary" style="margin-top:0" onclick="closeAdvanceWarn()">বুঝেছি</button></div>
+    <div style="padding:16px 18px;font-size:13.5px;line-height:1.7;color:var(--text2)" id="advance-warn-msg"></div>
+    <div style="padding:0 18px 18px"><button type="button" class="btn-primary" style="margin-top:0" id="advance-warn-ok" onclick="closeAdvanceWarn()">বুঝেছি</button></div>
   </div>
 </div>
 

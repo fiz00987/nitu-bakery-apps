@@ -92,7 +92,7 @@ function setLang(l) {
     '#entry-phone': 'Phone Number *', '#f-weight': 'Weight *',
     '#f-flavour': 'Flavour *', '#f-address': 'Delivery Address *', '#f-date': 'Delivery Date *',
     '#f-timeslot': 'Delivery Time *', '#f-receiver': 'Receiver Name *', '#f-receiver-phone': 'Receiver Phone *',
-    '#f-fulfilment': 'Fulfilment *', '#f-surprise': 'Surprise Cake?', '#f-payment-method': 'Payment Method *', '#f-advance': 'Advance Payment *',
+    '#f-fulfilment': 'Fulfilment *', '#f-surprise': 'Surprise Cake?', '#f-payment-method': 'Payment Method *',
     '#f-writing': 'Cake writing text (Optional)',
     '#f-trx': 'Transaction ID / Last 3 Digits of Payment Number *', '#f-notes': 'Additional Info (Optional)'
   } : {};
@@ -519,70 +519,112 @@ function setAdvanceType(type) {
   advanceType = type;
   document.querySelectorAll('.advance-opt').forEach(el => el.classList.remove('active'));
   document.getElementById('opt-' + type).classList.add('active');
-  const total = getOrderTotal();
-  const auto = type === '50' ? Math.round(total / 2) : Math.round(total);
-  lastAutoAdvance = auto;
-  document.getElementById('f-advance').value = auto;
-  recalcPrice();
+  lastAutoSend = 0; lastAutoBase = 0;
+  if (getOrderTotal() <= 0) document.getElementById('f-advance').value = '';
+  recalcPrice(); // auto path fills the grey box with the charge-inclusive amount
 }
 
-// ─── Advance auto-calculation (locked to the admin-fixed amounts) ──
-// f-advance stores the BASE advance (e.g. 50% of the cake). The gateway
-// charge is added on top and the grand total (what the customer actually
-// sends) is displayed bold. Editing the field manually snaps it back to
-// the auto value and pops the "talk to admin" warning.
-let lastAutoAdvance = 0;
+// ─── Advance auto-calculation (grey bold box + read-only due box) ──
+// #f-advance holds what the customer SENDS now: base advance + gateway
+// charge, e.g. 50% of ৳1000 via bKash → ৳500 + ৳10 charge = ৳510. It is
+// editable, but tapping it pops a warning: the figure was auto-calculated
+// with the gateway charge — inform the admin before changing it.
+// #f-due (greyed out, read-only) auto-shows the rest (total − base).
+let lastAutoSend = 0;   // most recent auto-calculated send amount
+let lastAutoBase = 0;   // matching base advance (without the charge)
+
+function getGatewayRate() {
+  const m = getPaymentMethod(document.getElementById('f-payment-method').value);
+  return m && m.charges > 0 ? m.charges : 0;
+}
+
+// Split a typed send-amount into base advance + gateway charge, preferring the
+// exact admin model (charge = ceil(base × rate), base + charge = send).
+function splitSend(sendAmount, rate) {
+  let base = Math.round(sendAmount / (1 + rate));
+  for (const b of [base, base - 1, base + 1]) {
+    if (b >= 0 && b + Math.ceil(b * rate) === sendAmount) return { base: b, charge: sendAmount - b };
+  }
+  base = Math.max(0, base);
+  return { base, charge: Math.max(0, sendAmount - base) };
+}
 
 function closeAdvanceWarn() {
   document.getElementById('advance-warn-popup').classList.remove('show');
+}
+
+// Tapping the grey payment box → warn that the amount was auto-calculated
+function onAdvanceClick() {
+  if (advanceType) showAdvanceWarn();
+}
+
+function showAdvanceWarn() {
+  const methodId = document.getElementById('f-payment-method').value;
+  const reason = lang === 'en'
+    ? (methodId === 'bkash' ? 'This payment was <strong>auto-calculated</strong> including the <strong>bKash charge</strong>.'
+       : methodId === 'nagad' ? 'This payment was <strong>auto-calculated</strong> including the <strong>Nagad charge</strong>.'
+       : 'This payment was <strong>auto-calculated</strong> for you.')
+    : (methodId === 'bkash' ? 'এই পেমেন্ট <strong>অটোমেটিক</strong> হিসাব করা হয়েছে — <strong>বিকাশ চার্জসহ</strong>।'
+       : methodId === 'nagad' ? 'এই পেমেন্ট <strong>অটোমেটিক</strong> হিসাব করা হয়েছে — <strong>নগদ চার্জসহ</strong>।'
+       : 'এই পেমেন্ট <strong>অটোমেটিক</strong> হিসাব করা হয়েছে।');
+  const inform = lang === 'en'
+    ? 'If you need to change it, please <strong>inform the admin first</strong>.'
+    : 'পরিবর্তন করার আগে <strong>অ্যাডমিনকে জানান</strong>।';
+  document.getElementById('advance-warn-msg').innerHTML = reason + '<br>' + inform;
+  document.getElementById('advance-warn-ok').textContent = lang === 'en' ? 'Got it' : 'বুঝেছি';
+  document.getElementById('advance-warn-popup').classList.add('show');
 }
 
 function recalcPrice(manualEdit) {
   const wtVal = document.getElementById('f-weight').value;
   const methodId = document.getElementById('f-payment-method').value;
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
-  let advance = parseFloat(document.getElementById('f-advance').value) || 0;
+  const advInput = document.getElementById('f-advance');
+  const typedSend = parseFloat(advInput.value) || 0;
 
   const wt = resolveWeight();
   if (!wt || cakePrice <= 0) {
     document.getElementById('calc-box').classList.remove('show');
-    document.getElementById('advance-calc-box').classList.remove('show');
+    document.getElementById('due-field').classList.remove('show');
     document.getElementById('pay-footnote').classList.remove('show');
     return;
   }
 
-  // Auto-recompute the chosen percentage when the cake price/weight changes,
-  // so picking 50%/100% always keeps counting against the current price.
-  if (advanceType && !manualEdit) {
-    const auto = advanceType === '50' ? Math.round(cakePrice / 2) : Math.round(cakePrice);
-    lastAutoAdvance = auto;
-    document.getElementById('f-advance').value = auto;
-    advance = auto;
-  }
-
-  const base = cakePrice;
+  const rate = getGatewayRate();
   const delivery = document.getElementById('f-fulfilment').value === 'pickup' ? 0 : (parseFloat(document.getElementById('f-delivery-charge').value) || 0);
   const paymentMethod = getPaymentMethod(methodId);
-  const charge = paymentMethod && paymentMethod.charges > 0 ? advance * paymentMethod.charges : 0;
-  const total = base;
-  const due = Math.max(0, total - advance);
+  const total = cakePrice;
 
-  // Grand total the customer must send (advance + gateway charge), rounded up
-  const grandTotal = Math.ceil(advance + charge);
-
-  // Manual edit guard: only the 50%/100% buttons may set the amount
-  if (manualEdit && lastAutoAdvance > 0 && advance !== lastAutoAdvance) {
-    document.getElementById('f-advance').value = lastAutoAdvance;
-    document.getElementById('advance-warn-popup').classList.add('show');
+  let base, charge, sendAmount, isAuto = false;
+  if (advanceType && !manualEdit) {
+    // AUTO: base = chosen % of the cake price; send = base + gateway charge
+    // (charge rounded up, e.g. 50% of ৳1000 via bKash → 500 + 10 = 510)
+    isAuto = true;
+    base = advanceType === '50' ? Math.round(cakePrice / 2) : Math.round(cakePrice);
+    charge = rate > 0 ? Math.ceil(base * rate) : 0;
+    sendAmount = base + charge;
+    lastAutoBase = base;
+    lastAutoSend = sendAmount;
+    advInput.value = sendAmount;
+  } else {
+    // Manual: the customer tapped the grey box and typed — keep their amount
+    // and split it into base advance + charge (base + charge = what they send).
+    sendAmount = Math.round(typedSend);
+    const split = splitSend(sendAmount, rate);
+    base = split.base;
+    charge = split.charge;
   }
 
-  // Hint under the advance input showing where the bold figure came from
+  const due = Math.max(0, total - base);
+  const methodName = paymentMethod ? paymentMethod.name : '';
+
+  // Hint under the grey box showing where the bold figure came from
   const hint = document.getElementById('advance-hint');
   if (advanceType) {
-    const label = paymentMethod ? paymentMethod.name : '';
-    hint.textContent = lang === 'en'
-      ? `Auto-calculated: ${advanceType === '50' ? '50% advance' : 'full payment'} ৳${advance} + ${label} charge ৳${Math.ceil(charge)} = send ৳${grandTotal}`
-      : `অটো হিসাব: ${advanceType === '50' ? '৫০% অগ্রিম' : 'পুরো পেমেন্ট'} ৳${advance} + ${label} চার্জ ৳${Math.ceil(charge)} = পাঠাতে হবে ৳${grandTotal}`;
+    const pctLabel = advanceType === '50' ? (lang === 'en' ? '50% advance' : '৫০% অগ্রিম') : (lang === 'en' ? 'full payment' : 'পুরো পেমেন্ট');
+    const chargePart = charge > 0 ? ` + ${methodName} ${lang === 'en' ? 'charge' : 'চার্জ'} ৳${charge}` : '';
+    hint.textContent = (isAuto ? (lang === 'en' ? 'Auto-calculated: ' : 'অটো হিসাব: ') : (lang === 'en' ? 'Custom amount: ' : 'নিজের হিসাব: '))
+      + `${pctLabel} ৳${base}${chargePart} = ${lang === 'en' ? 'send' : 'পাঠাতে হবে'} ৳${sendAmount}`;
   } else {
     hint.textContent = '';
   }
@@ -599,29 +641,30 @@ function recalcPrice(manualEdit) {
   if (fnTxt) { footnote.textContent = fnTxt; footnote.classList.add('show'); }
   else { footnote.classList.remove('show'); }
 
-  document.getElementById('calc-base').textContent = '৳' + Math.round(base);
+  // Top calc box (cake price / delivery / total)
+  document.getElementById('calc-base').textContent = '৳' + Math.round(total);
   document.getElementById('calc-delivery').textContent = '৳' + Math.round(delivery) + ' (আলাদা)';
-  if (charge > 0) {
-    document.getElementById('calc-charge-row').style.display = 'flex';
-    document.getElementById('calc-charge-label').textContent = `${paymentMethod.name} চার্জ:`;
-    document.getElementById('calc-charge').textContent = '৳' + Math.round(charge);
-  } else {
-    document.getElementById('calc-charge-row').style.display = 'none';
-  }
   document.getElementById('calc-total').textContent = '৳' + Math.round(total);
-  document.getElementById('calc-advance').textContent = '৳' + Math.round(advance);
-  // Bold "চার্জসহ দিতে হবে" — the exact amount to send, rounded up
-  document.getElementById('calc-advance-total').textContent = '৳' + Math.ceil(advance + charge);
-  document.getElementById('calc-due').textContent = due > 0 && delivery > 0 ? `৳${Math.round(due)} + ডেলিভারি চার্জ ৳${Math.round(delivery)}` : '৳' + Math.round(due);
-  document.getElementById('calc-due-row').style.display = due > 0 ? 'flex' : 'none';
-  document.getElementById('due-panel').classList.toggle('show', advance > 0 && advance < total);
-  document.getElementById('due-total').textContent = '৳' + Math.round(total);
-  document.getElementById('due-advance').textContent = '৳' + Math.round(advance);
-  document.getElementById('due-amount').textContent = '৳' + Math.round(due);
-  document.getElementById('due-delivery-row').style.display = delivery > 0 ? 'inline' : 'none';
-  document.getElementById('due-delivery').textContent = '৳' + Math.round(delivery);
   document.getElementById('calc-box').classList.add('show');
-  document.getElementById('advance-calc-box').classList.add('show');
+
+  // Due box — the auto-calculated rest, greyed out and read-only
+  const dueField = document.getElementById('due-field');
+  if (sendAmount > 0) {
+    document.getElementById('f-due').value = '৳' + Math.round(due);
+    const dueHint = document.getElementById('due-hint');
+    if (due > 0) {
+      dueHint.textContent = lang === 'en'
+        ? `৳${Math.round(due)} left to pay later` + (delivery > 0 ? ` · delivery charge ৳${Math.round(delivery)} is separate` : '')
+        : `বাকি ৳${Math.round(due)} পরে দিতে হবে` + (delivery > 0 ? ` · ডেলিভারি চার্জ ৳${Math.round(delivery)} আলাদা` : '');
+    } else if (delivery > 0) {
+      dueHint.textContent = lang === 'en' ? `Delivery charge ৳${Math.round(delivery)} is paid separately` : `ডেলিভারি চার্জ ৳${Math.round(delivery)} আলাদা`;
+    } else {
+      dueHint.textContent = '';
+    }
+    dueField.classList.add('show');
+  } else {
+    dueField.classList.remove('show');
+  }
 }
 
 function resolveWeight() {
@@ -779,13 +822,24 @@ function submitOrder() {
   const timeSlot = getSelectedTime();
   const method = getPaymentMethod(document.getElementById('f-payment-method').value);
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
-  const advance = parseFloat(document.getElementById('f-advance').value) || 0;
+  const sendAmount = parseFloat(document.getElementById('f-advance').value) || 0;
 
   const delivery = document.getElementById('f-fulfilment').value === 'pickup' ? 0 : (parseFloat(document.getElementById('f-delivery-charge').value) || 0);
-  const charge = method && method.charges > 0 ? advance * method.charges : 0;
+  // f-advance holds what the customer sends (base advance + gateway charge).
+  // Derive the base advance so the admin bookkeeping stays exact.
+  const rate = method && method.charges > 0 ? method.charges : 0;
+  let advance, charge;
+  if (advanceType && lastAutoSend > 0 && sendAmount === lastAutoSend) {
+    advance = lastAutoBase;                      // untouched auto value
+    charge = Math.max(0, Math.round(sendAmount) - advance);
+  } else {
+    const split = splitSend(Math.round(sendAmount), rate);
+    advance = split.base;
+    charge = split.charge;
+  }
   const subtotal = cakePrice;
   const total = cakePrice;
-  const advanceTotal = advance + charge;
+  const advanceTotal = Math.round(sendAmount);
   const dueAmount = Math.max(0, subtotal - advance);
 
   const order = {
@@ -823,6 +877,8 @@ function submitOrder() {
     total: total,
     advance: advance,
     advanceTotal: advanceTotal,
+    advanceCharge: charge,
+    advanceAutoTotal: (advanceType && lastAutoSend > 0 && sendAmount !== lastAutoSend) ? lastAutoSend : null,
     dueAmount: dueAmount,
     fulfilment: document.getElementById('f-fulfilment').value,
     trx: document.getElementById('f-trx').value.trim(),
@@ -1107,9 +1163,10 @@ function resetForm() {
   document.getElementById('entry-security').value = '';
   document.querySelectorAll('#form-screen input:not(#entry-phone), #form-screen textarea').forEach(el => el.value = '');
   document.querySelectorAll('#form-screen select').forEach(el => el.selectedIndex = 0);
-  currentPhotos = []; renderPhotos(); advanceType = ''; lastAutoAdvance = 0; isSurprise = false; cakeWritingNoticeShown = false;
+  currentPhotos = []; renderPhotos(); advanceType = ''; lastAutoSend = 0; lastAutoBase = 0; isSurprise = false; cakeWritingNoticeShown = false;
   updateWritingCount();
   document.getElementById('calc-box').classList.remove('show');
+  document.getElementById('due-field').classList.remove('show');
   document.getElementById('surprise-note').classList.remove('show');
   document.getElementById('payment-info').classList.remove('show');
   document.querySelectorAll('.advance-opt').forEach(el => { el.classList.remove('active'); el.style.opacity = '1'; });
