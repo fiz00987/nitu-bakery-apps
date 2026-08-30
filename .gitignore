@@ -38,3 +38,8 @@ _old-logo-backup/
 customer-app/telegram-config.json
 blaze-free-notifier/notifier-secrets.json
 _old-logo-backup/
+
+# Dev analysis scratch files (regenerable via _tools/*.js)
+_tools/
+_decls.txt
+_structure.txt
