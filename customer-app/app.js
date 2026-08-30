@@ -15,6 +15,50 @@ let downloadPressed = false;
 let autoCloseTimer = null;
 let autoCloseTick = null;
 
+// ─── Splash screen (~2.5s welcome, then fade to the entry screen) ──
+(function initSplash() {
+  const splash = document.getElementById('splash-screen');
+  if (!splash) return;
+  // Sprinkles + orbit dots
+  const fx = document.getElementById('splash-fx');
+  if (fx) {
+    const cols = ['#e09642', '#2f8f77', '#d6783c', '#c9a227'];
+    for (let i = 0; i < 26; i++) {
+      const s = document.createElement('span');
+      s.className = 'splash-spr';
+      s.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % 4]};` +
+        `animation-duration:${(6 + Math.random() * 8).toFixed(1)}s;animation-delay:${(-Math.random() * 12).toFixed(1)}s;` +
+        `opacity:${(.4 + Math.random() * .5).toFixed(2)}`;
+      fx.appendChild(s);
+    }
+    const orbit = document.createElement('div');
+    orbit.className = 'splash-orbit';
+    for (let i = 0; i < 8; i++) {
+      const d = document.createElement('i');
+      d.style.cssText = `background:${cols[i % 4]};transform:rotate(${i * 45}deg) translateX(${150}px)`;
+      orbit.appendChild(d);
+    }
+    fx.appendChild(orbit);
+  }
+  // Entry screen gets the same drifting blobs + sprinkles
+  const efx = document.getElementById('entry-bgfx');
+  if (efx) {
+    const cols = ['#e09642', '#2f8f77', '#d6783c', '#c9a227'];
+    for (let i = 0; i < 16; i++) {
+      const s = document.createElement('span');
+      s.className = 'splash-spr';
+      s.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % 4]};` +
+        `animation-duration:${(7 + Math.random() * 8).toFixed(1)}s;animation-delay:${(-Math.random() * 12).toFixed(1)}s;` +
+        `opacity:${(.3 + Math.random() * .4).toFixed(2)}`;
+      efx.appendChild(s);
+    }
+  }
+  // Fade out after 2.5s (reveal immediately if already dismissed)
+  if (!splash.classList.contains('gone')) {
+    setTimeout(() => splash.classList.add('gone'), 2500);
+  }
+})();
+
 // Populate dropdowns from utils.js
 function populateDropdowns() {
   const fl = document.getElementById('f-flavour');
@@ -476,11 +520,24 @@ function setAdvanceType(type) {
   document.querySelectorAll('.advance-opt').forEach(el => el.classList.remove('active'));
   document.getElementById('opt-' + type).classList.add('active');
   const total = getOrderTotal();
-  document.getElementById('f-advance').value = type === '50' ? Math.round(total / 2) : Math.round(total);
+  const auto = type === '50' ? Math.round(total / 2) : Math.round(total);
+  lastAutoAdvance = auto;
+  document.getElementById('f-advance').value = auto;
   recalcPrice();
 }
 
-function recalcPrice() {
+// ─── Advance auto-calculation (locked to the admin-fixed amounts) ──
+// f-advance stores the BASE advance (e.g. 50% of the cake). The gateway
+// charge is added on top and the grand total (what the customer actually
+// sends) is displayed bold. Editing the field manually snaps it back to
+// the auto value and pops the "talk to admin" warning.
+let lastAutoAdvance = 0;
+
+function closeAdvanceWarn() {
+  document.getElementById('advance-warn-popup').classList.remove('show');
+}
+
+function recalcPrice(manualEdit) {
   const wtVal = document.getElementById('f-weight').value;
   const methodId = document.getElementById('f-payment-method').value;
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
@@ -496,6 +553,38 @@ function recalcPrice() {
   const total = base;
   const due = Math.max(0, total - advance);
 
+  // Grand total the customer must send (advance + gateway charge), rounded up
+  const grandTotal = Math.ceil(advance + charge);
+
+  // Manual edit guard: only the 50%/100% buttons may set the amount
+  if (manualEdit && lastAutoAdvance > 0 && advance !== lastAutoAdvance) {
+    document.getElementById('f-advance').value = lastAutoAdvance;
+    document.getElementById('advance-warn-popup').classList.add('show');
+  }
+
+  // Hint under the advance input showing where the bold figure came from
+  const hint = document.getElementById('advance-hint');
+  if (advanceType) {
+    const label = paymentMethod ? paymentMethod.name : '';
+    hint.textContent = lang === 'en'
+      ? `Auto-calculated: ${advanceType === '50' ? '50% advance' : 'full payment'} ৳${advance} + ${label} charge ৳${Math.ceil(charge)} = send ৳${grandTotal}`
+      : `অটো হিসাব: ${advanceType === '50' ? '৫০% অগ্রিম' : 'পুরো পেমেন্ট'} ৳${advance} + ${label} চার্জ ৳${Math.ceil(charge)} = পাঠাতে হবে ৳${grandTotal}`;
+  } else {
+    hint.textContent = '';
+  }
+
+  // Footnote spelling out which gateway charge is added (bKash/Nagad) or free (bank)
+  const footnote = document.getElementById('pay-footnote');
+  const fnTxt = lang === 'en'
+    ? (methodId === 'bkash' ? `Payment is calculated including the bKash charge.` 
+       : methodId === 'nagad' ? `Payment is calculated including the Nagad charge.` 
+       : methodId === 'bank' ? `Bank payment — no charge, it's free.` : '')
+    : (methodId === 'bkash' ? `পেমেন্ট বিকাশ চার্জসহ হিসাব করা হয়েছে।` 
+       : methodId === 'nagad' ? `পেমেন্ট নগদ চার্জসহ হিসাব করা হয়েছে।` 
+       : methodId === 'bank' ? `ব্যাংকে পেমেন্ট — চার্জ নেই, সম্পূর্ণ ফ্রি।` : '');
+  if (fnTxt) { footnote.textContent = fnTxt; footnote.classList.add('show'); }
+  else { footnote.classList.remove('show'); }
+
   document.getElementById('calc-base').textContent = '৳' + Math.round(base);
   document.getElementById('calc-delivery').textContent = '৳' + Math.round(delivery) + ' (আলাদা)';
   if (charge > 0) {
@@ -507,7 +596,8 @@ function recalcPrice() {
   }
   document.getElementById('calc-total').textContent = '৳' + Math.round(total);
   document.getElementById('calc-advance').textContent = '৳' + Math.round(advance);
-  document.getElementById('calc-advance-total').textContent = '৳' + Math.round(advance + charge);
+  // Bold "চার্জসহ দিতে হবে" — the exact amount to send, rounded up
+  document.getElementById('calc-advance-total').textContent = '৳' + Math.ceil(advance + charge);
   document.getElementById('calc-due').textContent = due > 0 && delivery > 0 ? `৳${Math.round(due)} + ডেলিভারি চার্জ ৳${Math.round(delivery)}` : '৳' + Math.round(due);
   document.getElementById('calc-due-row').style.display = due > 0 ? 'flex' : 'none';
   document.getElementById('due-panel').classList.toggle('show', advance > 0 && advance < total);
@@ -1004,7 +1094,7 @@ function resetForm() {
   document.getElementById('entry-security').value = '';
   document.querySelectorAll('#form-screen input:not(#entry-phone), #form-screen textarea').forEach(el => el.value = '');
   document.querySelectorAll('#form-screen select').forEach(el => el.selectedIndex = 0);
-  currentPhotos = []; renderPhotos(); advanceType = ''; isSurprise = false; cakeWritingNoticeShown = false;
+  currentPhotos = []; renderPhotos(); advanceType = ''; lastAutoAdvance = 0; isSurprise = false; cakeWritingNoticeShown = false;
   updateWritingCount();
   document.getElementById('calc-box').classList.remove('show');
   document.getElementById('surprise-note').classList.remove('show');

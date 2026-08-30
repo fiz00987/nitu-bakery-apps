@@ -1860,6 +1860,37 @@ window.App = (() => {
     });
   };
 
+  // ─── Splash screen (welcome ~2.5s, then fades to the login screen) ──
+  (function initSplash() {
+    const splash = document.getElementById('splash-screen');
+    if (!splash) return;
+    // Sprinkles + orbit dots (matches the watermark splash style)
+    const fx = document.getElementById('splash-fx');
+    if (fx) {
+      const cols = ['#e09642', '#2f8f77', '#d6783c', '#c9a227'];
+      for (let i = 0; i < 26; i++) {
+        const s = document.createElement('span');
+        s.className = 'splash-spr';
+        s.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % 4]};` +
+          `animation-duration:${(6 + Math.random() * 8).toFixed(1)}s;animation-delay:${(-Math.random() * 12).toFixed(1)}s;` +
+          `opacity:${(.4 + Math.random() * .5).toFixed(2)}`;
+        fx.appendChild(s);
+      }
+      const orbit = document.createElement('div');
+      orbit.className = 'splash-orbit';
+      for (let i = 0; i < 8; i++) {
+        const d = document.createElement('i');
+        d.style.cssText = `background:${cols[i % 4]};transform:rotate(${i * 45}deg) translateX(150px)`;
+        orbit.appendChild(d);
+      }
+      fx.appendChild(orbit);
+    }
+    // Fade out after 2.5s (reveal the login/app behind it)
+    if (!splash.classList.contains('gone')) {
+      setTimeout(() => splash.classList.add('gone'), 2500);
+    }
+  })();
+
   // Enter key support for login
   document.addEventListener('DOMContentLoaded', () => {
     const handleEnter = e => {

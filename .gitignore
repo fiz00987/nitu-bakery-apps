@@ -43,3 +43,6 @@ _old-logo-backup/
 _tools/
 _decls.txt
 _structure.txt
+
+# Splash-screen design preview variants (view-only, not for deployment/repo)
+_splash-previews/
