@@ -602,8 +602,6 @@ window.App = (() => {
     L.push('');
     // Size
     if (o.size) { L.push(`size- ${o.size}`); L.push(''); }
-    // Design
-    if (o.design) { L.push('Design-'); L.push(''); L.push(`${o.design}`); L.push(''); L.push(''); }
     // Writing
     if (o.writing) { L.push('Writing on board fondant-'); L.push(''); L.push(`${o.writing}`); L.push(''); L.push(''); }
 
@@ -725,7 +723,6 @@ window.App = (() => {
       <div class="detail-title">🎂 কেক বিবরণ</div>
       ${drow('⚖️', 'ওজন ও ফ্লেভার', `${weightText(o)} — ${flavourLabel(o)}`)}
       ${drow('📐', 'সাইজ', o.size)}
-      ${drow('🎨', 'ডিজাইন', o.design)}
       ${o.photoNote ? `<div class="pay-note" style="border-left:3px solid var(--amber);background:var(--amber-light, #fff7e6)">📝 <strong>${lang==='bn'?'ছবির নোট:':'Photo note:'}</strong> ${esc(o.photoNote)}</div>` : ''}
       ${drow('✍️', 'লেখা', o.writing)}
     </div>
@@ -1337,7 +1334,6 @@ window.App = (() => {
       flSel.value = pick;
     }
     g('f-size').value           = o.size      || '';
-    g('f-design').value         = o.design    || '';
     g('f-writing').value        = o.writing   || '';
     g('f-date').value           = o.date      || '';
     // Structured time (same as the customer app): hour + AM/PM selector.
@@ -1591,7 +1587,6 @@ window.App = (() => {
       flavour:        g('f-flavour').value,
       flavourName:    g('f-flavour').options[g('f-flavour').selectedIndex]?.textContent || '',
       size:           g('f-size').value.trim(),
-      design:         g('f-design').value.trim(),
       writing:        g('f-writing').value.trim(),
       cakeWriting:    g('f-writing').value.trim(),
       photo:          photoToSave,
