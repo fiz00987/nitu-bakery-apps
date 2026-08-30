@@ -53,9 +53,9 @@ let autoCloseTick = null;
       efx.appendChild(s);
     }
   }
-  // Fade out after 2.5s (reveal immediately if already dismissed)
+  // Fade out after ~4.5s so the welcome animation plays fully and lingers
   if (!splash.classList.contains('gone')) {
-    setTimeout(() => splash.classList.add('gone'), 2500);
+    setTimeout(() => splash.classList.add('gone'), 4500);
   }
 })();
 
