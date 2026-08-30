@@ -627,10 +627,9 @@ function recalcPrice(manualEdit) {
 function resolveWeight() {
   const raw = document.getElementById('f-weight').value.trim();
   if (!raw) return null;
-  // Mini/Medium quick-select sizes carry their own info popup instead of a
-  // numeric weight, but they are valid weight choices for the order.
-  if (isPresetWeight(raw)) return { value: raw.toLowerCase(), label: raw, price: 0 };
-  if (!parseWeightText(raw)) return null;
+  // Any non-empty weight text is accepted (the bakery confirms the exact
+  // weight/price manually anyway). This guarantees the auto-advance count
+  // always runs regardless of format the customer types.
   return { value: raw.toLowerCase(), label: raw, price: 0 };
 }
 
