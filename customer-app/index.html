@@ -134,6 +134,11 @@ button{cursor:pointer}
 .advance-options{display:flex;gap:8px;margin-bottom:12px}
 .advance-opt{flex:1;padding:10px;border:2px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-size:13px;font-weight:600;cursor:pointer;color:var(--text2)}
 .advance-opt.active{border-color:var(--pink);background:var(--pink-light);color:var(--pink)}
+/* "How did you pay?" gateway chooser (auto-popup after advance pick) */
+.adv-method-grid{display:flex;gap:8px}
+.adv-method-opt{flex:1;padding:10px 6px;border:2px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-size:13px;font-weight:700;cursor:pointer;color:var(--text2);background:var(--surface2)}
+.adv-method-opt.active{border-color:var(--pink);background:var(--pink-light);color:var(--pink)}
+.adv-method-opt small{display:block;font-weight:500;font-size:10.5px;margin-top:2px;opacity:.75;color:inherit}
 /* Auto-calculated payment amount — grey box, bold; editable but warns on tap */
 input.advance-input{background:#eeeeee;border:1.5px solid #cfcfcf;font-weight:700;font-size:16px;color:var(--text)}
 input.advance-input:focus{border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-glow)}
@@ -388,6 +393,14 @@ input.due-input:focus{outline:none;border-color:#dcdcdc;box-shadow:none}
     </div>
     <div class="payment-info-box" id="payment-info"></div>
     <div class="field">
+      <label data-bn="আপনি কীভাবে টাকা পাঠিয়েছেন? *" data-en="How did you send the payment? *">আপনি কীভাবে টাকা পাঠিয়েছেন? *</label>
+      <div class="adv-method-grid" id="adv-method-grid">
+        <div class="adv-method-opt" id="adv-opt-bkash" onclick="chooseAdvanceMethod('bkash')">বিকাশ<small>চার্জ ১.৮২%</small></div>
+        <div class="adv-method-opt" id="adv-opt-nagad" onclick="chooseAdvanceMethod('nagad')">নগদ<small>চার্জ ১.৪৯%</small></div>
+        <div class="adv-method-opt" id="adv-opt-bank" onclick="chooseAdvanceMethod('bank')">ব্যাংক<small>চার্জ নেই</small></div>
+      </div>
+    </div>
+    <div class="field">
       <label data-bn="আপনি কত টাকা পাঠাতে চান? *" data-en="How much do you want to send? *">আপনি কত টাকা পাঠাতে চান? *</label>
       <div class="advance-options" id="advance-options">
         <div class="advance-opt" id="opt-50" onclick="setAdvanceType('50')">৫০% অগ্রিম</div>
@@ -466,6 +479,21 @@ input.due-input:focus{outline:none;border-color:#dcdcdc;box-shadow:none}
 
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
 <div class="toast" id="toast"></div>
+
+<!-- "How did you pay?" popup — auto-opens after an advance option is picked -->
+<div class="popup-overlay" id="adv-method-popup" onclick="closeAdvanceMethodPopup(event)">
+  <div class="popup" style="max-width:400px" role="dialog" aria-modal="true" aria-labelledby="adv-method-popup-title">
+    <div class="popup-header"><h3 id="adv-method-popup-title" style="font-size:16px" data-bn="💰 কীভাবে পরিশোধ করবেন?" data-en="💰 How will you pay?">💰 কীভাবে পরিশোধ করবেন?</h3><button type="button" class="popup-close" onclick="closeAdvanceMethodPopup()">×</button></div>
+    <div class="popup-content" style="font-size:13.5px">
+      <span data-bn="আপনার অগ্রিমের সাথে ক্যাশআউট চার্জ যোগ হয়। আপনি কোন মাধ্যমে টাকা পাঠাবেন?" data-en="A cash-out charge is added to your advance. How will you send the money?">আপনার অগ্রিমের সাথে ক্যাশআউট চার্জ যোগ হয়। আপনি কোন মাধ্যমে টাকা পাঠাবেন?</span>
+      <div class="adv-method-grid" style="margin-top:12px">
+        <div class="adv-method-opt" onclick="chooseAdvanceMethod('bkash')">বিকাশ<small>চার্জ ১.৮২%</small></div>
+        <div class="adv-method-opt" onclick="chooseAdvanceMethod('nagad')">নগদ<small>চার্জ ১.৪৯%</small></div>
+        <div class="adv-method-opt" onclick="chooseAdvanceMethod('bank')">ব্যাংক<small>চার্জ নেই</small></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Advance-edit warning popup (payment auto-calculated incl. gateway charge) -->
 <div class="popup-overlay" id="advance-warn-popup" onclick="if(event.target===this)this.classList.remove('show')">

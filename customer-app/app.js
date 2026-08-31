@@ -11,6 +11,7 @@ let currentOrderId = '';
 let previousOrderHistory = [];
 let previousOrderCursor = 0;
 let cakeWritingNoticeShown = false;
+let advanceMethod = ''; // gateway used to send the advance: bkash | nagad | bank
 let downloadPressed = false;
 let autoCloseTimer = null;
 let autoCloseTick = null;
@@ -390,6 +391,14 @@ function onPaymentChange() {
   } else {
     info.classList.remove('show');
   }
+  // Keep the "How did you pay?" mirror in sync if the select was changed
+  // manually (the select remains the source of truth for the charge).
+  if (advanceMethod && methodId && advanceMethod !== methodId) {
+    advanceMethod = methodId;
+    document.querySelectorAll('.adv-method-opt').forEach(el => el.classList.remove('active'));
+    const gridOpt = document.getElementById('adv-opt-' + methodId);
+    if (gridOpt) gridOpt.classList.add('active');
+  }
   recalcPrice();
 }
 
@@ -522,6 +531,12 @@ function setAdvanceType(type) {
   lastAutoSend = 0; lastAutoBase = 0;
   const price = parseFloat(document.getElementById('f-cake-price').value) || 0;
   if (price <= 0) document.getElementById('f-advance').value = '';
+  // Ask HOW the advance is being sent (bKash/Nagad/Bank) before calculating
+  // the charge-inclusive amount. The chooser popup opens right away.
+  if (!advanceMethod) {
+    openAdvanceMethodPopup();
+    return;
+  }
   recalcPrice(); // auto path fills the grey box with the charge-inclusive amount
 }
 
@@ -557,6 +572,38 @@ function closeAdvanceWarn() {
 // Tapping the grey payment box → warn that the amount was auto-calculated
 function onAdvanceClick() {
   if (advanceType) showAdvanceWarn();
+}
+
+// ─── "How did you pay?" gateway chooser ──────────────────────
+// Auto-opens as a popup right after an advance option (50%/100%) is tapped,
+// and is mirrored as a field above the amount box so it can be changed.
+// bKash/Nagad add their cash-out % on top of the advance (shown in the
+// amount box); Bank adds nothing. Saved with the order on submit.
+function openAdvanceMethodPopup() {
+  document.getElementById('adv-method-popup').classList.add('show');
+}
+
+function closeAdvanceMethodPopup(event) {
+  const pop = document.getElementById('adv-method-popup');
+  if (event && event.target !== pop) return; // only the overlay itself or the X
+  pop.classList.remove('show');
+}
+
+function chooseAdvanceMethod(id) {
+  const m = getPaymentMethod(id);
+  if (!m) return;
+  advanceMethod = id;
+  document.getElementById('adv-method-popup').classList.remove('show');
+  document.querySelectorAll('.adv-method-opt').forEach(el => el.classList.remove('active'));
+  const gridOpt = document.getElementById('adv-opt-' + id);
+  if (gridOpt) gridOpt.classList.add('active');
+  // Keep the gateway select (number/name shown to the customer) in sync —
+  // its rate is what recalcPrice adds on top of the advance, and submitting
+  // needs the select filled anyway.
+  const sel = document.getElementById('f-payment-method');
+  if (sel.value !== id) { sel.value = id; onPaymentChange(); }
+  if (advanceType) recalcPrice();
+  updateProgress();
 }
 
 function showAdvanceWarn() {
@@ -792,6 +839,11 @@ function validate() {
   if (!validateBangladeshPhone(document.getElementById('f-receiver-phone').value.trim())) {
     showToast('সঠিক রিসিভার ফোন দিন'); return false;
   }
+  if (!advanceMethod) {
+    showToast(lang === 'en' ? 'Select how you sent the payment (bKash / Nagad / Bank)' : 'আপনি কীভাবে টাকা পাঠিয়েছেন সেটা নির্বাচন করুন');
+    openAdvanceMethodPopup();
+    return false;
+  }
   const timeError = getTimeError();
 if (timeError) { showToast(timeError); document.getElementById('f-timeslot').focus(); return false; }
   const writingError = getCakeWritingError(document.getElementById('f-writing').value);
@@ -870,6 +922,8 @@ function submitOrder() {
     surprise: isSurprise,
     paymentMethod: method.id,
     paymentMethodName: method.name,
+    advanceMethod: advanceMethod || '',
+    advanceMethodName: method.name,
     basePrice: cakePrice,
     weightPrice: 0,
     cakePrice: cakePrice,
@@ -930,6 +984,8 @@ async function fireTelegramAlert(order) {
     var msg = '🎂 ' + _tgEscape(name) + ' just placed a ' + _tgEscape((w ? w + ' ' : '') + (flavN || '') + ' cake').trim() +
               (when ? ' for ' + _tgEscape(when) : '') +
               (order.total ? '\n💰 Total: ৳' + Math.round(order.total) : '') +
+              (order.advanceTotal ? '\n💳 Advance via ' + _tgEscape(order.advanceMethodName || order.advanceMethod || '—') + ': ৳' + Math.ceil(order.advanceTotal) : '') +
+              (order.dueAmount > 0 ? '\n⚠️ Due: ৳' + Math.round(order.dueAmount) : '') +
               '\n🕐 Order ID: ' + _tgEscape(order.orderId || '');
     // Fire-and-forget with a short timeout — must never delay or block the customer's success screen.
     var ctl = new AbortController();
@@ -1166,6 +1222,8 @@ function resetForm() {
   document.querySelectorAll('#form-screen input:not(#entry-phone), #form-screen textarea').forEach(el => el.value = '');
   document.querySelectorAll('#form-screen select').forEach(el => el.selectedIndex = 0);
   currentPhotos = []; renderPhotos(); advanceType = ''; lastAutoSend = 0; lastAutoBase = 0; isSurprise = false; cakeWritingNoticeShown = false;
+  advanceMethod = '';
+  document.querySelectorAll('.adv-method-opt').forEach(el => el.classList.remove('active'));
   updateWritingCount();
   document.getElementById('calc-box').classList.remove('show');
   document.getElementById('due-field').classList.remove('show');
