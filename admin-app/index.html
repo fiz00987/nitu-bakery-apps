@@ -1784,10 +1784,11 @@ select:focus {
 .pc-body{padding:10px 18px}
 .pc-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--border)}
 .pc-row:last-child{border-bottom:none}
+.pc-row.selected{background:var(--pink-light);border-radius:8px;padding-left:6px;padding-right:6px}
 .pc-check{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text);flex:1;cursor:pointer}
 .pc-check input{width:18px;height:18px;accent-color:var(--pink)}
-.pc-amt{width:120px;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface2)}
-.pc-amt:disabled{opacity:.45}
+.pc-rate{font-size:11px;color:var(--pink-dark);background:var(--pink-light);padding:2px 7px;border-radius:99px;font-weight:700}
+.pc-calc{font-size:13px;font-weight:800;color:var(--green);white-space:nowrap}
 .pc-note{padding:0 18px 4px;font-size:11px;color:var(--text3);line-height:1.5}
 .pc-foot{display:flex;gap:10px;padding:12px 18px 16px}
 .pc-foot button{flex:1;padding:12px;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer}
@@ -1831,22 +1832,22 @@ select:focus {
       <div class="pc-title">💰 পেমেন্ট চার্জ</div>
       <button class="pc-close" onclick="App.closePayCharge()" aria-label="বন্ধ করুন">✕</button>
     </div>
-    <div class="pc-sub">অ্যাডভান্স কোন পদ্ধতিতে এসেছে? চার্জ লিখে দিন — মোট পরিশোধিত থেকে বাদ যাবে।</div>
+    <div class="pc-sub">অ্যাডভান্স কীভাবে পেয়েছেন? একটি পদ্ধতি বাছাই করুন — সেই পদ্ধতির চার্জ অ্যাডভান্সের সাথে যোগ হয়ে পূর্ণ পরিমাণ দেখাবে।</div>
     <div class="pc-body" id="pc-body">
       <div class="pc-row" data-ch="bkash">
-        <label class="pc-check"><input type="checkbox" id="pc-bkash" onchange="App.pcToggle('bkash')"> 📱 bKash</label>
-        <input class="pc-amt" id="pc-bkash-amt" type="number" placeholder="চার্জ (৳)" min="0" step="0.01" disabled>
+        <label class="pc-check"><input type="radio" name="pc-channel" id="pc-bkash" onclick="App.pcSelect('bkash')"> 📱 bKash <span class="pc-rate">১.৮২%</span></label>
+        <span class="pc-calc" id="pc-bkash-calc">৳0</span>
       </div>
       <div class="pc-row" data-ch="nagad">
-        <label class="pc-check"><input type="checkbox" id="pc-nagad" onchange="App.pcToggle('nagad')"> 📱 Nagad</label>
-        <input class="pc-amt" id="pc-nagad-amt" type="number" placeholder="চার্জ (৳)" min="0" step="0.01" disabled>
+        <label class="pc-check"><input type="radio" name="pc-channel" id="pc-nagad" onclick="App.pcSelect('nagad')"> 📱 Nagad <span class="pc-rate">১.৪৯%</span></label>
+        <span class="pc-calc" id="pc-nagad-calc">৳0</span>
       </div>
       <div class="pc-row" data-ch="bank">
-        <label class="pc-check"><input type="checkbox" id="pc-bank" onchange="App.pcToggle('bank')"> 🏦 ব্যাংক (NPSB)</label>
-        <input class="pc-amt" id="pc-bank-amt" type="number" placeholder="চার্জ (৳)" min="0" step="0.01" disabled>
+        <label class="pc-check"><input type="radio" name="pc-channel" id="pc-bank" onclick="App.pcSelect('bank')"> 🏦 ব্যাংক (NPSB) <span class="pc-rate">ফ্রি</span></label>
+        <span class="pc-calc" id="pc-bank-calc">৳0</span>
       </div>
     </div>
-    <div class="pc-note" id="pc-note">ব্যাংকে সাধারণত চার্জ নেই — ০ রেখে দিলেই হবে।</div>
+    <div class="pc-note" id="pc-note">পদ্ধতি বাছাই করুন — চার্জসহ মোট পাঠানোর পরিমাণ নিচে দেখাবে।</div>
     <div class="pc-foot">
       <button class="pc-btn-cancel" onclick="App.closePayCharge()">বাতিল</button>
       <button class="pc-btn-ok" onclick="App.applyPayCharge()">✅ ঠিক আছে</button>

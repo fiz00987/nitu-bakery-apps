@@ -1340,7 +1340,9 @@ window.App = (() => {
     g('f-delivery-paid').value  = o.deliveryPaid    || 'unpaid';
     g('f-delivery-amount').value = o.deliveryAmount || '';
     g('f-total').value          = o.total     || '';
-    g('f-paid').value           = o.paid      || '';
+    // f-paid holds the advance toward the cake (the charge is added on top at save).
+    // Prefer the stored advance; fall back to paid − charge for legacy orders.
+    g('f-paid').value           = (o.advance != null ? o.advance : Math.max(0, (Number(o.paid) || 0) - (Number(o.paymentCharges ?? o.bkashCharge) || 0))) || '';
     g('f-charge-deduct').value  = (o.paymentCharges != null ? o.paymentCharges : o.bkashCharge) || '';
     g('f-trx').value            = o.trx       || '';
     g('f-notes').value          = o.notes     || '';
@@ -1436,12 +1438,39 @@ window.App = (() => {
     document.body.style.overflow = 'hidden';
   };
 
-  // ─── Payment-charges popup (advance → gateway charges) ────────
-  // After the admin types how much the customer sent in advance, a popup
-  // asks which channel(s) the money came through and the actual market
-  // charge for each. paid = advance + total charges, so every downstream
-  // view (progress bar, due chip, revenue) keeps working unchanged.
+  // ─── Payment-charges popup (advance → single gateway charge) ──
+  // After the admin types the advance (e.g. 500), a popup asks which ONE
+  // channel the money came through (bKash/Nagad/Bank). The chosen channel's
+  // charge is auto-computed as a % of the advance and ADDED on top, so the
+  // customer's total sent = advance + charge, and the due = total − advance.
   let pcOpenForAdvance = 0;
+  let pcSelected = '';   // 'bkash' | 'nagad' | 'bank' | ''
+
+  // Market charge rates (% as a decimal) — mirrors the customer app.
+  const PC_RATE = { bkash: 0.0182, nagad: 0.0149, bank: 0 };
+  const PC_NAMES = { bkash: 'বিকাশ', nagad: 'নগদ', bank: 'ব্যাংক' };
+
+  const pcChargeFor = ch => {
+    const rate = PC_RATE[ch] || 0;
+    return rate > 0 ? pcOpenForAdvance * rate : 0;
+  };
+
+  const renderPcCalc = () => {
+    ['bkash', 'nagad', 'bank'].forEach(ch => {
+      const charge = pcChargeFor(ch);
+      const total = pcOpenForAdvance + charge;
+      document.getElementById('pc-' + ch + '-calc').textContent =
+        charge > 0 ? `৳${fmtMoney(pcOpenForAdvance)} + ৳${fmtMoney(charge)} = ৳${fmtMoney(total)}` : `৳${fmtMoney(total)}`;
+      document.getElementById('pc-' + ch).closest('.pc-row').classList.toggle('selected', pcSelected === ch);
+    });
+    document.getElementById('pc-note').textContent = lang === 'bn'
+      ? (pcSelected
+          ? `অ্যাডভান্স ৳${fmtMoney(pcOpenForAdvance)} + ${PC_NAMES[pcSelected]} চার্জ ৳${fmtMoney(pcChargeFor(pcSelected))} = কাস্টমার পাঠাবে ৳${fmtMoney(pcOpenForAdvance + pcChargeFor(pcSelected))}`
+          : 'আপনি কোন পদ্ধতিতে পেয়েছেন, একটি বাছাই করুন।')
+      : (pcSelected
+          ? `Advance ৳${fmtMoney(pcOpenForAdvance)} + ${pcSelected} charge ৳${fmtMoney(pcChargeFor(pcSelected))} = customer sends ৳${fmtMoney(pcOpenForAdvance + pcChargeFor(pcSelected))}`
+          : 'Select which gateway the money came through.');
+  };
 
   const openPayCharge = () => {
     const advance = parseFloat(document.getElementById('f-paid').value) || 0;
@@ -1450,43 +1479,43 @@ window.App = (() => {
       return;
     }
     pcOpenForAdvance = advance;
-    ['bkash', 'nagad', 'bank'].forEach(ch => {
-      document.getElementById('pc-' + ch).checked = false;
-      const amt = document.getElementById('pc-' + ch + '-amt');
-      amt.value = '';
-      amt.disabled = true;
-    });
+    pcSelected = '';
+    ['bkash', 'nagad', 'bank'].forEach(ch => { document.getElementById('pc-' + ch).checked = false; });
+    renderPcCalc();
     document.getElementById('pay-charge-overlay').classList.add('open');
   };
 
   const closePayCharge = () => {
     document.getElementById('pay-charge-overlay').classList.remove('open');
     pcOpenForAdvance = 0;
+    pcSelected = '';
   };
 
   const closePayChargeBg = e => {
     if (e.target === document.getElementById('pay-charge-overlay')) closePayCharge();
   };
 
-  const pcToggle = ch => {
-    const amt = document.getElementById('pc-' + ch + '-amt');
-    amt.disabled = !document.getElementById('pc-' + ch).checked;
-    if (amt.disabled) amt.value = '';
-    if (!amt.disabled) amt.focus();
+  // Single-select: picking one option clears the others (radio group)
+  const pcSelect = ch => {
+    ['bkash', 'nagad', 'bank'].forEach(c => { document.getElementById('pc-' + c).checked = (c === ch); });
+    pcSelected = ch;
+    renderPcCalc();
   };
 
   const applyPayCharge = () => {
-    let totalCharge = 0;
-    ['bkash', 'nagad', 'bank'].forEach(ch => {
-      if (document.getElementById('pc-' + ch).checked) {
-        totalCharge += parseFloat(document.getElementById('pc-' + ch + '-amt').value) || 0;
-      }
-    });
-    document.getElementById('f-charge-deduct').value = totalCharge || '';
+    if (!pcSelected) {
+      showToast(lang === 'bn' ? '⚠️ পেমেন্টের পদ্ধতি বাছাই করুন।' : '⚠️ Select the payment gateway.');
+      return;
+    }
+    const charge = pcChargeFor(pcSelected);
+    document.getElementById('f-charge-deduct').value = charge ? String(Math.ceil(charge * 100) / 100) : '';
+    const total = parseFloat(document.getElementById('f-total').value) || 0;
+    const due = Math.max(0, total - pcOpenForAdvance);
+    const totalSent = pcOpenForAdvance + charge;
     closePayCharge();
     showToast(lang === 'bn'
-      ? `✅ মোট চার্জ ৳${fmtMoney(totalCharge)} — কেকে জমা ৳${fmtMoney(Math.max(0, pcOpenForAdvance - totalCharge))}`
-      : `✅ Total charge ৳${fmtMoney(totalCharge)} — ৳${fmtMoney(Math.max(0, pcOpenForAdvance - totalCharge))} toward cake`);
+      ? `✅ ${PC_NAMES[pcSelected]} চার্জ ৳${fmtMoney(charge)} — মোট পাঠাবে ৳${fmtMoney(totalSent)}, বাকি ৳${fmtMoney(due)}`
+      : `✅ ${pcSelected} charge ৳${fmtMoney(charge)} — total sent ৳${fmtMoney(totalSent)}, due ৳${fmtMoney(due)}`);
   };
 
   // Opens the charges popup automatically shortly after an advance is entered
@@ -1497,24 +1526,11 @@ window.App = (() => {
       const advance = parseFloat(document.getElementById('f-paid').value) || 0;
       const popupOpen = document.getElementById('pay-charge-overlay').classList.contains('open');
       if (advance > 0 && !popupOpen) openPayCharge();
-    }, 800);
+    }, 600);
   };
 
-  // Live recalculation while the popup is open — keeps the note accurate
-  // as the admin types each charge (without touching the saved fields).
-  ['pc-bkash-amt', 'pc-nagad-amt', 'pc-bank-amt'].forEach(id => {
-    document.getElementById(id).addEventListener('input', () => {
-      let totalCharge = 0;
-      ['bkash', 'nagad', 'bank'].forEach(ch => {
-        if (document.getElementById('pc-' + ch).checked) {
-          totalCharge += parseFloat(document.getElementById('pc-' + ch + '-amt').value) || 0;
-        }
-      });
-      document.getElementById('pc-note').textContent = lang === 'bn'
-        ? `অ্যাডভান্স ৳${fmtMoney(pcOpenForAdvance)} — মোট চার্জ ৳${fmtMoney(totalCharge)} → কেকে জমা ৳${fmtMoney(Math.max(0, pcOpenForAdvance - totalCharge))}`
-        : `Advance ৳${fmtMoney(pcOpenForAdvance)} — total charge ৳${fmtMoney(totalCharge)} → ৳${fmtMoney(Math.max(0, pcOpenForAdvance - totalCharge))} toward cake`;
-    });
-  });
+  // Live recalculation happens inside pcSelect/renderPcCalc (single-select,
+  // no per-channel charge inputs anymore) — nothing to attach here.
 
   // ─── Save order ──────────────────────────────────────────────
   const saveOrder = () => {
@@ -1565,13 +1581,12 @@ window.App = (() => {
     const cakePrice      = parseFloat(g('f-total').value) || 0;
     const deliveryAmt    = parseFloat(g('f-delivery-amount').value) || 0;
     const fulfilmentVal  = g('f-fulfilment').value;
-    // Charges deducted from the received money (from the payment-charges popup)
+    // Advance the customer paid toward the cake (typed in f-paid). The gateway
+    // charge is auto-added on top, so total sent = advance + charge.
+    const advanceNum     = parseFloat(g('f-paid').value) || 0;
     const chargeToDeduct = parseFloat(g('f-charge-deduct').value) || 0;
-    // Channels chosen in the popup → a readable label like "বিকাশ + নগদ"
-    const PC_NAMES = { bkash: 'বিকাশ', nagad: 'নগদ', bank: 'ব্যাংক' };
-    const chargeLabel    = ['bkash', 'nagad', 'bank']
-      .filter(ch => document.getElementById('pc-' + ch).checked)
-      .map(ch => PC_NAMES[ch]).join(' + ');
+    // The single channel chosen in the popup → readable label like "বিকাশ".
+    const chargeLabel    = pcSelected ? (PC_NAMES[pcSelected] || pcSelected) : '';
 
     const o = {
       // ── Customer-app compatible identity & aliases (so manual orders
@@ -1612,7 +1627,7 @@ window.App = (() => {
       cakePrice:      cakePrice,
       weightPrice:    0,
       subtotal:       cakePrice,
-      paid:           parseFloat(g('f-paid').value)  || 0,
+      paid:           advanceNum + chargeToDeduct,
       bkashCharge:    chargeToDeduct,
       paymentCharges: chargeToDeduct,
       paymentChargesLabel: chargeLabel,
@@ -1629,8 +1644,9 @@ window.App = (() => {
     // store the money in advance/advanceTotal/dueAmount, and the customer's
     // "Previous Orders" screen reads those fields. Without this sync, editing
     // the payment here updated `paid`/`total` but the customer kept seeing the
-    // stale submitted due forever. advance = money that actually counts toward
-    // the cake (received amount minus the gateway charges entered in the popup).
+    // stale submitted due forever. Here `paid` = advance + gateway charge, so
+    // advance (toward cake) = paid − charge, advanceTotal (total sent) = paid,
+    // and due = total − advance.
     const paidNum   = Number(o.paid) || 0;
     const chargeNum = Number(o.paymentCharges) || 0;
     o.advance        = Math.max(0, paidNum - chargeNum);
@@ -2110,7 +2126,7 @@ window.App = (() => {
     openPayCharge,
     closePayCharge,
     closePayChargeBg,
-    pcToggle,
+    pcSelect,
     applyPayCharge,
     advanceInput,
     markFullyPaid,
