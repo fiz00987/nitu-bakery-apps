@@ -840,7 +840,7 @@ function validate() {
     showToast('সঠিক রিসিভার ফোন দিন'); return false;
   }
   if (!advanceMethod) {
-    showToast(lang === 'en' ? 'Select how you sent the payment (bKash / Nagad / Bank)' : 'আপনি কীভাবে টাকা পাঠিয়েছেন সেটা নির্বাচন করুন');
+    showToast(lang === 'en' ? 'Select the payment method (bKash / Nagad / Bank)' : 'আপনি কিভাবে পেমেন্ট করেছেন সেটা নির্বাচন করুন');
     openAdvanceMethodPopup();
     return false;
   }
