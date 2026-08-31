@@ -1241,7 +1241,12 @@ window.App = (() => {
       ...o,
       date:      '',
       paid:      0,
+      advance:   0,
+      advanceTotal: 0,
       status:    'confirmed',
+      paymentCharges: null,
+      bkashCharge:    null,
+      paymentChargesLabel: '',
       bakingnotes: o.bakingnotes || ''
     });
     document.getElementById('modal-title').textContent = 'অর্ডার কপি করুন';
@@ -1340,10 +1345,12 @@ window.App = (() => {
     g('f-delivery-paid').value  = o.deliveryPaid    || 'unpaid';
     g('f-delivery-amount').value = o.deliveryAmount || '';
     g('f-total').value          = o.total     || '';
-    // f-paid holds the advance toward the cake (the charge is added on top at save).
-    // Prefer the stored advance; fall back to paid − charge for legacy orders.
-    g('f-paid').value           = (o.advance != null ? o.advance : Math.max(0, (Number(o.paid) || 0) - (Number(o.paymentCharges ?? o.bkashCharge) || 0))) || '';
+    // f-paid shows the TOTAL SENT (charge-inclusive). The due field subtracts
+    // the stored charge to recover the advance toward the cake.
+    g('f-paid').value           = (Number(o.paid) || Number(o.advance) || 0) || '';
     g('f-charge-deduct').value  = (o.paymentCharges != null ? o.paymentCharges : o.bkashCharge) || '';
+    pcChannel = (o.paymentChargesLabel ? String(o.paymentChargesLabel) : '');
+    updateDueField();
     g('f-trx').value            = o.trx       || '';
     g('f-notes').value          = o.notes     || '';
     g('f-photo-note').value     = o.photoNote || '';
@@ -1362,6 +1369,8 @@ window.App = (() => {
     editingId    = key;
     currentPhoto = '';
     currentPhotos = [];
+    pcChannel = '';
+    document.getElementById('f-charge-deduct').value = '';
     const o = key ? orders.find(x => x.firebaseKey === key) : null;
     document.getElementById('modal-title').textContent =
       o ? 'অর্ডার সম্পাদনা করুন' : 'নতুন অর্ডার';
@@ -1445,6 +1454,7 @@ window.App = (() => {
   // customer's total sent = advance + charge, and the due = total − advance.
   let pcOpenForAdvance = 0;
   let pcSelected = '';   // 'bkash' | 'nagad' | 'bank' | ''
+  let pcChannel  = '';   // last channel confirmed with ঠিক আছে (kept for save/edit)
 
   // Market charge rates (% as a decimal) — mirrors the customer app.
   const PC_RATE = { bkash: 0.0182, nagad: 0.0149, bank: 0 };
@@ -1473,7 +1483,11 @@ window.App = (() => {
   };
 
   const openPayCharge = () => {
-    const advance = parseFloat(document.getElementById('f-paid').value) || 0;
+    // f-paid holds the TOTAL SENT; the advance toward the cake excludes the
+    // already-applied gateway charge (so reopening never compounds the charge).
+    const sent    = parseFloat(document.getElementById('f-paid').value) || 0;
+    const applied = parseFloat(document.getElementById('f-charge-deduct').value) || 0;
+    const advance = Math.max(0, sent - applied);
     if (advance <= 0) {
       showToast(lang === 'bn' ? '⚠️ আগে অ্যাডভান্সের পরিমাণ লিখুন।' : '⚠️ Enter the advance amount first.');
       return;
@@ -1507,31 +1521,56 @@ window.App = (() => {
       showToast(lang === 'bn' ? '⚠️ পেমেন্টের পদ্ধতি বাছাই করুন।' : '⚠️ Select the payment gateway.');
       return;
     }
-    const charge = pcChargeFor(pcSelected);
+    const chosen = pcSelected;           // captured before closePayCharge resets it
+    const charge = pcChargeFor(chosen);
+    // Total sent = advance + gateway charge → shown in পরিশোধিত (e.g. 500 → 509)
+    const totalSent = pcOpenForAdvance + charge;
+    document.getElementById('f-paid').value = totalSent ? String(Math.ceil(totalSent * 100) / 100) : '';
     document.getElementById('f-charge-deduct').value = charge ? String(Math.ceil(charge * 100) / 100) : '';
+    pcChannel = chosen;                  // remember for save + re-edit label
     const total = parseFloat(document.getElementById('f-total').value) || 0;
     const due = Math.max(0, total - pcOpenForAdvance);
-    const totalSent = pcOpenForAdvance + charge;
+    updateDueField();
     closePayCharge();
     showToast(lang === 'bn'
-      ? `✅ ${PC_NAMES[pcSelected]} চার্জ ৳${fmtMoney(charge)} — মোট পাঠাবে ৳${fmtMoney(totalSent)}, বাকি ৳${fmtMoney(due)}`
-      : `✅ ${pcSelected} charge ৳${fmtMoney(charge)} — total sent ৳${fmtMoney(totalSent)}, due ৳${fmtMoney(due)}`);
+      ? `✅ ${PC_NAMES[chosen]} চার্জ ৳${fmtMoney(charge)} — মোট পাঠাবে ৳${fmtMoney(totalSent)}, বাকি ৳${fmtMoney(due)}`
+      : `✅ ${chosen} charge ৳${fmtMoney(charge)} — total sent ৳${fmtMoney(totalSent)}, due ৳${fmtMoney(due)}`);
   };
 
-  // Opens the charges popup automatically shortly after an advance is entered
+  // Live due update while typing + auto-opens the popup shortly after an
+  // advance is entered (short debounce so the due figure feels instant).
   let advanceDebounce = null;
   const advanceInput = () => {
+    updateDueField();
     clearTimeout(advanceDebounce);
     advanceDebounce = setTimeout(() => {
       const advance = parseFloat(document.getElementById('f-paid').value) || 0;
       const popupOpen = document.getElementById('pay-charge-overlay').classList.contains('open');
       if (advance > 0 && !popupOpen) openPayCharge();
-    }, 600);
+    }, 150);
   };
+
+  // ─── Read-only due field: due = total − (sent − charge), live while typing ───
+  const updateDueField = () => {
+    const total   = parseFloat(document.getElementById('f-total').value) || 0;
+    const sent    = parseFloat(document.getElementById('f-paid').value) || 0;
+    const charge  = parseFloat(document.getElementById('f-charge-deduct').value) || 0;
+    const advance = Math.max(0, sent - charge);
+    const wrap    = document.getElementById('due-field');
+    const dueEl   = document.getElementById('f-due');
+    if (!wrap || !dueEl) return;
+    if (total > 0 || sent > 0) {
+      wrap.style.display = '';
+      dueEl.value = String(Math.max(0, total - advance));
+    } else {
+      wrap.style.display = 'none';
+      dueEl.value = '';
+    }
+  };
+  const totalInput = () => updateDueField();
 
   // Live recalculation happens inside pcSelect/renderPcCalc (single-select,
   // no per-channel charge inputs anymore) — nothing to attach here.
-
   // ─── Save order ──────────────────────────────────────────────
   const saveOrder = () => {
     const g    = id => document.getElementById(id);
@@ -1581,12 +1620,14 @@ window.App = (() => {
     const cakePrice      = parseFloat(g('f-total').value) || 0;
     const deliveryAmt    = parseFloat(g('f-delivery-amount').value) || 0;
     const fulfilmentVal  = g('f-fulfilment').value;
-    // Advance the customer paid toward the cake (typed in f-paid). The gateway
-    // charge is auto-added on top, so total sent = advance + charge.
-    const advanceNum     = parseFloat(g('f-paid').value) || 0;
+    // f-paid holds the TOTAL SENT (advance + gateway charge, e.g. 509).
+    // The advance toward the cake is what remains after removing the charge.
+    const paidNum        = parseFloat(g('f-paid').value) || 0;
     const chargeToDeduct = parseFloat(g('f-charge-deduct').value) || 0;
-    // The single channel chosen in the popup → readable label like "বিকাশ".
-    const chargeLabel    = pcSelected ? (PC_NAMES[pcSelected] || pcSelected) : '';
+    const advanceNum     = Math.max(0, paidNum - chargeToDeduct);
+    // Channel chosen in the popup (kept in pcChannel as a readable label like
+    // "বিকাশ", also restored when re-editing an order).
+    const chargeLabel    = pcChannel;
 
     const o = {
       // ── Customer-app compatible identity & aliases (so manual orders
@@ -1627,7 +1668,7 @@ window.App = (() => {
       cakePrice:      cakePrice,
       weightPrice:    0,
       subtotal:       cakePrice,
-      paid:           advanceNum + chargeToDeduct,
+      paid:           paidNum,
       bkashCharge:    chargeToDeduct,
       paymentCharges: chargeToDeduct,
       paymentChargesLabel: chargeLabel,
@@ -1644,15 +1685,14 @@ window.App = (() => {
     // store the money in advance/advanceTotal/dueAmount, and the customer's
     // "Previous Orders" screen reads those fields. Without this sync, editing
     // the payment here updated `paid`/`total` but the customer kept seeing the
-    // stale submitted due forever. Here `paid` = advance + gateway charge, so
-    // advance (toward cake) = paid − charge, advanceTotal (total sent) = paid,
-    // and due = total − advance.
-    const paidNum   = Number(o.paid) || 0;
-    const chargeNum = Number(o.paymentCharges) || 0;
-    o.advance        = Math.max(0, paidNum - chargeNum);
+    // stale submitted due forever. Here `paid` (f-paid) is the TOTAL SENT
+    // (charge-inclusive): advance toward the cake = paid − charge,
+    // advanceTotal = total sent, and due = total − advance.
+    const chargeNum = chargeToDeduct;
+    o.advance        = advanceNum;
     o.advanceTotal   = paidNum;
     o.paymentCharges = chargeNum;
-    o.dueAmount      = Math.max(0, (Number(o.total) || 0) - o.advance);
+    o.dueAmount      = Math.max(0, cakePrice - advanceNum);
 
     setSyncStatus('syncing', 'ক্লাউডে সেভ হচ্ছে...');
     const failSave = err => {
@@ -2129,6 +2169,7 @@ window.App = (() => {
     pcSelect,
     applyPayCharge,
     advanceInput,
+    totalInput,
     markFullyPaid,
     handleLogin,
     toggleAuthMode,

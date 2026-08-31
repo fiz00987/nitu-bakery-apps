@@ -1794,8 +1794,10 @@ select:focus {
 .pc-foot button{flex:1;padding:12px;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer}
 .pc-btn-cancel{background:var(--surface2);color:var(--text2)}
 .pc-btn-ok{background:linear-gradient(135deg,var(--green),var(--green-mid));color:#fff}
-.pc-open-btn{width:100%;margin-top:2px;padding:10px;border:1.5px dashed var(--pink-soft);background:var(--pink-light);color:var(--pink-dark);border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer}
-.pc-open-btn:active{background:var(--pink-soft)}
+/* Read-only due amount field (auto: total − advance) */
+.due-input{background:var(--surface2)!important;color:var(--text2)!important;font-weight:800!important;cursor:not-allowed}
+.due-input:focus{outline:none;border-color:var(--line)}
+.due-hint{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -2148,7 +2150,7 @@ select:focus {
 
         <div class="field">
           <label data-i18n="fTotal">কেকের মূল্য (৳)</label>
-          <input id="f-total" type="number" placeholder="1850" min="0">
+          <input id="f-total" type="number" placeholder="1850" min="0" oninput="App.totalInput()">
         </div>
 
         <div class="field">
@@ -2156,10 +2158,14 @@ select:focus {
           <input id="f-paid" type="number" placeholder="0" min="0" oninput="App.advanceInput()">
         </div>
 
-        <button type="button" class="pc-open-btn" onclick="App.openPayCharge()">💰 পেমেন্ট চার্জ হিসাব করুন</button>
-
         <input id="f-charge-deduct" type="hidden">
         <input id="f-bkash-charge" type="hidden">
+
+        <div class="field" id="due-field" style="display:none">
+          <label>বাকি (Due) (৳)</label>
+          <input id="f-due" class="due-input" type="number" placeholder="0" readonly tabindex="-1" onfocus="this.blur()">
+          <div class="due-hint" id="due-hint">অ্যাডভান্সের পর বাকি পরিমাণ — স্বয়ংক্রিয়ভাবে হিসাব হয় (ডেলিভারি চার্জ আলাদা)</div>
+        </div>
 
         <div class="field"><label>ট্রানজেকশন আইডি / পেমেন্ট নম্বরের শেষ ৩ ডিজিট</label><input id="f-trx" placeholder="যেমন: 8K3N বা 456" type="text"></div>
         <div class="field"><label>অতিরিক্ত নোট (ঐচ্ছিক)</label><textarea id="f-notes" placeholder="বিশেষ কোনো নির্দেশনা থাকলে লিখুন..." style="min-height:40px"></textarea></div>
