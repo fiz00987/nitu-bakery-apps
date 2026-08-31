@@ -2155,7 +2155,7 @@ select:focus {
 
         <div class="field">
           <label data-i18n="fPaid">পরিশোধিত (৳)</label>
-          <input id="f-paid" type="number" placeholder="0" min="0" oninput="App.advanceInput()">
+          <input id="f-paid" type="number" placeholder="0" min="0" oninput="App.advanceInput()" onblur="App.advanceBlur()">
         </div>
 
         <input id="f-charge-deduct" type="hidden">

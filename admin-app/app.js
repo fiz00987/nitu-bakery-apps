@@ -1350,6 +1350,7 @@ window.App = (() => {
     g('f-paid').value           = (Number(o.paid) || Number(o.advance) || 0) || '';
     g('f-charge-deduct').value  = (o.paymentCharges != null ? o.paymentCharges : o.bkashCharge) || '';
     pcChannel = (o.paymentChargesLabel ? String(o.paymentChargesLabel) : '');
+    pcLastApplied = parseFloat(g('f-paid').value) || 0;
     updateDueField();
     g('f-trx').value            = o.trx       || '';
     g('f-notes').value          = o.notes     || '';
@@ -1455,6 +1456,7 @@ window.App = (() => {
   let pcOpenForAdvance = 0;
   let pcSelected = '';   // 'bkash' | 'nagad' | 'bank' | ''
   let pcChannel  = '';   // last channel confirmed with ঠিক আছে (kept for save/edit)
+  let pcLastApplied = null; // f-paid value the charge was last computed for (skips popup when unchanged)
 
   // Market charge rates (% as a decimal) — mirrors the customer app.
   const PC_RATE = { bkash: 0.0182, nagad: 0.0149, bank: 0 };
@@ -1528,6 +1530,7 @@ window.App = (() => {
     document.getElementById('f-paid').value = totalSent ? String(Math.ceil(totalSent * 100) / 100) : '';
     document.getElementById('f-charge-deduct').value = charge ? String(Math.ceil(charge * 100) / 100) : '';
     pcChannel = chosen;                  // remember for save + re-edit label
+    pcLastApplied = Math.ceil(totalSent * 100) / 100;
     const total = parseFloat(document.getElementById('f-total').value) || 0;
     const due = Math.max(0, total - pcOpenForAdvance);
     updateDueField();
@@ -1537,17 +1540,25 @@ window.App = (() => {
       : `✅ ${chosen} charge ৳${fmtMoney(charge)} — total sent ৳${fmtMoney(totalSent)}, due ৳${fmtMoney(due)}`);
   };
 
-  // Live due update while typing + auto-opens the popup shortly after an
-  // advance is entered (short debounce so the due figure feels instant).
+  // Live due update while typing. The popup opens only when the admin has
+  // FINISHED entering the advance — after a 1s typing pause, or immediately
+  // when the field loses focus — never after the first keystroke. It is also
+  // skipped when the amount is unchanged since the last charge computation.
   let advanceDebounce = null;
+  const maybeOpenPayCharge = () => {
+    const cur = parseFloat(document.getElementById('f-paid').value) || 0;
+    const popupOpen = document.getElementById('pay-charge-overlay').classList.contains('open');
+    if (cur <= 0 || popupOpen || cur === pcLastApplied) return;
+    openPayCharge();
+  };
   const advanceInput = () => {
     updateDueField();
     clearTimeout(advanceDebounce);
-    advanceDebounce = setTimeout(() => {
-      const advance = parseFloat(document.getElementById('f-paid').value) || 0;
-      const popupOpen = document.getElementById('pay-charge-overlay').classList.contains('open');
-      if (advance > 0 && !popupOpen) openPayCharge();
-    }, 150);
+    advanceDebounce = setTimeout(maybeOpenPayCharge, 1000);
+  };
+  const advanceBlur = () => {
+    clearTimeout(advanceDebounce);
+    maybeOpenPayCharge();
   };
 
   // ─── Read-only due field: due = total − (sent − charge), live while typing ───
@@ -2169,6 +2180,7 @@ window.App = (() => {
     pcSelect,
     applyPayCharge,
     advanceInput,
+    advanceBlur,
     totalInput,
     markFullyPaid,
     handleLogin,
