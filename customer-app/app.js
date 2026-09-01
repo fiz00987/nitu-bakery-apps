@@ -949,7 +949,7 @@ function submitOrder() {
   showLoading(true);
   db.ref('orders').push(order).then(() => {
     showLoading(false);
-    try { fireTelegramAlert(order); } catch (_) {}
+    try { fireNtfyAlert(order); } catch (_) {}
     showSuccess(order);
   }).catch(err => {
     showLoading(false);
@@ -958,9 +958,13 @@ function submitOrder() {
   });
 }
 
-// ─── Instant Telegram alert on submit (independent safety channel) ──
-function _tgEscape(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-async function fireTelegramAlert(order) {
+// ─── Instant push alert on submit (independent safety channel) ──
+// Publishes straight to the bakery's private ntfy.sh topic the moment the
+// order is placed, so the owner's phone rings within seconds even when the
+// admin app is fully CLOSED (ntfy app on Android/iOS). No Telegram, no
+// account, no phone number involved.
+function _escHtml(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+async function fireNtfyAlert(order) {
   if (!order) return;
   var FLAV_EN = {
     'vanilla-sponge':'Vanilla Sponge','chocolate-sponge':'Chocolate Sponge','double-layer-chocolate':'Double Layered Chocolate',
@@ -970,10 +974,11 @@ async function fireTelegramAlert(order) {
   };
   var MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   try {
-    var r = await fetch('./telegram-config.json?cb=' + Date.now());
+    var r = await fetch('./notify-config.json?cb=' + Date.now());
     if (!r.ok) return;
     var cfg = await r.json();
-    if (!cfg || !cfg.botToken || !cfg.chatId) return;
+    if (!cfg || !cfg.ntfyTopic) return;
+    var server = (cfg.ntfyServer || 'https://ntfy.sh').replace(/\/+$/, '');
     var name  = order.customerName || order.name || 'Unknown';
     var w     = String(order.weightLabel || order.weight || '').trim();
     var flavN = order.flavourName || FLAV_EN[order.flavour] || '';
@@ -981,19 +986,25 @@ async function fireTelegramAlert(order) {
     var when  = '';
     if (/^\d{4}-\d{2}-\d{2}$/.test(d)) { var p = d.split('-'); when = (+p[2]) + ' ' + MO[(+p[1]) - 1] + ' ' + p[0]; }
     else if (d) { when = d; }
-    var msg = '🎂 ' + _tgEscape(name) + ' just placed a ' + _tgEscape((w ? w + ' ' : '') + (flavN || '') + ' cake').trim() +
-              (when ? ' for ' + _tgEscape(when) : '') +
+    var msg = (name) + ' just placed a ' + ((w ? w + ' ' : '') + (flavN || '') + ' cake').trim() +
+              (when ? ' for ' + when : '') +
               (order.total ? '\n💰 Total: ৳' + Math.round(order.total) : '') +
-              (order.advanceTotal ? '\n💳 Advance via ' + _tgEscape(order.advanceMethodName || order.advanceMethod || '—') + ': ৳' + Math.ceil(order.advanceTotal) : '') +
+              (order.advanceTotal ? '\n💳 Advance via ' + (order.advanceMethodName || order.advanceMethod || '—') + ': ৳' + Math.ceil(order.advanceTotal) : '') +
               (order.dueAmount > 0 ? '\n⚠️ Due: ৳' + Math.round(order.dueAmount) : '') +
-              '\n🕐 Order ID: ' + _tgEscape(order.orderId || '');
+              '\n🕐 Order ID: ' + (order.orderId || '');
     // Fire-and-forget with a short timeout — must never delay or block the customer's success screen.
     var ctl = new AbortController();
     setTimeout(function(){ ctl.abort(); }, 7000);
-    fetch('https://api.telegram.org/bot' + cfg.botToken + '/sendMessage', {
+    fetch(server + '/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: cfg.chatId, text: msg }),
+      body: JSON.stringify({
+        topic:    cfg.ntfyTopic,
+        title:    '🎂 নতুন অর্ডার: ' + name,
+        message:  msg,
+        priority: 4,   // 'high' — ntfy's JSON API wants an integer, not a string
+        tags:     ['cake']
+      }),
       signal: ctl.signal,
       keepalive: true
     }).catch(function(){});

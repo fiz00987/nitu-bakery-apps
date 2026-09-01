@@ -44,6 +44,14 @@ messaging.onBackgroundMessage(function (payload) {
     }
   };
   self.registration.showNotification(title, options);
+
+  // Widget-lite: light up the home-screen app-icon badge when a push
+  // arrives while the app is closed (Android/desktop Chrome).
+  try {
+    if (self.navigator && self.navigator.setAppBadge) {
+      self.navigator.setAppBadge(1).catch(function () {});
+    }
+  } catch (e) {}
 });
 
 self.addEventListener('notificationclick', function (event) {

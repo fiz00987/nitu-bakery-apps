@@ -276,37 +276,37 @@ window.App = (() => {
     toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
   };
 
-  // ─── Instant Telegram bridge + heartbeat (channel #1 backup) ─────
+  // ─── Instant ntfy.sh push bridge + heartbeat (channel #1 backup) ──
   // NOTE: lives in the same closure as the Firebase listeners below
   // (moved from script block #3 — cross-block calls were crashing render).
-  var TG_CFG = null, tgCfgFetched = false;
-  function fetchTgConfig() {
-    if (!tgCfgFetched) {
-      tgCfgFetched = true;
-      fetch('./telegram-config.json?cb=' + Date.now())
+  // ntfy.sh = free push service: the owner installs the ntfy app and
+  // subscribes to the private topic in notify-config.json. No Telegram,
+  // no account, no phone number. Alerts land in seconds even with the
+  // admin app fully closed.
+  var NTFY_CFG = null, ntfyCfgFetched = false;
+  function fetchNtfyConfig() {
+    if (!ntfyCfgFetched) {
+      ntfyCfgFetched = true;
+      fetch('./notify-config.json?cb=' + Date.now())
         .then(r => r.ok ? r.json() : null)
-        .then(cfg => { TG_CFG = (cfg && cfg.botToken && cfg.chatId) ? cfg : null; })
-        .catch(() => { TG_CFG = null; });
+        .then(cfg => { NTFY_CFG = (cfg && cfg.ntfyTopic) ? cfg : null; })
+        .catch(() => { NTFY_CFG = null; });
     }
-    return Promise.resolve(TG_CFG);
+    return Promise.resolve(NTFY_CFG);
   }
-  fetchTgConfig();
-  setInterval(fetchTgConfig, 6 * 60 * 60 * 1000);
+  fetchNtfyConfig();
+  setInterval(fetchNtfyConfig, 6 * 60 * 60 * 1000);
 
-  function _tgHtml(s) {
-    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
-  var _tgEscapeSafe = _tgHtml;
-  function sendTelegramNow(text) {
-    return fetchTgConfig().then(cfg => {
+  function sendPushNow(title, message) {
+    return fetchNtfyConfig().then(cfg => {
       if (!cfg) return false;
       try {
         var ctl = new AbortController();
         setTimeout(() => ctl.abort(), 8000);
-        return fetch('https://api.telegram.org/bot' + cfg.botToken + '/sendMessage', {
+        return fetch((cfg.ntfyServer || 'https://ntfy.sh').replace(/\/+$/, '') + '/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: cfg.chatId, text: text }),
+          body: JSON.stringify({ topic: cfg.ntfyTopic, title: title, message: message, priority: 4, tags: ['cake'] }),
           signal: ctl.signal
         }).then(r => r.ok).catch(() => false);
       } catch (e) { return false; }
@@ -398,12 +398,12 @@ window.App = (() => {
     var flavN = o.flavourName || HB_FLAV_EN[o.flavour] || '';
     var when  = hbHumanWhen(o.deliveryDate || o.date);
     var due   = Math.max(0, Math.round((o.total || 0) - ((o.advanceTotal != null ? o.advanceTotal : o.advance) || 0)));
-    return '🎂 ' + _tgHtml(name) + ' just placed a ' +
-      _tgEscapeSafe(((w ? w + ' ' : '') + (flavN || '')).trim() || 'cake') + ' cake' +
-      (when ? ' for ' + _tgEscapeSafe(when) : '') +
+    return name + ' just placed a ' +
+      (((w ? w + ' ' : '') + (flavN || '')).trim() || 'cake') + ' cake' +
+      (when ? ' for ' + when : '') +
       (o.total ? '\n💰 Total: ৳' + Math.round(o.total) : '') +
       (due > 0 ? '\n⚠️ Due: ৳' + due : '') +
-      '\n🕐 Order ID: ' + _tgEscapeSafe(o.orderId || '');
+      '\n🕐 Order ID: ' + (o.orderId || '');
   }
 
   function detectNewOrdersRealtime(ordersArr) {
@@ -422,7 +422,7 @@ window.App = (() => {
         trimHbMemory();
         try { localStorage.setItem('nitu_hb_known', JSON.stringify(hbKnownIds)); } catch (e) {}
         unseen.forEach(o => { console.log('[heartbeat] new order:', o.orderId || o.firebaseKey); });
-        unseen.forEach(o => { sendTelegramNow(orderAlertText(o)); });
+        unseen.forEach(o => { sendPushNow('🎂 নতুন অর্ডার', orderAlertText(o)); });
       }
     } catch (hbErr) { console.error('[heartbeat] fault contained:', hbErr); }
   }
@@ -458,7 +458,7 @@ window.App = (() => {
       });
       if (!missing.length) return;
       console.log('[heartbeat] repairing ' + missing.length + ' stuck order(s)');
-      missing.forEach(o => { sendTelegramNow(orderAlertText(o)); });
+      missing.forEach(o => { sendPushNow('🎂 নতুন অর্ডার', orderAlertText(o)); });
       missing.forEach(o => { hbKnownIds[o.firebaseKey] = true; });
       trimHbMemory();
       try { localStorage.setItem('nitu_hb_known', JSON.stringify(hbKnownIds)); } catch (e) {}
@@ -932,6 +932,15 @@ window.App = (() => {
   const updateSummary = () => {
     const p = pendingCount();
     document.title = p > 0 ? `🔴 ${p} পেন্ডিং — নিতুর বেকারি` : '🎂 নিতুর বেকারি';
+    // Widget-lite: the installed PWA's home-screen icon shows the pending
+    // count as a badge (Android/desktop Chrome). It updates live while the
+    // app runs and is cleared when nothing is pending.
+    try {
+      if (navigator.setAppBadge) {
+        if (p > 0) navigator.setAppBadge(p).catch(() => {});
+        else navigator.clearAppBadge().catch(() => {});
+      }
+    } catch (e) {}
   };
 
   // Names of active orders due TODAY (max 5) — used by the morning

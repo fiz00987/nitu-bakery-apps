@@ -79,6 +79,27 @@ async function sendTelegram(text) {
   }
 }
 
+// ─── Redundant channel #2: ntfy.sh push (no Telegram needed) ──
+// Free push service: the owner installs the ntfy app (Android/iOS) and
+// subscribes to the private topic in the NTFY_TOPIC secret. Alerts land
+// on the lock screen within seconds — no account, no phone number.
+const NTFY_SERVER = process.env.NTFY_SERVER || 'https://ntfy.sh';
+const NTFY_TOPIC  = process.env.NTFY_TOPIC  || '';
+
+async function sendNtfy(title, message) {
+  if (!NTFY_TOPIC) return; // channel not configured yet — skip quietly
+  try {
+    const res = await fetch(`${NTFY_SERVER.replace(/\/+$/, '')}/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic: NTFY_TOPIC, title, message, priority: 4, tags: ['cake'] })
+    });
+    console.log(res.ok ? '📨 ntfy delivered.' : `⚠️ ntfy failed: HTTP ${res.status}`);
+  } catch (e) {
+    console.warn('⚠️ ntfy network error:', e && e.message);
+  }
+}
+
 // '2026-09-01' → '1st September'
 function humanDate(iso) {
   const m = String(iso || '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -203,7 +224,18 @@ async function pollNewOrders() {
       await sendTelegram(tmsg);
     }
 
-    // Channel #2 — FCM web-push to registered devices
+    // Channel #2 — ntfy.sh push (lock-screen alert in seconds, no Telegram)
+    {
+      const cakeDesc = [weight, flavourEnglish(o)].filter(Boolean).join(' ') || 'cake';
+      const when     = humanDate(o.deliveryDate || o.date);
+      const nmsg     = `${name} just placed a ${cakeDesc} cake` +
+                       (when ? ` for ${when}` : '') +
+                       (o.total ? `\n💰 Total: ৳${Math.round(o.total)}` : '') +
+                       `\n🕐 Order ID: ${o.orderId || key.slice(-6)}`;
+      await sendNtfy('🎂 নতুন অর্ডার', nmsg);
+    }
+
+    // Channel #3 — FCM web-push to registered devices
     await sendToAll(
       {
         title: '🎂 নতুন অর্ডার: ' + name,
@@ -269,6 +301,7 @@ async function dailySummary() {
     { title: `🚚 ${dow} — আজকের ডেলিভারি (${names.length})`, body },
     { url: './', tag: 'nitu-daily-' + today }
   );
+  await sendNtfy(`🚚 ${dow} — আজকের ডেলিভারি (${names.length})`, body);
   await sendTelegram(`🚚 Today (${today}): ${names.length} delivery(s) — ${names.join(', ')}`);
 }
 

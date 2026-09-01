@@ -5,7 +5,7 @@ on:
     # ── Reliability note ─────────────────────────────────────────
     # GitHub's free scheduler frequently skips/delays '*​/5' crons (observed:
     # zero firings for hours). Schedules here are therefore BACKUP pings only.
-    # PRIMARY alerting = instant Telegram bridge in the customer form +
+    # PRIMARY alerting = instant ntfy bridge in the customer form +
     # the admin app's 10-minute heartbeat sweep. This poller is idempotent
     # (state lives in /notifierState), so overlapping pings cannot double-send.
     - cron: '*/15 * * * *'
@@ -40,6 +40,7 @@ jobs:
       - run: node index.js
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
 
@@ -58,5 +59,6 @@ jobs:
       - run: node index.js --daily
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
