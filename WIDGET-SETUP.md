@@ -1,22 +1,21 @@
 # 🧩 Home-Screen Widget Setup (Android & iOS)
 
-## ✅ Android — the real native widget (READY, just install the APK)
+## ✅ Android — TWO native options (both built & ready)
 
-I built and compiled a tiny native Android app for you:
-**`android-widget/dist/NituBakeryWidget.apk`** (870 KB, no Play Store needed).
+**Option 1 — Nitu Bakery Manager (recommended, replaces your PWABuilder APK):**
+`admin-apk/dist/NituBakeryManager.apk` (~1.3 MB)
+- Opens your live admin dashboard in the real Chrome engine (closed-app
+  web push works — tap 🔔 once inside, then allow notifications)
+- **Includes the home-screen widget** (same as Option 2)
+- Full details: `admin-apk/README.md`
 
-1. Copy `android-widget/dist/NituBakeryWidget.apk` to your phone
-   (download from the GitHub repo, or send it to yourself).
-2. Tap it → allow "install unknown apps" once → **Install**.
-3. Home screen → long-press empty area → **Widgets** →
-   **Nitu Bakery অর্ডার** → drag it out → resize freely.
-4. Tap ⟳ on the widget to refresh instantly; it auto-refreshes
-   every 30 minutes and shows:
-   - 🎂 আজকের ডেলিভারি: N + customer names
-   - Latest orders: name · total · item · date/time · ⚠️ বাকি / ✅ পরিশোধিত
-   - Whole widget taps open the admin app
+**Option 2 — Widget only:** `android-widget/dist/NituBakeryWidget.apk` (~870 KB)
 
-Full details: `android-widget/README.md`.
+Both: copy the APK to the phone → tap → allow "install unknown apps" once →
+Install → Home screen → long-press → **Widgets** → **Nitu Bakery অর্ডার** →
+drag out → resize freely. Tap ⟳ refreshes instantly; auto-refresh every
+30 minutes. Shows 🎂 আজকের ডেলিভারি: N + names + latest orders with
+⚠️ বাকি (red) / ✅ পরিশোধিত (green).
 
 ---
 
@@ -35,7 +34,6 @@ raw link: `https://raw.githubusercontent.com/fiz00987/nitu-bakery-apps/main/widg
    (or GitHub page → tap *Raw* → copy).
 3. Scriptable → **`+`** → paste → **Done** → name it "Nitu Bakery".
 4. Tap **▶** once to test. You should see 🎂 আজকের ডেলিভারি + orders.
-   (If it shows ⚠️, the feed isn't live yet — deploy first.)
 5. Home screen → long-press → **`+`** → **Scriptable** → Medium or Large.
 6. Tap the widget → **Script** = "Nitu Bakery" → done.
    Refreshes automatically every ~5–15 min; tapping it re-runs anytime.

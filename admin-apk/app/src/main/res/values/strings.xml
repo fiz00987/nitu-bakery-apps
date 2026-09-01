@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Nitu Bakery Widget</string>
+    <string name="app_name">Nitu Bakery Manager</string>
     <string name="widget_name">Nitu Bakery অর্ডার</string>
     <string name="widget_desc">আজকের ও সর্বশেষ অর্ডার হোম স্ক্রিনে</string>
 
-    <!-- Your LIVE admin dashboard (GitHub Pages). -->
+    <!-- Your LIVE admin dashboard (GitHub Pages).
+         Inside it, tap 🔔 once — after that, order notifications arrive
+         even when this app is fully closed (real Chrome web push). -->
     <string name="admin_url">https://fiz00987.github.io/nitu-bakery-apps/admin-app/</string>
 
     <!-- The tiny order summary the apps keep updated -->
