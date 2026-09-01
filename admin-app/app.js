@@ -42,7 +42,7 @@ window.App = (() => {
     bn: {
       brand: 'অর্ডার ম্যানেজার', connecting: 'ক্লাউডে সংযুক্ত হচ্ছে...',
       backup: '⬆ ব্যাকআপ', restore: '⬇ রিস্টোর',
-      searchPlaceholder: 'অর্ডার নম্বর দিয়ে খুঁজুন...',
+      searchPlaceholder: 'নাম, অর্ডার নম্বর বা TrxID দিয়ে খুঁজুন...',
       allStatus: 'সব স্ট্যাটাস', st_confirmed: 'কনফার্মড', st_baking: 'বেক হচ্ছে',
       st_delivered: 'ডেলিভার্ড', st_cancelled: 'বাতিল',
       sumToday: 'আজ ডেলিভারি', sumBake: 'আজ রাতে বেক', sumWeek: 'এই সপ্তাহে',
@@ -66,7 +66,7 @@ window.App = (() => {
     en: {
       brand: 'Order Manager', connecting: 'Connecting to cloud...',
       backup: '⬆ Backup', restore: '⬇ Restore',
-      searchPlaceholder: 'Search by order number...',
+      searchPlaceholder: 'Search by name, order no. or TrxID...',
       allStatus: 'All Status', st_confirmed: 'Confirmed', st_baking: 'Baking',
       st_delivered: 'Delivered', st_cancelled: 'Cancelled',
       sumToday: 'Today\'s Delivery', sumBake: 'Bake Tonight', sumWeek: 'This Week',
@@ -507,10 +507,16 @@ window.App = (() => {
   };
 
   // ─── Filtering ───────────────────────────────────────────────
+  // Search matches the order number, the customer's name, or the
+  // transaction ID — whatever the admin remembers.
   const getFiltered = pool => {
     const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
     if (!q) return pool;
-    return pool.filter(o => String(o.orderId || '').toLowerCase().includes(q));
+    return pool.filter(o =>
+      String(o.orderId || '').toLowerCase().includes(q) ||
+      String(o.name || o.customerName || '').toLowerCase().includes(q) ||
+      String(o.trx || '').toLowerCase().includes(q)
+    );
   };
 
   const clearSearch = () => {
@@ -1079,10 +1085,69 @@ window.App = (() => {
     document.body.removeChild(ta);
   };
 
-  // ─── Lightbox ────────────────────────────────────────────────
+  // ─── Lightbox with pinch-zoom / pan ──────────────────────────
+  // Zoom state (inline transform on #lightbox-img): scale 1..6,
+  // pan (lbX, lbY) clamped to the zoomed overflow.
+  let lbScale = 1, lbX = 0, lbY = 0;
+  let lbPinch = null;          // two-finger gesture in progress { d }
+  let lbPan   = null;          // one-finger / mouse drag { x, y, bx, by, mouse }
+  let lbLastTap = 0, lbLastTapX = 0, lbLastTapY = 0;
+  let lbMoved = false;         // a real gesture happened → suppress backdrop-close
+  let lbGestureUntil = 0;      // timestamp until which backdrop taps are ignored
+
+  const lbImgEl = () => document.getElementById('lightbox-img');
+
+  const lbClamp = () => {
+    lbScale = Math.min(6, Math.max(1, lbScale));
+    const img = lbImgEl();
+    if (!img) return;
+    // Pan is limited to the zoomed overflow — the photo can never be lost
+    // off-screen, and at scale 1 it always snaps back to center.
+    const mx = Math.max(0, (img.offsetWidth  * (lbScale - 1)) / 2);
+    const my = Math.max(0, (img.offsetHeight * (lbScale - 1)) / 2);
+    lbX = Math.min(mx, Math.max(-mx, lbX));
+    lbY = Math.min(my, Math.max(-my, lbY));
+  };
+
+  const applyLb = animate => {
+    const img = lbImgEl();
+    if (!img) return;
+    img.style.transition = animate ? 'transform .25s ease' : 'none';
+    if (lbScale === 1 && lbX === 0 && lbY === 0) {
+      // Neutral: hand control back to the CSS open/close animation
+      img.style.transform = '';
+      img.style.transition = '';
+      img.classList.remove('zoomed');
+    } else {
+      img.style.transform = `translate(${lbX}px, ${lbY}px) scale(${lbScale})`;
+      img.classList.add('zoomed');
+    }
+  };
+
+  const resetLbZoom = () => { lbScale = 1; lbX = 0; lbY = 0; applyLb(false); };
+
+  // Incremental zoom by factor k around a viewport point (vx, vy):
+  // the point under the finger/cursor stays fixed while zooming.
+  const lbZoomAt = (k, vx, vy) => {
+    const img = lbImgEl();
+    if (!img) return;
+    const next = Math.min(6, Math.max(1, lbScale * k));
+    k = next / lbScale;
+    if (k === 1) return;
+    const r  = img.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top  + r.height / 2;
+    lbX += (1 - k) * (vx - cx);
+    lbY += (1 - k) * (vy - cy);
+    lbScale = next;
+    lbClamp();
+    applyLb(false);
+  };
+
   const openLightbox = key => {
     const o = orders.find(x => x.firebaseKey === key);
     if (!o?.photo) return;
+    resetLbZoom();
     document.getElementById('lightbox-img').src = o.photo;
     document.getElementById('lightbox').classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -1090,7 +1155,127 @@ window.App = (() => {
   const closeLightbox = () => {
     document.getElementById('lightbox').classList.remove('open');
     document.body.style.overflow = '';
+    resetLbZoom();
   };
+
+  // ── Gesture wiring (touch + mouse, attached once) ──
+  (() => {
+    const lbEl = document.getElementById('lightbox');
+    if (!lbEl) return;
+    const lbDist = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    const lbMid  = (a, b) => ({ x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 });
+
+    lbEl.addEventListener('touchstart', e => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        lbPinch = { d: lbDist(e.touches[0], e.touches[1]) };
+        lbPan = null;
+      } else if (e.touches.length === 1 && lbScale > 1) {
+        lbPan = { x: e.touches[0].clientX, y: e.touches[0].clientY, bx: lbX, by: lbY };
+      }
+    }, { passive: false });
+
+    lbEl.addEventListener('touchmove', e => {
+      if (lbPinch && e.touches.length === 2) {
+        e.preventDefault();
+        const d = lbDist(e.touches[0], e.touches[1]);
+        const m = lbMid(e.touches[0], e.touches[1]);
+        lbZoomAt(d / lbPinch.d, m.x, m.y);
+        lbPinch.d = d;              // incremental — fingers may pause mid-gesture
+        lbMoved = true;
+      } else if (lbPan && e.touches.length === 1) {
+        e.preventDefault();
+        lbX = lbPan.bx + (e.touches[0].clientX - lbPan.x);
+        lbY = lbPan.by + (e.touches[0].clientY - lbPan.y);
+        lbClamp();
+        applyLb(false);
+        lbMoved = true;
+      }
+    }, { passive: false });
+
+    lbEl.addEventListener('touchend', e => {
+      if (lbPinch && e.touches.length < 2) {
+        lbPinch = null;
+        // If one finger is still down, it becomes the new pan anchor
+        if (e.touches.length === 1 && lbScale > 1) {
+          lbPan = { x: e.touches[0].clientX, y: e.touches[0].clientY, bx: lbX, by: lbY };
+        } else {
+          lbPan = null;
+        }
+      } else if (lbPan && !lbPan.mouse && e.touches.length === 0) {
+        lbPan = null;
+      }
+
+      // Double-tap toggles zoom in/out around the tapped point
+      if (!lbPinch && e.changedTouches.length === 1) {
+        const t   = e.changedTouches[0];
+        const now = Date.now();
+        if (now - lbLastTap < 300 && Math.hypot(t.clientX - lbLastTapX, t.clientY - lbLastTapY) < 44) {
+          if (lbScale > 1) {
+            lbScale = 1; lbX = 0; lbY = 0;
+            lbClamp();
+            applyLb(true);
+          } else if (lbImgEl()) {
+            const img = lbImgEl();
+            const r  = img.getBoundingClientRect();
+            const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+            const k  = 2.5;
+            lbX += (1 - k) * (t.clientX - cx);
+            lbY += (1 - k) * (t.clientY - cy);
+            lbScale = k;
+            lbClamp();
+            applyLb(true);
+          }
+          lbMoved = true;
+          lbLastTap = 0;
+        } else {
+          lbLastTap = now; lbLastTapX = t.clientX; lbLastTapY = t.clientY;
+        }
+      }
+      if (lbMoved) lbGestureUntil = Date.now() + 250;
+      lbMoved = false;
+    });
+
+    // Backdrop tap closes — but never right after a zoom/pan gesture, and
+    // taps on the photo itself no longer close (it is a zoom target now).
+    lbEl.addEventListener('click', e => {
+      if (e.target === lbEl && Date.now() > lbGestureUntil) closeLightbox();
+    });
+
+    // Desktop: wheel zoom, drag-to-pan, double-click zoom
+    lbEl.addEventListener('wheel', e => {
+      if (!lbEl.classList.contains('open')) return;
+      e.preventDefault();
+      if (lbScale === 1 && e.deltaY > 0) return;   // already fully zoomed out
+      const k = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      lbZoomAt(k, e.clientX, e.clientY);
+    }, { passive: false });
+
+    lbEl.addEventListener('mousedown', e => {
+      if (e.target !== lbImgEl() || lbScale <= 1) return;
+      e.preventDefault();
+      lbPan = { x: e.clientX, y: e.clientY, bx: lbX, by: lbY, mouse: true };
+    });
+    window.addEventListener('mousemove', e => {
+      if (!lbPan || !lbPan.mouse) return;
+      lbX = lbPan.bx + (e.clientX - lbPan.x);
+      lbY = lbPan.by + (e.clientY - lbPan.y);
+      lbClamp();
+      applyLb(false);
+    });
+    window.addEventListener('mouseup', () => { if (lbPan && lbPan.mouse) lbPan = null; });
+
+    lbEl.addEventListener('dblclick', e => {
+      if (e.target !== lbImgEl()) return;
+      if (lbScale > 1) {
+        lbScale = 1; lbX = 0; lbY = 0;
+        lbClamp();
+        applyLb(true);
+      } else {
+        lbZoomAt(2.5, e.clientX, e.clientY);
+      }
+    });
+  })();
 
   // ─── Status update ───────────────────────────────────────────
   const confirmStatusChange = (key, sel) => {
@@ -1383,6 +1568,10 @@ window.App = (() => {
   };
 
   const closeModal = () => {
+    // A pending "open charge dialog" timer must not fire after the form is
+    // closed — it used to pop the dialog over the order list.
+    clearTimeout(advanceDebounce);
+    savingOrder = false;
     document.getElementById('modal-overlay').classList.remove('open');
     document.body.style.overflow = '';
     document.getElementById('f-photo-file').value = '';
@@ -1430,6 +1619,7 @@ window.App = (() => {
         img.onerror = () => { if (--pending <= 0) renderModalPhotos(); };
         img.src = ev.target.result;
       };
+      reader.onerror = () => { if (--pending <= 0) renderModalPhotos(); };
       reader.readAsDataURL(file);
     });
   });
@@ -1443,6 +1633,7 @@ window.App = (() => {
   const openPhotoLightbox = i => {
     const src = currentPhotos[i];
     if (!src) return;
+    resetLbZoom();
     document.getElementById('lightbox-img').src = src;
     document.getElementById('lightbox').classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -1505,6 +1696,11 @@ window.App = (() => {
     document.getElementById('pay-charge-overlay').classList.remove('open');
     pcOpenForAdvance = 0;
     pcSelected = '';
+    // Remember the value the popup was closed for. Without this, a popup the
+    // admin dismissed with "বাতিল" re-opened on the very next blur of f-paid
+    // (e.g. clicking সেভ করুন), intercepting the click and making it seem like
+    // the form "won't save". Same value → no nagging again.
+    pcLastApplied = parseFloat(document.getElementById('f-paid').value) || 0;
   };
 
   const closePayChargeBg = e => {
@@ -1556,8 +1752,14 @@ window.App = (() => {
     clearTimeout(advanceDebounce);
     advanceDebounce = setTimeout(maybeOpenPayCharge, 1000);
   };
-  const advanceBlur = () => {
+  const advanceBlur = e => {
     clearTimeout(advanceDebounce);
+    // If focus is leaving f-paid because the admin clicked the Save or Cancel
+    // button, let that click land. Opening the charge dialog here (during
+    // mousedown) covers the button before mouseup, so its click event never
+    // fires — the #1 cause of "the form won't save, I have to cancel and retry".
+    const rt = e && e.relatedTarget;
+    if (rt && (rt.id === 'btn-save' || rt.id === 'btn-cancel')) return;
     maybeOpenPayCharge();
   };
 
@@ -1583,7 +1785,12 @@ window.App = (() => {
   // Live recalculation happens inside pcSelect/renderPcCalc (single-select,
   // no per-channel charge inputs anymore) — nothing to attach here.
   // ─── Save order ──────────────────────────────────────────────
+  let savingOrder = false; // in-flight guard: rapid double-taps must not create duplicate orders
   const saveOrder = () => {
+    if (savingOrder) return;
+    // A pending 1s "open charge dialog" timer must never fire after the modal
+    // is gone (it used to pop the dialog over the dashboard after saving).
+    clearTimeout(advanceDebounce);
     const g    = id => document.getElementById(id);
     const name = g('f-name').value.trim();
     const date = g('f-date').value;
@@ -1707,10 +1914,16 @@ window.App = (() => {
 
     setSyncStatus('syncing', 'ক্লাউডে সেভ হচ্ছে...');
     const failSave = err => {
+      savingOrder = false;                       // allow a retry
+      const btn = document.getElementById('btn-save');
+      if (btn) btn.disabled = false;
       console.error('Order save failed:', err);
       setSyncStatus('error', '❌ সংরক্ষণ ব্যর্থ — ইন্টারনেট চেক করুন');
       showToast(lang === 'bn' ? '❌ সংরক্ষণ ব্যর্থ! ইন্টারনেট দেখে আবার সেভ করুন।' : '❌ Save failed! Check internet and save again.');
     };
+    savingOrder = true;
+    const saveBtn = document.getElementById('btn-save');
+    if (saveBtn) saveBtn.disabled = true;        // block double submission while writing
     if (editingId) {
       ordersRef.child(editingId).update(o)
         .then(() => {
@@ -1785,12 +1998,22 @@ window.App = (() => {
 
   // ─── Keyboard shortcuts ──────────────────────────────────────
   document.addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    const tag = (e.target.tagName || '').toUpperCase();
+    // Guard SELECT (and rich editors) too: with focus on a dropdown, pressing
+    // "n" used to wipe the whole order form and "1"-"4" switched tabs under it.
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable) return;
+    const confirmOpen = document.getElementById('confirm-overlay').classList.contains('open');
+    const modalOpen   = document.getElementById('modal-overlay').classList.contains('open');
+    // While a dialog is open, shortcuts must never act on the page beneath it.
+    if (confirmOpen) { if (e.key === 'Escape') closeConfirm(false); return; }
+    if (modalOpen)   { if (e.key === 'Escape') closeModal(); return; }
     if (e.key === 'n' || e.key === 'N') openModal(null);
     if (e.key === 'Escape') {
-      closeModal();
-      closeLightbox();
-      closeConfirm(false);
+      // Close only the top-most overlay instead of everything at once.
+      if (document.getElementById('lightbox').classList.contains('open')) { closeLightbox(); return; }
+      if (document.getElementById('pay-charge-overlay').classList.contains('open')) { closePayCharge(); return; }
+      if (document.getElementById('cal-popup-overlay').classList.contains('open')) { closeCalendar(); return; }
+      if (document.getElementById('daily-popup-overlay').classList.contains('open')) { closeDailyPopup(); return; }
     }
     if (e.key === '1') switchTab('plan');
     if (e.key === '2') switchTab('all');
@@ -2070,10 +2293,11 @@ window.App = (() => {
     }
   };
 
-  // Order ID — same NB + date + random format as the customer app
+  // Order ID — same NB + date + random format as the customer app.
+  // Local date, not UTC (toISOString rolled over at 18:00 Bangladesh time).
   const generateAdminOrderId = function() {
     const d = new Date();
-    const dateStr = d.toISOString().slice(0, 10).replace(/-/g, '');
+    const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
     const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     return `NB${dateStr}${random}`;
   };

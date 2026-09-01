@@ -1240,8 +1240,10 @@ function resetForm() {
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function showToast(msg) {
   const t = document.getElementById('toast');
+  // Clear any previous timer so a rapid second toast isn't hidden early.
+  clearTimeout(showToast._t);
   t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
+  showToast._t = setTimeout(() => t.classList.remove('show'), 3000);
 }
 function showLoading(on) { document.getElementById('loading').classList.toggle('show', on); }
 function fmtDate(s) {
@@ -1258,7 +1260,11 @@ function fmtDate(s) {
   return s;
 }
 function setMinDate() {
-  const today = new Date().toISOString().split('T')[0];
+  // Local date, NOT UTC. The old toISOString() version rolled over to
+  // "tomorrow" after 18:00 in Bangladesh (UTC+6), blocking same-day orders
+  // in the evening — exactly when customers order next-day cakes.
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   document.getElementById('f-date').setAttribute('min', today);
 }
 

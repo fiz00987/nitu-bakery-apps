@@ -115,8 +115,10 @@ function formatPhoneForDisplay(phone) {
 }
 
 function generateOrderId() {
-  const date = new Date();
-  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+  const d = new Date();
+  // Local date (Bangladesh) instead of UTC — toISOString() produced
+  // "tomorrow's" date for every order placed between 18:00 and midnight.
+  const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
   const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
   return `NB${dateStr}${random}`;
 }

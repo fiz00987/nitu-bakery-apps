@@ -1325,6 +1325,9 @@ button { cursor: pointer; }
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--dur-base);
+  touch-action: none;          /* pinch/pan handled by app.js, not the browser */
+  -webkit-user-select: none;
+  user-select: none;
   padding: 20px;
 }
 .lightbox.open { opacity: 1; pointer-events: all; }
@@ -1335,8 +1338,15 @@ button { cursor: pointer; }
   object-fit: contain;
   transform: scale(0.9);
   transition: transform var(--dur-slow) var(--ease);
+  touch-action: none;
+  -webkit-user-drag: none;
+  user-select: none;
+  will-change: transform;
+  cursor: zoom-in;
 }
 .lightbox.open .lightbox-img { transform: scale(1); }
+.lightbox-img.zoomed { cursor: grab; }
+.lightbox-img.zoomed:active { cursor: grabbing; }
 .lightbox-close {
   position: absolute;
   top: 16px; right: 16px;
@@ -1948,7 +1958,7 @@ select:focus {
       class="search-input"
       id="search-input"
       type="search"
-      placeholder="অর্ডার নম্বর দিয়ে খুঁজুন..."
+      placeholder="নাম, অর্ডার নম্বর বা TrxID দিয়ে খুঁজুন..."
       autocomplete="off"
       data-i18n-ph="searchPlaceholder"
       aria-label="Search orders"
@@ -1998,7 +2008,7 @@ select:focus {
 <button class="fab" onclick="App.openModal(null)" aria-label="Add new order">+</button>
 
 <!-- LIGHTBOX -->
-<div class="lightbox" id="lightbox" onclick="App.closeLightbox()" role="dialog" aria-modal="true" aria-label="রেফারেন্স ছবি">
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="রেফারেন্স ছবি">
   <img class="lightbox-img" id="lightbox-img" src="" alt="রেফারেন্স কেক">
   <button class="lightbox-close" onclick="App.closeLightbox()" aria-label="বন্ধ করুন">✕</button>
 </div>
@@ -2155,7 +2165,7 @@ select:focus {
 
         <div class="field">
           <label data-i18n="fPaid">পরিশোধিত (৳)</label>
-          <input id="f-paid" type="number" placeholder="0" min="0" oninput="App.advanceInput()" onblur="App.advanceBlur()">
+          <input id="f-paid" type="number" placeholder="0" min="0" oninput="App.advanceInput()" onblur="App.advanceBlur(event)">
         </div>
 
         <input id="f-charge-deduct" type="hidden">
@@ -2191,8 +2201,8 @@ select:focus {
     </div><!-- /modal-body -->
 
     <div class="modal-footer">
-      <button class="btn-cancel" onclick="App.closeModal()">বাতিল</button>
-      <button class="btn-save"   onclick="App.saveOrder()">☁️ সেভ করুন</button>
+      <button class="btn-cancel" id="btn-cancel" onclick="App.closeModal()">বাতিল</button>
+      <button class="btn-save"   id="btn-save"   onclick="App.saveOrder()">☁️ সেভ করুন</button>
     </div>
   </div>
 </div>
