@@ -1,28 +1,48 @@
 # 🧩 Home-Screen Widget Setup (Android & iOS)
 
-## The honest platform reality first
+## ✅ Android — the real native widget (READY, just install the APK)
 
-A **true native widget** (Android AppWidget / iOS WidgetKit) can only be
-created by a **native app** — a web app (PWA) physically cannot place
-one. That's an Apple/Google platform limit, not a limitation of this
-project.
+I built and compiled a tiny native Android app for you:
+**`android-widget/dist/NituBakeryWidget.apk`** (870 KB, no Play Store needed).
 
-But you can still get a **real, resizable home-screen widget** that
-shows today's orders and the latest orders, using free/cheap
-"widget-maker" apps that fetch a small data feed:
+1. Copy `android-widget/dist/NituBakeryWidget.apk` to your phone
+   (download from the GitHub repo, or send it to yourself).
+2. Tap it → allow "install unknown apps" once → **Install**.
+3. Home screen → long-press empty area → **Widgets** →
+   **Nitu Bakery অর্ডার** → drag it out → resize freely.
+4. Tap ⟳ on the widget to refresh instantly; it auto-refreshes
+   every 30 minutes and shows:
+   - 🎂 আজকের ডেলিভারি: N + customer names
+   - Latest orders: name · total · item · date/time · ⚠️ বাকি / ✅ পরিশোধিত
+   - Whole widget taps open the admin app
 
-| Platform | Widget maker | Cost |
-|---|---|---|
-| **iOS** | [Scriptable](https://apps.apple.com/app/scriptable/id1405500899) | Free |
-| **Android** | [KWGT – Kustom Widget](https://play.google.com/store/apps/details?id=org.kustom.widget) (Pro needed for web data) | ~৳500 one-time |
-
-Both render **real widgets** — place them anywhere, resize them, stack
-or swipe between several. iOS widgets refresh every ~5–15 minutes;
-Android KWGT refresh interval is configurable (15+ minutes recommended).
+Full details: `android-widget/README.md`.
 
 ---
 
-## Step 1 — The data feed (already built into your apps ✅)
+## 🍎 iOS — Scriptable (free, ~2 minutes)
+
+A true native iOS widget needs an Apple developer account + Xcode, so the
+practical route is the **Scriptable** app rendering a real widget from a
+paste-ready script.
+
+**Where the script is:** [`widgets/ios-widget.js`](widgets/ios-widget.js)
+in this repo —
+raw link: `https://raw.githubusercontent.com/fiz00987/nitu-bakery-apps/main/widgets/ios-widget.js`
+
+1. iPhone → install **Scriptable** (free, App Store).
+2. Open the raw link above in Safari → select all → **Copy**
+   (or GitHub page → tap *Raw* → copy).
+3. Scriptable → **`+`** → paste → **Done** → name it "Nitu Bakery".
+4. Tap **▶** once to test. You should see 🎂 আজকের ডেলিভারি + orders.
+   (If it shows ⚠️, the feed isn't live yet — deploy first.)
+5. Home screen → long-press → **`+`** → **Scriptable** → Medium or Large.
+6. Tap the widget → **Script** = "Nitu Bakery" → done.
+   Refreshes automatically every ~5–15 min; tapping it re-runs anytime.
+
+---
+
+## The data feed (already built into your apps ✅)
 
 Both apps now maintain a tiny summary node in your database:
 
@@ -66,7 +86,7 @@ while the app is closed.
 
 ---
 
-## Step 2A — iOS (Scriptable, free)
+## iOS setup details (same as above, in depth)
 
 1. Install **Scriptable** from the App Store.
 2. Open this repo's `widgets/ios-widget.js`, copy ALL of it.
@@ -78,7 +98,7 @@ while the app is closed.
 
 ---
 
-## Step 2B — Android (KWGT Pro)
+## Android alternative — KWGT Pro (only if you prefer it over the APK)
 
 1. Install **KWGT** and buy **KWGT Pro** (the web-data feature needs Pro).
 2. Home screen → long-press → Widgets → **Kustom Widget** → drop a
@@ -101,17 +121,13 @@ for a walkthrough — the feed URL and fields above are all it needs.
 
 ---
 
-## Want a TRUE native widget (no third-party app)?
+## Future upgrade: a true native iOS widget
 
-The next step up is a small **native Android app (APK)** whose only job
-is an AppWidget that reads `widgetFeed.json` — it would look/feel like
-any Play-Store widget and could have "tap to refresh". That's real
-Android code I can write for you, but you (or I, guided) would need to
-compile it in Android Studio once. For iOS a native widget needs an
-Apple developer account + Xcode — realistically Scriptable is the
-practical route.
-
-Say the word and we'll plan the APK.
+For **iOS**, a native WidgetKit widget needs an Apple developer account
+($99/yr) + Xcode on a Mac — realistically the Scriptable widget above is
+the practical iOS route. (The **Android** native widget is already done —
+see the top of this page.) If you ever want a polished iOS app with a
+baked-in widget, say the word and we'll plan it.
 
 ---
 

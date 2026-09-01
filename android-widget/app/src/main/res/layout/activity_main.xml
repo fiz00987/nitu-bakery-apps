@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="22dp"
+    android:background="#FFF7FA">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🎂 Nitu Bakery Widget"
+        android:textColor="#c2185b"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="এই অ্যাপটি হোম স্ক্রিনের উইজেট চালু রাখে।\n\nউইজেট যোগ করতে:\n1. হোম স্ক্রিনের ফাঁকা জায়গায় চাপ দিন\n2. Widgets নির্বাচন করুন\n3. “Nitu Bakery অর্ডার” টেনে হোম স্ক্রিনে রাখুন"
+        android:textColor="#444444"
+        android:textSize="15sp" />
+
+    <TextView
+        android:id="@+id/status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="স্ট্যাটাস: —"
+        android:textColor="#777777"
+        android:textSize="13sp" />
+
+    <Button
+        android:id="@+id/refresh"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="⟳ এখনই রিফ্রেশ করুন"
+        android:backgroundTint="#c2185b"
+        android:textColor="#FFFFFF" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="উইজেট প্রতি ৩০ মিনিটে নিজে নিজে আপডেট হয়। নতুন অর্ডার সাথে সাথে জানতে ntfy নোটিফিকেশন চালু রাখুন।"
+        android:textColor="#999999"
+        android:textSize="12sp" />
+</LinearLayout>

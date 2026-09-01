@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Nitu Bakery Widget</string>
+    <string name="widget_name">Nitu Bakery অর্ডার</string>
+    <string name="widget_desc">আজকের ও সর্বশেষ অর্ডার হোম স্ক্রিনে</string>
+
+    <!-- Where the "tap to open" action sends you.
+         If your admin app lives at a different address, edit this. -->
+    <string name="admin_url">https://nitusbakingplanv2.web.app</string>
+
+    <!-- The tiny order summary the apps keep updated -->
+    <string name="feed_url">https://nitusbakingplanv2-default-rtdb.asia-southeast1.firebasedatabase.app/widgetFeed.json</string>
+</resources>
