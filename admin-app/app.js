@@ -1038,8 +1038,56 @@ window.App = (() => {
     document.getElementById('cal-grid').innerHTML = html;
   };
 
+  // ─── Home-screen widget feed (/widgetFeed) ───────────────────
+  // A tiny summary written to the database so widget apps (KWGT on
+  // Android, Scriptable on iOS) can show "today's + latest orders" on
+  // the real home screen. PRIVACY: contains ONLY names, item text,
+  // amounts, dates and status — never phone numbers, addresses or photos.
+  // Kept fresh by the admin app in real time AND by the GitHub notifier
+  // (blaze-free-notifier) every ≤15 min while the app is closed.
+  let widgetFeedTimer = null;
+  const buildWidgetFeed = () => {
+    const bd  = new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
+    const act = o => !['delivered', 'cancelled', 'completed', 'complete']
+      .includes(String(o.status || '').toLowerCase());
+    const slim = o => ({
+      n:  String(o.customerName || o.name || '—').slice(0, 40),
+      i:  `${weightText(o)} ${flavourLabel(o)}`.trim().slice(0, 60),
+      t:  Math.round(Number(o.total) || 0),
+      d:  o.dueAmount != null
+            ? Math.max(0, Math.round(Number(o.dueAmount) || 0))
+            : Math.max(0, Math.round((Number(o.total) || 0) - (Number(o.advance) || 0))),
+      dt: String(o.deliveryDate || o.date || '').slice(0, 10),
+      tm: String(o.time || o.timeSlot || '').slice(0, 20),
+      st: String(o.status || 'pending').slice(0, 12)
+    });
+    const active = orders.filter(act);
+    const tod    = active.filter(o => String(o.deliveryDate || o.date || '').slice(0, 10) === bd);
+    const latest = active
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      .slice(0, 5)
+      .map(slim);
+    return {
+      updatedAt: Date.now(),
+      today: {
+        date:  bd,
+        count: tod.length,
+        names: tod.slice(0, 10).map(o => String(o.customerName || o.name || '—').slice(0, 40))
+      },
+      latest
+    };
+  };
+  const syncWidgetFeed = () => {
+    if (!currentUser) return;                     // only meaningful when logged in
+    clearTimeout(widgetFeedTimer);
+    widgetFeedTimer = setTimeout(() => {
+      try { db.ref('widgetFeed').set(buildWidgetFeed()).catch(() => {}); } catch (e) {}
+    }, 1500);
+  };
+
   const render = () => {
     updateSummary();
+    syncWidgetFeed();
     renderCalendar();
     renderPlan();
     if (activeTab === 'all')     renderAll();

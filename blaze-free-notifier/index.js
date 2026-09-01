@@ -181,10 +181,58 @@ async function getState() {
   return { known: v.knownKeys || {}, lastDailyDate: v.lastDailyDate || '' };
 }
 
+// ─── Home-screen widget feed (/widgetFeed) ───────────────────
+// A tiny summary written to the database so widget apps (KWGT on
+// Android, Scriptable on iOS) can show "today's + latest orders" on
+// the real home screen. PRIVACY: contains ONLY names, item text,
+// amounts, dates and status — never phone numbers, addresses or photos.
+let LAST_ORDERS_DATA = null; // refreshed by both modes, synced at exit
+
+function buildWidgetFeed(data) {
+  const today = bdDateString(new Date());
+  const all   = Object.keys(data || {}).map(k => (data && data[k]) || {});
+  const slim  = o => ({
+    n:  String(o.customerName || o.name || '—').slice(0, 40),
+    i:  `${String(o.weightLabel || o.weight || '').trim()} ${String(o.flavourName || o.flavour || '').trim()}`.trim().slice(0, 60),
+    t:  Math.round(Number(o.total) || 0),
+    d:  o.dueAmount != null
+          ? Math.max(0, Math.round(Number(o.dueAmount) || 0))
+          : Math.max(0, Math.round((Number(o.total) || 0) - (Number(o.advance) || 0))),
+    dt: String(o.deliveryDate || o.date || '').slice(0, 10),
+    tm: String(o.time || o.timeSlot || '').slice(0, 20),
+    st: String(o.status || 'pending').slice(0, 12)
+  });
+  const active = all.filter(o => isActive(o));
+  const tod    = active.filter(o => String(o.deliveryDate || o.date || '').slice(0, 10) === today);
+  const latest = active
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    .slice(0, 5)
+    .map(slim);
+  return {
+    updatedAt: Date.now(),
+    today: {
+      date:  today,
+      count: tod.length,
+      names: tod.slice(0, 10).map(o => String(o.customerName || o.name || '—').slice(0, 40))
+    },
+    latest
+  };
+}
+
+async function syncWidgetFeed(data) {
+  try {
+    await db.ref('widgetFeed').set(buildWidgetFeed(data));
+    console.log('📱 widgetFeed updated.');
+  } catch (e) {
+    console.warn('⚠️ widgetFeed update failed:', e && e.message);
+  }
+}
+
 /* ─── Mode 1: poll for NEW orders ──────────────────────────── */
 async function pollNewOrders() {
   const [state, snap] = await Promise.all([getState(), ORDERS_REF.once('value')]);
   const data = snap.val() || {};
+  LAST_ORDERS_DATA = data;
   const allKeys = Object.keys(data);
 
   // First run ever: silently memorise history so the shop isn't
@@ -263,7 +311,6 @@ async function pollNewOrders() {
 async function dailySummary() {
   const today = bdDateString(new Date());
   const state = await getState();
-
   if (state.lastDailyDate === today) {
     console.log('✔️ Daily summary already sent today (' + today + ').');
     return;
@@ -271,6 +318,7 @@ async function dailySummary() {
 
   const snap = await ORDERS_REF.once('value');
   const data = snap.val() || {};
+  LAST_ORDERS_DATA = data;
   const names = [];
 
   Object.keys(data).forEach(key => {
@@ -315,6 +363,9 @@ async function dailySummary() {
     console.error('❌ FAILED:', err && err.stack ? err.stack : err);
     process.exitCode = 1;
   } finally {
+    // Keep the home-screen widget feed fresh on EVERY run (both modes),
+    // even when there is nothing to announce.
+    try { if (LAST_ORDERS_DATA) await syncWidgetFeed(LAST_ORDERS_DATA); } catch (e) {}
     // Close RTDB connections so GitHub Actions exits promptly.
     await admin.app().delete().catch(() => {});
   }
