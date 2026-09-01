@@ -48,7 +48,11 @@ try {
   widget.addSpacer(6);
 
   // ── Latest orders (up to 5) ──
-  const latest = (feed.latest || []).slice(0, widget.family === WidgetFamily.large ? 5 : 3);
+  // Scriptable exposes the widget size as a STRING on config.widgetFamily
+  // (there is no WidgetFamily enum — referencing it throws a ReferenceError).
+  const family = (typeof config !== 'undefined' && config.widgetFamily) || 'medium';
+  const maxRows = family === 'large' ? 5 : 3;
+  const latest = (feed.latest || []).slice(0, maxRows);
   for (const o of latest) {
     const row = widget.addStack();
     row.centerAlignContent();
