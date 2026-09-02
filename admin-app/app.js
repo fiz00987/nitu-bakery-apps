@@ -1823,6 +1823,11 @@ window.App = (() => {
 
   const openModal = key => {
     editingId    = key;
+    // Safety: never inherit a stuck in-flight save / disabled button from a
+    // previous session of the modal (e.g. a save that never resolved).
+    savingOrder = false;
+    const saveBtn0 = document.getElementById('btn-save');
+    if (saveBtn0) saveBtn0.disabled = false;
     currentPhoto = '';
     currentPhotos = [];
     currentDelPhoto = '';
@@ -1843,6 +1848,12 @@ window.App = (() => {
     // closed — it used to pop the dialog over the order list.
     clearTimeout(advanceDebounce);
     savingOrder = false;
+    // CRITICAL: re-enable the save button on every close. saveOrder disables
+    // it while writing and only failSave used to re-enable it — so after one
+    // successful save the button stayed disabled and every NEXT order edit
+    // silently refused to save (order stayed in the new-order list).
+    const btn = document.getElementById('btn-save');
+    if (btn) btn.disabled = false;
     document.getElementById('modal-overlay').classList.remove('open');
     document.body.style.overflow = '';
     document.getElementById('f-photo-file').value = '';
@@ -2289,6 +2300,12 @@ window.App = (() => {
         })
         .catch(failSave);
     }
+    // Extra safety net: whatever the outcome, the save button must never stay
+    // disabled past this save (it previously blocked all subsequent saves).
+    setTimeout(() => {
+      const b = document.getElementById('btn-save');
+      if (b && !savingOrder) b.disabled = false;
+    }, 15000);
   };
 
   // ─── Backup / Restore ─────────────────────────────────────────
