@@ -73,7 +73,7 @@ window.App = (() => {
       call: '📞 কল', markPaid: '✅ সম্পূর্ণ পরিশোধ', copyPhone: '📱 ফোন কপি',
       due: 'বকেয়া', paidFull: 'পরিশোধিত ✅', delCharge: 'ডেলিভারি চার্জ',
       todayTitle: '🚚 আজকের ডেলিভারি ({n})',
-      dailyNew: 'আজকের নতুন',
+      dailyNew: 'আজকের নতুন', dailyNewShort: 'নতুন',
     },
     en: {
       brand: 'Order Manager', connecting: 'Connecting to cloud...',
@@ -97,7 +97,7 @@ window.App = (() => {
       call: '📞 Call', markPaid: '✅ Mark Fully Paid', copyPhone: '📱 Copy Phone',
       due: 'Due', paidFull: 'Paid ✅', delCharge: 'Delivery Charge',
       todayTitle: "Today's deliveries ({n})",
-      dailyNew: "Today's New",
+      dailyNew: "Today's New", dailyNewShort: 'New',
     }
   };
 
@@ -258,6 +258,7 @@ window.App = (() => {
     localStorage.setItem('nitu-lang', l);
     applyI18n();
     render();
+    syncTopbarHeight();  // labels change → re-measure the sticky offset
   };
 
   // ─── Sync status ─────────────────────────────────────────────
@@ -2850,6 +2851,19 @@ window.App = (() => {
     showDailyPopup();   // re-render the open popup
   };
 
+  // Keep the sticky tabs offset in sync with the real topbar height
+  // (it changes when the daily-new button appears/disappears, language
+  // switches, or text wraps differently on small screens).
+  const syncTopbarHeight = () => {
+    const tb = document.querySelector('.topbar');
+    if (tb) document.documentElement.style.setProperty('--topbar-h', tb.offsetHeight + 'px');
+  };
+  window.addEventListener('resize', syncTopbarHeight);
+  window.addEventListener('load', syncTopbarHeight);
+  // Re-measure after first paint / web-font load settles
+  setTimeout(syncTopbarHeight, 300);
+  setTimeout(syncTopbarHeight, 1500);
+
   const updateDailyBadge = () => {
     const btn = document.getElementById('daily-log-btn');
     const cnt = document.getElementById('daily-count');
@@ -2857,6 +2871,7 @@ window.App = (() => {
     const n = todaysPlacedOrders().length;
     cnt.textContent = n;
     btn.style.display = n > 0 ? '' : 'none';
+    syncTopbarHeight();
   };
 
   const showDailyPopup = () => {
