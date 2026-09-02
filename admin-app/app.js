@@ -46,6 +46,7 @@ window.App = (() => {
   let healedDelivered = {};         // delivered orders already money-healed this session
   let sortMode      = 'date';       // 'date' | 'name' | 'due'
   let searchTimer   = null;
+  let lastOrdersFp  = '';           // perf: signature of last rendered snapshot
   let lang          = localStorage.getItem('nitu-lang') || 'bn';  // 'bn' | 'en'
 
   // ─── i18n dictionary ─────────────────────────────────────────
@@ -399,6 +400,17 @@ window.App = (() => {
             orders.push(o);
           });
         }
+        // ── Perf: skip redundant re-renders ──────────────────────
+        // Firebase re-fires identical snapshots on reconnects and local
+        // echoes. Rebuilding every view (cards carry embedded photos) is
+        // the heaviest thing this app does, so compare a cheap signature
+        // first and bail out when nothing actually changed.
+        const fp = orders.map(o =>
+          `${o.firebaseKey}:${o.updatedAt || 0}:${o.status || ''}:${o.paid || 0}:${o.deliveryPaid || ''}`
+        ).sort().join('|') + `#${orders.length}`;
+        if (fp === lastOrdersFp) return;
+        lastOrdersFp = fp;
+
         detectNewOrdersRealtime(orders);
         // ── Logical auto-heal ──────────────────────────────────
         // Any order whose delivery date has passed AND whose cake is fully
@@ -962,7 +974,8 @@ window.App = (() => {
         <div class="cdb-thumb-wrap">
           ${img
             ? `<img class="cdb-thumb" src="${img}" alt="ডেলিভার করা কেক" loading="lazy">`
-            : `<span class="cdb-thumb-ph">🎂</span><span class="cdb-noimg-badge">ছবি নেই</span>`}
+            : `<span class="cdb-thumb-ph">🎂</span><span class="cdb-noimg-badge">ছবি নেই</span>
+               <button class="cdb-add-photo" onclick="event.stopPropagation();App.cdbAddPhoto('${o.firebaseKey}')" title="ডেলিভার করা কেকের ছবি যোগ করুন">📷 ছবি যোগ করুন</button>`}
         </div>
         <div class="cdb-body">
           <div class="cdb-name">${esc(o.name || '')}</div>
@@ -1360,7 +1373,14 @@ window.App = (() => {
     updateSummary();
     syncWidgetFeed();
     renderCalendar();
-    renderPlan();
+    if (activeTab === 'plan') {
+      renderPlan();
+    } else {
+      // Perf: don't rebuild the hidden plan list on every snapshot —
+      // only refresh its tab badge. switchTab() re-renders on return.
+      const pool = getFiltered(orders.filter(o => isActiveOrder(o) && !isLogicallyComplete(o)));
+      document.getElementById('tc-plan').textContent = pool.length + (document.getElementById('search-input').value.trim() ? '/' : '');
+    }
     // Keep the database tab badge fresh even before the tab is opened
     document.getElementById('tc-cdb').textContent = orders.filter(o => o.status === 'delivered').length;
     if (activeTab === 'all')     renderAll();
@@ -1380,6 +1400,7 @@ window.App = (() => {
       btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
     // Lazy render on switch
+    if (t === 'plan')    renderPlan();
     if (t === 'all')     renderAll();
     if (t === 'done')    renderDone();
     if (t === 'cdb')     renderCdb();
@@ -2041,10 +2062,9 @@ window.App = (() => {
     };
   };
 
-  document.getElementById('f-delphoto-file').addEventListener('change', e => {
-    const file = e.target.files && e.target.files[0];
-    e.target.value = '';
-    if (!file) return;
+  // Shared compressor: any image file → JPEG data URL guaranteed ≤ 50KB.
+  // Used by BOTH the order-modal upload and the database-tab "add photo".
+  const fileToDelPhoto = file => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = ev => {
       const img = new Image();
@@ -2073,15 +2093,57 @@ window.App = (() => {
             out = canvas.toDataURL('image/jpeg', q);
           }
         }
-        currentDelPhoto = out;
-        renderModalDelPhoto();
-        showToast(`📷 ছবি যোগ হয়েছে (${Math.round(out.length * 3 / 4 / 1024)}KB)`);
+        resolve(out);
       };
-      img.onerror = () => showToast('ছবি লোড করা যায়নি');
+      img.onerror = () => reject(new Error('image load failed'));
       img.src = ev.target.result;
     };
-    reader.onerror = () => showToast('ছবি পড়া যায়নি');
+    reader.onerror = () => reject(new Error('file read failed'));
     reader.readAsDataURL(file);
+  });
+
+  document.getElementById('f-delphoto-file').addEventListener('change', async e => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      currentDelPhoto = await fileToDelPhoto(file);
+      renderModalDelPhoto();
+      showToast(`📷 ছবি যোগ হয়েছে (${Math.round(currentDelPhoto.length * 3 / 4 / 1024)}KB)`);
+    } catch (_) {
+      showToast('ছবি লোড করা যায়নি');
+    }
+  });
+
+  // ─── Database tab: tap a photo-less card to attach its cake photo ──
+  let cdbPhotoKey = null;   // order currently receiving a photo from the grid
+  const cdbAddPhoto = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) return;
+    cdbPhotoKey = key;
+    document.getElementById('cdb-photo-file').click();
+  };
+  document.getElementById('cdb-photo-file').addEventListener('change', async e => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    const key = cdbPhotoKey;
+    cdbPhotoKey = null;
+    if (!file || !key) return;
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) return;
+    showToast('📷 ছবি কমপ্রেস হচ্ছে...');
+    try {
+      const out = await fileToDelPhoto(file);
+      setSyncStatus('syncing', 'ছবি সেভ হচ্ছে...');
+      await ordersRef.child(key).update({ deliveredPhoto: out, updatedAt: Date.now() });
+      setSyncStatus('ok');
+      showToast(`✅ ${o.name || 'অর্ডার'} — ডেটাবেজে ছবি যোগ হয়েছে (${Math.round(out.length * 3 / 4 / 1024)}KB)`);
+      if (activeTab === 'cdb') renderCdb();   // refresh the grid immediately
+    } catch (err) {
+      console.error('CDB photo save failed:', err);
+      setSyncStatus('error', '❌ ছবি সেভ হয়নি');
+      showToast('❌ ছবি সেভ হয়নি — আবার চেষ্টা করুন');
+    }
   });
 
   // ─── Payment-charges popup (advance → single gateway charge) ──
@@ -2865,6 +2927,7 @@ window.App = (() => {
     clearNotepad,
     renderCdb,
     openCdbLightbox,
+  cdbAddPhoto,
     openLightboxFor,
     removePhoto,
     openPhotoLightbox,

@@ -587,6 +587,15 @@ button { cursor: pointer; }
   background: rgba(0,0,0,.55); color: #fff;
   font-size: 9.5px; padding: 2px 6px; border-radius: 999px;
 }
+.cdb-add-photo {
+  position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+  background: var(--pink); color: #fff;
+  border: none; border-radius: 999px;
+  font-size: 11px; font-weight: 700; padding: 5px 12px;
+  cursor: pointer; white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(15,90,80,.35);
+}
+.cdb-add-photo:active { transform: translateX(-50%) scale(0.94); }
 
 /* ─── Completed cake photo (edit modal) ────────────────────── */
 .del-photo-thumb {
@@ -2228,6 +2237,8 @@ select:focus {
             <span>📷</span> ডেলিভার করা কেকের ছবি আপলোড করুন
           </div>
           <input type="file" id="f-delphoto-file" accept="image/*" class="hidden" aria-hidden="true">
+        <!-- Hidden input used by the completed-database grid "📷 ছবি যোগ করুন" button -->
+        <input type="file" id="cdb-photo-file" accept="image/*" class="hidden" aria-hidden="true">
           <div id="modal-delphoto-wrap"></div>
           <div style="font-size:11px;color:var(--text3);margin-top:4px">📸 ডেলিভার্ড ট্যাগ দেওয়ার আগে এই ছবিটি দিন — ছবিটি ৫০KB এর নিচে কমপ্রেস হয়ে সেভ হবে।</div>
         </div>
