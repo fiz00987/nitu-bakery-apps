@@ -2714,8 +2714,26 @@ window.App = (() => {
       : `${d.getDate()} ${MONTHS_EN_D[d.getMonth()]} ${DAYS_EN_D[d.getDay()]} ${d.getFullYear()}`;
   };
   const todaysPlacedOrders = () => orders
-    .filter(o => bdCreatedToday(o) && o.status !== 'cancelled')
+    .filter(o => bdCreatedToday(o)
+      && !isArchivedOrder(o)                 // delivered/cancelled orders are NOT "new"
+      && !isLogicallyComplete(o)             // past date + fully paid is not "new" either
+      && !isDailyDismissed(o))               // hidden by the admin on this device
     .sort((a, b) => (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0));
+
+  // ── Dismiss ("remove from today's list") ─────────────────────
+  // Per-device, per-day hide — the order itself is untouched. The
+  // marker key contains today's BD date, so it expires automatically
+  // at 12 AM when the list resets anyway.
+  const dailyDismissKey = fk => `nitu_daily_seen_${bdTodayStr()}_${fk}`;
+  const isDailyDismissed = o => {
+    try { return !!localStorage.getItem(dailyDismissKey(o.firebaseKey)); } catch (e) { return false; }
+  };
+  const dismissDailyOrder = fk => {
+    try { localStorage.setItem(dailyDismissKey(fk), '1'); } catch (e) {}
+    showToast(lang === 'bn' ? '✅ আজকের তালিকা থেকে সরানো হয়েছে' : 'Removed from today\'s list');
+    updateDailyBadge();
+    showDailyPopup();   // re-render the open popup
+  };
 
   const updateDailyBadge = () => {
     const btn = document.getElementById('daily-log-btn');
@@ -2747,6 +2765,7 @@ window.App = (() => {
           <div class="d-meta">${lang === 'bn' ? 'অর্ডার করেছে' : 'Ordered'} ${esc(wt)} ${esc(fl)} ${lang === 'bn' ? 'কেক' : 'cake'}</div>
           <div class="d-meta">${lang === 'bn' ? 'মূল্য' : 'price'}: <span class="d-price">৳${fmtMoney(o.total)}</span> · ${lang === 'bn' ? 'ডেলিভারির তারিখ' : 'delivery date'}: ${esc(dailyFmtDate(dstr))}</div>
         </div>
+        <button class="daily-dismiss" onclick="App.dismissDailyOrder('${o.firebaseKey}')" title="${lang === 'bn' ? 'আজকের তালিকা থেকে সরান' : 'Remove from today\'s list'}">✕</button>
       </div>`;
     }).join('') : `<div style="text-align:center;color:var(--text3);padding:22px 0">${lang === 'bn' ? 'আজ কোনো নতুন অর্ডার আসেনি।' : 'No new orders placed today yet.'}</div>`;
     wrap.classList.add('open');
@@ -2813,6 +2832,7 @@ window.App = (() => {
     normalizeTimeInput,
     onFulfilmentChange,
     showDailyPopup,
+    dismissDailyOrder,
     closeDailyPopup,
     closeDailyPopupBg
   };
