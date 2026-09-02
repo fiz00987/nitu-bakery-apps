@@ -146,7 +146,43 @@ window.App = (() => {
     if (o.advanceTotal != null && o.paid == null) o.paid = Number(o.advanceTotal);
     if (o.paymentCharges != null && o.bkashCharge == null) o.bkashCharge = Number(o.paymentCharges);
     if (o.fulfilment === 'pickup' && !o.address) o.address = 'Self pickup: Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram';
+
+    // ── Status normalization (the software must think logically) ──
+    // Over the years orders were saved with many status spellings
+    // ('completed', 'Complete', 'Done', 'Delivered', 'canceled'...).
+    // The plan/all/done tabs only matched the exact strings 'delivered' /
+    // 'cancelled', so orders with any other spelling fell through the
+    // cracks and showed in the NEW ORDER list forever (e.g. a June order).
+    // Canonicalize here so EVERY view agrees on what "completed" means.
+    const STATUS_MAP = {
+      delivered: 'delivered', deliverd: 'delivered', delievered: 'delivered',
+      complete: 'delivered', completed: 'delivered', done: 'delivered',
+      finished: 'delivered', fulfilled: 'delivered', success: 'delivered',
+      successful: 'delivered', shipped: 'delivered',
+      cancel: 'cancelled', canceled: 'cancelled', cancelled: 'cancelled',
+      confirm: 'confirmed', confirmed: 'confirmed',
+      bake: 'baking', baking: 'baking',
+      pending: 'pending', new: 'pending'
+    };
+    const rawStatus = String(o.status || '').trim().toLowerCase();
+    o.status = STATUS_MAP[rawStatus] || (rawStatus || 'pending');
     return o;
+  };
+
+  // ─── Shared status helpers (single source of truth) ──────────
+  // Order still needs action → belongs in the Plan / Orders tabs.
+  const isActiveOrder   = o => o.status !== 'delivered' && o.status !== 'cancelled';
+  // Order is archived → Done tab / revenue / countdown removal.
+  const isArchivedOrder = o => !isActiveOrder(o);
+  // Order is logically complete: delivered (or cancelled), OR the delivery
+  // date has passed AND the cake is fully paid — a past, fully-paid order
+  // can never be "new work", no matter what stale status says.
+  const isLogicallyComplete = o => {
+    if (o.status === 'delivered' || o.status === 'cancelled') return true;
+    if (!o.date || !(o.total > 0)) return false;
+    if (effectivePaid(o) < o.total) return false;             // still unpaid work
+    const d = toDate(o.date);
+    return !Number.isNaN(d.getTime()) && d < today0();        // date already passed
   };
 
   // Flavour map mirrors customer-app utils.js: converts machine ids like
@@ -363,6 +399,26 @@ window.App = (() => {
           });
         }
         detectNewOrdersRealtime(orders);
+        // ── Logical auto-heal ──────────────────────────────────
+        // Any order whose delivery date has passed AND whose cake is fully
+        // paid is, by definition, finished work — no matter what stale
+        // status string it carries. Mark it delivered in the cloud so it
+        // moves to ✅ সম্পন্ন / 🗂️ ডেটাবেজ on every device and never
+        // haunts the new-order list again (e.g. the June order bug).
+        orders.forEach(o => {
+          if (!o.firebaseKey) return;
+          if (o.status === 'delivered' || o.status === 'cancelled') return;
+          if (!isLogicallyComplete(o)) return;
+          console.log('[auto-heal] past date + fully paid → delivered:', o.orderId || o.name);
+          ordersRef.child(o.firebaseKey).update({
+            status: 'delivered',
+            paid: (o.total || 0) + bkashCharge(o),
+            autoDelivered: true,
+            autoDeliveredAt: Date.now(),
+            updatedAt: Date.now()
+          }).catch(err => console.error('[auto-heal] failed:', err));
+          o.status = 'delivered';   // reflect immediately in this render
+        });
         sortOrders();
         render();
         updateDailyBadge();
@@ -807,7 +863,7 @@ window.App = (() => {
   const renderPlan = () => {
     const t   = today0();
     const tm  = new Date(t); tm.setDate(tm.getDate() + 1);
-    const pool = getFiltered(orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled'));
+    const pool = getFiltered(orders.filter(o => isActiveOrder(o) && !isLogicallyComplete(o)));
 
     const groups = {};
     pool.forEach(o => {
@@ -846,7 +902,7 @@ window.App = (() => {
   };
 
   const renderAll = () => {
-    const pool = getFiltered(orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled'));
+    const pool = getFiltered(orders.filter(o => !isLogicallyComplete(o)));
     const el = document.getElementById('view-all');
     el.innerHTML = pool.length
       ? pool.map(renderCard).join('')
@@ -908,7 +964,7 @@ window.App = (() => {
   };
 
   const renderDone = () => {
-    const pool = getFiltered(orders.filter(o => o.status === 'delivered' || o.status === 'cancelled'))
+    const pool = getFiltered(orders.filter(isArchivedOrder))
       .sort((a, b) => toDate(b.date || '2000-01-01') - toDate(a.date || '2000-01-01'));
     const el = document.getElementById('view-done');
     el.innerHTML = pool.length
@@ -1004,8 +1060,6 @@ window.App = (() => {
   // "Pending" = every order that still needs action (not delivered,
   // not cancelled), exactly like the প্ল্যান tab — INCLUDING overdue
   // orders sitting on past dates.
-  const INACTIVE_STATUSES = ['delivered', 'cancelled', 'completed', 'complete'];
-  const isActiveOrder = o => !INACTIVE_STATUSES.includes(String(o.status || '').toLowerCase());
   const pendingCount  = () => orders.filter(isActiveOrder).length;
 
   const updateSummary = () => {
