@@ -498,6 +498,108 @@ button { cursor: pointer; }
 .lg-ok { background: var(--green-mid); }
 .lg-warn { background: var(--amber); }
 .lg-bad { background: var(--red); }
+/* ─── Off-day cell (marked with ✕) ─────────────────────────── */
+.minical-cell.c-off {
+  background: var(--surface);
+  color: var(--red);
+  box-shadow: inset 0 0 0 2px var(--red);
+}
+.minical-cell .mc-x { font-size: 15px; font-weight: 800; color: var(--red); line-height: 1; }
+.minical-cell:not(.empty) { cursor: pointer; }
+.minical-cell:not(.empty):active { filter: brightness(0.92); }
+.lg-off { background: var(--surface2); box-shadow: inset 0 0 0 2px var(--red); }
+
+/* ─── Shopping notepad popup ───────────────────────────────── */
+.notepad-hint {
+  font-size: 11.5px; color: var(--text3);
+  margin: 2px 0 8px; line-height: 1.5;
+}
+#notepad-text {
+  width: 100%; min-height: 46vh; resize: vertical;
+  border: 1.5px solid var(--pink-soft); border-radius: 10px;
+  padding: 12px; font-size: 15px; line-height: 1.7;
+  font-family: inherit; color: var(--text);
+  background: var(--surface2); outline: none;
+}
+#notepad-text:focus { border-color: var(--pink); }
+.notepad-status {
+  font-size: 11px; color: var(--text3); margin-top: 6px; min-height: 14px; text-align: right;
+}
+
+/* ─── Off-day dialog input ─────────────────────────────────── */
+#offday-reason {
+  width: 100%; margin-top: 4px;
+  border: 1.5px solid var(--pink-soft); border-radius: 10px;
+  padding: 10px 12px; font-size: 14px; font-family: inherit;
+  background: var(--surface2); color: var(--text); outline: none;
+}
+#offday-reason:focus { border-color: var(--pink); }
+
+/* ─── Completed Order Database grid ────────────────────────── */
+.cdb-head {
+  font-size: 15px; font-weight: 800; color: var(--text);
+  margin-bottom: 4px;
+}
+.cdb-sub {
+  font-size: 11.5px; color: var(--text3); margin-bottom: 12px;
+}
+.cdb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.cdb-card {
+  background: var(--surface); border: 1px solid var(--pink-soft);
+  border-radius: 14px; overflow: hidden;
+  cursor: pointer; transition: transform .12s ease, box-shadow .12s ease;
+}
+.cdb-card:active { transform: scale(0.97); }
+.cdb-thumb-wrap {
+  position: relative; width: 100%; aspect-ratio: 1 / 0.85;
+  background: var(--surface2); display: flex; align-items: center; justify-content: center;
+}
+.cdb-thumb {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.cdb-thumb-ph { font-size: 34px; opacity: .55; }
+.cdb-body { padding: 8px 10px 10px; }
+.cdb-name {
+  font-size: 13px; font-weight: 700; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cdb-meta {
+  font-size: 11px; color: var(--text3); margin-top: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cdb-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 6px; gap: 6px;
+}
+.cdb-price {
+  font-size: 13px; font-weight: 800; color: var(--pink);
+  white-space: nowrap;
+}
+.cdb-date {
+  font-size: 10.5px; color: var(--text3); white-space: nowrap;
+}
+.cdb-noimg-badge {
+  position: absolute; top: 6px; right: 6px;
+  background: rgba(0,0,0,.55); color: #fff;
+  font-size: 9.5px; padding: 2px 6px; border-radius: 999px;
+}
+
+/* ─── Completed cake photo (edit modal) ────────────────────── */
+.del-photo-thumb {
+  position: relative; width: 110px; height: 90px;
+  border-radius: 10px; overflow: hidden; margin-top: 8px;
+  border: 1.5px solid var(--pink-soft);
+}
+.del-photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.del-photo-size {
+  position: absolute; bottom: 4px; right: 4px;
+  background: rgba(0,0,0,.6); color: #fff;
+  font-size: 9.5px; padding: 1px 6px; border-radius: 999px;
+}
 
 /* Calendar popup (opened from the Order Calendar button) */
 .cal-popup-overlay {
@@ -1286,17 +1388,6 @@ button { cursor: pointer; }
 .login-error.show {
   display: block;
 }
-.login-toggle {
-  margin-top: 16px;
-  font-size: 13px;
-  color: var(--text3);
-}
-.login-toggle a {
-  color: var(--pink);
-  text-decoration: none;
-  font-weight: 600;
-  cursor: pointer;
-}
 .logout-btn {
   background: rgba(255,255,255,0.13);
   border: 1px solid rgba(255,255,255,0.3);
@@ -1906,10 +1997,6 @@ select:focus {
     
     <button class="login-btn" id="login-btn" onclick="App.handleLogin()">লগইন</button>
     
-    <div class="login-toggle">
-      <span id="login-toggle-text">অ্যাকাউন্ট নেই?</span>
-      <a id="login-toggle-link" onclick="App.toggleAuthMode()">রেজিস্টার করুন</a>
-    </div>
     </div>
   </div>
 </div>
@@ -1946,6 +2033,7 @@ select:focus {
     <input type="file" id="import-file" accept=".json" class="hidden" aria-hidden="true">
     <button class="action-btn" id="sort-btn" onclick="App.toggleSort()" aria-label="Change sort">⇅ <span id="sort-label">তারিখ</span></button>
     <button class="cal-btn" onclick="App.openCalendar()" aria-label="Order Calendar">📅 <span>অর্ডার ক্যালেন্ডার</span></button>
+    <button class="cal-btn" onclick="App.openNotepad()" aria-label="শপিং নোটপ্যাড">📝 <span>শপিং নোট</span></button>
     <button class="cal-btn" id="daily-log-btn" onclick="App.showDailyPopup()" aria-label="আজকের নতুন অর্ডার" style="display:none">🆕 <span data-i18n="dailyNew">আজকের নতুন</span> <span id="daily-count" style="background:var(--red);color:#fff;border-radius:999px;padding:0 6px;font-size:11px;font-weight:700">0</span></button>
   </div>
 </header>
@@ -1981,9 +2069,40 @@ select:focus {
     </div>
     <div class="minical-grid" id="cal-grid"></div>
     <div class="minical-legend">
-      <span><i class="lg lg-ok"></i> ১-২ অর্ডার</span>
-      <span><i class="lg lg-warn"></i> ৩ অর্ডার</span>
-      <span><i class="lg lg-bad"></i> ৪+ অর্ডার</span>
+      <span><i class="lg lg-ok"></i> ১ অর্ডার</span>
+      <span><i class="lg lg-warn"></i> ২ অর্ডার</span>
+      <span><i class="lg lg-bad"></i> ৩ অর্ডার</span>
+      <span><i class="lg lg-off"></i> ✕ বন্ধ</span>
+    </div>
+    <div style="font-size:10.5px;color:var(--text3);text-align:center;margin-top:6px">💡 যেকোনো তারিখে ট্যাপ করে বন্ধের দিন সেট/সরান</div>
+  </div>
+</div>
+
+<!-- SHOPPING NOTEPAD POPUP (shared — everyone can view & edit) -->
+<div class="cal-popup-overlay" id="notepad-overlay" onclick="App.closeNotepadBg(event)">
+  <div class="cal-popup" role="dialog" aria-modal="true" aria-label="শপিং নোটপ্যাড">
+    <div class="cal-popup-head">
+      <div class="cal-popup-title">📝 শপিং নোটপ্যাড</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="cal-popup-close" onclick="App.clearNotepad()" title="সব মুছুন" aria-label="সব মুছুন">🗑️</button>
+        <button class="cal-popup-close" onclick="App.closeNotepad()" aria-label="Close">✕</button>
+      </div>
+    </div>
+    <p class="notepad-hint">📋 যে আইটেমগুলো বেকারি শপ থেকে কিনতে হবে / শেষ হয়ে গেছে — এখানে লিখুন। অ্যাপ ব্যবহারকারী সবাই এটি দেখতে ও এডিট করতে পারবে, এবং নোটটি মুছে ফেলা না হওয়া পর্যন্ত থাকবে।</p>
+    <textarea id="notepad-text" placeholder="যেমন:&#10;• বাটার ২ কেজি লাগবে&#10;• চকলেট চিপস শেষ&#10;• ক্রিম ১ প্যাকেট"></textarea>
+    <div class="notepad-status" id="notepad-status"></div>
+  </div>
+</div>
+
+<!-- OFF-DAY DIALOG -->
+<div class="confirm-overlay" id="offday-overlay" role="alertdialog" aria-modal="true">
+  <div class="confirm-box">
+    <h3 id="offday-title">বন্ধের দিন? ✕</h3>
+    <p id="offday-date-label"></p>
+    <input id="offday-reason" type="text" maxlength="120" placeholder="কারণ লিখুন (যেমন: পারিবারিক অনুষ্ঠান, অসুস্থতা...)">
+    <div class="confirm-btns">
+      <button class="btn-cnf-no"  onclick="App.closeOffday()">বাতিল</button>
+      <button class="btn-cnf-yes green" onclick="App.saveOffday()">বন্ধ করুন ✕</button>
     </div>
   </div>
 </div>
@@ -1993,6 +2112,7 @@ select:focus {
   <button class="tab active" id="tab-plan" role="tab" aria-selected="true"  aria-controls="view-plan"    onclick="App.switchTab('plan')">📅 <span data-i18n="tabPlan">প্ল্যান</span> <span class="tab-count" id="tc-plan">0</span></button>
   <button class="tab"        id="tab-all"  role="tab" aria-selected="false" aria-controls="view-all"     onclick="App.switchTab('all')">📦 <span data-i18n="tabAll">অর্ডার</span> <span class="tab-count" id="tc-all">0</span></button>
   <button class="tab"        id="tab-done" role="tab" aria-selected="false" aria-controls="view-done"    onclick="App.switchTab('done')">✅ <span data-i18n="tabDone">সম্পন্ন</span> <span class="tab-count" id="tc-done">0</span></button>
+  <button class="tab"        id="tab-cdb"  role="tab" aria-selected="false" aria-controls="view-cdb"     onclick="App.switchTab('cdb')">🗂️ <span data-i18n="tabCdb">ডেটাবেজ</span> <span class="tab-count" id="tc-cdb">0</span></button>
   <button class="tab"        id="tab-rev"  role="tab" aria-selected="false" aria-controls="view-revenue" onclick="App.switchTab('revenue')">💰 <span data-i18n="tabRev">আয়</span></button>
 </nav>
 
@@ -2001,6 +2121,7 @@ select:focus {
   <div id="view-plan"    role="tabpanel" aria-labelledby="tab-plan" class="section"><div class="skeleton-wrap" id="sk-plan"></div></div>
   <div id="view-all"     role="tabpanel" aria-labelledby="tab-all"  class="section hidden"></div>
   <div id="view-done"    role="tabpanel" aria-labelledby="tab-done" class="section hidden"></div>
+  <div id="view-cdb"     role="tabpanel" aria-labelledby="tab-cdb"  class="section hidden"></div>
   <div id="view-revenue" role="tabpanel" aria-labelledby="tab-rev"  class="revenue-section hidden"></div>
 </main>
 
@@ -2098,6 +2219,15 @@ select:focus {
         <div class="field">
           <label>📝 ছবির নোট / ডিজাইন নোট</label>
           <textarea id="f-photo-note" placeholder="যেমন: কেকের কালার থিমটা রেড থেকে পিংক করতে চাচ্ছি" style="min-height:44px"></textarea>
+        </div>
+        <div class="field">
+          <label>🍰 ডেলিভার করা কেকের ছবি (১টি — কমপ্লিটেড ডেটাবেজের জন্য)</label>
+          <div class="photo-upload-btn" onclick="document.getElementById('f-delphoto-file').click()" role="button" tabindex="0">
+            <span>📷</span> ডেলিভার করা কেকের ছবি আপলোড করুন
+          </div>
+          <input type="file" id="f-delphoto-file" accept="image/*" class="hidden" aria-hidden="true">
+          <div id="modal-delphoto-wrap"></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">📸 ডেলিভার্ড ট্যাগ দেওয়ার আগে এই ছবিটি দিন — ছবিটি ৫০KB এর নিচে কমপ্রেস হয়ে সেভ হবে।</div>
         </div>
       </div>
 

@@ -23,6 +23,10 @@ window.App = (() => {
   const db        = firebase.database();
   const auth      = firebase.auth();
   const ordersRef = db.ref('orders');
+  // Shared shopping notepad — a single string everyone can read & edit.
+  const notesRef  = db.ref('shopNotepad/text');
+  // Calendar off-days: map of 'YYYY-MM-DD' → { reason, by, createdAt }.
+  const offDaysRef = db.ref('offDays');
 
   // ─── State ───────────────────────────────────────────────────
   let orders        = [];
@@ -33,6 +37,12 @@ window.App = (() => {
   let confirmCb     = null;
   let currentPhoto  = '';
   let currentPhotos = [];           // multi-photo (mirrors customer app)
+  let currentDelPhoto = '';         // completed-cake photo (≤50KB data URL)
+  let notepadText   = '';
+  let notepadReady  = false;        // first Firebase snapshot received
+  let notepadTimer  = null;
+  let offDays       = {};           // 'YYYY-MM-DD' → { reason, ... }
+  let offdayCbDate  = null;         // date currently open in the off-day dialog
   let sortMode      = 'date';       // 'date' | 'name' | 'due'
   let searchTimer   = null;
   let lang          = localStorage.getItem('nitu-lang') || 'bn';  // 'bn' | 'en'
@@ -51,7 +61,7 @@ window.App = (() => {
       monthEarn: 'আয় (মোট বিক্রি)',
       monthEarnNote: '💡 ডেলিভারি চার্জ ও bKash চার্জ বাদে কেকের মোট বিক্রি। ডেলিভারি চার্জ পুরোটা ডেলিভারি এজেন্ট পান।',
       chartMonthlyOrders: '📊 মাসিক অর্ডার — শেষ ৫ মাস',
-      tabPlan: 'প্ল্যান', tabAll: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'আয়',
+      tabPlan: 'প্ল্যান', tabAll: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'আয়', tabCdb: 'ডেটাবেজ',
       sort_date: 'তারিখ', sort_name: 'নাম', sort_due: 'বকেয়া',
       secPayment: '💳 পেমেন্ট', fTotal: 'মোট মূল্য (৳)', fPaid: 'পরিশোধিত (৳)',
       live: 'লাইভ', offline: 'সংযোগ নেই', saving: 'সেভ হচ্ছে...', conn: 'সংযোগ...',
@@ -75,7 +85,7 @@ window.App = (() => {
       monthEarn: 'Earn (Total Sale)',
       monthEarnNote: '💡 Total cake sale excluding delivery & bKash charges. The delivery fee goes fully to the delivery agent.',
       chartMonthlyOrders: '📊 Orders per Month — Last 5',
-      tabPlan: 'Plan', tabAll: 'Orders', tabDone: 'Done', tabRev: 'Revenue',
+      tabPlan: 'Plan', tabAll: 'Orders', tabDone: 'Done', tabRev: 'Revenue', tabCdb: 'Database',
       sort_date: 'Date', sort_name: 'Name', sort_due: 'Due',
       secPayment: '💳 Payment', fTotal: 'Total Price (৳)', fPaid: 'Paid (৳)',
       live: 'Live', offline: 'Offline', saving: 'Saving...', conn: 'Connecting...',
@@ -367,6 +377,22 @@ window.App = (() => {
         setSyncStatus('error', '❌ সংযোগ বিচ্ছিন্ন — ইন্টারনেট চেক করুন');
         render();
       });
+
+      // Shared shopping notepad — live sync for everyone using the app
+      notesRef.on('value', snap => {
+        notepadText = String(snap.val() || '');
+        notepadReady = true;
+        const ta = document.getElementById('notepad-text');
+        // Never clobber what a user is actively typing
+        if (ta && document.activeElement !== ta) ta.value = notepadText;
+        renderNotepadStatus();
+      }, err => console.error('Notepad listener error:', err));
+
+      // Calendar off-days — live sync
+      offDaysRef.on('value', snap => {
+        offDays = snap.val() || {};
+        renderCalendar();
+      }, err => console.error('Off-day listener error:', err));
     } else {
       // User is signed out - show login screen
       document.getElementById('login-screen').classList.remove('hidden');
@@ -828,6 +854,59 @@ window.App = (() => {
     document.getElementById('tc-all').textContent = pool.length;
   };
 
+  // ─── Completed Order Database (grid view) ─────────────────────
+  // Shows every delivered order as a small card: the delivered cake
+  // photo (compressed to ≤50KB when uploaded), price, flavour, weight
+  // and delivery date. Tap a card for a zoomable lightbox of the photo.
+  const renderCdb = () => {
+    const db_ = orders
+      .filter(o => o.status === 'delivered')
+      .sort((a, b) => toDate(b.date || '2000-01-01') - toDate(a.date || '2000-01-01'));
+    const el = document.getElementById('view-cdb');
+    document.getElementById('tc-cdb').textContent = db_.length;
+
+    if (!db_.length) {
+      el.innerHTML = `<div class="empty"><div class="empty-icon">🗂️</div>
+        <h3>কমপ্লিটেড অর্ডার ডেটাবেজ খালি</h3>
+        <p>ডেলিভার্ড ট্যাগ দেওয়া অর্ডারগুলো এখানে ছবি, দাম, ফ্লেভার, ওজন ও ডেলিভারির তারিখসহ দেখা যাবে।</p></div>`;
+      return;
+    }
+
+    let html = `<div class="cdb-head">🗂️ কমপ্লিটেড অর্ডার ডেটাবেজ</div>
+      <div class="cdb-sub">সব ডেলিভার্ড অর্ডার — ছবিতে ট্যাপ করে বড় করে দেখুন (${db_.length}টি)</div>
+      <div class="cdb-grid">`;
+    db_.forEach(o => {
+      const price = Number(o.total || 0);
+      const img   = o.deliveredPhoto || o.photo || '';
+      html += `<div class="cdb-card" onclick="App.openCdbLightbox('${o.firebaseKey}')" role="button" tabindex="0">
+        <div class="cdb-thumb-wrap">
+          ${img
+            ? `<img class="cdb-thumb" src="${img}" alt="ডেলিভার করা কেক" loading="lazy">`
+            : `<span class="cdb-thumb-ph">🎂</span><span class="cdb-noimg-badge">ছবি নেই</span>`}
+        </div>
+        <div class="cdb-body">
+          <div class="cdb-name">${esc(o.name || '')}</div>
+          <div class="cdb-meta">${esc(flavourLabel(o)) || '—'} · ${esc(weightText(o)) || '—'}</div>
+          <div class="cdb-foot">
+            <span class="cdb-price">৳${fmtMoney(price)}</span>
+            <span class="cdb-date">🚚 ${o.date ? fmtDate(o.date) : '—'}</span>
+          </div>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+    el.innerHTML = html;
+  };
+
+  // Completed-database photo lightbox (reuses the zoomable lightbox)
+  const openCdbLightbox = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) return;
+    const img = o.deliveredPhoto || o.photo || '';
+    if (!img) { showToast('📷 এই অর্ডারে কোনো ডেলিভার করা কেকের ছবি নেই'); return; }
+    openLightboxFor(img);
+  };
+
   const renderDone = () => {
     const pool = getFiltered(orders.filter(o => o.status === 'delivered' || o.status === 'cancelled'))
       .sort((a, b) => toDate(b.date || '2000-01-01') - toDate(a.date || '2000-01-01'));
@@ -1023,14 +1102,22 @@ window.App = (() => {
     for (let i = 0; i < startDow; i++) html += '<div class="minical-cell empty"></div>';
 
     for (let day = 1; day <= dim; day++) {
-      const n = counts[`${y}-${m}-${day}`] || 0;
-      const cls = n === 0 ? 'c-0' : n <= 2 ? 'c-ok' : n === 3 ? 'c-warn' : 'c-bad';
+      const isoKey = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const off    = offDays[isoKey];
+      const n      = counts[`${y}-${m}-${day}`] || 0;
+      // Marking system: 1 order = green, 2 = orange, 3 = red,
+      // an off-day shows ✕ and always wins over the order colours.
+      const cls = off ? 'c-off' : n === 0 ? 'c-0' : n === 1 ? 'c-ok' : n === 2 ? 'c-warn' : 'c-bad';
       const isToday = (today.getFullYear() === y && today.getMonth() === m && today.getDate() === day);
-      // Color communicates the order-capacity range shown in the legend.
-      // Do not print the count beneath the date: it can look like a date from the next month.
       const orderLabel = n === 1 ? '১টি অর্ডার' : `${n}টি অর্ডার`;
-      html += `<div class="minical-cell ${cls}${isToday ? ' today' : ''}" title="${day} তারিখে ${orderLabel}" aria-label="${day} তারিখে ${orderLabel}">` +
-              `<span class="mc-day">${day}</span>` +
+      const title = off
+        ? `${isoKey} — বন্ধ${off.reason ? ' (' + off.reason + ')' : ''} — ট্যাপ করে খুলুন`
+        : `${day} তারিখে ${orderLabel} — ট্যাপ করে বন্ধের দিন সেট করুন`;
+      html += `<div class="minical-cell ${cls}${isToday ? ' today' : ''}" title="${esc(title)}" aria-label="${esc(title)}"` +
+              ` onclick="App.calDayClick('${isoKey}')" role="button" tabindex="0">` +
+              (off
+                ? `<span class="mc-x">✕</span>`
+                : `<span class="mc-day">${day}</span>`) +
               `</div>`;
     }
 
@@ -1038,7 +1125,113 @@ window.App = (() => {
     document.getElementById('cal-grid').innerHTML = html;
   };
 
+  // ─── Off-day marking (calendar cells) ────────────────────────
+  const calDayClick = isoKey => {
+    if (offDays[isoKey]) {
+      // Already an off-day: tap removes it (orders show again)
+      showConfirm(
+        `${isoKey} — বন্ধ সরাবেন? ✕→📅`,
+        offDays[isoKey].reason ? `কারণ: ${offDays[isoKey].reason}\n\nসরালে এই দিনে আবার অর্ডার নেওয়া যাবে।` : 'সরালে এই দিনে আবার অর্ডার নেওয়া যাবে।',
+        false,
+        ok => {
+          if (!ok) return;
+          setSyncStatus('syncing', 'সেভ হচ্ছে...');
+          offDaysRef.child(isoKey).remove()
+            .then(() => { setSyncStatus('ok'); showToast('✅ বন্ধ সরানো হয়েছে — দিনটি খোলা হলো'); })
+            .catch(() => { setSyncStatus('error', '❌ সংরক্ষণ ব্যর্থ'); showToast('❌ সরানো যায়নি — আবার চেষ্টা করুন'); });
+        }
+      );
+      return;
+    }
+    // Not an off-day yet: open the reason dialog
+    offdayCbDate = isoKey;
+    document.getElementById('offday-date-label').textContent =
+      isoKey + ' — এই দিনে অর্ডার নেওয়া হবে না (ক্যালেন্ডারে ✕ দেখাবে)';
+    document.getElementById('offday-reason').value = '';
+    document.getElementById('offday-overlay').classList.add('open');
+  };
+
+  const closeOffday = () => {
+    document.getElementById('offday-overlay').classList.remove('open');
+    offdayCbDate = null;
+  };
+
+  const saveOffday = () => {
+    if (!offdayCbDate) { closeOffday(); return; }
+    const reason = document.getElementById('offday-reason').value.trim();
+    setSyncStatus('syncing', 'সেভ হচ্ছে...');
+    offDaysRef.child(offdayCbDate).set({
+      reason:    reason,
+      by:        currentUser ? (currentUser.email || '') : '',
+      createdAt: Date.now()
+    }).then(() => {
+      setSyncStatus('ok');
+      showToast(`✅ ${offdayCbDate} বন্ধ হিসেবে চিহ্নিত হয়েছে ✕`);
+    }).catch(() => {
+      setSyncStatus('error', '❌ সংরক্ষণ ব্যর্থ');
+      showToast('❌ সেভ হয়নি — আবার চেষ্টা করুন');
+    });
+    closeOffday();
+  };
+
   // ─── Home-screen widget feed (/widgetFeed) ───────────────────
+
+  // ─── Shopping notepad (shared, live-synced) ──────────────────
+  const openNotepad = () => {
+    const ta = document.getElementById('notepad-text');
+    if (ta) {
+      ta.value = notepadText;
+      // Auto-grow for long notes
+      ta.style.height = 'auto';
+      ta.style.height = Math.max(ta.scrollHeight, window.innerHeight * 0.46) + 'px';
+    }
+    renderNotepadStatus();
+    document.getElementById('notepad-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+  const closeNotepad = () => {
+    document.getElementById('notepad-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  };
+  const closeNotepadBg = e => {
+    if (e.target === document.getElementById('notepad-overlay')) closeNotepad();
+  };
+  const renderNotepadStatus = () => {
+    const el = document.getElementById('notepad-status');
+    if (el) el.textContent = notepadReady ? '☁️ লাইভ সিঙ্ক চালু — সবাই একই নোট দেখছে' : 'সংযোগ হচ্ছে...';
+  };
+  const saveNotepadNow = val => {
+    setSyncStatus('syncing', 'নোট সেভ হচ্ছে...');
+    notesRef.set(val)
+      .then(() => { setSyncStatus('ok'); })
+      .catch(() => {
+        setSyncStatus('error', '❌ নোট সেভ হয়নি');
+        showToast('❌ নোট সেভ হয়নি — ইন্টারনেট চেক করুন');
+      });
+  };
+  const notepadInput = () => {
+    const ta = document.getElementById('notepad-text');
+    if (!ta) return;
+    notepadText = ta.value;
+    clearTimeout(notepadTimer);
+    notepadTimer = setTimeout(() => saveNotepadNow(notepadText), 700);
+  };
+  const clearNotepad = () => {
+    showConfirm('নোটপ্যাড সম্পূর্ণ মুছবেন? 🗑️', 'এতে দেওয়া সব আইটেম সবার কাছ থেকে মুছে যাবে।', false, ok => {
+      if (!ok) return;
+      clearTimeout(notepadTimer);
+      const ta = document.getElementById('notepad-text');
+      if (ta) ta.value = '';
+      saveNotepadNow('');
+      showToast('🗑️ নোটপ্যাড মুছে ফেলা হয়েছে');
+    });
+  };
+  // Debounced live-save while typing (registered after notepadInput exists)
+  {
+    const npTa = document.getElementById('notepad-text');
+    if (npTa) npTa.addEventListener('input', notepadInput);
+  }
+
   // A tiny summary written to the database so widget apps (KWGT on
   // Android, Scriptable on iOS) can show "today's + latest orders" on
   // the real home screen. PRIVACY: contains ONLY names, item text,
@@ -1090,15 +1283,18 @@ window.App = (() => {
     syncWidgetFeed();
     renderCalendar();
     renderPlan();
+    // Keep the database tab badge fresh even before the tab is opened
+    document.getElementById('tc-cdb').textContent = orders.filter(o => o.status === 'delivered').length;
     if (activeTab === 'all')     renderAll();
     if (activeTab === 'done')    renderDone();
+    if (activeTab === 'cdb')     renderCdb();
     if (activeTab === 'revenue') renderRevenue();
   };
 
   // ─── Tab switcher ─────────────────────────────────────────────
   const switchTab = t => {
     activeTab = t;
-    ['plan','all','done','revenue'].forEach(n => {
+    ['plan','all','done','cdb','revenue'].forEach(n => {
       document.getElementById(`view-${n}`).classList.toggle('hidden', n !== t);
       const btn = document.getElementById(`tab-${n === 'revenue' ? 'rev' : n}`);
       const isActive = n === t;
@@ -1108,6 +1304,7 @@ window.App = (() => {
     // Lazy render on switch
     if (t === 'all')     renderAll();
     if (t === 'done')    renderDone();
+    if (t === 'cdb')     renderCdb();
     if (t === 'revenue') renderRevenue();
   };
 
@@ -1204,8 +1401,13 @@ window.App = (() => {
   const openLightbox = key => {
     const o = orders.find(x => x.firebaseKey === key);
     if (!o?.photo) return;
+    openLightboxFor(o.photo);
+  };
+  // Open the shared lightbox for a raw image source (data URL or URL)
+  const openLightboxFor = src => {
+    if (!src) return;
     resetLbZoom();
-    document.getElementById('lightbox-img').src = o.photo;
+    document.getElementById('lightbox-img').src = src;
     document.getElementById('lightbox').classList.add('open');
     document.body.style.overflow = 'hidden';
   };
@@ -1347,6 +1549,11 @@ window.App = (() => {
         msg = lang === 'bn'
           ? 'অর্ডারটি সম্পন্ন ট্যাবে চলে যাবে।'
           : 'The order will move to the Done tab.';
+        if (!(o && (o.deliveredPhoto || o.photo))) {
+          msg += lang === 'bn'
+            ? '\n📸 টিপস: ডেলিভার করা কেকের ছবিটি এডিটে দিয়ে নিন — তাহলে এটি ডেটাবেজে ছবিসহ দেখাবে।'
+            : '\n📸 Tip: add the delivered cake photo in Edit so it shows with a picture in the Database.';
+        }
         if (o && dueAmt(o) > 0) {
           msg += lang === 'bn'
             ? `\n💰 বকেয়া ৳${fmtMoney(dueAmt(o))} স্বয়ংক্রিয়ভাবে সম্পূর্ণ পরিশোধিত হিসেবে চিহ্নিত হবে।`
@@ -1479,6 +1686,7 @@ window.App = (() => {
     editingId     = null;
     currentPhoto  = '';
     currentPhotos = [];
+    currentDelPhoto = '';
     populateForm({
       ...o,
       date:      '',
@@ -1486,6 +1694,7 @@ window.App = (() => {
       advance:   0,
       advanceTotal: 0,
       status:    'confirmed',
+      deliveredPhoto: '',
       paymentCharges: null,
       bkashCharge:    null,
       paymentChargesLabel: '',
@@ -1606,12 +1815,17 @@ window.App = (() => {
       ? o.photos.filter(Boolean)
       : (o.photo ? [o.photo] : []);
     renderModalPhotos();
+
+    // Completed-cake photo (shown in the completed order database)
+    currentDelPhoto = o.deliveredPhoto || '';
+    renderModalDelPhoto();
   };
 
   const openModal = key => {
     editingId    = key;
     currentPhoto = '';
     currentPhotos = [];
+    currentDelPhoto = '';
     pcChannel = '';
     document.getElementById('f-charge-deduct').value = '';
     const o = key ? orders.find(x => x.firebaseKey === key) : null;
@@ -1695,6 +1909,74 @@ window.App = (() => {
     document.getElementById('lightbox').classList.add('open');
     document.body.style.overflow = 'hidden';
   };
+
+  // ─── Completed-cake photo (≤50KB, one per order) ─────────────
+  // Shown in the "Completed Order Database" tab. The picture is scaled
+  // and re-compressed in shrinking quality steps until its data URL is
+  // under DEL_PHOTO_MAX_BYTES, keeping the app light and fast.
+  const DEL_PHOTO_MAX_BYTES = 50 * 1024;
+  const renderModalDelPhoto = () => {
+    const wrap = document.getElementById('modal-delphoto-wrap');
+    if (!wrap) return;
+    if (!currentDelPhoto) { wrap.innerHTML = ''; return; }
+    // Build DOM safely (data URLs are huge; avoid inline onclick entirely)
+    wrap.innerHTML = `
+      <div class="photo-thumb del-photo-thumb">
+        <img alt="ডেলিভার করা কেক" title="ডেলিভার করা কেকের ছবি">
+        <button type="button" class="photo-remove-btn" aria-label="ছবি সরান">✕</button>
+        <span class="del-photo-size">${(Math.round(currentDelPhoto.length * 3 / 4 / 1024))}KB</span>
+      </div>`;
+    const img = wrap.querySelector('img');
+    img.src = currentDelPhoto;
+    img.onclick = () => openLightboxFor(currentDelPhoto);
+    wrap.querySelector('.photo-remove-btn').onclick = () => {
+      currentDelPhoto = '';
+      renderModalDelPhoto();
+    };
+  };
+
+  document.getElementById('f-delphoto-file').addEventListener('change', e => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 640;
+        let { width: w, height: h } = img;
+        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        // Shrink quality (and size if needed) until ≤ 50KB
+        let q = 0.72;
+        let out = canvas.toDataURL('image/jpeg', q);
+        while (out.length * 3 / 4 > DEL_PHOTO_MAX_BYTES && q > 0.3) {
+          q -= 0.1;
+          out = canvas.toDataURL('image/jpeg', q);
+          if (q <= 0.35 && out.length * 3 / 4 > DEL_PHOTO_MAX_BYTES) {
+            const w2 = Math.round(w * 0.8), h2 = Math.round(h * 0.8);
+            const c2 = document.createElement('canvas');
+            c2.width = w2; c2.height = h2;
+            c2.getContext('2d').drawImage(canvas, 0, 0, w2, h2);
+            canvas.width = w2; canvas.height = h2;
+            canvas.getContext('2d').drawImage(c2, 0, 0);
+            q = 0.7;
+            out = canvas.toDataURL('image/jpeg', q);
+          }
+        }
+        currentDelPhoto = out;
+        renderModalDelPhoto();
+        showToast(`📷 ছবি যোগ হয়েছে (${Math.round(out.length * 3 / 4 / 1024)}KB)`);
+      };
+      img.onerror = () => showToast('ছবি লোড করা যায়নি');
+      img.src = ev.target.result;
+    };
+    reader.onerror = () => showToast('ছবি পড়া যায়নি');
+    reader.readAsDataURL(file);
+  });
 
   // ─── Payment-charges popup (advance → single gateway charge) ──
   // After the admin types the advance (e.g. 500), a popup asks which ONE
@@ -1924,6 +2206,8 @@ window.App = (() => {
       photo:          photoToSave,
       photos:         photosToSave,
       photoNote:      g('f-photo-note').value.trim(),
+      // Completed-cake photo (≤50KB) shown in the Completed Order Database
+      deliveredPhoto: currentDelPhoto || (existing ? (existing.deliveredPhoto || '') : ''),
       date,
       deliveryDate:   date,
       time:           timeVal,
@@ -1988,6 +2272,7 @@ window.App = (() => {
           showToast('✅ অর্ডার আপডেট হয়েছে!');
           currentPhoto = '';
           currentPhotos = [];
+          currentDelPhoto = '';
           closeModal();
         })
         .catch(failSave);
@@ -1999,6 +2284,7 @@ window.App = (() => {
           showToast('✅ নতুন অর্ডার সেভ হয়েছে!');
           currentPhoto = '';
           currentPhotos = [];
+          currentDelPhoto = '';
           closeModal();
         })
         .catch(failSave);
@@ -2061,21 +2347,25 @@ window.App = (() => {
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable) return;
     const confirmOpen = document.getElementById('confirm-overlay').classList.contains('open');
     const modalOpen   = document.getElementById('modal-overlay').classList.contains('open');
+    const offdayOpen  = document.getElementById('offday-overlay').classList.contains('open');
     // While a dialog is open, shortcuts must never act on the page beneath it.
     if (confirmOpen) { if (e.key === 'Escape') closeConfirm(false); return; }
     if (modalOpen)   { if (e.key === 'Escape') closeModal(); return; }
+    if (offdayOpen)  { if (e.key === 'Escape') closeOffday(); return; }
     if (e.key === 'n' || e.key === 'N') openModal(null);
     if (e.key === 'Escape') {
       // Close only the top-most overlay instead of everything at once.
       if (document.getElementById('lightbox').classList.contains('open')) { closeLightbox(); return; }
       if (document.getElementById('pay-charge-overlay').classList.contains('open')) { closePayCharge(); return; }
+      if (document.getElementById('notepad-overlay').classList.contains('open')) { closeNotepad(); return; }
       if (document.getElementById('cal-popup-overlay').classList.contains('open')) { closeCalendar(); return; }
       if (document.getElementById('daily-popup-overlay').classList.contains('open')) { closeDailyPopup(); return; }
     }
     if (e.key === '1') switchTab('plan');
     if (e.key === '2') switchTab('all');
     if (e.key === '3') switchTab('done');
-    if (e.key === '4') switchTab('revenue');
+    if (e.key === '4') switchTab('cdb');
+    if (e.key === '5') switchTab('revenue');
   });
 
   // ─── Init skeleton + language ────────────────────────────────
@@ -2136,8 +2426,6 @@ window.App = (() => {
   setTimeout(checkUpcomingOrders, 5000);
 
   // ─── Authentication ──────────────────────────────────────────
-  let authMode = 'login'; // 'login' | 'register'
-
   const handleLogin = async () => {
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
@@ -2150,27 +2438,21 @@ window.App = (() => {
     }
 
     btn.disabled = true;
-    btn.textContent = authMode === 'login' ? 'লগইন হচ্ছে...' : 'রেজিস্টার হচ্ছে...';
+    btn.textContent = 'লগইন হচ্ছে...';
     errorEl.classList.remove('show');
 
     try {
-      if (authMode === 'login') {
-        await auth.signInWithEmailAndPassword(email, password);
-      } else {
-        await auth.createUserWithEmailAndPassword(email, password);
-      }
+      await auth.signInWithEmailAndPassword(email, password);
       // onAuthStateChanged will handle the UI update
     } catch (error) {
       console.error('Auth error:', error);
       let msg = 'লগইন ব্যর্থ হয়েছে';
       if (error.code === 'auth/user-not-found') msg = 'ইউজার পাওয়া যায়নি';
       if (error.code === 'auth/wrong-password') msg = 'ভুল পাসওয়ার্ড';
-      if (error.code === 'auth/email-already-in-use') msg = 'এই ইমেইল ইতিমধ্যে ব্যবহৃত';
-      if (error.code === 'auth/weak-password') msg = 'পাসওয়ার্ড দুর্বল (কমপক্ষে ৬টি অক্ষর)';
       if (error.code === 'auth/invalid-email') msg = 'ইমেইল ঠিকানা সঠিক নয়';
       showLoginError(msg);
       btn.disabled = false;
-      btn.textContent = authMode === 'login' ? 'লগইন' : 'রেজিস্টার করুন';
+      btn.textContent = 'লগইন';
     }
   };
 
@@ -2178,27 +2460,6 @@ window.App = (() => {
     const el = document.getElementById('login-error');
     el.textContent = '⚠️ ' + msg;
     el.classList.add('show');
-  };
-
-  const toggleAuthMode = () => {
-    authMode = authMode === 'login' ? 'register' : 'login';
-    const subtitle = document.getElementById('login-subtitle');
-    const btn = document.getElementById('login-btn');
-    const toggleText = document.getElementById('login-toggle-text');
-    const toggleLink = document.getElementById('login-toggle-link');
-
-    if (authMode === 'register') {
-      subtitle.textContent = 'নতুন অ্যাকাউন্ট তৈরি করুন';
-      btn.textContent = 'রেজিস্টার করুন';
-      toggleText.textContent = 'ইতিমধ্যে অ্যাকাউন্ট আছে?';
-      toggleLink.textContent = 'লগইন করুন';
-    } else {
-      subtitle.textContent = 'লগইন করুন';
-      btn.textContent = 'লগইন';
-      toggleText.textContent = 'অ্যাকাউন্ট নেই?';
-      toggleLink.textContent = 'রেজিস্টার করুন';
-    }
-    document.getElementById('login-error').classList.remove('show');
   };
 
   const handleLogout = () => {
@@ -2452,6 +2713,16 @@ window.App = (() => {
     openCalendar,
     closeCalendar,
     closeCalendarBg,
+    calDayClick,
+    closeOffday,
+    saveOffday,
+    openNotepad,
+    closeNotepad,
+    closeNotepadBg,
+    clearNotepad,
+    renderCdb,
+    openCdbLightbox,
+    openLightboxFor,
     removePhoto,
     openPhotoLightbox,
     setLang,
@@ -2465,7 +2736,6 @@ window.App = (() => {
     totalInput,
     markFullyPaid,
     handleLogin,
-    toggleAuthMode,
     handleLogout,
     toggleWriting,
     toggleTime,
