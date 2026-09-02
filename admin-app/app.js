@@ -43,6 +43,7 @@ window.App = (() => {
   let notepadTimer  = null;
   let offDays       = {};           // 'YYYY-MM-DD' → { reason, ... }
   let offdayCbDate  = null;         // date currently open in the off-day dialog
+  let healedDelivered = {};         // delivered orders already money-healed this session
   let sortMode      = 'date';       // 'date' | 'name' | 'due'
   let searchTimer   = null;
   let lang          = localStorage.getItem('nitu-lang') || 'bn';  // 'bn' | 'en'
@@ -419,6 +420,29 @@ window.App = (() => {
           }).catch(err => console.error('[auto-heal] failed:', err));
           o.status = 'delivered';   // reflect immediately in this render
         });
+        // ── Delivered = fully-paid healer ────────────────────────
+        // A delivered order means the client paid EVERYTHING (cake + delivery
+        // charge). Old records may still carry a due or an unpaid delivery
+        // chip — clean them up automatically so the completed views never
+        // show money owed on delivered cakes. Heals each order at most once.
+        orders.forEach(o => {
+          if (!o.firebaseKey || o.status !== 'delivered') return;
+          const cakeDue   = dueAmt(o) > 0;
+          const delUnpaid = o.deliveryPaid === 'unpaid' && (Number(o.deliveryAmount) || 0) > 0;
+          if (!cakeDue && !delUnpaid) return;
+          if (healedDelivered[o.firebaseKey]) return;
+          healedDelivered[o.firebaseKey] = true;
+          console.log('[delivered-heal] settling money on delivered order:', o.orderId || o.name);
+          ordersRef.child(o.firebaseKey).update({
+            paid:         (o.total || 0) + bkashCharge(o),
+            advance:      o.total || 0,
+            advanceTotal: (o.total || 0) + bkashCharge(o),
+            dueAmount:    0,
+            deliveryPaid: 'paid',
+            updatedAt:    Date.now()
+          }).catch(err => console.error('[delivered-heal] failed:', err));
+        });
+
         sortOrders();
         render();
         updateDailyBadge();
@@ -1613,6 +1637,11 @@ window.App = (() => {
             ? `\n💰 বকেয়া ৳${fmtMoney(dueAmt(o))} স্বয়ংক্রিয়ভাবে সম্পূর্ণ পরিশোধিত হিসেবে চিহ্নিত হবে।`
             : `\n💰 The remaining due of ৳${fmtMoney(dueAmt(o))} will be marked fully paid automatically.`;
         }
+        if (o && o.deliveryPaid === 'unpaid' && (Number(o.deliveryAmount) || 0) > 0) {
+          msg += lang === 'bn'
+            ? `\n🚚 ডেলিভারি চার্জ ৳${fmtMoney(o.deliveryAmount)} ও পরিশোধিত হিসেবে চিহ্নিত হবে।`
+            : `\n🚚 The delivery charge of ৳${fmtMoney(o.deliveryAmount)} will also be marked paid.`;
+        }
       } else {
         msg = 'অর্ডারটি সম্পন্ন ট্যাবে আর্কাইভ হবে।';
       }
@@ -1636,10 +1665,22 @@ window.App = (() => {
       const o = orders.find(x => x.firebaseKey === key);
       const newPaid = o ? (o.total || 0) + bkashCharge(o) : null;
       if (newPaid != null) {
-        ordersRef.child(key).update({ status: val, paid: newPaid, updatedAt: Date.now() })
+        // Delivered = the client has paid EVERYTHING: cake total AND the
+        // delivery charge. From now on, marking delivered settles both.
+        const updates = {
+          status:       val,
+          paid:         newPaid,
+          advance:      o.total || 0,      // customer-app fields — full cake
+          advanceTotal: newPaid,            // covered, nothing left as due
+          dueAmount:    0,
+          updatedAt:    Date.now()
+        };
+        const isDeliveryOrder = o.fulfilment === 'delivery' || (Number(o.deliveryAmount) || 0) > 0;
+        if (isDeliveryOrder && o.deliveryPaid !== 'paid') updates.deliveryPaid = 'paid';
+        ordersRef.child(key).update(updates)
           .then(() => {
             setSyncStatus('ok');
-            showToast(lang === 'bn' ? '🎉 ডেলিভার্ড — বকেয়া স্বতঃ পরিশোধিত!' : '🎉 Delivered — due auto-settled!');
+            showToast(lang === 'bn' ? '🎉 ডেলিভার্ড — কেক + ডেলিভারি সব পরিশোধিত!' : '🎉 Delivered — cake + delivery all paid!');
           })
           .catch(err => {
             console.error('Delivered-save failed:', err);
@@ -2317,6 +2358,18 @@ window.App = (() => {
     o.advanceTotal   = paidNum;
     o.paymentCharges = chargeNum;
     o.dueAmount      = Math.max(0, cakePrice - advanceNum);
+
+    // Delivered = the client has paid EVERYTHING — cake total AND delivery
+    // charge. If an order is saved/edited with status "delivered" from the
+    // modal, force every money field to fully-paid so a delivered order can
+    // never carry a due (from now and forever).
+    if (o.status === 'delivered') {
+      o.paid         = cakePrice + chargeToDeduct;
+      o.advance      = cakePrice;
+      o.advanceTotal = o.paid;
+      o.dueAmount    = 0;
+      if (fulfilmentVal === 'delivery') o.deliveryPaid = 'paid';
+    }
 
     setSyncStatus('syncing', 'ক্লাউডে সেভ হচ্ছে...');
     const failSave = err => {
