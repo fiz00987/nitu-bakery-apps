@@ -966,15 +966,16 @@ window.App = (() => {
     }
 
     let html = `<div class="cdb-head">🗂️ কমপ্লিটেড অর্ডার ডেটাবেজ</div>
-      <div class="cdb-sub">সব ডেলিভার্ড অর্ডার — ছবিতে ট্যাপ করে বড় করে দেখুন (${db_.length}টি)</div>
+      <div class="cdb-sub">অর্ডারে ট্যাপ করলে অর্ডার ফর্ম খুলবে · ছবিতে ট্যাপ করলে বড় করে দেখা যাবে (${db_.length}টি)</div>
       <div class="cdb-grid">`;
     db_.forEach(o => {
       const price = Number(o.total || 0);
       const img   = o.deliveredPhoto || o.photo || '';
-      html += `<div class="cdb-card" onclick="App.openCdbLightbox('${o.firebaseKey}')" role="button" tabindex="0">
-        <div class="cdb-thumb-wrap">
+      html += `<div class="cdb-card" onclick="App.openModal('${o.firebaseKey}')" role="button" tabindex="0">
+        <div class="cdb-thumb-wrap" onclick="event.stopPropagation();App.openCdbLightbox('${o.firebaseKey}')">
           ${img
-            ? `<img class="cdb-thumb" src="${img}" alt="ডেলিভার করা কেক" loading="lazy">`
+            ? `<img class="cdb-thumb" src="${img}" alt="ডেলিভার করা কেক" loading="lazy">
+               <button class="cdb-add-photo" onclick="event.stopPropagation();App.cdbAddPhoto('${o.firebaseKey}')" title="ভুল ছবি হলে বদলে নিন">📷 ছবি বদলান</button>`
             : `<span class="cdb-thumb-ph">🎂</span><span class="cdb-noimg-badge">ছবি নেই</span>
                <button class="cdb-add-photo" onclick="event.stopPropagation();App.cdbAddPhoto('${o.firebaseKey}')" title="ডেলিভার করা কেকের ছবি যোগ করুন">📷 ছবি যোগ করুন</button>`}
         </div>
@@ -2138,7 +2139,7 @@ window.App = (() => {
       setSyncStatus('syncing', 'ছবি সেভ হচ্ছে...');
       await ordersRef.child(key).update({ deliveredPhoto: out, updatedAt: Date.now() });
       setSyncStatus('ok');
-      showToast(`✅ ${o.name || 'অর্ডার'} — ডেটাবেজে ছবি যোগ হয়েছে (${Math.round(out.length * 3 / 4 / 1024)}KB)`);
+      showToast(`✅ ${o.name || 'অর্ডার'} — ডেটাবেজে ছবি সেভ হয়েছে (${Math.round(out.length * 3 / 4 / 1024)}KB)`);
       if (activeTab === 'cdb') renderCdb();   // refresh the grid immediately
     } catch (err) {
       console.error('CDB photo save failed:', err);
