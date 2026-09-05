@@ -214,6 +214,31 @@ input.due-input:focus{outline:none;border-color:#dcdcdc;box-shadow:none}
 
 @media print{body>*{display:none!important}}
 </style>
+<script>
+/* Noir Gold light theme — applied automatically, no user control */
+(function(){document.documentElement.classList.add('t-gold');})();
+</script>
+<style>
+/* ─── NOIR GOLD THEME (variable overrides only) ─── */
+html.t-gold{
+  --text:#2a2317;--text2:#6f6350;--text3:#a2947a;--border:#e6dcc6;--border-focus:var(--pink);
+  --surface:#fffcf5;--surface2:#f3ecdd;--bg:#f6f1e7;
+  --pink:#a5813e;--pink-dark:#8f6f33;--pink-mid:#c9aa63;--pink-light:#f2e8d2;--pink-soft:#e3d3ac;--pink-glow:rgba(165,129,62,.22);
+  --green:#3e7d5a;--green-light:#e9f2ec;--amber:#a86a00;--amber-light:#f6ecd8;--red:#c0392b;--red-light:#f8e9e7;--blue:#46678f;--blue-light:#e8eef6;
+  --shadow-sm:0 1px 4px rgba(90,70,35,.07),0 0 0 1px rgba(90,70,35,.04);
+  --shadow-md:0 4px 18px rgba(90,70,35,.10),0 1px 4px rgba(90,70,35,.05);
+}
+html.t-gold body{background:linear-gradient(rgba(246,241,231,.92),rgba(246,241,231,.96)),url('https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=75') center/cover fixed}
+/* Gold button text — dark ink on gold reads best */
+html.t-gold .btn-primary,html.t-gold .weight-preset.active,html.t-gold .lang .on{color:#2a2317}
+/* Keep the login (entry) + splash screens exactly as designed */
+html.t-gold .entry-screen .field input,html.t-gold .entry-screen .field select,html.t-gold .entry-screen .field textarea{background:#fff;border-color:#e8e8f0;color:#1a1a2e}
+html.t-gold .entry-screen .field label{color:#555577}
+html.t-gold .entry-screen .entry-error{background:#ffebee;color:#c62828}
+html.t-gold .entry-screen .security-box{background:#e3f2fd}
+html.t-gold .weight-preset{color:#a5813e}
+html.t-gold .order-number-badge{color:#a5813e}
+</style>
 </head>
 <body>
 

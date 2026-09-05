@@ -1913,8 +1913,100 @@ select:focus {
 .due-input:focus{outline:none;border-color:var(--line)}
 .due-hint{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5}
 </style>
+<script>
+/* Theme system — visual only, no order logic touched */
+var ADMIN_THEMES=['t-gold','t-ivory','t-sage','t-rose'];
+function readThemeState(){try{var s=JSON.parse(localStorage.getItem('nitu-admin-theme-v2')||'null');if(s)return s;}catch(e){}try{if(localStorage.getItem('nitu-admin-theme')==='dark')return{dark:true}}catch(e){}return{}}
+function saveThemeState(s){try{localStorage.setItem('nitu-admin-theme-v2',JSON.stringify(s))}catch(e){}}
+function applyAdminTheme(){
+  var s=readThemeState();
+  ADMIN_THEMES.forEach(function(t){document.documentElement.classList.remove(t)});
+  if(s.theme)document.documentElement.classList.add(s.theme);
+  document.documentElement.classList.toggle('dark',!!s.dark);
+  document.querySelectorAll('.tp-opt').forEach(function(o){o.classList.toggle('active',(o.dataset.t||'')===(s.theme||''))});
+  document.querySelectorAll('.tp-mode').forEach(function(o){o.classList.toggle('active',(o.dataset.dark==='1')===!!s.dark)});
+  var mb=document.getElementById('theme-mode-btn');
+  if(mb)mb.textContent=s.dark?'লাইট':'ডার্ক';
+}
+function toggleTheme(){var s=readThemeState();s.dark=!document.documentElement.classList.contains('dark');saveThemeState(s);applyAdminTheme();}
+function pickTheme(el){var s=readThemeState();s.theme=el.dataset.t||'';saveThemeState(s);applyAdminTheme();}
+function setPanelMode(d){var s=readThemeState();s.dark=d;saveThemeState(s);applyAdminTheme();}
+function openThemePanel(){document.getElementById('themePanel').classList.toggle('open');}
+try{(function(){var s=JSON.parse(localStorage.getItem('nitu-admin-theme-v2')||'null');if(!s&&localStorage.getItem('nitu-admin-theme')==='dark')s={dark:true};if(s){if(s.theme)document.documentElement.classList.add(s.theme);if(s.dark)document.documentElement.classList.add('dark')}})()}catch(e){}
+</script>
+<style>
+/* ─── DARK MODE + THEME SYSTEM (visual only) ─── */
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark){
+  --text:#e6edf3;--text2:#aebbc7;--text3:#6f8090;--border:#263541;--divider:rgba(255,255,255,.08);
+  --surface:#152230;--surface2:#1b2a3a;--bg:#0d1620;
+  --pink-mid:#35b295;
+  --pink-light:#12332e;--pink-soft:#1d4b43;--pink-glow:rgba(53,201,158,.22);
+  --green-light:#12301a;--amber-light:#33260f;--red-light:#331818;--blue-light:#12253c;--purple-light:#2a1a38;
+  --shadow-sm:0 1px 4px rgba(0,0,0,.40);--shadow-md:0 4px 18px rgba(0,0,0,.50);--shadow-lg:0 8px 32px rgba(0,0,0,.60);
+}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) body::before{background:rgba(10,17,24,.90)}
+/* Pin the few hardcoded white backgrounds (theme-aware via variables) */
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .lang-toggle button.active{background:var(--surface2)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .search-input,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .notes-input,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .field input,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .field select,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .field textarea{background:var(--surface2)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .btn-edit{background:var(--surface2)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .btn-del{background:rgba(226,105,95,.10);border-color:rgba(226,105,95,.35)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .btn-wa{background:rgba(95,189,130,.10);border-color:rgba(95,189,130,.35);color:#81d68f}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .btn-note{color:var(--pink-mid);border-color:var(--pink-soft)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .pc-rate{color:var(--pink-mid)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) #alert-banner,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) #today-banner{background:var(--surface)}
+/* ── Theme palettes ── Noir Gold */
+html.t-gold{--bg:#f6f1e7;--surface:#fffcf5;--surface2:#f3ecdd;--border:#e6dcc6;--divider:rgba(60,45,20,.08);--text:#2a2317;--text2:#6f6350;--text3:#a2947a;--pink:#a5813e;--pink-dark:#7c5f2b;--pink-mid:#c09a52;--pink-light:#f2e8d2;--pink-soft:#e3d3ac;--pink-glow:rgba(165,129,62,.22);--shadow-sm:0 1px 4px rgba(60,45,20,.07);--shadow-md:0 4px 18px rgba(60,45,20,.10);--shadow-lg:0 8px 32px rgba(60,45,20,.16);--shadow-pink:0 4px 20px rgba(165,129,62,.35)}
+html.t-gold.dark{--bg:#0d0b08;--surface:#161310;--surface2:#1e1a13;--border:#2c251a;--divider:rgba(255,255,255,.07);--text:#f0e8d8;--text2:#b3a68c;--text3:#7d715c;--pink:#d4af6a;--pink-dark:#8a6a30;--pink-mid:#c9a24f;--pink-light:rgba(212,175,106,.12);--pink-soft:rgba(212,175,106,.28);--pink-glow:rgba(212,175,106,.25);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(212,175,106,.30)}
+/* ── Ivory Editorial */
+html.t-ivory{--bg:#faf9f7;--surface:#ffffff;--surface2:#f1efeb;--border:#e8e5df;--divider:rgba(30,25,20,.07);--text:#1b1916;--text2:#5c574f;--text3:#98938a;--pink:#b0553a;--pink-dark:#8f422c;--pink-mid:#c97a5e;--pink-light:#f8ebe5;--pink-soft:#eecfc2;--pink-glow:rgba(176,85,58,.20);--shadow-sm:0 1px 4px rgba(30,25,20,.06);--shadow-md:0 4px 18px rgba(30,25,20,.09);--shadow-lg:0 8px 32px rgba(30,25,20,.14);--shadow-pink:0 4px 20px rgba(176,85,58,.32)}
+html.t-ivory.dark{--bg:#131110;--surface:#1c1917;--surface2:#242019;--border:#2f2b26;--divider:rgba(255,255,255,.07);--text:#f0ece6;--text2:#b5aea4;--text3:#837c72;--pink:#d98e73;--pink-dark:#8f422c;--pink-mid:#c77b5f;--pink-light:rgba(217,142,115,.12);--pink-soft:rgba(217,142,115,.28);--pink-glow:rgba(217,142,115,.25);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(217,142,115,.28)}
+/* ── Nordic Sage */
+html.t-sage{--bg:#f4f7f5;--surface:#ffffff;--surface2:#ecf2ee;--border:#e3eae5;--divider:rgba(20,40,30,.07);--text:#131a16;--text2:#4d5c54;--text3:#8a9990;--pink:#3e6b54;--pink-dark:#2f5340;--pink-mid:#5d9177;--pink-light:#e7f1eb;--pink-soft:#c6dfd2;--pink-glow:rgba(62,107,84,.22);--shadow-sm:0 1px 4px rgba(20,40,30,.06);--shadow-md:0 4px 18px rgba(20,40,30,.09);--shadow-lg:0 8px 32px rgba(20,40,30,.14);--shadow-pink:0 4px 20px rgba(62,107,84,.32)}
+html.t-sage.dark{--bg:#0e1411;--surface:#161f1a;--surface2:#1b2620;--border:#26332c;--divider:rgba(255,255,255,.07);--text:#e8efe9;--text2:#a8b8ad;--text3:#6e8076;--pink:#7db894;--pink-dark:#2f5340;--pink-mid:#5d9177;--pink-light:rgba(125,184,148,.12);--pink-soft:rgba(125,184,148,.28);--pink-glow:rgba(125,184,148,.25);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(125,184,148,.28)}
+/* ── Rose Porcelain */
+html.t-rose{--bg:#fbf7f6;--surface:#ffffff;--surface2:#f6eef0;--border:#efe4e2;--divider:rgba(80,40,50,.07);--text:#2b2124;--text2:#6d5a60;--text3:#a58f95;--pink:#bd6076;--pink-dark:#96485c;--pink-mid:#d07f93;--pink-light:#f9edf0;--pink-soft:#f0d6dc;--pink-glow:rgba(189,96,118,.22);--shadow-sm:0 1px 4px rgba(80,40,50,.06);--shadow-md:0 4px 18px rgba(80,40,50,.09);--shadow-lg:0 8px 32px rgba(80,40,50,.14);--shadow-pink:0 4px 20px rgba(189,96,118,.32)}
+html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#32242b;--divider:rgba(255,255,255,.07);--text:#f4eaee;--text2:#bda4ad;--text3:#8a7079;--pink:#e08ca0;--pink-dark:#96485c;--pink-mid:#d07f93;--pink-light:rgba(224,140,160,.12);--pink-soft:rgba(224,140,160,.28);--pink-glow:rgba(224,140,160,.25);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(224,140,160,.28)}
+/* Theme buttons in the topbar (beside language) + realtime picker panel */
+.theme-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);border-radius:999px;height:34px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;color:#fff;white-space:nowrap}
+.theme-btn:hover{background:rgba(255,255,255,.25)}
+.theme-btn:active{transform:scale(.96)}
+.theme-panel{position:fixed;top:calc(var(--topbar-h) + 8px);right:14px;z-index:4001;width:240px;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:14px;display:none}
+.theme-panel.open{display:block}
+.tp-title{font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px}
+.tp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tp-opt{border:1.5px solid var(--border);background:var(--surface2);border-radius:12px;padding:10px 6px;font-family:inherit;font-size:10.5px;font-weight:800;color:var(--text);cursor:pointer;line-height:1.3}
+.tp-opt.active{border-color:var(--pink);box-shadow:0 0 0 2px var(--pink-glow)}
+.tp-sw{display:flex;gap:4px;justify-content:center;margin-bottom:6px}
+.tp-sw i{width:13px;height:13px;border-radius:50%;border:1px solid rgba(0,0,0,.12)}
+.tp-modes{display:flex;gap:6px;margin-top:10px}
+.tp-mode{flex:1;padding:9px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--text);font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer}
+.tp-mode.active{border-color:var(--pink);color:var(--pink);background:var(--pink-light)}
+.tp-hint{font-size:9.5px;color:var(--text3);margin-top:9px;line-height:1.5}
+</style>
 </head>
 <body>
+
+<div class="theme-panel" id="themePanel">
+  <div class="tp-title">🎨 থিম বাছাই — সাথে সাথেই পরিবর্তন হবে</div>
+  <div class="tp-grid">
+    <button type="button" class="tp-opt" data-t="" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#0f5a50"></i><i style="background:#f3f3f8"></i></span>Original</button>
+    <button type="button" class="tp-opt" data-t="t-gold" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#d4af6a"></i><i style="background:#0d0b08"></i></span>Noir Gold</button>
+    <button type="button" class="tp-opt" data-t="t-ivory" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#b0553a"></i><i style="background:#faf9f7"></i></span>Ivory Editorial</button>
+    <button type="button" class="tp-opt" data-t="t-sage" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#3e6b54"></i><i style="background:#f4f7f5"></i></span>Nordic Sage</button>
+    <button type="button" class="tp-opt" data-t="t-rose" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#bd6076"></i><i style="background:#fbf7f6"></i></span>Rose Porcelain</button>
+  </div>
+  <div class="tp-modes">
+    <button type="button" class="tp-mode" data-dark="0" onclick="setPanelMode(false)">☀️ Light</button>
+    <button type="button" class="tp-mode" data-dark="1" onclick="setPanelMode(true)">🌙 Dark</button>
+  </div>
+  <div class="tp-hint">যেকোনো থিমে ক্লিক করলেই সাথে সাথে পুরো অ্যাপ বদলে যাবে · কাজ করার সময়ও যখন খুশি বদলাতে পারবেন · পছন্দ মনে রাখা হবে</div>
+</div>
+<script>if (typeof applyAdminTheme === 'function') applyAdminTheme();</script>
 
 <!-- New-order alert banner (free, cross-platform sound + banner) -->
 <div id="alert-banner"><span class="ab-badge"></span><span id="ab-text"></span><span class="ab-close" id="ab-close">✕</span></div>
@@ -2029,6 +2121,8 @@ select:focus {
         <button id="lang-bn" onclick="App.setLang('bn')">বাং</button>
         <button id="lang-en" onclick="App.setLang('en')">EN</button>
       </div>
+      <button type="button" class="theme-btn" id="theme-mode-btn" onclick="toggleTheme()" title="লাইট / ডার্ক মোড" aria-label="Theme mode">ডার্ক</button>
+      <button type="button" class="theme-btn" onclick="openThemePanel()" title="থিম বাছাই — ৫টি থিম" aria-label="Theme picker">থিম</button>
       <button class="logout-btn" onclick="App.handleLogout()" title="লগআউট" aria-label="Logout">🚪 লগআউট</button>
       <button class="notif-bell-btn active" id="notif-bell" onclick="App.toggleNotifications()" title="নোটিফিকেশন সবসময় চালু — প্রতিদিন ২ বার রিমাইন্ড পাবেন" aria-label="Notifications (always on)">
         🔔
@@ -2059,7 +2153,7 @@ select:focus {
       class="search-input"
       id="search-input"
       type="search"
-      placeholder="নাম, অর্ডার নম্বর বা TrxID দিয়ে খুঁজুন..."
+      placeholder="নাম, অর্ডার নং, TrxID বা পেমেন্টের শেষ ৩ ডিজিট..."
       autocomplete="off"
       data-i18n-ph="searchPlaceholder"
       aria-label="Search orders"

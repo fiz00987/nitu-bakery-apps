@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>নিতুর বেকারি — কাস্টমার অ্যাপ UI ডেমো</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=Poppins:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1d2433;--muted:#7c8698;--line:#e3e8f0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hind Siliguri',sans-serif;background:linear-gradient(180deg,#eef1f6,#e4e9f2);min-height:100vh;padding:26px 18px 70px;color:var(--ink)}
+.page-head{text-align:center;margin-bottom:6px}
+.page-head h1{font-size:24px}
+.page-head p{color:var(--muted);font-size:13.5px;margin-top:4px}
+.vtabs{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin:20px 0 6px;position:sticky;top:10px;z-index:50;background:rgba(238,241,246,.92);backdrop-filter:blur(8px);padding:10px;border-radius:999px}
+.vtab{padding:9px 17px;border-radius:999px;border:1.5px solid var(--line);background:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;color:var(--ink);box-shadow:0 1px 3px rgba(20,30,60,.06)}
+.vtab.active{background:#1d2433;color:#fff;border-color:#1d2433}
+.variant{display:none;margin:24px auto 0;max-width:1500px}
+.variant.show{display:block}
+.v-head{max-width:1080px;margin:0 auto 18px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px 20px;box-shadow:0 2px 10px rgba(20,30,60,.05)}
+.v-head h2{font-size:18px}
+.v-head p{font-size:13.5px;color:var(--muted);margin-top:4px;line-height:1.65}
+.swatches{display:flex;gap:8px;margin-top:10px}
+.sw{width:26px;height:26px;border-radius:8px;border:1px solid rgba(0,0,0,.08)}
+.row{display:flex;gap:28px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.phone-wrap{display:flex;flex-direction:column;align-items:center}
+.screen-label{font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:10px;letter-spacing:.3px}
+.phone{width:322px;background:#0b0d12;border-radius:44px;padding:10px;box-shadow:0 30px 70px rgba(15,25,50,.30)}
+.screen{border-radius:35px;overflow:hidden;height:662px;background:var(--bg);display:flex;flex-direction:column;position:relative}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:88px;height:20px;background:#0b0d12;border-radius:999px;z-index:5}
+.statusbar{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:700;color:var(--muted2);padding:14px 22px 4px}
+.content{flex:1;padding:8px 14px 16px;display:flex;flex-direction:column;gap:11px;overflow:hidden}
+.brand-row{display:flex;justify-content:space-between;align-items:center}
+.logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:17px;box-shadow:0 6px 16px var(--accentglow)}
+.lang{display:flex;gap:3px;background:var(--chipbg);border-radius:999px;padding:3px}
+.lang span{font-size:10px;font-weight:700;padding:4px 10px;border-radius:999px;color:var(--muted)}
+.lang .on{background:var(--accent);color:#fff}
+.card{background:var(--card);border-radius:var(--radius);border:var(--cardline);box-shadow:var(--shadow);padding:13px}
+.sec-title{font-size:13px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px}
+.input{background:var(--inputbg);border:1.5px solid var(--inputline2);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:600;color:var(--text);font-family:inherit;width:100%}
+.hint{font-size:10.5px;color:var(--muted);margin-top:4px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:7px 13px;border-radius:999px;font-size:11.5px;font-weight:700;background:var(--chipbg);color:var(--text)}
+.chip.on{background:var(--accent);color:#fff;box-shadow:0 3px 10px var(--accentglow)}
+.chipgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.fchip{border:1.5px solid var(--inputline2);background:var(--inputbg);border-radius:12px;padding:8px 10px;font-size:11px;font-weight:800;color:var(--text)}
+.fchip small{display:block;font-weight:600;color:var(--muted);font-size:10px;margin-top:2px}
+.fchip.on{border-color:var(--accent);background:var(--accentsoft);color:var(--accent)}
+.fchip.on small{color:var(--accent)}
+.progress{height:6px;border-radius:999px;background:var(--chipbg);overflow:hidden}
+.progress i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:999px}
+.step{font-size:10.5px;font-weight:800;color:var(--accent);letter-spacing:.4px}
+.btn{border:none;border-radius:14px;padding:13px;font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 8px 20px var(--accentglow);width:100%}
+.btn.ghost{background:var(--chipbg);color:var(--text);box-shadow:none}
+.method{display:flex;justify-content:space-between;align-items:center;border:1.5px solid var(--inputline2);background:var(--inputbg);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:800;color:var(--text)}
+.method.on{border-color:var(--accent);background:var(--accentsoft)}
+.method small{display:block;font-weight:600;color:var(--muted);font-size:10.5px}
+.radio{width:16px;height:16px;border-radius:50%;border:2px solid var(--accent);position:relative;flex-shrink:0}
+.radio i{position:absolute;inset:2.5px;border-radius:50%;background:var(--accent)}
+.sumrow{display:flex;justify-content:space-between;font-size:12px;color:var(--muted2);font-weight:600;padding:3px 0}
+.sumrow.total{border-top:1.5px dashed var(--inputline2);margin-top:6px;padding-top:9px;font-size:13.5px;color:var(--text);font-weight:800}
+.done{width:68px;height:68px;border-radius:50%;background:var(--oksoft);color:var(--ok);display:flex;align-items:center;justify-content:center;font-size:32px;margin:8px auto 0;font-weight:800}
+.order-id{font-size:11px;font-weight:800;color:var(--accent);background:var(--accentsoft);border-radius:999px;padding:4px 12px;width:max-content;margin:8px auto 0}
+.v1{--bg:#faf6f1;--card:#ffffff;--text:#2b2015;--muted:#9b8d7c;--muted2:#6f6354;--accent:#c2185b;--accent2:#e5498a;--accentsoft:#fdeef4;--accentglow:rgba(194,24,91,.25);--chipbg:#f4ede4;--inputbg:#ffffff;--inputline2:#eadfd0;--ok:#2e9e5b;--oksoft:#e7f6ec;--radius:16px;--shadow:0 3px 12px rgba(150,110,60,.10);--cardline:1px solid #f1e7d9}
+.v2{--bg:#191210;--card:#241b16;--text:#f4ebe0;--muted:#a89683;--muted2:#c9b7a2;--accent:#d9a44a;--accent2:#e8c078;--accentsoft:rgba(217,164,74,.14);--accentglow:rgba(217,164,74,.22);--chipbg:#2e241d;--inputbg:#2e241d;--inputline2:#3b2e25;--ok:#7fce9a;--oksoft:rgba(127,206,154,.14);--radius:18px;--shadow:0 4px 16px rgba(0,0,0,.35);--cardline:1px solid #332820}
+.v2 .screen-label{color:#8d7b66}
+.v3{--bg:#f6f9f8;--card:#ffffff;--text:#17242a;--muted:#8aa0a3;--muted2:#5d7479;--accent:#0f9d76;--accent2:#31b78d;--accentsoft:#e6f6f0;--accentglow:rgba(15,157,118,.22);--chipbg:#eef3f2;--inputbg:#fff;--inputline2:#e2ecea;--ok:#0f9d76;--oksoft:#e6f6f0;--radius:14px;--shadow:0 2px 8px rgba(23,60,50,.08);--cardline:1px solid #e6efed}
+.v4{--bg:linear-gradient(180deg,#ffeef6,#f3ecff);--card:#ffffff;--text:#33224b;--muted:#a08cb8;--muted2:#6e5b8c;--accent:#ff4f9a;--accent2:#8f6bff;--accentsoft:#ffeef6;--accentglow:rgba(255,79,154,.30);--chipbg:#f6effd;--inputbg:#fff;--inputline2:#f0e4f7;--ok:#22b573;--oksoft:#e3f8ee;--radius:22px;--shadow:0 6px 18px rgba(150,90,200,.14);--cardline:1px solid #f6ecfb}
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>🎂 নিতুর বেকারি — কাস্টমার অ্যাপ UI ডেমো</h1>
+  <p>৪টি ডিজাইন ভ্যারিয়েন্ট · প্রতিটিতে ৪টি স্ক্রিন (হোম · অর্ডার ফর্ম · পেমেন্ট · সাকসেস) · বাটনে ক্লিক করে তুলনা করুন</p>
+</div>
+<div class="vtabs">
+  <button class="vtab active" onclick="showV('v1',this)">১ · সফট ক্রিম</button>
+  <button class="vtab" onclick="showV('v2',this)">২ · ডার্ক পাতিসারি</button>
+  <button class="vtab" onclick="showV('v3',this)">৩ · ফ্রেশ মিনিমাল</button>
+  <button class="vtab" onclick="showV('v4',this)">৪ · প্লেফুল পাস্টেল</button>
+  <button class="vtab" onclick="showAll(this)">সব একসাথে</button>
+</div>
+<section class="variant show" id="v1">
+  <div class="v-head">
+    <h2>১ · সফট ক্রিম বেকারি — উষ্ণ, ব্র্যান্ডেড, বর্তমান স্বপ্নের রিফাইন্ড ভার্সন</h2>
+    <p>ক্রিম-বেইজ ব্যাকগ্রাউন্ডে স্ট্রবেরি গোলাপি অ্যাকসেন্ট। আপনার বর্তমান ব্র্যান্ড আইডেন্টিটি (গোলাপি) রেখে আরও পলিশড, কার্ড-ভিত্তিক লেআউট। ফ্লেভারে দাম চিপেই দেখানো — কাস্টমার সিলেক্ট করার সময়ই দাম বুঝে যায়।</p>
+    <div class="swatches"><span class="sw" style="background:#faf6f1"></span><span class="sw" style="background:#c2185b"></span><span class="sw" style="background:#e5498a"></span><span class="sw" style="background:#f4ede4"></span><span class="sw" style="background:#2e9e5b"></span></div>
+  </div>
+  <div class="row">
+    <div class="phone-wrap"><div class="screen-label">হোম</div><div class="phone"><div class="screen"><div class="notch"></div><div class="statusbar"><span>৯:৪১</span><span>📶 🔋</span></div>
+      <div class="content">
+        <div class="brand-row"><div class="logo">নি</div><div class="lang"><span class="on">বাংলা</span><span>English</span></div></div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center;gap:12px">
+          <div style="font-size:52px">🎂</div>
+          <div style="font-size:24px;font-weight:800;color:var(--text)">নিতুর বেকারি</div>
+          <div style="font-size:12.5px;color:var(--muted2);line-height:1.8">ঘরে বানানো তাজা কেক<br>শুধু অর্ডারেই বানানো হয় 🧁</div>
+          <div class="chips" style="justify-content:center"><span class="chip">১০০% হোমমেড</span><span class="chip">চট্টগ্রাম ডেলিভারি</span></div>
+        </div>
+        <button class="btn">অর্ডার শুরু করুন</button>
+        <div style="text-align:center;font-size:10.5px;color:var(--muted)">Facebook পেজে আমাদের খুঁজুন</div>
+      </div>
+    </div></div></div>
+    <div class="phone-wrap"><div class="screen-label">অর্ডার ফর্ম</div><div class="phone"><div class="screen"><div class="notch"></div><div class="statusbar"><span>৯:৪১</span><span>📶 🔋</span></div>
+      <div class="content">
+        <div class="brand-row"><span class="step">ধাপ ১ / ৫</span><div class="lang"><span class="on">বাংলা</span><span>English</span></div></div>
+        <div class="progress"><i style="width:20%"></i></div>
+        <div class="card" style="display:flex;flex-direction:column;gap:11px">
+          <div class="sec-title">🎂 কেক তথ্য</div>
+          <div class="field"><label>আপনার নাম *</label><div class="input">রাফি আহমেদ</div></div>
+          <div class="field"><label>ওজন *</label><div class="chips"><span class="chip">১ পাউন্ড</span><span class="chip on">২ পাউন্ড</span><span class="chip">১ KG</span></div></div>
+          <div class="field"><label>ফ্লেভার *</label>
+            <div class="chipgrid">
+              <div class="fchip on">চকলেট স্পঞ্জ<small>৳৯০০ থেকে</small></div>
+              <div class="fchip">ভ্যানিলা স্পঞ্জ<small>৳৮২০ থেকে</small></div>
+              <div class="fchip">ব্ল্যাক ফরেস্ট<small>৳৯২০ থেকে</small></div>
+              <div class="fchip">চকলেট মাডকেক<small>৳১,২০০ থেকে</small></div>
+            </div>
+          </div>
+        </div>
+        <div class="card"><div class="field" style="margin:0"><label>কেকের নির্ধারিত মূল্য *</label><div class="input">৯০০</div></div></div>
+        <button class="btn" style="margin-top:auto">পরবর্তী →</button>
+      </div>
+    </div></div></div>
+      <div class="phone-wrap"><div class="screen-label">পেমেন্ট</div><div class="phone"><div class="screen"><div class="notch"></div><div class="statusbar"><span>৯:৪১</span><span>📶 🔋</span></div>
+      <div class="content">
+        <span class="step">ধাপ ৪ / ৫ · পেমেন্ট</span>
+        <div class="card">
+          <div class="sumrow"><span>কেকের মূল্য</span><span>৳৯০০</span></div>
+          <div class="sumrow"><span>ডেলিভারি</span><span>৳৬০ (আলাদা)</span></div>
+          <div class="sumrow total"><span>মোট</span><span>৳৯০০</span></div>
+        </div>
+        <div class="card" style="display:flex;flex-direction:column;gap:8px">
+          <div class="sec-title">💳 পেমেন্ট পদ্ধতি</div>
+          <div class="method on"><span>বিকাশ<small>চার্জ ১.৮২% যোগ হবে</small></span><span class="radio"><i></i></span></div>
+          <div class="method"><span>নগদ<small>চার্জ ১.৪৯% যোগ হবে</small></span><span class="radio"></span></div>
+          <div class="method"><span>ব্যাংক (NPSB)<small>কোনো চার্জ নেই</small></span><span class="radio"></span></div>
+        </div>
+        <div class="card">
+          <div class="field"><label>আপনি কত টাকা পাঠাতে চান?</label>
+            <div class="chips"><span class="chip on">৫০% অগ্রিম</span><span class="chip">১০০% পরিশোধ</span></div>
+          </div>
+          <div class="input" style="margin-top:8px;font-weight:800">৳৪৬২</div>
+          <div class="hint">অটো হিসাব (চার্জসহ) · বাকি ৳৪৩৮ পরে দিতে হবে</div>
+        </div>
+        <button class="btn" style="margin-top:auto">✅ অর্ডার জমা দিন</button>
+      </div>
+    </div></div></div>
+      <div class="phone-wrap"><div class="screen-label">সাকসেস</div><div class="phone"><div class="screen"><div class="notch"></div><div class="statusbar"><span>৯:৪১</span><span>📶 🔋</span></div>
+      <div class="content" style="text-align:center">
+        <div class="done">✓</div>
+        <div style="font-size:18px;font-weight:800;color:var(--text)">অর্ডার সফলভাবে জমা হয়েছে!</div>
+        <div class="order-id">অর্ডার নং NB-0509-4821</div>
+        <div class="card" style="text-align:left">
+          <div class="sumrow"><span>কেক</span><span>২ পাউন্ড · চকলেট স্পঞ্জ</span></div>
+          <div class="sumrow"><span>ডেলিভারি</span><span>১২ সেপ্টে · ৪:০০ PM</span></div>
+          <div class="sumrow"><span>মোট</span><span>৳৯০০</span></div>
+          <div class="sumrow"><span>প্রদান</span><span style="color:var(--ok);font-weight:800">৳৪৬২</span></div>
+          <div class="sumrow total"><span>বাকি</span><span>৳৪৩৮</span></div>
+        </div>
+        <button class="btn">📥 অর্ডার কার্ড ডাউনলোড</button>
+        <button class="btn ghost">🔄 নতুন অর্ডার দিন</button>
+      </div>
+    </div></div></div>
+</div>
+</section>
+<section class="variant" id="v2">
+  <div class="v-head">
+    <h2>২ · ডার্ক পাতিসারি — প্রিমিয়াম, এলিগেন্ট (এসপ্রেসো + গোল্ড)</h2>
+    <p>ডার্ক চকলেট-কফি ব্যাকগ্রাউন্ডে গোল্ড অ্যাকসেন্ট। হাই-এন্ড পাতিসারি ফিল — বড়/ব্যয়বহুল কেক অর্ডারে প্রিমিয়াম ভাব আনে, রাতে ব্যবহারেও চোখে আরাম।</p>
+    <div class="swatches"><span class="sw" style="background:#191210"></span><span class="sw" style="background:#241b16"></span><span class="sw" style="background:#d9a44a"></span><span class="sw" style="background:#e8c078"></span><span class="sw" style="background:#7fce9a"></span></div>
+  </div>
+  <div class="row" data-clone="v1"></div>
+</section>
+<section class="variant" id="v3">
+  <div class="v-head">
+    <h2>৩ · ফ্রেশ মিনিমাল — পরিষ্কার, দ্রুত, আধুনিক</h2>
+    <p>সাদা কার্ড, টিল-গ্রিন অ্যাকসেন্ট, কম শ্যাডো, টাইট রেডিয়াস। ফর্ম দ্রুত পড়া যায় — "অর্ডার দেওয়া সহজ" ফিল। মডার্ন অ্যাপের মতো লাগে।</p>
+    <div class="swatches"><span class="sw" style="background:#f6f9f8"></span><span class="sw" style="background:#0f9d76"></span><span class="sw" style="background:#31b78d"></span><span class="sw" style="background:#17242a"></span><span class="sw" style="background:#e6f6f0"></span></div>
+  </div>
+  <div class="row" data-clone="v1"></div>
+</section>
+<section class="variant" id="v4">
+  <div class="v-head">
+    <h2>৪ · প্লেফুল পাস্টেল — মজার, তরুণ-ফ্রেন্ডলি, সোশ্যাল ভাইব</h2>
+    <p>পাস্টেল গ্রেডিয়েন্ট ব্যাকগ্রাউন্ড, গোলাপি-বেগুনি গ্রেডিয়েন্ট বাটন, বড় গোল রেডিয়াস। ফেসবুক-কাস্টমার বেসের জন্য মানানসই ফান ব্র্যান্ড ভাব।</p>
+    <div class="swatches"><span class="sw" style="background:#ffeef6"></span><span class="sw" style="background:#ff4f9a"></span><span class="sw" style="background:#8f6bff"></span><span class="sw" style="background:#33224b"></span><span class="sw" style="background:#22b573"></span></div>
+  </div>
+  <div class="row" data-clone="v1"></div>
+</section>
+<!--VARIANTS-->
+<script>
+// Clone v1's screens into the other variants (same layout, different theme)
+document.querySelectorAll('[data-clone]').forEach(row => {
+  const src = document.getElementById(row.dataset.clone).querySelector('.row');
+  if (src) row.innerHTML = src.innerHTML;
+});
+function showV(id,btn){document.querySelectorAll('.variant').forEach(v=>v.classList.remove('show'));document.querySelectorAll('.vtab').forEach(b=>b.classList.remove('active'));document.getElementById(id).classList.add('show');btn.classList.add('active');window.scrollTo({top:0,behavior:'smooth'});}
+function showAll(btn){document.querySelectorAll('.variant').forEach(v=>v.classList.add('show'));document.querySelectorAll('.vtab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+showV('v1',document.querySelector('.vtab'));
+</script>
+</body>
+</html>

@@ -54,7 +54,7 @@ window.App = (() => {
     bn: {
       brand: 'অর্ডার ম্যানেজার', connecting: 'ক্লাউডে সংযুক্ত হচ্ছে...',
       backup: '⬆ ব্যাকআপ', restore: '⬇ রিস্টোর',
-      searchPlaceholder: 'নাম, অর্ডার নম্বর বা TrxID দিয়ে খুঁজুন...',
+      searchPlaceholder: 'নাম, অর্ডার নং, TrxID বা পেমেন্টের শেষ ৩ ডিজিট...',
       allStatus: 'সব স্ট্যাটাস', st_confirmed: 'কনফার্মড', st_baking: 'বেক হচ্ছে',
       st_delivered: 'ডেলিভার্ড', st_cancelled: 'বাতিল',
       sumToday: 'আজ ডেলিভারি', sumBake: 'আজ রাতে বেক', sumWeek: 'এই সপ্তাহে',
@@ -78,7 +78,7 @@ window.App = (() => {
     en: {
       brand: 'Order Manager', connecting: 'Connecting to cloud...',
       backup: '⬆ Backup', restore: '⬇ Restore',
-      searchPlaceholder: 'Search by name, order no. or TrxID...',
+      searchPlaceholder: 'Search by name, order no., TrxID or last 3 digits of payment...',
       allStatus: 'All Status', st_confirmed: 'Confirmed', st_baking: 'Baking',
       st_delivered: 'Delivered', st_cancelled: 'Cancelled',
       sumToday: 'Today\'s Delivery', sumBake: 'Bake Tonight', sumWeek: 'This Week',
@@ -626,16 +626,21 @@ window.App = (() => {
   };
 
   // ─── Filtering ───────────────────────────────────────────────
-  // Search matches the order number, the customer's name, or the
-  // transaction ID — whatever the admin remembers.
+  // Search matches the order number, name, phone, the transaction ID,
+  // or the LAST 3 DIGITS of the bKash/Nagad payment number that the
+  // customer typed in the order form. Everything is normalized (spaces,
+  // dashes etc. ignored) so "456" also finds trx "8K3N456" or "456".
   const getFiltered = pool => {
-    const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
+    const q = (document.getElementById('search-input').value || '').trim().toLowerCase();
     if (!q) return pool;
-    return pool.filter(o =>
-      String(o.orderId || '').toLowerCase().includes(q) ||
-      String(o.name || o.customerName || '').toLowerCase().includes(q) ||
-      String(o.trx || '').toLowerCase().includes(q)
-    );
+    const nq = q.replace(/[\s\-.+()]/g, '');
+    const norm = s => String(s == null ? '' : s).toLowerCase().replace(/[\s\-.+()]/g, '');
+    return pool.filter(o => {
+      const hay = [o.orderId, o.name, o.customerName, o.trx, o.transactionId,
+        o.phone, o.customerPhone, o.receiverPhone, o.receiver]
+        .map(norm).filter(Boolean).join(' ');
+      return hay.includes(nq);
+    });
   };
 
   const clearSearch = () => {
