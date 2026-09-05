@@ -15,6 +15,7 @@ let advanceMethod = ''; // gateway used to send the advance: bkash | nagad | ban
 let downloadPressed = false;
 let autoCloseTimer = null;
 let autoCloseTick = null;
+let flavourNoticeShown = false; // "select the exact flavour" notice — once per session
 
 // ─── Splash screen (~2.5s welcome, then fade to the entry screen) ──
 (function initSplash() {
@@ -441,6 +442,39 @@ function showDeliveryPopup() {
 function showFlavourPopup() {
   // Always available: fires on flavour change AND via the ❗ info button
   showTextPopup('flavours.txt', 'ফ্লেভার নির্দেশিকা');
+}
+
+// ─── "Select the exact flavour" notice ──────────────────────
+// Customers often pick a pricier flavour than the one discussed in the
+// Facebook chat (e.g. Chocolate Sponge agreed, Chocolate Mud selected),
+// forcing a price re-negotiation afterwards. A single friendly popup on the
+// first tap of the flavour dropdown reminds them to match the chat. Full
+// flavour details stay available via the ❗ button and the link in the popup.
+function showFlavourNotice() {
+  if (flavourNoticeShown) return; // only once per session
+  flavourNoticeShown = true;
+  // Close the native dropdown picker so the notice is read first
+  document.getElementById('f-flavour').blur();
+  const bn = lang !== 'en';
+  document.getElementById('flavour-notice-title').textContent = bn ? 'মনোযোগ' : 'Attention';
+  document.getElementById('flavour-notice-body').innerHTML = bn
+    ? 'অনুগ্রহ করে ঠিক সেই ফ্লেভারটি সিলেক্ট করুন যেটি নিয়ে Facebook-এ আমাদের সাথে কথা হয়েছিল। ভিন্ন ফ্লেভার সিলেক্ট করলে কেকের মূল্য বেড়ে যেতে পারে।'
+    : 'Please select the exact flavour that was talked about in the Facebook conversation. Choosing a different flavour might change the price.';
+  document.getElementById('flavour-notice-ok').textContent = bn ? 'ঠিক আছে' : 'OK';
+  document.getElementById('flavour-notice-link').textContent = bn ? 'সব ফ্লেভারের বিবরণ দেখুন' : 'See all flavour details';
+  document.getElementById('flavour-notice-popup').classList.add('show');
+}
+
+function closeFlavourNotice(event) {
+  if (event && event.target !== document.getElementById('flavour-notice-popup')) return;
+  document.getElementById('flavour-notice-popup').classList.remove('show');
+}
+
+// "See all flavour details" link inside the notice → the full flavours.txt
+// guide (the same popup as the ❗ button beside the dropdown)
+function openFlavourGuideFromNotice() {
+  closeFlavourNotice();
+  showFlavourPopup();
 }
 
 // ─── Cake writing: 500-word limit ─────────────────────────────
@@ -1234,6 +1268,7 @@ function resetForm() {
   document.querySelectorAll('#form-screen select').forEach(el => el.selectedIndex = 0);
   currentPhotos = []; renderPhotos(); advanceType = ''; lastAutoSend = 0; lastAutoBase = 0; isSurprise = false; cakeWritingNoticeShown = false;
   advanceMethod = '';
+  flavourNoticeShown = false; // show the "exact flavour" notice again on a new order
   document.querySelectorAll('.adv-method-opt').forEach(el => el.classList.remove('active'));
   updateWritingCount();
   document.getElementById('calc-box').classList.remove('show');

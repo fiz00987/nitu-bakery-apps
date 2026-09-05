@@ -295,7 +295,7 @@ input.due-input:focus{outline:none;border-color:#dcdcdc;box-shadow:none}
         <label data-bn="ফ্লেভার *" data-en="Flavour *">ফ্লেভার *</label>
         <button type="button" title="ফ্লেভার নির্দেশিকা / Flavour guide" onclick="showFlavourPopup()" style="background:none;border:none;font-size:13px;line-height:1;cursor:pointer;padding:0 2px;color:var(--pink)">❗</button>
       </div>
-      <select id="f-flavour" onchange="showFlavourPopup()"><option value="">নির্বাচন করুন</option></select>
+      <select id="f-flavour" onfocus="showFlavourNotice()"><option value="">নির্বাচন করুন</option></select>
       <div class="note-box">সব ফ্লেভার সব সময় পাওয়া নাও যেতে পারে। কিছু ফ্লেভারের জন্য নির্দিষ্ট ওজন প্রয়োজন। বিস্তারিত জানতে আমাদের Facebook পেজে যোগাযোগ করুন।</div>
     </div>
     <div class="field">
@@ -501,6 +501,22 @@ input.due-input:focus{outline:none;border-color:#dcdcdc;box-shadow:none}
     <div class="popup-header"><h3 style="font-size:16px">⚠️ অটো হিসাব</h3><button type="button" class="popup-close" onclick="closeAdvanceWarn()">×</button></div>
     <div style="padding:16px 18px;font-size:13.5px;line-height:1.7;color:var(--text2)" id="advance-warn-msg"></div>
     <div style="padding:0 18px 18px"><button type="button" class="btn-primary" style="margin-top:0" id="advance-warn-ok" onclick="closeAdvanceWarn()">বুঝেছি</button></div>
+  </div>
+</div>
+
+<!-- "Select the exact flavour" notice — one friendly reminder before the
+     customer picks a flavour, so the dropdown matches the Facebook chat.
+     Full flavour details remain available via the ❗ button / the link inside. -->
+<div class="popup-overlay" id="flavour-notice-popup" onclick="closeFlavourNotice(event)">
+  <div class="popup" style="max-width:380px" role="alertdialog" aria-modal="true" aria-labelledby="flavour-notice-title">
+    <div class="popup-header"><h3 id="flavour-notice-title" style="font-size:16px">মনোযোগ</h3><button type="button" class="popup-close" onclick="closeFlavourNotice()">×</button></div>
+    <div class="popup-content" id="flavour-notice-body" style="font-size:14px;line-height:1.9;text-align:center"></div>
+    <div style="padding:0 18px 14px;text-align:center">
+      <a href="javascript:void(0)" id="flavour-notice-link" onclick="openFlavourGuideFromNotice()" style="color:var(--pink);font-size:12.5px;text-decoration:underline"></a>
+    </div>
+    <div style="padding:0 18px 18px">
+      <button type="button" class="btn-primary" style="width:100%;margin-top:0" id="flavour-notice-ok" onclick="closeFlavourNotice()">ঠিক আছে</button>
+    </div>
   </div>
 </div>
 
