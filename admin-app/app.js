@@ -246,9 +246,11 @@ window.App = (() => {
     document.querySelectorAll('[data-i18n-ph]').forEach(el => {
       el.setAttribute('placeholder', tr(el.getAttribute('data-i18n-ph')));
     });
-    // toggle buttons
-    document.getElementById('lang-bn').classList.toggle('active', lang === 'bn');
-    document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+    // toggle buttons (removed in the icon-topbar revamp — guarded for safety)
+    const langBn = document.getElementById('lang-bn');
+    const langEn = document.getElementById('lang-en');
+    if (langBn) langBn.classList.toggle('active', lang === 'bn');
+    if (langEn) langEn.classList.toggle('active', lang === 'en');
     // sort button label
     document.getElementById('sort-label').textContent = tr('sort_' + sortMode);
   };
@@ -260,6 +262,8 @@ window.App = (() => {
     render();
     syncTopbarHeight();  // labels change → re-measure the sticky offset
   };
+
+  const toggleLang = () => { setLang(lang === 'bn' ? 'en' : 'bn'); };
 
   // ─── Sync status ─────────────────────────────────────────────
   const setSyncStatus = (state, msg) => {
@@ -2953,6 +2957,7 @@ window.App = (() => {
     removePhoto,
     openPhotoLightbox,
     setLang,
+    toggleLang,
     openPayCharge,
     closePayCharge,
     closePayChargeBg,

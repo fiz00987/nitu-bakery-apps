@@ -256,32 +256,6 @@ button { cursor: pointer; }
 }
 .status-pill.error { background: rgba(255,255,255,0.1); border-color: rgba(255,100,100,0.5); }
 
-/* Language toggle */
-.lang-toggle {
-  display: flex;
-  align-items: center;
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.28);
-  border-radius: var(--radius-pill);
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.lang-toggle button {
-  border: none;
-  background: transparent;
-  color: rgba(255,255,255,0.7);
-  font-size: 11px;
-  font-weight: 700;
-  padding: 5px 10px;
-  cursor: pointer;
-  transition: background var(--dur-fast), color var(--dur-fast);
-  line-height: 1;
-}
-.lang-toggle button.active {
-  background: #fff;
-  color: var(--pink);
-}
-
 .sync-dot {
   width: 7px; height: 7px;
   border-radius: 50%;
@@ -1399,19 +1373,6 @@ button { cursor: pointer; }
 .login-error.show {
   display: block;
 }
-.logout-btn {
-  background: rgba(255,255,255,0.13);
-  border: 1px solid rgba(255,255,255,0.3);
-  color: #fff;
-  padding: 5px 10px;
-  font-size: 11px;
-  border-radius: var(--radius-pill);
-  cursor: pointer;
-  font-weight: 600;
-}
-.logout-btn:active {
-  background: rgba(255,255,255,0.22);
-}
 
 /* =============================================
    LIGHTBOX
@@ -1926,7 +1887,7 @@ function applyAdminTheme(){
   document.querySelectorAll('.tp-opt').forEach(function(o){o.classList.toggle('active',(o.dataset.t||'')===(s.theme||''))});
   document.querySelectorAll('.tp-mode').forEach(function(o){o.classList.toggle('active',(o.dataset.dark==='1')===!!s.dark)});
   var mb=document.getElementById('theme-mode-btn');
-  if(mb)mb.textContent=s.dark?'লাইট':'ডার্ক';
+  if(mb)mb.textContent=s.dark?'☀️':'🌙';
 }
 function toggleTheme(){var s=readThemeState();s.dark=!document.documentElement.classList.contains('dark');saveThemeState(s);applyAdminTheme();}
 function pickTheme(el){var s=readThemeState();s.theme=el.dataset.t||'';saveThemeState(s);applyAdminTheme();}
@@ -1946,7 +1907,6 @@ try{(function(){var s=JSON.parse(localStorage.getItem('nitu-admin-theme-v2')||'n
 }
 :is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) body::before{background:rgba(10,17,24,.90)}
 /* Pin the few hardcoded white backgrounds (theme-aware via variables) */
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .lang-toggle button.active{background:var(--surface2)}
 :is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .search-input,
 :is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .notes-input,
 :is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .field input,
@@ -1971,10 +1931,27 @@ html.t-sage.dark{--bg:#0e1411;--surface:#161f1a;--surface2:#1b2620;--border:#263
 /* ── Rose Porcelain */
 html.t-rose{--bg:#fbf7f6;--surface:#ffffff;--surface2:#f6eef0;--border:#efe4e2;--divider:rgba(80,40,50,.07);--text:#2b2124;--text2:#6d5a60;--text3:#a58f95;--pink:#bd6076;--pink-dark:#96485c;--pink-mid:#d07f93;--pink-light:#f9edf0;--pink-soft:#f0d6dc;--pink-glow:rgba(189,96,118,.22);--shadow-sm:0 1px 4px rgba(80,40,50,.06);--shadow-md:0 4px 18px rgba(80,40,50,.09);--shadow-lg:0 8px 32px rgba(80,40,50,.14);--shadow-pink:0 4px 20px rgba(189,96,118,.32)}
 html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#32242b;--divider:rgba(255,255,255,.07);--text:#f4eaee;--text2:#bda4ad;--text3:#8a7079;--pink:#e08ca0;--pink-dark:#96485c;--pink-mid:#d07f93;--pink-light:rgba(224,140,160,.12);--pink-soft:rgba(224,140,160,.28);--pink-glow:rgba(224,140,160,.25);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(224,140,160,.28)}
-/* Theme buttons in the topbar (beside language) + realtime picker panel */
-.theme-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);border-radius:999px;height:34px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;color:#fff;white-space:nowrap}
-.theme-btn:hover{background:rgba(255,255,255,.25)}
-.theme-btn:active{transform:scale(.96)}
+/* Compact icon buttons in the topbar (language · mode · theme · logout) */
+.ico-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);border-radius:50%;width:33px;height:33px;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;cursor:pointer;color:#fff;flex-shrink:0;transition:background var(--dur-fast),transform var(--dur-fast)}
+.ico-btn:hover{background:rgba(255,255,255,.25)}
+.ico-btn:active{transform:scale(.9)}
+/* Live status = tiny green dot light only (labels hidden, states kept in JS) */
+.status-pill{display:flex;align-items:center;background:transparent;border:none;padding:0;gap:0;width:auto;white-space:nowrap}
+.status-pill.error{background:transparent;border:none}
+#sync-label{display:none}
+.sync-dot{width:9px;height:9px;border-radius:50%;background:#69f0ae;flex-shrink:0;box-shadow:0 0 0 3px rgba(105,240,174,.22);transition:background var(--dur-base)}
+.sync-dot.error{background:#ff6b6b;box-shadow:0 0 0 3px rgba(255,107,107,.22)}
+.sync-dot.syncing{background:#ffd54f;animation:pulse-dot 1s ease-in-out infinite;box-shadow:0 0 0 3px rgba(255,213,79,.25)}
+/* Phone fit: compact the icon row so it stays on one line on narrow screens */
+@media (max-width: 420px){
+  .topbar{padding:10px 12px}
+  .topbar-row1{gap:8px}
+  .topbar-right{gap:5px}
+  .ico-btn{width:29px;height:29px;font-size:13px}
+  .notif-bell-btn{width:30px;height:30px;font-size:14px}
+  .topbar-brand img{height:40px}
+  .topbar-brand p{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
 .theme-panel{position:fixed;top:calc(var(--topbar-h) + 8px);right:14px;z-index:4001;width:240px;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:14px;display:none}
 .theme-panel.open{display:block}
 .tp-title{font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px}
@@ -2117,13 +2094,10 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
       </div>
     </div>
     <div class="topbar-right">
-      <div class="lang-toggle" role="group" aria-label="Language">
-        <button id="lang-bn" onclick="App.setLang('bn')">বাং</button>
-        <button id="lang-en" onclick="App.setLang('en')">EN</button>
-      </div>
-      <button type="button" class="theme-btn" id="theme-mode-btn" onclick="toggleTheme()" title="লাইট / ডার্ক মোড" aria-label="Theme mode">ডার্ক</button>
-      <button type="button" class="theme-btn" onclick="openThemePanel()" title="থিম বাছাই — ৫টি থিম" aria-label="Theme picker">থিম</button>
-      <button class="logout-btn" onclick="App.handleLogout()" title="লগআউট" aria-label="Logout">🚪 লগআউট</button>
+      <button type="button" class="ico-btn" onclick="App.toggleLang()" title="ভাষা / Language" aria-label="Language">🌐</button>
+      <button type="button" class="ico-btn" id="theme-mode-btn" onclick="toggleTheme()" title="লাইট / ডার্ক মোড" aria-label="Theme mode">🌙</button>
+      <button type="button" class="ico-btn" onclick="openThemePanel()" title="থিম বাছাই — ৫টি থিম" aria-label="Theme picker">🎨</button>
+      <button type="button" class="ico-btn" onclick="App.handleLogout()" title="লগআউট" aria-label="Logout">🚪</button>
       <button class="notif-bell-btn active" id="notif-bell" onclick="App.toggleNotifications()" title="নোটিফিকেশন সবসময় চালু — প্রতিদিন ২ বার রিমাইন্ড পাবেন" aria-label="Notifications (always on)">
         🔔
         <span class="notif-badge hidden" id="notif-badge"></span>
