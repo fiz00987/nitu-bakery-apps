@@ -37,6 +37,8 @@ window.App = (() => {
   let confirmCb     = null;
   let currentPhoto  = '';
   let currentPhotos = [];           // multi-photo (mirrors customer app)
+  let adminExtraPhotos = {};        // { cakeIndex: [photos] } for cakes 2-5
+  let adminCakeCount = 1;           // cakes in the modal order (1-5)
   let currentDelPhoto = '';         // completed-cake photo (≤50KB data URL)
   let notepadText   = '';
   let notepadReady  = false;        // first Firebase snapshot received
@@ -521,8 +523,15 @@ window.App = (() => {
     var flavN = o.flavourName || HB_FLAV_EN[o.flavour] || '';
     var when  = hbHumanWhen(o.deliveryDate || o.date);
     var due   = Math.max(0, Math.round((o.total || 0) - ((o.advanceTotal != null ? o.advanceTotal : o.advance) || 0)));
-    return name + ' just placed a ' +
-      (((w ? w + ' ' : '') + (flavN || '')).trim() || 'cake') + ' cake' +
+    var cakeDesc;
+    if (o.cakes && o.cakes.length > 1) {
+      cakeDesc = o.cakes.length + ' cakes: ' + o.cakes.map(function (c) {
+        return ((String(c.weightLabel || c.weight || '').trim() + ' ' + String(c.flavourName || c.flavour || '').trim()).trim() || 'cake');
+      }).join(', ');
+    } else {
+      cakeDesc = (((w ? w + ' ' : '') + (flavN || '')).trim() || 'cake') + ' cake';
+    }
+    return name + ' just placed ' + cakeDesc +
       (when ? ' for ' + when : '') +
       (o.total ? '\n💰 Total: ৳' + Math.round(o.total) : '') +
       (due > 0 ? '\n⚠️ Due: ৳' + due : '') +
@@ -600,6 +609,15 @@ window.App = (() => {
 
   // File import listener
   document.getElementById('import-file').addEventListener('change', e => importData(e));
+
+  // "Receiver phone = customer phone" live sync: if the checkbox is checked,
+  // keep the receiver phone mirrored as the customer types a new number.
+  document.getElementById('f-phone').addEventListener('input', () => {
+    const cb = document.getElementById('f-receiver-same-cust');
+    if (!cb || !cb.checked) return;
+    const rp = document.getElementById('f-receiver-phone');
+    if (rp) rp.value = (document.getElementById('f-phone').value || '').trim();
+  });
 
   // Search debounce
   // Search only by order number (debounced)
@@ -689,7 +707,12 @@ window.App = (() => {
     let msg = `আপনার নামঃ ${o.name}\n`;
     msg += `ডেলিভারি পয়েন্টঃ ${o.address || ''}\n`;
     msg += `ডেলিভারির তারিখ এবং সময়ঃ ${o.date ? fmtDate(o.date) : ''} — ${o.time || ''}\n`;
-    msg += `রিসিভার এর ফোন নাম্বারঃ ${pm ? pm[0] : rp}\n\nCake ${weightText(o)}\n`;
+    msg += `রিসিভার এর ফোন নাম্বারঃ ${pm ? pm[0] : rp}\n\n`;
+    if (o.cakes && o.cakes.length > 1) {
+      msg += o.cakes.map(c => `Cake ${bnCake(c.cakeIndex || 0)}- ${[c.weightLabel || c.weight, c.flavourName || c.flavour].filter(Boolean).join(' ')}`).join('\n') + '\n';
+    } else {
+      msg += `Cake ${weightText(o)}\n`;
+    }
     // Cake due (total minus what actually counts toward the cake, i.e. excluding
     // any bKash cash-out charge) so the SRS message states the full-payment due.
     const cakeDue = Math.max(0, (Number(o.total) || 0) - Math.max(0, (Number(o.paid) || 0) - bkashCharge(o)));
@@ -712,9 +735,16 @@ window.App = (() => {
     // Customer name
     L.push(`${o.name || ''}`);
     L.push('');
-    // Weight + flavour
-    L.push(`${weightText(o)}${weightText(o) && o.flavour ? ' ' : ''}${flavourLabel(o)}`);
-    L.push('');
+    // Weight + flavour (multi-cake orders list every cake)
+    if (o.cakes && o.cakes.length > 1) {
+      o.cakes.forEach(c => {
+        L.push(`কেক ${bnCake(c.cakeIndex || 0)}- ${[c.weightLabel || c.weight, c.flavourName || c.flavour].filter(Boolean).join(' ')}`);
+        L.push('');
+      });
+    } else {
+      L.push(`${weightText(o)}${weightText(o) && o.flavour ? ' ' : ''}${flavourLabel(o)}`);
+      L.push('');
+    }
     // Size
     if (o.size) { L.push(`size- ${o.size}`); L.push(''); }
     // Writing
@@ -815,7 +845,7 @@ window.App = (() => {
     <div class="card-head-body">
       ${o.orderId ? `<div class="card-order-id">🆔 ${esc(o.orderId)}</div>` : ''}
       <div class="card-name"><span class="card-name-text">${esc(o.name)}</span>${tallyBadge}${customerBadge}<button class="name-copy-btn" type="button" onclick="event.stopPropagation();App.copyCardName(this)" title="নাম কপি করুন">📋 কপি</button></div>
-      <div class="card-meta">${esc(weightText(o))}${weightText(o) && o.flavour ? ' · ' : ''}${esc(flavourLabel(o))}${o.time ? ' · ' + esc(o.time) : ''}</div>
+      <div class="card-meta">${esc(weightText(o))}${weightText(o) && o.flavour ? ' · ' : ''}${esc(flavourLabel(o))}${o.time ? ' · ' + esc(o.time) : ''}${(o.cakes && o.cakes.length > 1) ? ' · <b>' + o.cakes.length + 'টি কেক</b>' : ''}</div>
       ${cdChip}
       <div class="card-chips">${statusChip(o)}${dueChip}${surpriseChip}${deliveryChip}</div>
     </div>
@@ -832,7 +862,11 @@ window.App = (() => {
 
     <div class="detail-section">
       <div class="detail-title">🎂 কেক বিবরণ</div>
-      ${drow('⚖️', 'ওজন ও ফ্লেভার', `${weightText(o)} — ${flavourLabel(o)}`)}
+      ${(o.cakes && o.cakes.length > 1)
+        ? o.cakes.map(c => drow('🎂', 'কেক ' + bnCake(c.cakeIndex || 0),
+            [c.weightLabel || c.weight, c.flavourName || c.flavour].filter(Boolean).join(' — ')
+            + (c.writing ? ` · ✍️ ${c.writing}` : ''))).join('')
+        : drow('⚖️', 'ওজন ও ফ্লেভার', `${weightText(o)} — ${flavourLabel(o)}`)}
       ${drow('📐', 'সাইজ', o.size)}
       ${o.photoNote ? `<div class="pay-note" style="border-left:3px solid var(--amber);background:var(--amber-light, #fff7e6)">📝 <strong>${lang==='bn'?'ছবির নোট:':'Photo note:'}</strong> ${esc(o.photoNote)}</div>` : ''}
       ${drow('✍️', 'লেখা', o.writing)}
@@ -1943,6 +1977,9 @@ window.App = (() => {
       : (o.photo ? [o.photo] : []);
     renderModalPhotos();
 
+    // Multi-cake: restore the quantity selector + cakes 2-5 blocks
+    restoreAdminCakes(o);
+
     // Completed-cake photo (shown in the completed order database)
     currentDelPhoto = o.deliveredPhoto || '';
     renderModalDelPhoto();
@@ -1959,6 +1996,19 @@ window.App = (() => {
     currentPhotos = [];
     currentDelPhoto = '';
     pcChannel = '';
+    adminCakeCount = 1;
+    adminExtraPhotos = {};
+    renderAdminExtraCakes();
+    // Reset the "receiver phone = customer phone" shortcut + writing toggle so
+    // state never leaks between two different orders.
+    const rscCb = document.getElementById('f-receiver-same-cust');
+    if (rscCb) rscCb.checked = false;
+    const rscIn = document.getElementById('f-receiver-phone');
+    if (rscIn) { rscIn.readOnly = false; rscIn.style.opacity = '1'; }
+    const nwCb = document.getElementById('f-no-writing');
+    if (nwCb) nwCb.checked = false;
+    const nwIn = document.getElementById('f-writing');
+    if (nwIn) { nwIn.disabled = false; nwIn.style.opacity = '1'; }
     document.getElementById('f-charge-deduct').value = '';
     const o = key ? orders.find(x => x.firebaseKey === key) : null;
     document.getElementById('modal-title').textContent =
@@ -2036,6 +2086,366 @@ window.App = (() => {
   const removePhoto = i => {
     currentPhotos.splice(i, 1);
     renderModalPhotos();
+  };
+
+  // ─── Multi-cake orders (manual orders, 1-5 cakes) ────────────
+  // Cake 1 uses the original modal fields; cakes 2-5 are generated blocks.
+  // One payment section + one delivery date stays shared; every cake may
+  // override its delivery info via the "same as cake 1" checkboxes.
+  const BN_CAKE_DIGITS = ['', '১', '২', '৩', '৪', '৫'];
+  const MAX_CAKES = 5;
+  const bnCake = n => BN_CAKE_DIGITS[n] || String(n);
+
+  const adminBlockHtml = (idx, sv) => {
+    sv = sv || {};
+    const checkedAddr = sv.sameAddr   !== false ? 'none' : 'block';
+    const checkedRcv  = sv.sameRcv    !== false ? 'none' : 'block';
+    const checkedTime = sv.sameTime   !== false ? 'none' : 'block';
+    const checkedChg  = sv.sameCharge !== false ? 'none' : 'block';
+    const checkedDate = sv.sameDate   !== false ? 'none' : 'block';
+    const sameCheck = (cbId, text) => `
+      <label class="same-check"><input type="checkbox" id="${cbId}" checked onchange="App.toggleAdminSameField(${idx})"><span>${text}</span></label>`;
+    return `
+    <div class="cake-block" id="admin-cake-block-${idx}">
+      <div class="cake-block-header">
+        <span class="cake-block-title">🎂 কেক ${bnCake(idx)}</span>
+        <button type="button" class="cake-remove" onclick="App.setAdminCakeCount(String(${idx - 1}))">✕ কেকটি বাদ দিন</button>
+      </div>
+      <div class="row2">
+        <div class="field"><label>ওজন</label><input id="f-weight-${idx}" placeholder="২ পাউন্ড" type="text"></div>
+        <div class="field"><label>ফ্লেভার</label><select id="f-flavour-${idx}"><option value="">নির্বাচন করুন</option></select></div>
+      </div>
+      <div class="field">
+        <label>কেকে লেখা</label>
+        <input id="f-writing-${idx}" placeholder="Happy Birthday Rima" type="text">
+      </div>
+      <div class="field">
+        <label>📷 রেফারেন্স ছবি (ঐচ্ছিক)</label>
+        <div class="photo-upload-btn" onclick="document.getElementById('f-photo-file-${idx}').click()" role="button" tabindex="0">
+          <span>📎</span> ছবি আপলোড করুন
+        </div>
+        <input type="file" id="f-photo-file-${idx}" accept="image/*" multiple class="hidden" aria-hidden="true">
+        <div id="modal-photo-grid-${idx}" class="photo-grid"></div>
+      </div>
+      <div class="field">
+        <label>📝 ছবির নোট / ডিজাইন নোট</label>
+        <textarea id="f-photo-note-${idx}" placeholder="যেমন: কেকের কালার থিমটা রেড থেকে পিংক করতে চাচ্ছি" style="min-height:44px"></textarea>
+      </div>
+      <div class="cake-delivery-sub">
+        <div class="cake-delivery-sub-title">🚚 এই কেকের ডেলিভারি</div>
+        ${sameCheck(`cb-same-address-${idx}`, 'ঠিকানা কেক ১-এর মতোই')}
+        <div class="field" id="wrap-same-address-${idx}" style="display:${checkedAddr}">
+          <label>ডেলিভারি ঠিকানা</label>
+          <textarea id="f-address-${idx}" placeholder="কান্টা গার্লস হোস্টেল, চট্টগ্রাম মেডিকেল" style="min-height:52px"></textarea>
+        </div>
+        ${sameCheck(`cb-same-date-${idx}`, 'তারিখ কেক ১-এর মতোই')}
+        <div class="field" id="wrap-same-date-${idx}" style="display:${checkedDate}">
+          <label>তারিখ</label>
+          <input id="f-date-${idx}" type="date">
+        </div>
+        ${sameCheck(`cb-same-receiver-${idx}`, 'রিসিভার (নাম ও ফোন) কেক ১-এর মতোই')}
+        <div class="field" id="wrap-same-receiver-${idx}" style="display:${checkedRcv}">
+          <div class="row2">
+            <div class="field"><label>রিসিভারের নাম</label><input id="f-receiver-${idx}" placeholder="কে নেবেন" type="text"></div>
+            <div class="field"><label>রিসিভারের ফোন</label><input id="f-receiver-phone-${idx}" placeholder="017xx-xxxxxx" type="tel" maxlength="14"></div>
+          </div>
+        </div>
+        ${sameCheck(`cb-same-time-${idx}`, 'ডেলিভারির সময় কেক ১-এর মতোই')}
+        <div class="field" id="wrap-same-time-${idx}" style="display:${checkedTime}">
+          <label>সময় (ঘণ্টা ১-১২)</label>
+          <div class="row2" style="gap:8px">
+            <input id="f-time-${idx}" inputmode="decimal" placeholder="যেমন: 3.00" type="text" autocomplete="off" style="flex:1;min-width:0" onblur="App.normalizeAdminTime(${idx})">
+            <select id="f-time-ampm-${idx}" style="width:84px;flex-shrink:0">
+              <option value="">--</option><option value="AM">AM</option><option value="PM">PM</option>
+            </select>
+          </div>
+        </div>
+        ${sameCheck(`cb-same-charge-${idx}`, 'একই ট্রিপে যাবে — আলাদা চার্জ নেই')}
+        <div class="field" id="wrap-same-charge-${idx}" style="display:${checkedChg}">
+          <label>আলাদা ডেলিভারি চার্জ (৳)</label>
+          <input id="f-delivery-amount-${idx}" type="number" placeholder="60" min="0">
+        </div>
+      </div>
+    </div>`;
+  };
+
+  const renderAdminExtraCakes = () => {
+    const wrap = document.getElementById('admin-extra-cakes');
+    if (!wrap) return;
+    // Preserve typed values across re-renders
+    const saved = {};
+    for (let i = 2; i <= MAX_CAKES; i++) {
+      const grab = id => { const el = document.getElementById(id); return el ? (el.type === 'checkbox' ? el.checked : el.value) : null; };
+      saved[i] = {
+        weight: grab(`f-weight-${i}`), flavour: grab(`f-flavour-${i}`), writing: grab(`f-writing-${i}`),
+        photoNote: grab(`f-photo-note-${i}`), addr: grab(`f-address-${i}`), recv: grab(`f-receiver-${i}`),
+        recvPhone: grab(`f-receiver-phone-${i}`), time: grab(`f-time-${i}`), ampm: grab(`f-time-ampm-${i}`),
+        charge: grab(`f-delivery-amount-${i}`), date: grab(`f-date-${i}`),
+        sameAddr: grab(`cb-same-address-${i}`), sameRcv: grab(`cb-same-receiver-${i}`),
+        sameTime: grab(`cb-same-time-${i}`), sameCharge: grab(`cb-same-charge-${i}`),
+        sameDate: grab(`cb-same-date-${i}`)
+      };
+    }
+    let html = '';
+    for (let i = 2; i <= adminCakeCount; i++) html += adminBlockHtml(i, saved[i] || {});
+    wrap.innerHTML = html;
+    // Clone the flavour options from cake 1's select and restore values
+    const srcSel = document.getElementById('f-flavour');
+    for (let i = 2; i <= adminCakeCount; i++) {
+      const sel = document.getElementById(`f-flavour-${i}`);
+      if (sel && srcSel) {
+        sel.innerHTML = srcSel.innerHTML;
+        if (saved[i] && saved[i].flavour) sel.value = saved[i].flavour;
+      }
+      const fileInput = document.getElementById(`f-photo-file-${i}`);
+      if (fileInput) fileInput.addEventListener('change', e => handleAdminExtraPhotos(e, i));
+      renderAdminExtraPhotos(i);
+      if (saved[i]) {
+        const set = (id, v) => { const el = document.getElementById(id); if (!el || v == null) return; if (el.type === 'checkbox') el.checked = v; else el.value = v; };
+        set(`f-weight-${i}`, saved[i].weight);
+        set(`f-writing-${i}`, saved[i].writing);
+        set(`f-photo-note-${i}`, saved[i].photoNote);
+        set(`f-address-${i}`, saved[i].addr);
+        set(`f-receiver-${i}`, saved[i].recv);
+        set(`f-receiver-phone-${i}`, saved[i].recvPhone);
+        set(`f-time-${i}`, saved[i].time);
+        set(`f-time-ampm-${i}`, saved[i].ampm);
+        set(`f-delivery-amount-${i}`, saved[i].charge);
+        set(`f-date-${i}`, saved[i].date);
+        set(`cb-same-address-${i}`, saved[i].sameAddr !== false);
+        set(`cb-same-receiver-${i}`, saved[i].sameRcv !== false);
+        set(`cb-same-time-${i}`, saved[i].sameTime !== false);
+        set(`cb-same-charge-${i}`, saved[i].sameCharge !== false);
+        set(`cb-same-date-${i}`, saved[i].sameDate !== false);
+        applyAdminSameVisibility(i);
+      }
+    }
+  };
+
+  const applyAdminSameVisibility = idx => {
+    [['cb-same-address-' + idx, 'wrap-same-address-' + idx],
+     ['cb-same-date-' + idx, 'wrap-same-date-' + idx],
+     ['cb-same-receiver-' + idx, 'wrap-same-receiver-' + idx],
+     ['cb-same-time-' + idx, 'wrap-same-time-' + idx],
+     ['cb-same-charge-' + idx, 'wrap-same-charge-' + idx]].forEach(([cbId, wrapId]) => {
+      const cb = document.getElementById(cbId);
+      const wrap = document.getElementById(wrapId);
+      if (cb && wrap) wrap.style.display = cb.checked ? 'none' : 'block';
+    });
+  };
+
+  const setAdminCakeCount = v => {
+    const n = Math.max(1, Math.min(MAX_CAKES, parseInt(v, 10) || 1));
+    adminCakeCount = n;
+    renderAdminExtraCakes();
+  };
+
+  const toggleAdminSameField = idx => { applyAdminSameVisibility(idx); };
+
+  // "Receiver phone = customer phone" shortcut in the modal
+  const toggleAdminReceiverSamePhone = cb => {
+    const el = document.getElementById('f-receiver-phone');
+    if (!el) return;
+    if (cb && cb.checked) {
+      const custPhone = (document.getElementById('f-phone').value || '').trim();
+      el.value = custPhone;
+      el.readOnly = true;
+      el.style.opacity = '.75';
+      if (!custPhone) showToast('কাস্টমারের ফোন নম্বর খালি — আগে নম্বরটি লিখুন');
+    } else {
+      el.readOnly = false;
+      el.style.opacity = '1';
+    }
+  };
+
+  // Per-cake photo upload (cakes 2-5)
+  const handleAdminExtraPhotos = (e, idx) => {
+    const files = [...e.target.files];
+    e.target.value = '';
+    if (!files.length) return;
+    const store = adminExtraPhotos[idx] = adminExtraPhotos[idx] || [];
+    const slots = MAX_PHOTOS - store.length;
+    if (slots <= 0) { showToast(`সর্বোচ্চ ${MAX_PHOTOS}টি ছবি দেওয়া যাবে`); return; }
+    let pending = files.slice(0, slots).length;
+    files.slice(0, slots).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 900;
+          let { width: w, height: h } = img;
+          if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+          if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          store.push(canvas.toDataURL('image/jpeg', 0.78));
+          if (--pending <= 0) renderAdminExtraPhotos(idx);
+        };
+        img.onerror = () => { if (--pending <= 0) renderAdminExtraPhotos(idx); };
+        img.src = ev.target.result;
+      };
+      reader.onerror = () => { if (--pending <= 0) renderAdminExtraPhotos(idx); };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const renderAdminExtraPhotos = idx => {
+    const grid = document.getElementById(`modal-photo-grid-${idx}`);
+    if (!grid) return;
+    const store = adminExtraPhotos[idx] || [];
+    grid.innerHTML = store.map((src, i) => `
+      <div class="photo-thumb">
+        <img src="${src}" alt="রেফারেন্স কেক ${i + 1}" loading="lazy">
+        <button type="button" class="photo-remove-btn" onclick="App.removeAdminExtraPhoto(${idx}, ${i})" aria-label="ছবি সরান">✕</button>
+      </div>`).join('');
+  };
+
+  const removeAdminExtraPhoto = (idx, i) => {
+    const store = adminExtraPhotos[idx] || [];
+    store.splice(i, 1);
+    renderAdminExtraPhotos(idx);
+  };
+
+  const normalizeAdminTime = idx => {
+    const el = document.getElementById(`f-time-${idx}`);
+    if (!el) return;
+    const raw = el.value.trim();
+    if (!raw) return;
+    const cleaned = raw.replace(/\s*(?:a\.?m\.?|p\.?m\.?|এএম|পিএম)\.?$/i, '').trim();
+    const p = parseTimeParts(cleaned);
+    if (!p) return;
+    el.value = `${p.h}.${String(p.min == null ? 0 : p.min).padStart(2, '0')}`;
+  };
+
+  const getAdminSelectedTime = idx => {
+    const el = document.getElementById(`f-time-${idx}`);
+    const apEl = document.getElementById(`f-time-ampm-${idx}`);
+    const p = parseTimeParts(el ? el.value : '');
+    const ap = apEl ? apEl.value : '';
+    if (!p || !ap) return '';
+    return `${p.h}:${String(p.min == null ? 0 : p.min).padStart(2, '0')} ${ap}`;
+  };
+
+  // Collect all cakes (1..N) for saving. Cake 1 reads the original fields;
+  // cakes 2+ read their generated blocks, inheriting while "same" is checked.
+  // Delivery charge follows "shared trip" semantics: a cake marked "same" (same
+  // trip) adds 0, only a cake with its own (different) trip adds its own charge.
+  const collectAdminCakes = (timeVal, fulfilmentVal, deliveryAmt) => {
+    const srcSel = document.getElementById('f-flavour');
+    const flavourNameOf = sel => sel && sel.selectedIndex >= 0 ? (sel.options[sel.selectedIndex]?.textContent || '') : '';
+    const cake1 = {
+      cakeIndex: 1,
+      weight: (document.getElementById('f-weight').value || '').trim(),
+      weightLabel: (document.getElementById('f-weight').value || '').trim(),
+      flavour: srcSel.value,
+      flavourName: flavourNameOf(srcSel),
+      writing: (document.getElementById('f-writing').value || '').trim(),
+      cakeWriting: (document.getElementById('f-writing').value || '').trim(),
+      photo: currentPhotos[0] || '',
+      photos: currentPhotos,
+      photoNote: (document.getElementById('f-photo-note').value || '').trim(),
+      address: (document.getElementById('f-address').value || '').trim(),
+      deliveryAddress: (document.getElementById('f-address').value || '').trim(),
+      receiver: (document.getElementById('f-receiver').value || '').trim(),
+      receiverPhone: (document.getElementById('f-receiver-phone').value || '').trim(),
+      date: (document.getElementById('f-date').value || ''),
+      deliveryDate: (document.getElementById('f-date').value || ''),
+      timeSlot: timeVal === 'TIME NOT CONFIRMED' ? '' : timeVal,
+      timeSlotLabel: timeVal === 'TIME NOT CONFIRMED' ? '' : timeVal,
+      deliveryCharge: fulfilmentVal === 'pickup' ? 0 : deliveryAmt,
+      deliveryAmount: fulfilmentVal === 'pickup' ? 0 : deliveryAmt,
+      sameAddressAsCake1: true,
+      sameReceiverAsCake1: true,
+      sameTimeAsCake1: true,
+      sameChargeAsCake1: true,
+      sameDateAsCake1: true
+    };
+    const cakes = [cake1];
+    for (let i = 2; i <= adminCakeCount; i++) {
+      const g = id => document.getElementById(id);
+      const sameAddr = g(`cb-same-address-${i}`).checked;
+      const sameRcv = g(`cb-same-receiver-${i}`).checked;
+      const sameTime = g(`cb-same-time-${i}`).checked;
+      const sameCharge = g(`cb-same-charge-${i}`).checked;
+      const sameDate = g(`cb-same-date-${i}`).checked;
+      const sel = g(`f-flavour-${i}`);
+      // Shared trip adds 0 extra; only a distinct trip carries its own charge.
+      const chg = fulfilmentVal === 'pickup' ? 0
+        : (sameCharge ? 0 : (parseFloat(g(`f-delivery-amount-${i}`).value) || 0));
+      const photos = adminExtraPhotos[i] || [];
+      const cakeDate = sameDate ? cake1.date : (g(`f-date-${i}`).value || '');
+      cakes.push({
+        cakeIndex: i,
+        weight: (g(`f-weight-${i}`).value || '').trim(),
+        weightLabel: (g(`f-weight-${i}`).value || '').trim(),
+        flavour: sel.value,
+        flavourName: flavourNameOf(sel),
+        writing: (g(`f-writing-${i}`).value || '').trim(),
+        cakeWriting: (g(`f-writing-${i}`).value || '').trim(),
+        photo: photos[0] || '',
+        photos: photos,
+        photoNote: (g(`f-photo-note-${i}`).value || '').trim(),
+        address: sameAddr ? cake1.address : (g(`f-address-${i}`).value || '').trim(),
+        deliveryAddress: sameAddr ? cake1.address : (g(`f-address-${i}`).value || '').trim(),
+        receiver: sameRcv ? cake1.receiver : (g(`f-receiver-${i}`).value || '').trim(),
+        receiverPhone: sameRcv ? cake1.receiverPhone : (g(`f-receiver-phone-${i}`).value || '').trim(),
+        date: cakeDate,
+        deliveryDate: cakeDate,
+        timeSlot: sameTime ? cake1.timeSlot : (getAdminSelectedTime(i) || cake1.timeSlot),
+        timeSlotLabel: sameTime ? cake1.timeSlot : (getAdminSelectedTime(i) || cake1.timeSlot),
+        deliveryCharge: chg,
+        deliveryAmount: chg,
+        sameAddressAsCake1: sameAddr,
+        sameReceiverAsCake1: sameRcv,
+        sameTimeAsCake1: sameTime,
+        sameChargeAsCake1: sameCharge,
+        sameDateAsCake1: sameDate
+      });
+    }
+    return cakes;
+  };
+
+  // Restore cakes 2-5 into the modal when editing an existing multi-cake order
+  const restoreAdminCakes = o => {
+    const cakes = (o && Array.isArray(o.cakes)) ? o.cakes : [];
+    const count = Math.max(1, Math.min(MAX_CAKES, Number(o && o.cakeCount) || cakes.length || 1));
+    adminCakeCount = count;
+    const sel = document.getElementById('f-cake-count');
+    if (sel) sel.value = String(count);
+    adminExtraPhotos = {};
+    renderAdminExtraCakes();
+    cakes.forEach(c => {
+      const i = Number(c.cakeIndex) || 0;
+      if (i < 2 || i > MAX_CAKES) return;
+      const g = id => document.getElementById(id);
+      const set = (id, v) => { const el = g(id); if (el && v != null) el.value = v; };
+      set(`f-weight-${i}`, c.weightLabel || c.weight);
+      if (c.flavour) set(`f-flavour-${i}`, c.flavour);
+      set(`f-writing-${i}`, c.writing || c.cakeWriting);
+      set(`f-photo-note-${i}`, c.photoNote);
+      if (!c.sameAddressAsCake1) set(`f-address-${i}`, c.address);
+      if (!c.sameDateAsCake1 && (c.date || c.deliveryDate)) set(`f-date-${i}`, c.date || c.deliveryDate);
+      if (!c.sameReceiverAsCake1) { set(`f-receiver-${i}`, c.receiver); set(`f-receiver-phone-${i}`, c.receiverPhone); }
+      if (!c.sameTimeAsCake1 && c.timeSlot) {
+        const m = String(c.timeSlot).match(/^(\d{1,2})\s*[:.\-]\s*(\d{1,2})\s*(AM|PM|এএম|পিএম)?$/i);
+        if (m) {
+          set(`f-time-${i}`, `${parseInt(m[1], 10)}.${String(parseInt(m[2], 10)).padStart(2, '0')}`);
+          set(`f-time-ampm-${i}`, m[3] && /p/i.test(m[3]) ? 'PM' : 'AM');
+        } else {
+          set(`f-time-${i}`, c.timeSlot);
+        }
+      }
+      if (!c.sameChargeAsCake1) set(`f-delivery-amount-${i}`, c.deliveryCharge != null ? c.deliveryCharge : c.deliveryAmount);
+      set(`cb-same-address-${i}`, c.sameAddressAsCake1 !== false);
+      set(`cb-same-receiver-${i}`, c.sameReceiverAsCake1 !== false);
+      set(`cb-same-time-${i}`, c.sameTimeAsCake1 !== false);
+      set(`cb-same-charge-${i}`, c.sameChargeAsCake1 !== false);
+      set(`cb-same-date-${i}`, c.sameDateAsCake1 !== false);
+      if (Array.isArray(c.photos) && c.photos.length) adminExtraPhotos[i] = c.photos.filter(Boolean);
+      applyAdminSameVisibility(i);
+      renderAdminExtraPhotos(i);
+    });
   };
 
   // Zoom a modal photo in the existing full-screen lightbox
@@ -2365,6 +2775,11 @@ window.App = (() => {
     // "বিকাশ", also restored when re-editing an order).
     const chargeLabel    = pcChannel;
 
+    // Multi-cake: collect every cake; the top-level delivery charge becomes
+    // the SUM of all cakes' charges (each cake may deliver elsewhere).
+    const cakes = collectAdminCakes(timeVal, fulfilmentVal, deliveryAmt);
+    const totalDeliveryAmt = cakes.reduce((s, c) => s + (Number(c.deliveryCharge) || 0), 0);
+
     const o = {
       // ── Customer-app compatible identity & aliases (so manual orders
       //    look exactly like online orders in every view) ──
@@ -2375,6 +2790,9 @@ window.App = (() => {
       customerPhone:  g('f-phone').value.trim(),
       category:       'custom',
       categoryName:   'কাস্টম কেক',
+      cakeCount:      cakes.length,
+      multiCake:      cakes.length > 1,
+      cakes:          cakes,
       weight:         g('f-weight').value.trim(),
       weightLabel:    g('f-weight').value.trim(),
       flavour:        g('f-flavour').value,
@@ -2399,8 +2817,8 @@ window.App = (() => {
       surprise:       g('f-surprise').value,
       fulfilment:     fulfilmentVal,
       deliveryPaid:   fulfilmentVal === 'pickup' ? 'na' : g('f-delivery-paid').value,
-      deliveryAmount: fulfilmentVal === 'pickup' ? 0 : deliveryAmt,
-      deliveryCharge: fulfilmentVal === 'pickup' ? 0 : deliveryAmt,
+      deliveryAmount: fulfilmentVal === 'pickup' ? 0 : totalDeliveryAmt,
+      deliveryCharge: fulfilmentVal === 'pickup' ? 0 : totalDeliveryAmt,
       total:          cakePrice,
       basePrice:      cakePrice,
       cakePrice:      cakePrice,
@@ -2973,6 +3391,11 @@ window.App = (() => {
     toggleTime,
     normalizeTimeInput,
     onFulfilmentChange,
+    setAdminCakeCount,
+    toggleAdminSameField,
+    toggleAdminReceiverSamePhone,
+    removeAdminExtraPhoto,
+    normalizeAdminTime,
     showDailyPopup,
     dismissDailyOrder,
     closeDailyPopup,

@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#c2185b">
+<title>নিতুর বেকারি — অর্ডার ফর্ম</title>
+<link rel="icon" type="image/png" href="logo.png">
+<link rel="apple-touch-icon" href="logo.png">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --pink:#c2185b; --pink-dark:#880e4f; --pink-mid:#e91e8c;
+  --pink-light:#fce4ec; --pink-soft:#f8bbd0; --pink-glow:rgba(194,24,91,0.18);
+  --green:#2e7d32; --green-light:#e8f5e9;
+  --amber:#e65100; --amber-light:#fff3e0; --red:#c62828; --red-light:#ffebee;
+  --blue:#1565c0; --blue-light:#e3f2fd;
+  --text:#1a1a2e; --text2:#555577; --text3:#9999bb;
+  --border:#e8e8f0; --border-focus:var(--pink);
+  --surface:#ffffff; --surface2:#f7f7fb; --bg:#f3f3f8;
+  --radius:14px; --radius-sm:9px; --radius-xs:6px;
+  --shadow-sm:0 1px 4px rgba(0,0,0,0.07),0 0 0 1px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 18px rgba(0,0,0,0.10),0 1px 4px rgba(0,0,0,0.06);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{font-family:'Hind Siliguri','Poppins',-apple-system,sans-serif;background:linear-gradient(rgba(247,244,246,.91),rgba(247,244,246,.96)),url('https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=75') center/cover fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+body:lang(en),body:lang(en) input,body:lang(en) select,body:lang(en) textarea,body:lang(en) button{font-family:'Poppins',-apple-system,sans-serif}
+input,select,textarea,button{font-family:inherit;font-size:inherit}
+button{cursor:pointer}
+
+/* SPLASH (welcome, ~2.5s) */
+.splash-screen{position:fixed;inset:0;z-index:5000;background:#fbf4e8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .6s ease,visibility .6s}
+.splash-screen.gone{opacity:0;visibility:hidden;pointer-events:none}
+.splash-fx{position:absolute;inset:0;pointer-events:none}
+.splash-blob{position:absolute;border-radius:50%;filter:blur(70px)}
+.sb1{width:420px;height:420px;background:rgba(224,150,66,.30);top:-120px;left:-90px;animation:drift1 17s ease-in-out infinite alternate}
+.sb2{width:380px;height:380px;background:rgba(47,143,119,.24);bottom:-110px;right:-80px;animation:drift2 21s ease-in-out infinite alternate}
+.sb3{width:280px;height:280px;background:rgba(214,120,60,.20);top:18%;right:8%;animation:drift3 14s ease-in-out infinite alternate}
+@keyframes drift1{to{transform:translate(80px,60px) scale(1.15)}}
+@keyframes drift2{to{transform:translate(-70px,-50px) scale(1.1)}}
+@keyframes drift3{to{transform:translate(-50px,40px) scale(.88)}}
+.splash-orbit{position:absolute;top:50%;left:50%;width:0;height:0;animation:spin 16s linear infinite;pointer-events:none}
+.splash-orbit i{position:absolute;width:9px;height:9px;border-radius:50%}
+@keyframes spin{to{transform:rotate(360deg)}}
+.splash-logo{width:min(320px,68vw);display:block;filter:drop-shadow(0 16px 30px rgba(120,80,30,.28));animation:logoDrop .95s cubic-bezier(.3,1.5,.4,1) both,logoFloat 4.5s ease-in-out 1.1s infinite}
+@keyframes logoDrop{from{opacity:0;transform:translateY(-70px) scale(.8) rotate(-4deg)}to{opacity:1;transform:translateY(0) scale(1) rotate(0)}}
+@keyframes logoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.splash-chip{background:#fff;color:#7a4a2b;font-size:14px;font-weight:700;padding:8px 18px;border-radius:99px;box-shadow:0 8px 22px rgba(120,80,30,.16);animation:sFadeUp .8s ease .95s both}
+.splash-moto{color:#a3803f;font-weight:600;font-size:13px;letter-spacing:3.5px;text-transform:uppercase;animation:sCanvas 2s cubic-bezier(.2,.6,.3,1) 1.15s both}
+@keyframes sCanvas{from{opacity:0;transform:translateY(18px);filter:blur(8px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
+@keyframes sFadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.splash-loader{width:190px;height:4px;border-radius:99px;background:rgba(122,74,43,.12);overflow:hidden;animation:sFadeUp .8s ease 1.6s both}
+.splash-loader i{display:block;height:100%;width:45%;border-radius:99px;background:linear-gradient(90deg,#c96a2e,#e2a23b,#2f8f77);animation:sSlide 2.4s ease-in-out infinite}
+@keyframes sSlide{0%{transform:translateX(-110%)}100%{transform:translateX(330%)}}
+.splash-spr{position:absolute;top:-14px;width:3px;height:10px;border-radius:3px;animation:sFall linear infinite}
+@keyframes sFall{to{transform:translateY(112vh) rotate(560deg)}}
+
+/* ENTRY SCREEN (watercolor) */
+.entry-screen{position:fixed;inset:0;background:#fbf4e8;z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;transition:opacity .4s,visibility .4s}
+.entry-screen.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.entry-bgfx{position:fixed;inset:0;pointer-events:none}
+.entry-bgfx .splash-blob{filter:blur(70px)}
+.entry-wrap{position:relative;z-index:2;width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center;padding:10px 0}
+.entry-logo{margin-bottom:6px;text-align:center}
+.entry-logo img{width:150px;height:auto;filter:drop-shadow(0 12px 24px rgba(120,80,30,.25));animation:logoDrop .95s cubic-bezier(.3,1.5,.4,1) both}
+.entry-brand{font-size:22px;font-weight:800;color:#7a4a2b;text-align:center;line-height:1.25;animation:sFadeUp .8s ease .35s both}
+.entry-moto{margin-top:5px;margin-bottom:14px;color:#a3803f;font-weight:600;font-size:11px;letter-spacing:3px;text-transform:uppercase;animation:sFadeUp .8s ease .55s both}
+.entry-box{background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-radius:22px;padding:20px 18px;width:100%;box-shadow:0 14px 40px rgba(120,80,30,.16);border:1px solid rgba(255,255,255,.7);animation:cardUp .8s cubic-bezier(.2,.9,.3,1) .7s both}
+@keyframes cardUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+.lang-row{display:flex;gap:8px;margin-bottom:16px;justify-content:center}
+.lang-btn{padding:8px 22px;border:2px solid rgba(122,74,43,.18);border-radius:99px;background:#fff;font-size:13px;font-weight:700;color:#a3803f}
+.lang-btn.active{border-color:#c96a2e;background:linear-gradient(135deg,rgba(201,106,46,.12),rgba(226,162,59,.15));color:#a3541f}
+.field{margin-bottom:14px;text-align:left}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px}
+.req{color:var(--red)}
+.field input,.field select,.field textarea{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;background:var(--surface2);color:var(--text);transition:border-color .14s,box-shadow .14s}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-glow)}
+/* Hide native number-input spinner arrows (delivery charge, payment amount) */
+#f-delivery-charge::-webkit-outer-spin-button,#f-delivery-charge::-webkit-inner-spin-button,
+#f-advance::-webkit-outer-spin-button,#f-advance::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+#f-delivery-charge,#f-advance{-moz-appearance:textfield;appearance:textfield}
+.field textarea{min-height:60px;resize:vertical}
+.btn-primary{width:100%;padding:14px;background:linear-gradient(135deg,var(--pink-dark),var(--pink-mid));border:none;border-radius:var(--radius-sm);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px}
+.btn-primary:active{transform:scale(0.98)}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+.entry-error{background:var(--red-light);color:var(--red);padding:10px 12px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:16px;display:none}
+.entry-error.show{display:block}
+.security-box{background:var(--blue-light);border:1px solid #90caf9;border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;text-align:left;display:none}
+.security-box.show{display:block}
+.security-box label{font-size:12px;font-weight:600;color:var(--blue);margin-bottom:6px;display:block}
+.security-box input{margin-top:4px}
+.previous-orders{background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-top:14px;text-align:left;display:none;max-height:200px;overflow-y:auto}
+.previous-orders.show{display:block}
+.previous-orders-title{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px}
+.previous-order{padding:8px 10px;background:var(--surface);border-radius:6px;margin-bottom:6px;font-size:12px;border-left:3px solid var(--pink)}
+
+/* FORM */
+.form-screen{display:none;max-width:480px;margin:0 auto;padding:16px 16px 100px}
+.form-screen.active{display:block}
+.form-header{text-align:center;padding:20px 0 12px}
+.form-header img{max-width:140px;height:auto}
+.form-header h2{font-size:16px;font-weight:600;color:var(--text);margin-top:8px}
+.progress-wrap{background:var(--surface);border-radius:99px;height:6px;margin:16px 0;overflow:hidden;box-shadow:var(--shadow-sm)}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--pink),var(--pink-mid));border-radius:99px;transition:width .3s ease;width:0}
+.section{background:var(--surface);border-radius:var(--radius);padding:20px 16px;margin-bottom:16px;box-shadow:var(--shadow-sm)}
+.section-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.note-box{background:var(--amber-light);border:1px solid #ffcc80;border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--amber);line-height:1.5;margin-top:8px}
+.photo-upload{border:2px dashed var(--border);border-radius:var(--radius-sm);padding:24px;text-align:center;cursor:pointer;color:var(--text3);font-size:13px}
+.photo-upload:active{border-color:var(--pink)}
+.hint-box{font-size:11px;color:var(--blue);margin-top:4px;line-height:1.4}
+.weight-presets{display:flex;gap:8px;margin-top:6px}
+.weight-preset{flex:1;padding:9px 6px;border:2px dashed var(--pink);border-radius:var(--radius-sm);background:var(--pink-light);color:var(--pink-dark);font-size:13px;font-weight:700;cursor:pointer;line-height:1.3}
+.weight-preset:active{transform:scale(.98)}
+.weight-preset.active{border-style:solid;background:var(--pink);color:#fff}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-top:10px}
+.photo-thumb{position:relative}
+.photo-thumb img{width:100%;height:80px;object-fit:cover;border-radius:var(--radius-xs)}
+.photo-remove{position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:13px;cursor:pointer;line-height:1}
+.calc-box{background:var(--pink-light);border-radius:var(--radius-sm);padding:14px;margin-top:12px;display:none}
+.calc-box.show{display:block}
+.calc-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+.calc-row.total{font-weight:700;font-size:16px;color:var(--pink);border-top:1px solid var(--pink-soft);padding-top:8px;margin-top:4px}
+.calc-row.due{font-weight:700;color:var(--red);background:var(--red-light);padding:6px;border-radius:6px;margin-top:6px}
+.pay-footnote{font-size:11.5px;color:var(--green);background:var(--green-light);border:1px solid #a5d6a7;border-radius:var(--radius-sm);padding:8px 10px;margin-top:8px;line-height:1.5;display:none}
+.pay-footnote.show{display:block}
+.advance-options{display:flex;gap:8px;margin-bottom:12px}
+.advance-opt{flex:1;padding:10px;border:2px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-size:13px;font-weight:600;cursor:pointer;color:var(--text2)}
+.advance-opt.active{border-color:var(--pink);background:var(--pink-light);color:var(--pink)}
+/* "How did you pay?" gateway chooser (auto-popup after advance pick) */
+.adv-method-grid{display:flex;gap:8px}
+.adv-method-opt{flex:1;padding:10px 6px;border:2px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-size:13px;font-weight:700;cursor:pointer;color:var(--text2);background:var(--surface2)}
+.adv-method-opt.active{border-color:var(--pink);background:var(--pink-light);color:var(--pink)}
+.adv-method-opt small{display:block;font-weight:500;font-size:10.5px;margin-top:2px;opacity:.75;color:inherit}
+/* Auto-calculated payment amount — grey box, bold; editable but warns on tap */
+input.advance-input{background:#eeeeee;border:1.5px solid #cfcfcf;font-weight:700;font-size:16px;color:var(--text)}
+input.advance-input:focus{border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-glow)}
+/* Due amount — auto-calculated, greyed out, read-only */
+.due-field{display:none}
+.due-field.show{display:block}
+input.due-input{background:#eeeeee;border:1.5px solid #dcdcdc;color:#808080;font-weight:600;font-size:15px;cursor:not-allowed}
+input.due-input:focus{outline:none;border-color:#dcdcdc;box-shadow:none}
+.surprise-note{background:var(--red-light);border:1px solid #ef9a9a;border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;color:var(--red);margin-top:8px;display:none}
+.surprise-note.show{display:block}
+.payment-info-box{background:var(--green-light);border:1px solid #a5d6a7;border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--green);margin-top:8px;display:none}
+.payment-info-box.show{display:block}
+.payment-info-box strong{color:#1b5e20}
+.copy-number{border:0;background:none;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer;padding:0}
+.pickup-box{background:var(--blue-light);border:1px solid #90caf9;border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--blue);line-height:1.5;margin-top:8px;display:none}
+.pickup-box.show{display:block}
+.popup-overlay{position:fixed;inset:0;background:rgba(20,10,18,.5);z-index:2500;display:none;align-items:center;justify-content:center;padding:18px;overscroll-behavior:contain}
+.popup-overlay.show{display:flex}
+.popup{background:var(--surface);border-radius:var(--radius);width:100%;max-width:520px;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,.22);overscroll-behavior:contain}
+.popup-header{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border);color:var(--pink-dark);flex-shrink:0}
+.popup-header h3{font-size:18px}.popup-close{border:0;background:none;font-size:24px;color:var(--text2)}
+.popup-content{flex:1 1 auto;min-height:0;padding:18px;white-space:pre-wrap;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;line-height:1.65;font-size:14px}
+.copy-button{margin:6px 4px 0 0;padding:5px 9px;border:1px solid currentColor;border-radius:var(--radius-xs);background:transparent;color:var(--green);font-size:12px;font-weight:600}
+.order-number-badge{display:inline-block;margin-top:8px;padding:6px 12px;border-radius:var(--radius-xs);background:var(--pink-light);color:var(--pink-dark);font-size:13px;font-weight:700}
+.screenshot-note{background:var(--green-light);border:1px solid #a5d6a7;border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;color:var(--green);line-height:1.5;margin-bottom:14px}
+
+/* AUTO-CLOSE POPUP */
+.auto-close-pop{position:fixed;inset:0;background:rgba(10,8,30,0.55);z-index:900;display:none;align-items:center;justify-content:center;padding:20px}
+.auto-close-pop.show{display:flex}
+.auto-close-box{background:var(--surface);border-radius:var(--radius);padding:24px;width:100%;max-width:320px;box-shadow:0 10px 40px rgba(0,0,0,0.25);text-align:center}
+.auto-close-box .pc-icon{font-size:44px;margin-bottom:10px}
+.auto-close-box .pc-title{font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px}
+.auto-close-box .pc-msg{font-size:13.5px;color:var(--text2);line-height:1.6;margin-bottom:14px}
+.auto-close-count{font-size:13px;font-weight:700;color:var(--pink);margin-bottom:16px}
+.auto-close-count b{font-size:20px}
+.auto-close-actions{display:flex;flex-direction:column;gap:8px}
+.auto-close-actions .btn-primary{width:100%}
+.btn-ghost{padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);font-size:14px;font-weight:600}
+
+/* SUCCESS */
+.success-screen{display:none;text-align:center;padding:40px 20px;max-width:400px;margin:0 auto}
+.success-screen.active{display:block}
+.success-icon{font-size:64px;margin-bottom:16px}
+.success-title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px}
+.success-msg{font-size:14px;color:var(--text2);margin-bottom:24px;line-height:1.6}
+.order-summary{background:var(--surface);border-radius:var(--radius);padding:16px;text-align:left;margin-bottom:24px;box-shadow:var(--shadow-sm);font-size:13px;position:relative;isolation:isolate;overflow:hidden}
+/* A subtle watermark remains behind the order details and is included in the downloaded card. */
+.order-summary::before{content:'';position:absolute;inset:0;background:url('logo.png') center/150px auto no-repeat;opacity:.07;pointer-events:none;z-index:0}
+.order-summary>*{position:relative;z-index:1}
+.order-summary .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)}
+.order-summary .row:last-child{border-bottom:none}
+.order-summary .row span:first-child{color:var(--text3)}
+.order-summary .row span:last-child{font-weight:600;color:var(--text)}
+.due-alert{background:var(--red-light);border:2px solid var(--red);border-radius:var(--radius-sm);padding:12px;margin-top:12px;color:var(--red);font-weight:700;text-align:center}
+.previous-orders-btn{width:100%;margin-top:10px;padding:10px 12px;border:1.5px solid var(--pink);border-radius:var(--radius-sm);background:var(--pink-light);color:var(--pink-dark);font-size:13px;font-weight:700}
+.previous-orders-btn:active{transform:scale(.98)}
+.order-history-popup .popup-content{white-space:normal}
+.order-history-card{position:relative;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;background:var(--surface2)}
+.order-history-card::before{content:'';position:absolute;inset:0;background:url('logo.png') center/120px auto no-repeat;opacity:.045;pointer-events:none}
+.order-history-card>*{position:relative}
+.order-history-date{color:var(--pink-dark);font-size:14px;font-weight:700;margin-bottom:10px}
+.order-history-row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--border);font-size:13px}
+.order-history-row span:first-child{color:var(--text3);flex-shrink:0}.order-history-row span:last-child{font-weight:600;text-align:right;word-break:break-word}
+.order-history-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-top:1px solid var(--border);flex-shrink:0}
+.order-history-nav button{min-width:84px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-xs);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:700}.order-history-nav button:disabled{opacity:.45}.order-history-nav span{font-size:12px;color:var(--text3);font-weight:600}
+
+.loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:none;align-items:center;justify-content:center}
+.loading-overlay.show{display:flex}
+.spinner{width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--pink);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--text);color:#fff;padding:12px 20px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;z-index:3000;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media print{body>*{display:none!important}}
+
+/* ── Multi-cake layout ── */
+.order-mode-toggle{display:flex;gap:8px;margin-top:6px}
+.mode-btn{flex:1;padding:10px 8px;border:2px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font-size:13px;font-weight:600;color:var(--text2);transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1.3}
+.mode-btn span{font-size:13px;font-weight:600}
+.mode-btn small{font-size:11px;color:var(--text3)}
+.mode-btn.active{border-color:var(--pink);background:var(--pink-light);color:var(--pink-dark)}
+.mode-btn.active small{color:var(--pink-mid)}
+.cake-count-picker{display:none;margin-top:12px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm)}
+.cake-count-picker.show{display:block}
+.cc-btns{display:flex;gap:8px;margin-top:6px}
+.cc-btn{flex:1;padding:10px 4px;border:2px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font-size:15px;font-weight:700;color:var(--text2);transition:all .2s}
+.cc-btn.active{border-color:var(--pink);background:var(--pink);color:#fff}
+.cake-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px}
+.cake-col{border:1.5px solid var(--border);border-radius:var(--radius);padding:12px;background:var(--surface2)}
+.cake-col .col-header{font-weight:700;font-size:14px;color:var(--pink-dark);margin-bottom:10px;text-align:center}
+.cake-col .form-group{margin-bottom:10px}
+.cake-col .form-group label{font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px}
+.cake-col .form-group input,.cake-col .form-group select,.cake-col .form-group textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-xs);font-size:13px;background:var(--surface)}
+.cake-col .weight-presets{display:flex;gap:6px;margin-top:6px}
+.cake-col .weight-presets .weight-preset{flex:1;padding:7px 4px;font-size:11px;text-align:center}
+.field-hidden{display:none!important}
+.same-toggle{display:flex;align-items:center;gap:8px;padding:8px 2px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text2)}
+.same-toggle input[type=checkbox]{width:18px;height:18px;accent-color:var(--green);cursor:pointer}
+.inline-check{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap;cursor:pointer}
+.inline-check input[type=checkbox]{width:16px;height:16px;accent-color:var(--green);cursor:pointer}
+</style>
+<script>
+/* Noir Gold light theme — applied automatically, no user control */
+(function(){document.documentElement.classList.add('t-gold');})();
+</script>
+<style>
+/* ─── NOIR GOLD THEME (variable overrides only) ─── */
+html.t-gold{
+  --text:#2a2317;--text2:#6f6350;--text3:#a2947a;--border:#e6dcc6;--border-focus:var(--pink);
+  --surface:#fffcf5;--surface2:#f3ecdd;--bg:#f6f1e7;
+  --pink:#a5813e;--pink-dark:#8f6f33;--pink-mid:#c9aa63;--pink-light:#f2e8d2;--pink-soft:#e3d3ac;--pink-glow:rgba(165,129,62,.22);
+  --green:#3e7d5a;--green-light:#e9f2ec;--amber:#a86a00;--amber-light:#f6ecd8;--red:#c0392b;--red-light:#f8e9e7;--blue:#46678f;--blue-light:#e8eef6;
+  --shadow-sm:0 1px 4px rgba(90,70,35,.07),0 0 0 1px rgba(90,70,35,.04);
+  --shadow-md:0 4px 18px rgba(90,70,35,.10),0 1px 4px rgba(90,70,35,.05);
+}
+html.t-gold body{background:linear-gradient(rgba(246,241,231,.92),rgba(246,241,231,.96)),url('https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=75') center/cover fixed}
+/* Gold button text — dark ink on gold reads best */
+html.t-gold .btn-primary,html.t-gold .weight-preset.active,html.t-gold .lang .on{color:#2a2317}
+/* Keep the login (entry) + splash screens exactly as designed */
+html.t-gold .entry-screen .field input,html.t-gold .entry-screen .field select,html.t-gold .entry-screen .field textarea{background:#fff;border-color:#e8e8f0;color:#1a1a2e}
+html.t-gold .entry-screen .field label{color:#555577}
+html.t-gold .entry-screen .entry-error{background:#ffebee;color:#c62828}
+html.t-gold .entry-screen .security-box{background:#e3f2fd}
+html.t-gold .weight-preset{color:#a5813e}
+html.t-gold .order-number-badge{color:#a5813e}
+</style>
+</head>
+<body>
+
+<!-- SPLASH (welcome) -->
+<div class="splash-screen" id="splash-screen">
+  <div class="splash-fx" id="splash-fx">
+    <div class="splash-blob sb1"></div><div class="splash-blob sb2"></div><div class="splash-blob sb3"></div>
+  </div>
+  <img class="splash-logo" src="logo.png" alt="নিতুর বেকারি">
+  <div class="splash-chip">🎂 নিতুবাবুর্চীর পোর্টফোলিও</div>
+  <div class="splash-moto">THE CAKE IS A CANVAS</div>
+  <div class="splash-loader"><i></i></div>
+</div>
+
+<!-- ENTRY SCREEN -->
+<div class="entry-screen" id="entry-screen">
+  <div class="entry-bgfx" id="entry-bgfx">
+    <div class="splash-blob sb1"></div><div class="splash-blob sb2"></div><div class="splash-blob sb3"></div>
+  </div>
+  <div class="entry-wrap">
+    <div class="entry-logo"><img src="logo.png" alt="নিতুর বেকারি"></div>
+    <div class="entry-brand">নিতুবাবুর্চীর পোর্টফোলিও</div>
+    <div class="entry-moto">The Cake Is A Canvas</div>
+  <div class="entry-box">
+    <div class="lang-row">
+      <button class="lang-btn active" id="lang-bn" onclick="setLang('bn')">বাংলা</button>
+      <button class="lang-btn" id="lang-en" onclick="setLang('en')">English</button>
+    </div>
+    <div class="entry-error" id="entry-error"></div>
+    <div class="field">
+      <label data-bn="ফোন নম্বর *" data-en="Phone Number *">ফোন নম্বর *</label>
+      <input type="tel" id="entry-phone" placeholder="017xx-xxxxxx" autocomplete="tel" maxlength="14">
+    </div>
+    <div class="security-box" id="security-box">
+      <label id="security-label"></label>
+      <input type="text" inputmode="numeric" id="entry-security" placeholder="উত্তর">
+    </div>
+    <div class="previous-orders" id="previous-orders">
+      <div class="previous-orders-title" id="prev-title"></div>
+      <div id="prev-list"></div>
+    </div>
+    <button class="btn-primary" id="entry-btn" onclick="handleEntry()">অর্ডার শুরু করুন</button>
+  </div>
+  </div>
+</div>
+
+<!-- FORM SCREEN -->
+<div class="form-screen" id="form-screen">
+  <div class="form-header">
+    <img src="logo.png" alt="নিতুর বেকারি">
+    <h2 data-bn="আপনার অর্ডার দিন" data-en="Place Your Order">আপনার অর্ডার দিন</h2>
+    <div class="order-number-badge">অর্ডার নম্বর: <span id="form-order-id"></span></div>
+    <button type="button" class="previous-orders-btn" onclick="showPreviousOrders()" data-bn="🧾 আপনার পূর্ববর্তী অর্ডার" data-en="🧾 Your Previous Orders">🧾 আপনার পূর্ববর্তী অর্ডার</button>
+  </div>
+  <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+
+  <div class="section">
+    <div class="section-title">🎂 <span data-bn="কেক তথ্য" data-en="Cake Details">কেক তথ্য</span></div>
+    <div class="field">
+      <label data-bn="আপনার নাম *" data-en="Your Name *">আপনার নাম *</label>
+      <input type="text" id="f-name" placeholder="Place your exact Facebook profile name here" oninput="updateProgress()">
+      <div class="hint-box">Facebook প্রোফাইলে যে নাম আছে, ঠিক সেভাবে লিখুন — যেন আমরা আপনাকে সহজে খুঁজে পাই।</div>
+    </div>
+
+    <!-- Order mode: Single / Multiple -->
+    <div class="order-mode-toggle">
+      <button type="button" class="mode-btn active" id="mode-single" onclick="setOrderMode('single')">
+        <span>🎂</span> <span data-bn="একক অর্ডার" data-en="Single Order">একক অর্ডার</span>
+        <small data-bn="একটি কেক" data-en="One cake">একটি কেক</small>
+      </button>
+      <button type="button" class="mode-btn" id="mode-multiple" onclick="setOrderMode('multiple')">
+        <span>🎂🎂</span> <span data-bn="একাধিক অর্ডার" data-en="Multiple Order">একাধিক অর্ডার</span>
+        <small data-bn="২-৫টি কেক" data-en="2-5 cakes">২-৫টি কেক</small>
+      </button>
+    </div>
+
+    <!-- Cake count picker -->
+    <div class="cake-count-picker" id="cake-count-picker">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:6px" data-bn="কেক কতটি? (২-৫)" data-en="How many cakes? (2-5)">কেক কতটি? (২-৫)</div>
+      <div class="cc-btns">
+        <button type="button" class="cc-btn" id="cc-btn-2" onclick="setCakeCount(2)">২</button>
+        <button type="button" class="cc-btn" id="cc-btn-3" onclick="setCakeCount(3)">৩</button>
+        <button type="button" class="cc-btn" id="cc-btn-4" onclick="setCakeCount(4)">৪</button>
+        <button type="button" class="cc-btn" id="cc-btn-5" onclick="setCakeCount(5)">৫</button>
+      </div>
+    </div>
+
+    <!-- Cake columns (1 & 2 side-by-side) -->
+    <div id="cake-columns-container"></div>
+
+    <!-- Delivery info -->
+    <div id="delivery-info-section" class="delivery-info">
+      <div class="section-title" style="margin-top:20px">📍 <span data-bn="ডেলিভারি তথ্য" data-en="Delivery Info">ডেলিভারি তথ্য</span></div>
+
+      <!-- Same address -->
+      <label class="same-toggle"><input type="checkbox" id="same-address-check" checked> <span data-bn="উভয় কেক একই ঠিকানায় যাবে" data-en="Both cakes to the same address">উভয় কেক একই ঠিকানায় যাবে</span></label>
+      <div class="field"><label data-bn="ডেলিভারি ঠিকানা *" data-en="Delivery Address *">ডেলিভারি ঠিকানা *</label><textarea id="f-address" placeholder="পূর্ণ ঠিকানা লিখুন" oninput="updateProgress()"></textarea></div>
+      <div id="cake2-address-block" class="field-hidden">
+        <div class="field"><label data-bn="কেক ২ ঠিকানা *" data-en="Cake 2 address *">কেক ২ ঠিকানা *</label><textarea id="f-address-2" placeholder="পূর্ণ ঠিকানা লিখুন" oninput="updateProgress()"></textarea></div>
+      </div>
+
+      <!-- Same receiver name -->
+      <label class="same-toggle"><input type="checkbox" id="same-receiver-check" checked> <span data-bn="একই ব্যক্তি কেক গ্রহণ করবেন" data-en="Same person receives both cakes">একই ব্যক্তি কেক গ্রহণ করবেন</span></label>
+      <div class="field"><label data-bn="রিসিভারের নাম *" data-en="Receiver Name *">রিসিভারের নাম *</label><input type="text" id="f-receiver" placeholder="কে নেবেন" oninput="updateProgress()"></div>
+      <div id="cake2-receiver-block" class="field-hidden">
+        <div class="field"><label data-bn="কেক ২ রিসিভারের নাম *" data-en="Cake 2 receiver name *">কেক ২ রিসিভারের নাম *</label><input type="text" id="f-receiver-2" placeholder="কে নেবেন" oninput="updateProgress()"></div>
+      </div>
+
+      <!-- Receiver phone (cake 1) + my-number checkbox -->
+      <div class="field">
+        <label data-bn="রিসিভার ফোন *" data-en="Receiver Phone *">রিসিভার ফোন *</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="tel" id="f-receiver-phone" placeholder="017xx-xxxxxx" maxlength="14" style="flex:1" oninput="updateProgress()">
+          <label class="inline-check"><input type="checkbox" id="receiver-same-cust" onchange="onReceiverSameCust(1)"> <span data-bn="আমার নম্বর" data-en="My number">আমার নম্বর</span></label>
+        </div>
+      </div>
+      <!-- Same phone toggle (hides cake-2 phone) -->
+      <label class="same-toggle"><input type="checkbox" id="same-phone-check" checked> <span data-bn="কেক ২-এর রিসিভার ফোনও একই" data-en="Cake 2 receiver phone is the same">কেক ২-এর রিসিভার ফোনও একই</span></label>
+      <div id="cake2-phone-block" class="field-hidden">
+        <div class="field">
+          <label data-bn="কেক ২ রিসিভার ফোন *" data-en="Cake 2 receiver phone *">কেক ২ রিসিভার ফোন *</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="tel" id="f-receiver-phone-2" placeholder="017xx-xxxxxx" maxlength="14" style="flex:1" oninput="updateProgress()">
+            <label class="inline-check"><input type="checkbox" id="receiver-same-cust-2" onchange="onReceiverSameCust(2)"> <span data-bn="আমার নম্বর" data-en="My number">আমার নম্বর</span></label>
+          </div>
+        </div>
+      </div>
+<!-- Alt phone -->
+      <label class="same-toggle"><input type="checkbox" id="alt-phone-check"> <span data-bn="জরুরি বিকল্প ফোন নম্বর যোগ করুন" data-en="Add an emergency alternate phone">জরুরি বিকল্প ফোন নম্বর যোগ করুন</span></label>
+      <div id="alt-phone-block" class="field-hidden">
+        <div class="field"><label data-bn="বিকল্প ফোন নম্বর" data-en="Alternate phone number">বিকল্প ফোন নম্বর</label><input type="tel" id="f-alt-phone" placeholder="01XXXXXXXXX"></div>
+      </div>
+
+      <!-- Same date -->
+      <label class="same-toggle"><input type="checkbox" id="same-date-check" checked> <span data-bn="উভয় কেক একই তারিখে" data-en="Both cakes on the same date">উভয় কেক একই তারিখে</span></label>
+      <div class="row2">
+        <div class="field"><label data-bn="ডেলিভারি তারিখ *" data-en="Delivery Date *">ডেলিভারি তারিখ *</label><input type="date" id="f-date" oninput="updateProgress()"></div>
+        <div id="cake2-date-block" class="field-hidden"><div class="field"><label data-bn="কেক ২ তারিখ *" data-en="Cake 2 date *">কেক ২ তারিখ *</label><input type="date" id="f-date-2" oninput="updateProgress()"></div></div>
+      </div>
+
+      <!-- Same time -->
+      <label class="same-toggle"><input type="checkbox" id="same-time-check" checked> <span data-bn="উভয় কেক একই সময়ে" data-en="Both cakes at the same time">উভয় কেক একই সময়ে</span></label>
+      <div class="row2">
+        <div class="field">
+          <label data-bn="ডেলিভারি সময় *" data-en="Delivery Time *">ডেলিভারি সময় *</label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="f-timeslot" inputmode="decimal" placeholder="যেমন: 3.00" autocomplete="off" style="flex:1;min-width:0" onblur="normalizeTimeInput(1)" oninput="updateProgress()">
+            <select id="f-time-ampm" style="width:84px;flex-shrink:0" onchange="updateProgress()"><option value="">--</option><option value="AM">AM</option><option value="PM">PM</option></select>
+          </div>
+          <div class="note-box">নিরাপত্তার জন্য ডেলিভারি সর্বোচ্চ রাত ৮টা পর্যন্ত করা হয়।</div>
+        </div>
+        <div id="cake2-time-block" class="field-hidden">
+          <div class="field">
+            <label data-bn="কেক ২ সময় *" data-en="Cake 2 time *">কেক ২ সময় *</label>
+            <div style="display:flex;gap:6px">
+              <input type="text" id="f-timeslot-2" inputmode="decimal" placeholder="যেমন: 3.00" autocomplete="off" style="flex:1;min-width:0" onblur="normalizeTimeInput(2)" oninput="updateProgress()">
+              <select id="f-time-ampm-2" style="width:84px;flex-shrink:0" onchange="updateProgress()"><option value="">--</option><option value="AM">AM</option><option value="PM">PM</option></select>
+            </div>
+          </div>
+        </div>
+      </div>
+<div class="field delivery-charge-field" id="delivery-charge-field">
+        <label>ডেলিভারি চার্জ (ডেলিভারি এজেন্ট জানালে লিখুন)</label>
+        <input type="number" id="f-delivery-charge" min="0" step="1" placeholder="এজেন্টের বলা চার্জ লিখুন" oninput="recalcPrice()">
+        <div class="note-box">এই চার্জটি কেকের দামের অংশ নয়। পুরো টাকা ডেলিভারি এজেন্টকে দেওয়া হবে।</div>
+      </div>
+      <label class="same-toggle"><input type="checkbox" id="same-charge-check" checked> <span data-bn="কেক ২-এর ডেলিভারি চার্জও একই" data-en="Cake 2 delivery charge is the same">কেক ২-এর ডেলিভারি চার্জও একই</span></label>
+      <div id="cake2-charge-block" class="field-hidden">
+        <div class="field delivery-charge2-field" id="delivery-charge2-field">
+          <label>কেক ২ ডেলিভারি চার্জ</label>
+          <input type="number" id="f-delivery-charge-2" min="0" step="1" placeholder="কেক ২ চার্জ লিখুন" oninput="recalcPrice()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Surprise cake -->
+    <div class="field" style="margin-top:16px">
+      <label data-bn="সারপ্রাইজ কেক?" data-en="Surprise Cake?">সারপ্রাইজ কেক?</label>
+      <select id="f-surprise"><option value="no">না</option><option value="yes">হ্যাঁ — সারপ্রাইজ 🎁</option></select>
+      <div class="surprise-note" id="surprise-note">⚠️ সারপ্রাইজ কেকের জন্য ১০০% অগ্রিম পেমেন্ট আবশ্যক।</div>
+    </div>
+    <div class="field">
+      <label data-bn="ডেলিভারি ধরন *" data-en="Fulfilment type *">ডেলিভারি ধরন *</label>
+      <select id="f-fulfilment" onchange="onFulfilmentChange()"><option value="delivery">ডেলিভারিম্যান</option><option value="pickup">সেলফ পিকআপ</option></select>
+      <div class="pickup-box" id="pickup-box">সেলফ পিকআপ ঠিকানা: Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram.<br><a href="https://maps.app.goo.gl/vAk44BoEWRbppBuz8" target="_blank" rel="noopener">Google Maps-এ ঠিকানা খুলুন</a></div>
+    </div>
+  </div>
+
+  <!-- Mini cake 100% advance popup -->
+  <div class="popup-overlay" id="mini-advance-popup" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="popup" style="max-width:380px" role="alertdialog" aria-modal="true">
+      <div class="popup-header"><h3 style="font-size:16px">⚠️ মিনি কেক — ১০০% অগ্রিম</h3><button type="button" class="popup-close" onclick="closeMiniAdvancePopup()">×</button></div>
+      <div style="padding:16px 18px;font-size:13.5px;line-height:1.7;color:var(--text2)">মিনি কেকের জন্য <strong>১০০% অগ্রিম পেমেন্ট আবশ্যক</strong>।<br>অগ্রিম ১০০% পরিশোধ নির্বাচন করা হয়েছে।</div>
+      <div style="padding:0 18px 18px"><button type="button" class="btn-primary" style="margin-top:0" onclick="closeMiniAdvancePopup()">বুঝেছি</button></div>
+    </div>
+  </div>
+
+  <!-- Weight unit popup (POUND / KG) -->
+  <div class="popup-overlay" id="weight-unit-popup" onclick="closeWeightUnitPopup(event)">
+    <div class="popup" style="max-width:340px" role="alertdialog" aria-modal="true">
+      <div class="popup-header"><h3 style="font-size:16px">ওজন একক</h3><button type="button" class="popup-close" onclick="closeWeightUnitPopup()">×</button></div>
+      <div class="popup-content" id="weight-unit-msg" style="text-align:center;font-weight:600"></div>
+      <div style="display:flex;gap:10px;padding:0 18px 18px">
+        <button type="button" class="btn-primary" style="flex:1" onclick="chooseWeightUnit('pound')">POUND</button>
+        <button type="button" class="btn-primary" style="flex:1" onclick="chooseWeightUnit('kg')">KG</button>
+      </div>
+    </div>
+  </div>
+<!-- PAYMENT -->
+  <div class="section">
+    <div class="section-title">💳 <span data-bn="পেমেন্ট" data-en="Payment">পেমেন্ট</span></div>
+    <div class="field">
+      <label data-bn="কেকের নির্ধারিত মূল্য * (৳)" data-en="Total payment of the cake * (Tk)">কেকের নির্ধারিত মূল্য * (৳)</label>
+      <input type="number" id="f-cake-price" min="0" placeholder="কেকের মূল্য লিখুন" data-bn-placeholder="কেকের মূল্য লিখুন" data-en-placeholder="Enter cake price" oninput="recalcPrice()">
+    </div>
+    <div class="calc-box" id="calc-box">
+      <div class="calc-row"><span>কেকের মূল্য:</span><span id="calc-base">৳0</span></div>
+      <div class="calc-row"><span>ডেলিভারি:</span><span id="calc-delivery">৳0</span></div>
+      <div class="calc-row total"><span>মোট পেমেন্ট:</span><span id="calc-total">৳0</span></div>
+    </div>
+    <div class="field">
+      <label data-bn="পেমেন্ট পদ্ধতি *" data-en="Payment Method *">পেমেন্ট পদ্ধতি *</label>
+      <select id="f-payment-method" onchange="onPaymentChange()">
+        <option value="">নির্বাচন করুন</option>
+      </select>
+    </div>
+    <div class="payment-info-box" id="payment-info"></div>
+    <div class="field">
+      <label data-bn="আপনি কিভাবে পেমেন্ট করেছেন? *" data-en="Payment method *">আপনি কিভাবে পেমেন্ট করেছেন? *</label>
+      <div class="adv-method-grid" id="adv-method-grid">
+        <div class="adv-method-opt" id="adv-opt-bkash" onclick="chooseAdvanceMethod('bkash')">বিকাশ<small>চার্জ ১.৮২%</small></div>
+        <div class="adv-method-opt" id="adv-opt-nagad" onclick="chooseAdvanceMethod('nagad')">নগদ<small>চার্জ ১.৪৯%</small></div>
+        <div class="adv-method-opt" id="adv-opt-bank" onclick="chooseAdvanceMethod('bank')">ব্যাংক<small>চার্জ নেই</small></div>
+      </div>
+    </div>
+    <div class="field">
+      <label data-bn="আপনি কত টাকা পাঠাতে চান? *" data-en="How much do you want to send? *">আপনি কত টাকা পাঠাতে চান? *</label>
+      <div class="advance-options" id="advance-options">
+        <div class="advance-opt" id="opt-50" onclick="setAdvanceType('50')">৫০% অগ্রিম</div>
+        <div class="advance-opt" id="opt-full" onclick="setAdvanceType('full')">১০০% পরিশোধ</div>
+      </div>
+      <input type="number" id="f-advance" class="advance-input" placeholder="৳ পরিমাণ লিখুন" min="0" oninput="recalcPrice(true)" onclick="onAdvanceClick()" onfocus="onAdvanceClick()">
+      <div class="hint-box" id="advance-hint"></div>
+    </div>
+
+    <!-- Due amount: auto-calculated (total − advance), greyed out, read-only -->
+    <div class="field due-field" id="due-field">
+      <label data-bn="বাকি পেমেন্ট (অটো হিসাব)" data-en="Due amount (auto-calculated)">বাকি পেমেন্ট (অটো হিসাব)</label>
+      <input type="text" id="f-due" class="due-input" readonly tabindex="-1" onfocus="this.blur()" placeholder="৳ 0">
+      <div class="hint-box" id="due-hint"></div>
+    </div>
+
+    <div class="pay-footnote" id="pay-footnote"></div>
+
+    <div class="field" style="margin-top:12px">
+      <label data-bn="ট্রানজেকশন আইডি / পেমেন্ট নম্বরের শেষ ৩ ডিজিট *" data-en="Transaction ID / Last 3 Digits of Payment Number *">ট্রানজেকশন আইডি / পেমেন্ট নম্বরের শেষ ৩ ডিজিট *</label>
+      <input type="text" id="f-trx" placeholder="যেমন: 8K3N বা 456">
+    </div>
+    <div class="field">
+      <label data-bn="অতিরিক্ত তথ্য (ঐচ্ছিক)" data-en="Additional Info (Optional)">অতিরিক্ত তথ্য (ঐচ্ছিক)</label>
+      <textarea id="f-notes" placeholder="কোনো বিশেষ অনুরোধ থাকলে লিখুন"></textarea>
+    </div>
+  </div>
+
+  <button class="btn-primary" onclick="submitOrder()" id="submit-btn">✅ অর্ডার জমা দিন</button>
+</div>
+
+<div class="popup-overlay" id="text-popup" onclick="closeTextPopup(event)">
+  <div class="popup" role="dialog" aria-modal="true">
+    <div class="popup-header"><h3 id="popup-title"></h3><button type="button" class="popup-close" onclick="closeTextPopup()">×</button></div>
+    <div class="popup-content" id="popup-content"></div>
+  </div>
+</div>
+
+<!-- PREVIOUS ORDERS -->
+<div class="popup-overlay" id="previous-orders-popup" onclick="closePreviousOrders(event)">
+  <div class="popup order-history-popup" role="dialog" aria-modal="true" aria-labelledby="previous-orders-title">
+    <div class="popup-header"><h3 id="previous-orders-title">আপনার পূর্ববর্তী অর্ডার</h3><button type="button" class="popup-close" onclick="closePreviousOrders()" aria-label="Close">×</button></div>
+    <div class="popup-content" id="previous-orders-content"></div>
+    <div class="order-history-nav" id="previous-orders-nav">
+      <button type="button" id="previous-order-back" onclick="changePreviousOrder(-1)">← আগেরটি</button>
+      <span id="previous-order-position"></span>
+      <button type="button" id="previous-order-next" onclick="changePreviousOrder(1)">পরেরটি →</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS -->
+<div class="success-screen" id="success-screen">
+  <div class="success-icon">✅</div>
+  <div class="success-title">অর্ডার সফলভাবে জমা হয়েছে!</div>
+  <div class="success-msg">আমরা শীঘ্রই আপনার সাথে যোগাযোগ করব। অর্ডার কনফার্ম হলে আপনাকে জানানো হবে।</div>
+  <div class="order-summary" id="order-summary"></div>
+  <div class="screenshot-note">অর্ডার কার্ডটি ডাউনলোড করে আমাদের Facebook পেজের ইনবক্সে পাঠালে অর্ডার নম্বর দেখে দ্রুত ট্র্যাক করতে সুবিধা হবে।</div>
+  <button class="btn-primary" onclick="downloadOrderCard()" id="download-card-btn">📥 অর্ডার কার্ড ডাউনলোড করুন</button>
+  <button type="button" class="previous-orders-btn" onclick="showPreviousOrders()" data-bn="🧾 আপনার পূর্ববর্তী অর্ডার" data-en="🧾 Your Previous Orders">🧾 আপনার পূর্ববর্তী অর্ডার</button>
+  <button class="btn-primary" onclick="resetForm()">🔄 নতুন অর্ডার দিন</button>
+</div>
+
+<!-- AUTO-CLOSE POPUP -->
+<div class="auto-close-pop" id="auto-close-pop">
+  <div class="auto-close-box">
+    <div class="pc-icon">📥</div>
+    <div class="pc-title">অর্ডার কার্ডটি এখনই ডাউনলোড করুন</div>
+    <div class="pc-msg">এই উইন্ডোটি <span class="auto-close-count"><b id="auto-close-sec">৫</b> সেকেন্ড</span>-এর মধ্যে বন্ধ হয়ে যাবে। চাইলে কার্ডটি ডাউনলোড করতে পারেন।</div>
+    <div class="auto-close-actions">
+      <button class="btn-primary" onclick="downloadOrderCard()">📥 অর্ডার কার্ড ডাউনলোড করুন</button>
+      <button class="btn-ghost" onclick="keepWindowOpen()">✕ এই উইন্ডো খোলা রাখুন</button>
+    </div>
+  </div>
+</div>
+
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+<div class="toast" id="toast"></div>
+
+<!-- "How did you pay?" popup — auto-opens after an advance option is picked -->
+<div class="popup-overlay" id="adv-method-popup" onclick="closeAdvanceMethodPopup(event)">
+  <div class="popup" style="max-width:400px" role="dialog" aria-modal="true" aria-labelledby="adv-method-popup-title">
+    <div class="popup-header"><h3 id="adv-method-popup-title" style="font-size:16px" data-bn="💰 কীভাবে পরিশোধ করবেন?" data-en="💰 How will you pay?">💰 কীভাবে পরিশোধ করবেন?</h3><button type="button" class="popup-close" onclick="closeAdvanceMethodPopup()">×</button></div>
+    <div class="popup-content" style="font-size:13.5px">
+      <span data-bn="আপনার অগ্রিমের সাথে ক্যাশআউট চার্জ যোগ হয়। আপনি কোন মাধ্যমে টাকা পাঠাবেন?" data-en="A cash-out charge is added to your advance. How will you send the money?">আপনার অগ্রিমের সাথে ক্যাশআউট চার্জ যোগ হয়। আপনি কোন মাধ্যমে টাকা পাঠাবেন?</span>
+      <div class="adv-method-grid" style="margin-top:12px">
+        <div class="adv-method-opt" onclick="chooseAdvanceMethod('bkash')">বিকাশ<small>চার্জ ১.৮২%</small></div>
+        <div class="adv-method-opt" onclick="chooseAdvanceMethod('nagad')">নগদ<small>চার্জ ১.৪৯%</small></div>
+        <div class="adv-method-opt" onclick="chooseAdvanceMethod('bank')">ব্যাংক<small>চার্জ নেই</small></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Advance-edit warning popup (payment auto-calculated incl. gateway charge) -->
+<div class="popup-overlay" id="advance-warn-popup" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="popup" style="max-width:380px" role="alertdialog" aria-modal="true">
+    <div class="popup-header"><h3 style="font-size:16px">⚠️ অটো হিসাব</h3><button type="button" class="popup-close" onclick="closeAdvanceWarn()">×</button></div>
+    <div style="padding:16px 18px;font-size:13.5px;line-height:1.7;color:var(--text2)" id="advance-warn-msg"></div>
+    <div style="padding:0 18px 18px"><button type="button" class="btn-primary" style="margin-top:0" id="advance-warn-ok" onclick="closeAdvanceWarn()">বুঝেছি</button></div>
+  </div>
+</div>
+
+<!-- "Select the exact flavour" notice — one friendly reminder before the
+     customer picks a flavour, so the dropdown matches the Facebook chat.
+     Full flavour details remain available via the ❗ button / the link inside. -->
+<div class="popup-overlay" id="flavour-notice-popup" onclick="closeFlavourNotice(event)">
+  <div class="popup" style="max-width:380px" role="alertdialog" aria-modal="true" aria-labelledby="flavour-notice-title">
+    <div class="popup-header"><h3 id="flavour-notice-title" style="font-size:16px">মনোযোগ</h3><button type="button" class="popup-close" onclick="closeFlavourNotice()">×</button></div>
+    <div class="popup-content" id="flavour-notice-body" style="font-size:14px;line-height:1.9;text-align:center"></div>
+    <div style="padding:0 18px 14px;text-align:center">
+      <a href="javascript:void(0)" id="flavour-notice-link" onclick="openFlavourGuideFromNotice()" style="color:var(--pink);font-size:12.5px;text-decoration:underline"></a>
+    </div>
+    <div style="padding:0 18px 18px">
+      <button type="button" class="btn-primary" style="width:100%;margin-top:0" id="flavour-notice-ok" onclick="closeFlavourNotice()">ঠিক আছে</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase + Utils -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="./firebase-config.js"></script>
+<script src="./utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+// The customer app never serves a stale app shell: its worker fetches each page
+// from the network with cache disabled and checks for worker updates on every open.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+      .then(function (registration) { return registration.update(); })
+      .catch(function () {});
+  });
+}
+</script>
+<script src="./app.js"></script>
+</body>
+</html>

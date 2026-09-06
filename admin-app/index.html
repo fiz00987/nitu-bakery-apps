@@ -974,7 +974,7 @@ button { cursor: pointer; }
 }
 .detail-body { flex: 1; min-width: 0; }
 .detail-label { font-size: 10px; color: var(--text3); margin-bottom: 1px; font-weight: 600; }
-.detail-val { font-size: 13px; color: var(--text); line-height: 1.5; word-break: break-word; }
+.detail-val { font-size: 13px; color: var(--text); line-height: 1.5; word-break: break-word; white-space: pre-wrap; }
 
 /* Payment box */
 .pay-box {
@@ -1873,6 +1873,16 @@ select:focus {
 .due-input{background:var(--surface2)!important;color:var(--text2)!important;font-weight:800!important;cursor:not-allowed}
 .due-input:focus{outline:none;border-color:var(--line)}
 .due-hint{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5}
+
+/* ─── Multi-cake order blocks (manual orders, 1-5 cakes) ─────── */
+.cake-block{background:var(--surface2);border:1px solid var(--line,var(--border));border-radius:10px;padding:12px 12px 4px;margin-top:12px}
+.cake-block-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.cake-block-title{font-weight:700;font-size:14px;color:var(--pink)}
+.cake-block-header .cake-remove{background:var(--red-light,#ffebee);color:var(--red,#c62828);border:none;border-radius:6px;font-size:11.5px;font-weight:700;padding:5px 9px;cursor:pointer}
+.same-check{display:flex;align-items:flex-start;gap:7px;background:var(--green-light,#e8f5e9);border:1px dashed var(--green,#2e7d32);border-radius:6px;padding:8px 10px;margin:8px 0;font-size:12.5px;color:var(--green,#2e7d32);cursor:pointer;line-height:1.45}
+.same-check input{width:17px;height:17px;margin:1px 0 0;flex-shrink:0;accent-color:var(--green,#2e7d32)}
+.cake-delivery-sub{border-top:1px dashed var(--line,var(--border));margin-top:12px;padding-top:8px}
+.cake-delivery-sub-title{font-size:12.5px;font-weight:700;color:var(--text2);margin-bottom:2px}
 </style>
 <script>
 /* Theme system — visual only, no order logic touched */
@@ -2242,13 +2252,32 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
         <div class="modal-section-title">👤 কাস্টমার তথ্য</div>
         <div class="row2">
           <div class="field"><label>নাম<span class="req">*</span></label><input id="f-name" placeholder="রিনা বেগম" type="text" autocomplete="off"></div>
-          <div class="field"><label>ফোন<span class="req">*</span></label><input id="f-phone" placeholder="017xx-xxxxxx" type="tel" autocomplete="off"></div>
+          <div class="field">
+            <label>ফোন<span class="req">*</span></label>
+            <input id="f-phone" placeholder="017xx-xxxxxx" type="tel" autocomplete="off">
+            <label class="same-check" style="margin-top:6px">
+              <input type="checkbox" id="f-receiver-same-cust" onchange="App.toggleAdminReceiverSamePhone(this)">
+              <span>রিসিভারের ফোনও একই নম্বর</span>
+            </label>
+          </div>
         </div>
       </div>
 
       <!-- Cake -->
       <div class="modal-section">
         <div class="modal-section-title">🎂 কেক বিবরণ</div>
+        <div class="field">
+          <label>কেকের সংখ্যা * (সর্বোচ্চ ৫)</label>
+          <select id="f-cake-count" onchange="App.setAdminCakeCount(this.value)">
+            <option value="1">১টি কেক</option>
+            <option value="2">২টি কেক</option>
+            <option value="3">৩টি কেক</option>
+            <option value="4">৪টি কেক</option>
+            <option value="5">৫টি কেক</option>
+          </select>
+        </div>
+        <div class="cake-block" id="admin-cake-block-1">
+          <div class="cake-block-header"><span class="cake-block-title">🎂 কেক ১</span></div>
         <div class="row2">
           <div class="field">
             <label>ওজন</label>
@@ -2280,13 +2309,12 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
         <div class="field"><label>সাইজ</label><input id="f-size" placeholder="৬ ইঞ্চি, উচ্চতা কেক" type="text"></div>
         <div class="field">
           <label>কেকে লেখা</label>
-          <div class="row2">
-            <input id="f-writing" placeholder="Happy Birthday Rima" type="text" style="flex:1">
-            <label style="display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;margin:0">
-              <input type="checkbox" id="f-no-writing" onchange="App.toggleWriting()" style="width:auto;margin:0">
-              <span>লেখা নেই</span>
-            </label>
-          </div>
+          <textarea id="f-writing" placeholder="যেমন: Take my hand&#10;Take my whole life too&#10;But I can't help falling in love with you 💗" style="min-height:80px;white-space:pre-wrap"></textarea>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin:6px 0 0">
+            <input type="checkbox" id="f-no-writing" onchange="App.toggleWriting()" style="width:auto;margin:0">
+            <span>লেখা নেই</span>
+          </label>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">লাইন বাই লাইন ঠিক যেমন লেখা হবে সেভ করুন — এন্টার দিয়ে নতুন লাইন করুন</div>
         </div>
         <div class="field">
           <label>📷 রেফারেন্স ছবি (ঐচ্ছিক)</label>
@@ -2301,6 +2329,8 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
           <label>📝 ছবির নোট / ডিজাইন নোট</label>
           <textarea id="f-photo-note" placeholder="যেমন: কেকের কালার থিমটা রেড থেকে পিংক করতে চাচ্ছি" style="min-height:44px"></textarea>
         </div>
+        </div><!-- /admin-cake-block-1 -->
+        <div id="admin-extra-cakes"></div>
         <div class="field">
           <label>🍰 ডেলিভার করা কেকের ছবি (১টি — কমপ্লিটেড ডেটাবেজের জন্য)</label>
           <div class="photo-upload-btn" onclick="document.getElementById('f-delphoto-file').click()" role="button" tabindex="0">
@@ -2344,7 +2374,10 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
         </div>
         <div class="row2">
           <div class="field"><label data-i18n="fReceiver">রিসিভারের নাম</label><input id="f-receiver" placeholder="কে নেবেন" type="text"></div>
-          <div class="field"><label data-i18n="fReceiverPhone">রিসিভারের ফোন</label><input id="f-receiver-phone" placeholder="017xx-xxxxxx" type="tel" maxlength="14"></div>
+          <div class="field">
+            <label data-i18n="fReceiverPhone">রিসিভারের ফোন</label>
+            <input id="f-receiver-phone" placeholder="017xx-xxxxxx" type="tel" maxlength="14">
+          </div>
         </div>
         <div class="field"><label>ডেলিভারি ঠিকানা</label><textarea id="f-address" placeholder="কান্টা গার্লস হোস্টেল, চট্টগ্রাম মেডিকেল" style="min-height:52px"></textarea></div>
         <div class="row2">
