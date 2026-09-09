@@ -856,7 +856,7 @@ window.App = (() => {
 
   <div class="card-details">
     ${o.photo ? `<div class="card-photo-wrap"><img class="card-photo" src="${o.photo}" onclick="App.openLightbox('${fk}')" alt="রেফারেন্স কেক" loading="lazy"></div>` : ''}
-    ${(o.photos && o.photos.length > 1) ? o.photos.slice(1).map((p, i) => `<div class="card-photo-wrap"><img class="card-photo" src="${p}" alt="রেফারেন্স কেক ${i + 2}" loading="lazy" onclick="event.stopPropagation();window.open(this.src,'_blank')"></div>`).join('') : ''}
+    ${(o.photos && o.photos.length > 1) ? o.photos.slice(1).map((p, i) => `<div class="card-photo-wrap"><img class="card-photo" src="${p}" alt="রেফারেন্স কেক ${i + 2}" loading="lazy" onclick="event.stopPropagation();App.openLightboxFor(this.src)"></div>`).join('') : ''}
 
     ${isOvdPay ? `<div class="overdue-alert">⚠️ বকেয়া পেমেন্ট: ৳${fmtMoney(d)} — ডেলিভারির তারিখ পেরিয়ে গেছে!</div>` : ''}
 
@@ -2450,12 +2450,7 @@ window.App = (() => {
 
   // Zoom a modal photo in the existing full-screen lightbox
   const openPhotoLightbox = i => {
-    const src = currentPhotos[i];
-    if (!src) return;
-    resetLbZoom();
-    document.getElementById('lightbox-img').src = src;
-    document.getElementById('lightbox').classList.add('open');
-    document.body.style.overflow = 'hidden';
+    openLightboxFor(currentPhotos[i]);
   };
 
   // ─── Completed-cake photo (≤50KB, one per order) ─────────────
