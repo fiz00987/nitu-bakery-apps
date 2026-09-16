@@ -27,9 +27,8 @@ window.App = (() => {
   try { db.goOnline(); } catch (e) {}
   const auth      = firebase.auth();
   const ordersRef = db.ref('orders');
-  // Cache the whole orders node locally so the next app open can paint
-  // instantly from disk while Firebase reconnects (~1 network round-trip saved).
-  try { ordersRef.keepSynced(true); } catch (e) {}
+  // (keepSynced removed — it fought with the live listener on some devices;
+  //  the localStorage cache below already gives instant first paint.)
   // Shared shopping notepad — multi-page (with photos), live-synced.
   // notesRef keeps the legacy single-string in sync (page 1 / active page text)
   // so any older reader of shopNotepad/text keeps working.
@@ -422,18 +421,19 @@ window.App = (() => {
           const cached = JSON.parse(raw);
           if (cached && Array.isArray(cached.orders) && cached.orders.length) {
             orders = cached.orders.map(o => normalizeCustomerOrder(o));
-            lastOrdersFp = cached.fp || '';
             sortOrders();
             render();
             updateDailyBadge();
           }
         }
-      } catch (e) {}
-      let firstOrdersSnap = true;
+      } catch (e) { console.error('[cache-paint] failed (harmless, live data will render):', e); }
+      let firstOrdersSnap = true;   // first live snapshot must ALWAYS render
       const ordersTimer = setTimeout(() => {
         if (firstOrdersSnap) setSyncStatus('syncing', lang === 'bn' ? '☁️ ক্লাউডে সংযুক্ত হচ্ছে...' : '☁️ Connecting to cloud...');
       }, 1200);
       ordersRef.on('value', snap => {
+        try {
+        const isFirstSnap = firstOrdersSnap;   // captured BEFORE flipping below
         firstOrdersSnap = false;
         clearTimeout(ordersTimer);
         isConnected = true;
@@ -455,7 +455,9 @@ window.App = (() => {
         const fp = orders.map(o =>
           `${o.firebaseKey}:${o.updatedAt || 0}:${o.status || ''}:${o.paid || 0}:${o.deliveryPaid || ''}`
         ).sort().join('|') + `#${orders.length}`;
-        if (fp === lastOrdersFp) return;
+        // The FIRST snapshot of a session must always render — a matching fp
+        // from the cached paint must never swallow the live render.
+        if (fp === lastOrdersFp && !isFirstSnap) return;
         lastOrdersFp = fp;
 
         detectNewOrdersRealtime(orders);
@@ -526,9 +528,14 @@ window.App = (() => {
         } catch (e) {}
         // On the very first snapshot of a session, pop the daily
         // "orders placed today" list (only when there is something to show)
-        if (!dailyPopupShownThisSession) {
+        if (isFirstSnap && !dailyPopupShownThisSession) {
           dailyPopupShownThisSession = true;
           if (todaysPlacedOrders().length > 0) showDailyPopup();
+        }
+        } catch (snapErr) {
+          console.error('[orders-snapshot] fault contained:', snapErr);
+          // Never leave the UI stuck on the skeleton — always try to paint.
+          try { sortOrders(); render(); updateDailyBadge(); } catch (e2) {}
         }
       }, err => {
         console.error('Firebase error:', err);
