@@ -559,7 +559,7 @@ window.App = (() => {
           });
         }
         quotesReady = true;
-      }, err => console.error('Quotes listener error:', err));
+      }, err => console.error('Quotes listener error:', err)));
 
       // Shared shopping notepad — live sync for everyone using the app
       idleRun(() => pagesRef.on('value', snap => {
