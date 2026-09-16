@@ -113,6 +113,7 @@ button{cursor:pointer}
 .section-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .note-box{background:var(--amber-light);border:1px solid #ffcc80;border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--amber);line-height:1.5;margin-top:8px}
+.fb-get-btn{width:100%;margin-top:8px;padding:9px 12px;border:1.5px solid #1877F2;border-radius:var(--radius-sm);background:#E7F3FF;color:#1877F2;font-weight:700;font-size:13px;cursor:pointer}
 .photo-upload{border:2px dashed var(--border);border-radius:var(--radius-sm);padding:24px;text-align:center;cursor:pointer;color:var(--text3);font-size:13px}
 .photo-upload:active{border-color:var(--pink)}
 .hint-box{font-size:11px;color:var(--blue);margin-top:4px;line-height:1.4}
@@ -303,6 +304,12 @@ html.t-gold .order-number-badge{color:#a5813e}
       <label data-bn="আপনার নাম *" data-en="Your Name *">আপনার নাম *</label>
       <input type="text" id="f-name" placeholder="Place your exact Facebook profile name here">
       <div class="hint-box">Facebook প্রোফাইলে যে নাম আছে, ঠিক সেভাবে লিখুন — যেন আমরা আপনাকে সহজে খুঁজে পাই।</div>
+      <div class="fb-link-box">
+        <div class="note-box" style="margin-top:8px">🔗 নিচে ক্লিক করে আপনার <b>এক্সাক্ট Facebook প্রোফাইল লিংক</b> দিন — অর্ডার কনফার্ম করতে আমরা Messenger-এ সরাসরি মেসেজ করতে পারব।</div>
+        <button type="button" class="fb-get-btn" onclick="openFbLinkPopup()">📱 Get profile link</button>
+        <input type="url" id="f-fb-link" style="display:none">
+        <div class="hint-box" id="fb-link-status" style="display:none"></div>
+      </div>
     </div>
     <div class="field">
       <div style="display:flex;align-items:center;gap:5px">
@@ -500,6 +507,26 @@ html.t-gold .order-number-badge{color:#a5813e}
   <button class="btn-primary" onclick="resetForm()">🔄 নতুন অর্ডার দিন</button>
 </div>
 
+<!-- FACEBOOK PROFILE LINK POPUP -->
+<div class="popup-overlay" id="fb-link-popup" onclick="closeFbLinkPopup(event)">
+  <div class="popup" style="max-width:360px" role="dialog" aria-modal="true">
+    <div class="popup-header"><h3 style="font-size:16px">Facebook প্রোফাইল লিংক</h3><button type="button" class="popup-close" onclick="closeFbLinkPopup()">×</button></div>
+    <div class="popup-content" style="text-align:left;font-size:13.5px;line-height:1.9">
+      <b>নিজের লিংক কপি করবেন যেভাবে:</b><br>
+      ১. Facebook অ্যাপে আপনার <b>প্রোফাইলে</b> যান<br>
+      ২. ডান-উপরের <b>⋯ (তিন ডট)</b> চাপুন<br>
+      ৩. <b>Copy profile link</b> চাপুন<br>
+      ৪. ফিরে এসে নিচের বাটনে চাপুন
+    </div>
+    <div style="padding:0 18px">
+      <button type="button" class="btn-primary" style="width:100%" onclick="grabCopiedFbLink()">📎 কপি করা লিংক নিয়ে আসুন</button>
+      <input type="url" id="fb-link-manual" placeholder="অথবা এখানে লিংক পেস্ট করুন" style="margin-top:10px">
+      <button type="button" class="btn-primary" style="width:100%;margin-top:8px;background:var(--green);border-color:var(--green)" onclick="saveFbLinkFromInput()">✅ লিংক সেভ করুন</button>
+    </div>
+    <div class="popup-content" id="fb-link-err" style="color:var(--red);font-size:12.5px;min-height:16px"></div>
+    <div style="height:10px"></div>
+  </div>
+</div>
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
 <div class="toast" id="toast"></div>
 
