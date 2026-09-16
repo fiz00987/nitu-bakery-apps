@@ -303,8 +303,12 @@ async function trackOrder() {
     const snap = await db.ref('orders').orderByChild('orderId').equalTo(orderId).once('value');
     if (!snap.exists()) { showToast('অর্ডার পাওয়া যায়নি'); return; }
     const order = Object.values(snap.val())[0];
+    const dAmt = Number(order.deliveryAmount != null ? order.deliveryAmount : order.deliveryCharge) || 0;
+    const dPaid = String(order.deliveryPaid || '');
+    const dPickup = (order.fulfilment || 'delivery') === 'pickup' || dPaid === 'na' || dAmt <= 0;
+    const dLine = dPickup ? 'প্রযোজ্য নয় (সেল্ফ পিকআপ)' : `৳${Math.round(dAmt)} — ${dPaid === 'paid' ? 'পরিশোধিত ✅' : 'অপরিশোধিত ⏳'}`;
     document.getElementById('prev-title').textContent = 'আপনার অর্ডার';
-    document.getElementById('prev-list').innerHTML = `<div class="previous-order"><strong>${esc(order.orderId)}</strong><br>মোট ৳${order.total || 0}<br>ডেলিভারি: ${esc(fmtDate(order.deliveryDate || ''))}</div>`;
+    document.getElementById('prev-list').innerHTML = `<div class="previous-order"><strong>${esc(order.orderId)}</strong><br>মোট ৳${order.total || 0}<br>ডেলিভারি চার্জ: ${esc(dLine)}<br>ডেলিভারি: ${esc(fmtDate(order.deliveryDate || ''))}</div>`;
     document.getElementById('previous-orders').classList.add('show');
   } catch (e) { showToast('অর্ডার খুঁজতে সমস্যা হয়েছে'); console.error(e); }
 }
@@ -324,6 +328,7 @@ async function loadPreviousOrders(phone) {
       <div class="previous-order">
         <div style="font-weight:600">${esc(o.customerName || o.name || '')} · ${esc(o.weightLabel || o.weight || '')} · ${esc(o.flavourName || o.flavour || '')}</div>
         <div style="color:#888;margin-top:2px">📅 ${esc(fmtDate(o.deliveryDate || o.date || ''))} · 💰 ৳${o.total || 0}</div>
+        <div style="color:#888">🚚 ডেলিভারি চার্জ: ${(o.fulfilment || 'delivery') === 'pickup' || o.deliveryPaid === 'na' ? 'প্রযোজ্য নয় (পিকআপ)' : `৳${Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0)} — ${o.deliveryPaid === 'paid' ? 'পরিশোধিত ✅' : 'অপরিশোধিত ⏳'}`}</div>
       </div>
     `).join('');
     document.getElementById('previous-orders').classList.add('show');
@@ -364,6 +369,13 @@ function renderPreviousOrder() {
   const deliveryDate = fmtDate(order.deliveryDate || order.date || '') || 'তারিখ নির্ধারিত হয়নি';
   const deliveryTime = order.timeSlotLabel || order.time || '';
   const address = order.deliveryAddress || order.address || '—';
+  // Delivery charge status — visible for delivery orders: paid / not paid
+  const delAmt = Number(order.deliveryAmount != null ? order.deliveryAmount : order.deliveryCharge) || 0;
+  const dpaid = String(order.deliveryPaid || '');
+  const isPickupOrd = (order.fulfilment || 'delivery') === 'pickup' || dpaid === 'na' || delAmt <= 0;
+  const delLine = isPickupOrd
+    ? (lang === 'en' ? 'Not applicable (self pickup)' : 'প্রযোজ্য নয় (সেল্ফ পিকআপ)')
+    : `৳${Math.round(delAmt)} — ${dpaid === 'paid' ? (lang === 'en' ? 'Paid ✅' : 'পরিশোধিত ✅') : (lang === 'en' ? 'Not paid ⏳ (pay the delivery agent)' : 'অপরিশোধিত ⏳ (এজেন্টকে দিতে হবে)')}`;
 
   content.innerHTML = `
     <article class="order-history-card">
@@ -375,6 +387,7 @@ function renderPreviousOrder() {
       <div class="order-history-row"><span>${lang === 'en' ? 'Total' : 'মোট'}</span><span>৳${Math.round(total)}</span></div>
       <div class="order-history-row"><span>${lang === 'en' ? 'Paid' : 'প্রদান'}</span><span>৳${Math.round(paid)}</span></div>
       <div class="order-history-row"><span>${lang === 'en' ? 'Due' : 'বাকি'}</span><span>৳${Math.round(due)}</span></div>
+      <div class="order-history-row"><span>${lang === 'en' ? 'Delivery charge' : 'ডেলিভারি চার্জ'}</span><span>${esc(delLine)}</span></div>
     </article>`;
   nav.hidden = false;
   document.getElementById('previous-order-position').textContent = lang === 'en'
@@ -863,7 +876,8 @@ function recalcPrice(manualEdit) {
 
   // Top calc box (cake price / delivery / total)
   document.getElementById('calc-base').textContent = '৳' + Math.round(total);
-  document.getElementById('calc-delivery').textContent = '৳' + Math.round(delivery) + ' (আলাদা)';
+  const isPickupCalc = document.getElementById('f-fulfilment').value === 'pickup';
+  document.getElementById('calc-delivery').textContent = isPickupCalc ? 'প্রযোজ্য নয় (পিকআপ)' : '৳' + Math.round(delivery) + ' (আলাদা)';
   document.getElementById('calc-total').textContent = '৳' + Math.round(total);
   document.getElementById('calc-box').classList.add('show');
 
@@ -1000,11 +1014,22 @@ function closeWeightUnitPopup(event) {
 function onFulfilmentChange() {
   const pickup = document.getElementById('f-fulfilment').value === 'pickup';
   document.getElementById('pickup-box').classList.toggle('show', pickup);
-  document.getElementById('delivery-charge-field').style.display = pickup ? 'none' : 'block';
-  // In quotation mode the delivery charge is already locked by the admin —
-  // the "delivery info" popup is unnecessary.
-  if (!pickup && !quoteToken) showDeliveryPopup();
-  if (pickup) document.getElementById('f-delivery-charge').value = '';
+  // Delivery charge stays VISIBLE always — for self pickup it just shows
+  // "প্রযোজ্য নয়" and the input is disabled.
+  const dcf = document.getElementById('delivery-charge-field');
+  if (dcf) dcf.style.display = 'block';
+  const dci = document.getElementById('f-delivery-charge');
+  const agentNote = document.getElementById('dc-agent-note');
+  const pickupNote = document.getElementById('dc-pickup-note');
+  if (pickup) {
+    if (dci) { dci.value = ''; dci.disabled = true; dci.placeholder = 'প্রযোজ্য নয় — সেল্ফ পিকআপ'; }
+    if (agentNote) agentNote.style.display = 'none';
+    if (pickupNote) pickupNote.style.display = 'block';
+  } else {
+    if (dci && !quoteToken) { dci.disabled = false; dci.placeholder = 'এজেন্টের বলা চার্জ লিখুন'; }
+    if (agentNote) agentNote.style.display = 'block';
+    if (pickupNote) pickupNote.style.display = 'none';
+  }
   document.getElementById('f-address').required = !pickup;
   if (pickup) document.getElementById('f-address').value = 'Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram';
   recalcPrice();
