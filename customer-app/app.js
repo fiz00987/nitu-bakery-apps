@@ -773,7 +773,7 @@ function updateWeightHint() {
   const el = document.getElementById('weight-hint');
   const p = parseWeightText(document.getElementById('f-weight').value);
   if (!p) { el.textContent = ''; return; }
-  el.textContent = p.isKg ? `≈ ${(p.num * 2.20462).toFixed(1)} pound+` : `≈ ${(p.num / 2.20462).toFixed(2)} KG`;
+  el.textContent = p.isKg ? `${p.num} KG = ${(p.num * 2.20462).toFixed(1)} pound` : `${p.num} pound = ${(p.num / 2.20462).toFixed(2)} KG`;
 }
 
 // ─── Mini / Medium cake quick-select ─────────────────────────
@@ -811,8 +811,54 @@ document.getElementById('f-weight').addEventListener('input', function() {
 });
 
 document.getElementById('f-weight').addEventListener('change', function() {
-  if (parseWeightText(this.value)) showTextPopup('base price.txt', 'বেস মূল্য নির্দেশিকা');
+  // Bare numbers (e.g. "1") get the POUND/KG unit popup on blur instead
+  if (!isBareNumberWeight(this.value) && parseWeightText(this.value)) showTextPopup('base price.txt', 'বেস মূল্য নির্দেশিকা');
 });
+
+document.getElementById('f-weight').addEventListener('blur', function() {
+  // Leaving the field with a bare number (e.g. "1" or "2.5") → ask the unit
+  maybeAskWeightUnit();
+});
+
+// ─── Weight-unit popup (POUND / KG) for bare numbers like "1" ──
+let weightUnitPending = false;
+
+function isBareNumberWeight(raw) {
+  const norm = String(raw || '').trim().replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d)).toLowerCase();
+  return /^\d+(?:\.\d+)?$/.test(norm);
+}
+
+function maybeAskWeightUnit() {
+  const el = document.getElementById('f-weight');
+  if (!el) return;
+  const raw = (el.value || '').trim();
+  if (!raw || isPresetWeight(raw) || !isBareNumberWeight(raw)) return;
+  if (weightUnitPending) return; // popup already open
+  weightUnitPending = true;
+  const norm = raw.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+  document.getElementById('weight-unit-msg').textContent = lang === 'en'
+    ? 'You typed ' + norm + ' — is that ' + norm + ' POUND or ' + norm + ' KG?'
+    : 'আপনি ' + norm + ' লিখেছেন — এটি কি ' + norm + ' পাউন্ড, নাকি ' + norm + ' KG?';
+  document.getElementById('weight-unit-popup').classList.add('show');
+}
+
+function chooseWeightUnit(unit) {
+  const el = document.getElementById('f-weight');
+  const norm = (el.value || '').trim().replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+  const m = norm.match(/^(\d+(?:\.\d+)?)$/);
+  if (m) el.value = unit === 'kg' ? m[1] + ' KG' : m[1] + ' pound';
+  weightUnitPending = false;
+  document.getElementById('weight-unit-popup').classList.remove('show');
+  updateWeightHint();
+  recalcPrice();
+  updateProgress();
+}
+
+function closeWeightUnitPopup(event) {
+  const pop = document.getElementById('weight-unit-popup');
+  if (event && event.target !== pop) return;
+  pop.classList.remove('show'); weightUnitPending = false;
+}
 
 function onFulfilmentChange() {
   const pickup = document.getElementById('f-fulfilment').value === 'pickup';

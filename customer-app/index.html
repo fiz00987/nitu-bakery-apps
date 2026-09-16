@@ -466,6 +466,16 @@ html.t-gold .order-number-badge{color:#a5813e}
 </div>
 
 <!-- PREVIOUS ORDERS -->
+<div class="popup-overlay" id="weight-unit-popup" onclick="closeWeightUnitPopup(event)">
+  <div class="popup" style="max-width:340px" role="alertdialog" aria-modal="true">
+    <div class="popup-header"><h3 style="font-size:16px">ওজন একক</h3><button type="button" class="popup-close" onclick="closeWeightUnitPopup()">×</button></div>
+    <div class="popup-content" id="weight-unit-msg" style="text-align:center;font-weight:600"></div>
+    <div style="display:flex;gap:10px;padding:0 18px 18px">
+      <button type="button" class="btn-primary" style="flex:1" onclick="chooseWeightUnit('pound')">POUND</button>
+      <button type="button" class="btn-primary" style="flex:1" onclick="chooseWeightUnit('kg')">KG</button>
+    </div>
+  </div>
+</div>
 <div class="popup-overlay" id="previous-orders-popup" onclick="closePreviousOrders(event)">
   <div class="popup order-history-popup" role="dialog" aria-modal="true" aria-labelledby="previous-orders-title">
     <div class="popup-header"><h3 id="previous-orders-title">আপনার পূর্ববর্তী অর্ডার</h3><button type="button" class="popup-close" onclick="closePreviousOrders()" aria-label="Close">×</button></div>

@@ -271,6 +271,10 @@ function wireWeightEvents(i) {
     if (isBareNumberWeight(raw)) { maybeAskWeightUnit(i); return; }
     if (parseWeightText(raw)) showTextPopup('base price.txt', 'বেস মূল্য নির্দেশিকা');
   });
+  // Leaving the field with a bare number (e.g. "1" or "2.5") → ask the unit
+  el.addEventListener('blur', function () {
+    if (isBareNumberWeight((el.value || '').trim())) maybeAskWeightUnit(i);
+  });
 }
 // ─── Same-as-cake-1 delivery toggles ───────────────────────────
 function syncCake2DeliveryBlocks() {
@@ -1047,7 +1051,7 @@ function updateWeightHint(i) {
   if (!el) return;
   const p = parseWeightText(weightEl(i).value || '');
   if (!p) { el.textContent = ''; return; }
-  el.textContent = p.isKg ? `≈ ${(p.num * 2.20462).toFixed(1)} pound+` : `≈ ${(p.num / 2.20462).toFixed(2)} KG`;
+  el.textContent = p.isKg ? `${p.num} KG = ${(p.num * 2.20462).toFixed(1)} pound` : `${p.num} pound = ${(p.num / 2.20462).toFixed(2)} KG`;
 }
 
 // ─── Mini / Medium cake quick-select ─────────────────────────
