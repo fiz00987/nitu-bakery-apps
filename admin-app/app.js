@@ -847,19 +847,34 @@ window.App = (() => {
     else fallbackCopy(msg, done);
   };
 
-  // ─── Messenger: open the customer's Facebook chat ──────────────
-  // Business Suite has no public deep-link to a specific conversation, so we
-  // open the customer's saved profile link (m.me/... or facebook.com/...) when
-  // present; otherwise fall back to the Business Suite inbox so the customer
-  // can be found there by name. Save the link once via ✏️ এডিট → it then opens
-  // this customer's chat directly forever.
+  // ─── Messenger: open Meta Business Suite inbox ─────────────────
+  // There is no URL that opens a specific customer's conversation, so the
+  // flow is: copy the Order ID → open the Business Suite inbox → paste the
+  // ID in the inbox search → the customer's chat appears (they send the
+  // screenshot / order ID from the customer app's Messenger button).
   const openMessenger = key => {
     const o = orders.find(x => x.firebaseKey === key);
+    const id = o ? String(o.orderId || '') : '';
+    const go = () => {
+      showToast(id ? '🆔 অর্ডার আইডি কপি হয়েছে — Business Suite ইনবক্সের সার্চে পেস্ট করুন' : '💬 Business Suite ইনবক্স খুলছি');
+      window.open('https://business.facebook.com/latest/inbox/', '_blank');
+    };
+    if (id && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(id).then(go).catch(() => { fallbackCopy(id, () => {}); go(); });
+    } else {
+      if (id) fallbackCopy(id, () => {});
+      go();
+    }
+  };
+
+  // Copy just the Order ID (for pasting into the Business Suite inbox search)
+  const copyOrderId = key => {
+    const o = orders.find(x => x.firebaseKey === key);
     if (!o) return;
-    const link = String(o.messengerLink || '').trim();
-    if (link) { window.open(link, '_blank'); return; }
-    showToast('💬 কাস্টমারের FB লিংক সেভ করা নেই — Business Suite ইনবক্স খুলছি। এডিটে লিংক সেভ করলে পরেরবার সরাসরি চ্যাট খুলবে।');
-    window.open('https://business.facebook.com/latest/inbox/', '_blank');
+    const id = String(o.orderId || '');
+    const done = () => showToast('🆔 অর্ডার আইডি কপি হয়েছে — Business Suite সার্চে পেস্ট করুন');
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(id).then(done).catch(() => fallbackCopy(id, done));
+    else fallbackCopy(id, done);
   };
 
   // ─── Copy-to-notepad (full order text) ─────────────────────────
@@ -989,7 +1004,7 @@ window.App = (() => {
   <div class="card-head" onclick="App.toggleCard('${fk}')" role="button" tabindex="0" aria-expanded="false">
     <div class="card-stripe ${colClass(o)}"></div>
     <div class="card-head-body">
-      ${o.orderId ? `<div class="card-order-id">🆔 ${esc(o.orderId)}</div>` : ''}
+      ${o.orderId ? `<div class="card-order-id" onclick="event.stopPropagation(); App.copyOrderId('${fk}')" title="অর্ডার আইডি কপি করুন" style="cursor:pointer">🆔 ${esc(o.orderId)} 📋</div>` : ''}
       <div class="card-name"><span class="card-name-text">${esc(o.name)}</span>${tallyBadge}${customerBadge}<button class="name-copy-btn" type="button" onclick="event.stopPropagation();App.copyCardName(this)" title="নাম কপি করুন">📋 কপি</button></div>
       <div class="card-meta">${esc(weightText(o))}${weightText(o) && o.flavour ? ' · ' : ''}${esc(flavourLabel(o))}${o.time ? ' · ' + esc(o.time) : ''}${(o.cakes && o.cakes.length > 1) ? ' · <b>' + o.cakes.length + 'টি কেক</b>' : ''}</div>
       ${cdChip}
@@ -2230,7 +2245,6 @@ window.App = (() => {
     g('f-surprise').value       = o.surprise  || 'no';
     g('f-delivery-paid').value  = o.deliveryPaid    || 'unpaid';
     g('f-delivery-amount').value = o.deliveryAmount || '';
-    g('f-messenger-link').value = o.messengerLink   || '';
     g('f-total').value          = o.total     || '';
     // f-paid shows the TOTAL SENT (charge-inclusive). The due field subtracts
     // the stored charge to recover the advance toward the cake.
@@ -3099,7 +3113,6 @@ window.App = (() => {
       paymentCharges: chargeToDeduct,
       paymentChargesLabel: chargeLabel,
       trx:            g('f-trx').value.trim(),
-      messengerLink:  g('f-messenger-link').value.trim(),
       notes:          g('f-notes').value.trim(),
       status:         g('f-status').value,
       bakingnotes:    g('f-bakingnotes').value.trim(),
@@ -3625,6 +3638,7 @@ window.App = (() => {
     copyConfirmMessage,
     copyFullDetails,
     openMessenger,
+    copyOrderId,
     openConfirmWhatsApp,
     copyNotepad,
     openModal,

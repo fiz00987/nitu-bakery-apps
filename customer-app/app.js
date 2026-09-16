@@ -860,57 +860,6 @@ function closeWeightUnitPopup(event) {
   pop.classList.remove('show'); weightUnitPending = false;
 }
 
-// ─── Facebook profile link (auto-grab from clipboard) ──────────
-function openFbLinkPopup() {
-  document.getElementById('fb-link-err').textContent = '';
-  document.getElementById('fb-link-popup').classList.add('show');
-}
-function closeFbLinkPopup(event) {
-  const pop = document.getElementById('fb-link-popup');
-  if (event && event.target !== pop) return;
-  pop.classList.remove('show');
-}
-function extractFbUsername(text) {
-  const t = String(text || '').trim();
-  if (!t) return '';
-  const m = t.match(/(?:facebook\.com|fb\.com|m\.me)\/([A-Za-z0-9._\-]{3,})/i);
-  if (m && !/^(profile\.php|pages|groups|hashtag)/i.test(m[1])) return m[1];
-  if (/^[A-Za-z0-9._\-]{3,}$/.test(t) && !/\s/.test(t)) return t; // bare username
-  return '';
-}
-async function grabCopiedFbLink() {
-  const err = document.getElementById('fb-link-err');
-  try {
-    const text = await navigator.clipboard.readText();
-    applyFbLink(text);
-  } catch (e) {
-    err.textContent = '❌ ক্লিপবোর্ড পড়া যায়নি — অনুমতি দিন অথবা নিচের ঘরে লিংক পেস্ট করুন';
-  }
-}
-function saveFbLinkFromInput() { applyFbLink(document.getElementById('fb-link-manual').value); }
-function applyFbLink(text) {
-  const err = document.getElementById('fb-link-err');
-  const t = String(text || '').trim();
-  if (!t) { err.textContent = '⚠️ আগে Facebook অ্যাপ থেকে লিংক কপি করুন'; return; }
-  let link, shown;
-  // ID-based profile (no username) — keep the full link, the admin button opens it as-is
-  const idm = t.match(/facebook\.com\/profile\.php\?id=\d+/i);
-  if (idm) {
-    link = 'https://' + idm[0];
-    shown = 'আপনার প্রোফাইল (ID লিংক)';
-  } else {
-    const u = extractFbUsername(t);
-    if (!u) { err.textContent = '❌ এটি Facebook প্রোফাইল লিংক মনে হচ্ছে না — আবার কপি করুন'; return; }
-    link = 'https://m.me/' + u;
-    shown = u;
-  }
-  document.getElementById('f-fb-link').value = link;
-  document.getElementById('fb-link-popup').classList.remove('show');
-  const st = document.getElementById('fb-link-status');
-  st.textContent = '✅ Messenger লিংক যুক্ত হয়েছে: ' + shown;
-  st.style.display = 'block';
-}
-
 function onFulfilmentChange() {
   const pickup = document.getElementById('f-fulfilment').value === 'pickup';
   document.getElementById('pickup-box').classList.toggle('show', pickup);
@@ -1075,7 +1024,6 @@ function submitOrder() {
     fulfilment: document.getElementById('f-fulfilment').value,
     trx: document.getElementById('f-trx').value.trim(),
     notes: document.getElementById('f-notes').value.trim(),
-    messengerLink: (function () { const e = document.getElementById('f-fb-link'); return e ? e.value.trim() : ''; })(),
     lang: lang,
     source: 'customer',
     status: 'pending',
@@ -1390,8 +1338,6 @@ function resetForm() {
   currentPhotos = []; renderPhotos(); advanceType = ''; lastAutoSend = 0; lastAutoBase = 0; isSurprise = false; cakeWritingNoticeShown = false;
   advanceMethod = '';
   flavourNoticeShown = false; // show the "exact flavour" notice again on a new order
-  const fbs2 = document.getElementById('fb-link-status');
-  if (fbs2) { fbs2.textContent = ''; fbs2.style.display = 'none'; }
   document.querySelectorAll('.adv-method-opt').forEach(el => el.classList.remove('active'));
   updateWritingCount();
   document.getElementById('calc-box').classList.remove('show');
