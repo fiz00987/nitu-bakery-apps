@@ -1179,6 +1179,12 @@ function validate() {
   }
   // Cake 1 delivery / receiver
   if (!isPickup && !document.getElementById('f-address').value.trim()) { showToast('ডেলিভারি ঠিকানা দিন'); document.getElementById('f-address').focus(); return false; }
+  // Delivery charge is mandatory for delivery orders
+  if (!isPickup && !((parseFloat(document.getElementById('f-delivery-charge').value) || 0) > 0)) {
+    showToast('ডেলিভারি চার্জ দিন — এজেন্টের বলা চার্জটি লিখুন');
+    document.getElementById('f-delivery-charge').focus();
+    return false;
+  }
   if (!document.getElementById('f-receiver').value.trim()) { showToast('রিসিভারের নাম দিন'); document.getElementById('f-receiver').focus(); return false; }
   const rc1 = document.getElementById('receiver-same-cust');
   const sameCust1 = rc1 ? rc1.checked : false;
@@ -1200,6 +1206,13 @@ function validate() {
     if (!sameDt && !document.getElementById('f-date-2').value.trim()) { showToast(pfx + 'তারিখ দিন'); document.getElementById('f-date-2').focus(); return false; }
     const sameTm = document.getElementById('same-time-check').checked;
     if (!sameTm) { const tErr2 = getTimeError(2); if (tErr2) { showToast(pfx + tErr2); timeSlotEl(2).focus(); return false; } }
+    // Cake 2 delivery charge (mandatory only when it has its own separate charge)
+    const sc2 = document.getElementById('same-charge-check');
+    if (!isPickup && sc2 && !sc2.checked && !((parseFloat(document.getElementById('f-delivery-charge-2').value) || 0) > 0)) {
+      showToast(pfx + 'ডেলিভারি চার্জ দিন');
+      document.getElementById('f-delivery-charge-2').focus();
+      return false;
+    }
   }
   if (!advanceMethod) {
     showToast(lang === 'en' ? 'Select the payment method (bKash / Nagad / Bank)' : 'আপনি কিভাবে পেমেন্ট করেছেন সেটা নির্বাচন করুন');

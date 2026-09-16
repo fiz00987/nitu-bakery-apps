@@ -870,6 +870,11 @@ function validate() {
   }
   if (!resolveWeight()) { showToast('সঠিক ওজন লিখুন (যেমন: 2 pound বা 1 KG)'); return false; }
   if (document.getElementById('f-fulfilment').value === 'delivery' && !document.getElementById('f-address').value.trim()) { showToast('ঠিকানা দিন'); document.getElementById('f-address').focus(); return false; }
+  if (document.getElementById('f-fulfilment').value === 'delivery' && !((parseFloat(document.getElementById('f-delivery-charge').value) || 0) > 0)) {
+    showToast('ডেলিভারি চার্জ দিন — এজেন্টের বলা চার্জটি লিখুন');
+    document.getElementById('f-delivery-charge').focus();
+    return false;
+  }
   if (!validateBangladeshPhone(document.getElementById('f-receiver-phone').value.trim())) {
     showToast('সঠিক রিসিভার ফোন দিন'); return false;
   }
