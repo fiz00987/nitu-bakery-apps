@@ -11,7 +11,7 @@
    ============================================= */
 'use strict';
 
-const CACHE_NAME = 'nitu-bakery-v10';
+const CACHE_NAME = 'nitu-bakery-v11';
 
 const APP_SHELL = [
   './',
@@ -76,10 +76,14 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // App shell (same-origin): network-first, cache fallback
+  // App shell (same-origin): network-first with HTTP caching DISABLED, cache
+  // fallback when offline. Without `cache: 'no-store'` GitHub Pages' 10-minute
+  // HTTP cache could keep serving an old index.html/app.js even though the SW
+  // fetch is "network-first" — which is exactly why new admin features seemed
+  // to never appear on the live site.
   if (url.origin === self.location.origin) {
     event.respondWith(
-      fetch(event.request)
+      fetch(new Request(event.request, { cache: 'no-store' }))
         .then(resp => {
           const copy = resp.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));

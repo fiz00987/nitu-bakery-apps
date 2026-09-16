@@ -69,7 +69,11 @@ self.addEventListener('notificationclick', function (event) {
 });
 
 /* ─── Offline caching (bulletproof edition) ────────────────── */
-var CACHE_NAME = 'nitu-bakery-v11';
+var CACHE_NAME = 'nitu-bakery-v12';
+// Build stamp — bump on every deploy so you can confirm in DevTools which
+// version the browser is actually running.
+var ADMIN_BUILD = '2026-09-16-quote1';
+try { console.log('Nitu admin build:', ADMIN_BUILD, '— quotation button included'); } catch (e) {}
 var INDEX_KEY  = './index.html';
 var APP_SHELL = [
   './index.html',
