@@ -1530,11 +1530,17 @@ function getTimeError(i) {
 const SHOP_MME_LINK = 'https://m.me/nituscake';
 function messengerConfirm() {
   const msg = 'আমার অর্ডার আইডি: ' + (currentOrderId || '');
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(msg);
-  } catch (e) {}
   showToast('📋 অর্ডার আইডি কপি হয়েছে — Messenger-এ পেস্ট করে পাঠান');
-  setTimeout(() => { window.open(SHOP_MME_LINK, '_blank'); }, 350);
+  // Copy inside the user gesture, then navigate THIS tab immediately —
+  // same-tab navigation is what makes mobile browsers hand off to the
+  // Messenger app (a delayed window.open gets popup-blocked or opens
+  // messenger.com instead of the app).
+  const go = () => { window.location.href = SHOP_MME_LINK; };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(msg).then(go, go);
+  } else {
+    go();
+  }
 }
 
 // Success
