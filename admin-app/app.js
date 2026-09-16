@@ -30,6 +30,7 @@ window.App = (() => {
   const pagesRef  = db.ref('shopNotepad/pages');
   // Calendar off-days: map of 'YYYY-MM-DD' → { reason, by, createdAt }.
   const offDaysRef = db.ref('offDays');
+  const quotesRef = db.ref('quotes');
 
   // ─── State ───────────────────────────────────────────────────
   let orders        = [];
@@ -53,6 +54,8 @@ window.App = (() => {
   let offdayCbDate  = null;         // date currently open in the off-day dialog
   let healedDelivered = {};         // delivered orders already money-healed this session
   let sortMode      = 'date';       // 'date' | 'name' | 'due'
+  let quotes        = [];           // quotes/<TOKEN> live list
+  let quotesReady   = false;
   let searchTimer   = null;
   let lastOrdersFp  = '';           // perf: signature of last rendered snapshot
   let lang          = localStorage.getItem('nitu-lang') || 'bn';  // 'bn' | 'en'
@@ -482,6 +485,21 @@ window.App = (() => {
         setSyncStatus('error', '❌ সংযোগ বিচ্ছিন্ন — ইন্টারনেট চেক করুন');
         render();
       });
+
+      // Quotes — live sync (📨 Quotes tab)
+      quotesRef.on('value', snap => {
+        quotes = [];
+        const data = snap.val();
+        if (data) {
+          Object.keys(data).forEach(k => {
+            const q = data[k] || {};
+            q.token = q.token || k;
+            quotes.push(q);
+          });
+        }
+        quotesReady = true;
+        renderQuotes();
+      }, err => console.error('Quotes listener error:', err));
 
       // Shared shopping notepad — live sync for everyone using the app
       pagesRef.on('value', snap => {
@@ -1711,12 +1729,156 @@ window.App = (() => {
     if (activeTab === 'revenue') renderRevenue();
   };
 
+  const QUOTE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+  const makeQuoteToken = () => {
+    let t = '';
+    for (let i = 0; i < 6; i++) t += QUOTE_CHARS[Math.floor(Math.random() * QUOTE_CHARS.length)];
+    return t;
+  };
+
+  const buildQuoteLink = token =>
+    `${location.origin}${location.pathname.replace(/admin-app.*/, 'customer-app/')}?quote=${token}`;
+
+  const copyQuoteLink = token => {
+    const link = buildQuoteLink(token);
+    const done = () => showToast('🔗 কোটেশন লিংক কপি হয়েছে!');
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(link).then(done).catch(() => fallbackCopy(link, done));
+    else fallbackCopy(link, done);
+  };
+
+  const openQuoteLink = token => {
+    const link = buildQuoteLink(token);
+    copyQuoteLink(token);
+    window.open(link, '_blank');
+  };
+
+  // QUOTE_CREATE
+  const createQuoteFromModal = async () => {
+    const g = id => document.getElementById(id);
+    const fulfilmentVal = g('f-fulfilment') ? g('f-fulfilment').value : 'delivery';
+    const rawDc = g('f-delivery-amount') ? g('f-delivery-amount').value : '';
+    const deliveryCharge = fulfilmentVal === 'pickup' ? 0 : (parseFloat(rawDc) || 0);
+    const cakeTotal = g('f-total') ? (parseFloat(g('f-total').value) || 0) : 0;
+    let allCakes = [];
+    try { allCakes = collectAdminCakes('', fulfilmentVal, deliveryCharge) || []; }
+    catch (e) { allCakes = []; }
+    const cakes = allCakes
+      .filter(c => c && ((c.weight || '').trim() || (c.flavour || '').trim()))
+      .map(c => ({
+        weight: (c.weightLabel || c.weight || '').trim(),
+        weightLabel: (c.weightLabel || c.weight || '').trim(),
+        flavour: (c.flavour || '').trim(),
+        flavourName: (c.flavourName || c.flavour || '').trim(),
+        writing: (c.writing || c.cakeWriting || '').trim()
+      }))
+      .filter(c => c.weight && c.flavour);
+    if (!cakes.length) { showToast('⚠️ অন্তত ১টি কেকের ওজন + ফ্লেভার দিন।'); return; }
+    // QUOTE_SAVE
+    if (!(cakeTotal > 0)) { showToast('⚠️ কেকের মোট মূল্য দিন।'); return; }
+    if (!(deliveryCharge >= 0)) { showToast('⚠️ ডেলিভারি চার্জ দিন (০ হলে ০ লিখুন)।'); return; }
+    const now = Date.now();
+    let token = '';
+    for (let i = 0; i < 5; i++) {
+      const t = makeQuoteToken();
+      try {
+        const snap = await quotesRef.child(t).once('value');
+        if (!snap.exists()) { token = t; break; }
+      } catch (e) { token = t; break; }
+    }
+    // QUOTE_WRITE
+    if (!token) { showToast('❌ টোকেন তৈরি হয়নি — আবার চেষ্টা করুন'); return; }
+    const quote = {
+      token,
+      createdBy: (currentUser && currentUser.email) || '',
+      createdAt: now,
+      expiresAt: now + 3 * 24 * 60 * 60 * 1000,
+      status: 'open',
+      customer: (g('f-name') ? g('f-name').value : '').trim(),
+      customerPhone: (g('f-phone') ? g('f-phone').value : '').trim().replace(/[\s-]/g, ''),
+      cakes, cakeTotal,
+      // customer-multi redemption reads cakePrice ?? total — write both names
+      // so a link created here always opens with the correct locked price.
+      cakePrice: cakeTotal,
+      deliveryCharge,
+      deliveryNotes: (g('f-notes') ? g('f-notes').value : '').trim(),
+      receiver: (g('f-receiver') ? g('f-receiver').value : '').trim(),
+      fulfilment: fulfilmentVal
+    };
+    // QUOTE_DONE
+    try { await quotesRef.child(token).set(quote); }
+    catch (e) { console.error('Quote save failed:', e); showToast('❌ সেভ হয়নি — ইন্টারনেট চেক করুন'); return; }
+    showToast('কোটেশন লিংক তৈরি ✅');
+    copyQuoteLink(token);
+    switchTab('quotes');
+  };
+
+  const deleteQuote = token => {
+    showConfirm('কোটেশন মুছবেন?', `টোকেন ${token} স্থায়ীভাবে মুছে যাবে।`, false, ok => {
+      if (ok) { quotesRef.child(token).remove(); showToast('কোটেশন মুছে ফেলা হয়েছে।'); }
+    });
+  };
+
+  // QUOTE_RENDER
+  const quoteDaysLeft = q => {
+    if (!q || !q.expiresAt) return '—';
+    const d = Math.ceil((Number(q.expiresAt) - Date.now()) / 86400000);
+    if (d < 0) return 'মেয়াদ শেষ';
+    if (d === 0) return 'আজই শেষ';
+    return `${d} দিন বাকি`;
+  };
+
+  const quoteState = q => {
+    if (!q) return '—';
+    if (q.status === 'used') return 'ব্যবহৃত ✅';
+    if (Number(q.expiresAt) && Number(q.expiresAt) < Date.now()) return 'মেয়াদ শেষ ⏰';
+    return 'খোলা 🟢';
+  };
+
+  const renderQuotes = () => {
+    const wrap = document.getElementById('view-quotes');
+    if (!wrap) return;
+    // QUOTE_CARDS
+    const me = (currentUser && currentUser.email) || '';
+    if (!quotesReady) { wrap.innerHTML = '<div class="quotes-empty">লোড হচ্ছে...</div>'; return; }
+    const mine = quotes
+      .filter(q => !me || (q.createdBy || '') === me)
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    const badge = document.getElementById('tc-quotes');
+    if (badge) badge.textContent = mine.filter(q => q.status === 'open').length;
+    // QUOTE_HTML
+    if (!mine.length) {
+      wrap.innerHTML = '<div class="quotes-empty">📨 এখনো কোনো কোটেশন নেই।</div>';
+      return;
+    }
+    wrap.innerHTML = mine.map(q => {
+      const sum = (q.cakes || []).map(c => `${esc(c.weight)} · ${esc(c.flavour)}`).join('<br>');
+      // QUOTE_BTNS
+      const t = String(q.token || '').replace(/[^A-Z0-9]/g, '');
+      const meta = `⏳ ${esc(quoteDaysLeft(q))}${q.openedAt ? ' · 👁️ খোলা হয়েছে' : ''}`;
+      const used = q.usedOrderId ? ` · 🧾 ${esc(q.usedOrderId)}` : '';
+      return `<div class="quote-card">
+        <div class="quote-head"><b>🔑 ${esc(q.token)}</b><span>${esc(quoteState(q))}</span></div>
+        <div>${esc(q.customer || '—')}</div>
+        <div>${sum || '—'}</div>
+        <div>মোট ৳${Math.round(Number(q.cakeTotal) || 0)} + ডেলিভারি ৳${Math.round(Number(q.deliveryCharge) || 0)}</div>
+        <div>${meta}${used}</div>
+        <div class="quote-btns">
+          <button class="card-btn" onclick="App.openQuoteLink('${t}')">🔗 খুলুন</button>
+          <button class="card-btn" onclick="App.copyQuoteLink('${t}')">📋 কপি</button>
+          <button class="card-btn btn-danger" onclick="App.deleteQuote('${t}')">🗑️ মুছুন</button>
+        </div>
+      </div>`;
+    }).join('');
+  };
+
   // ─── Tab switcher ─────────────────────────────────────────────
   const switchTab = t => {
     activeTab = t;
-    ['plan','all','done','cdb','revenue'].forEach(n => {
+    ['plan','all','done','cdb','revenue','quotes'].forEach(n => {
       document.getElementById(`view-${n}`).classList.toggle('hidden', n !== t);
       const btn = document.getElementById(`tab-${n === 'revenue' ? 'rev' : n}`);
+      if (!btn) return;
       const isActive = n === t;
       btn.classList.toggle('active', isActive);
       btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
@@ -1727,6 +1889,7 @@ window.App = (() => {
     if (t === 'done')    renderDone();
     if (t === 'cdb')     renderCdb();
     if (t === 'revenue') renderRevenue();
+    if (t === 'quotes') renderQuotes();
   };
 
   // ─── Toggle card expand ──────────────────────────────────────
@@ -2292,6 +2455,13 @@ window.App = (() => {
     savingOrder = false;
     const saveBtn0 = document.getElementById('btn-save');
     if (saveBtn0) saveBtn0.disabled = false;
+    // Restore normal (non-quotation) mode every time the modal opens — the
+    // save button may have been hidden by the previous quotation-mode open.
+    if (saveBtn0) saveBtn0.style.display = '';
+    const ccField0 = document.getElementById('f-cake-count-field');
+    if (ccField0) ccField0.style.display = '';
+    const qtBtn0 = document.getElementById('btn-quote');
+    if (qtBtn0) qtBtn0.classList.remove('btn-quote-hot');
     currentPhoto = '';
     currentPhotos = [];
     currentDelPhoto = '';
@@ -2338,6 +2508,28 @@ window.App = (() => {
 
   const closeModalBg = e => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
+  };
+
+  // Quotation mode: same order modal, but the regular save button is hidden
+  // and the "কোটেশন লিংক" button is emphasized. Fill flavour/weight/price/
+  // delivery charge, then press the link button to create + copy the link.
+  const openQuoteModal = () => {
+    openModal(null);
+    const sv = document.getElementById('btn-save');
+    if (sv) sv.style.display = 'none';
+    const qt = document.getElementById('btn-quote');
+    if (qt) qt.classList.add('btn-quote-hot');
+    const title = document.getElementById('modal-title');
+    if (title) title.textContent = '📨 কোটেশন মোড — লিংক তৈরি করুন (১টি কেক)';
+    // Quotation links are single-cake for now — hide the cake-count picker
+    // (multi-cake quotes can be enabled later).
+    const ccField = document.getElementById('f-cake-count-field');
+    if (ccField) ccField.style.display = 'none';
+    const ccSel = document.getElementById('f-cake-count');
+    if (ccSel) ccSel.value = '1';
+    adminCakeCount = 1;
+    renderAdminExtraCakes();
+    showToast('📨 কোটেশন মোড — তথ্য দিয়ে "কোটেশন লিংক" চাপুন');
   };
 
   // ─── Photo handling (multi, mirrors customer app) ────────────
@@ -3716,7 +3908,14 @@ window.App = (() => {
     showDailyPopup,
     dismissDailyOrder,
     closeDailyPopup,
-    closeDailyPopupBg
+    closeDailyPopupBg,
+    makeQuoteToken,
+    createQuoteFromModal,
+    openQuoteModal,
+    openQuoteLink,
+    copyQuoteLink,
+    deleteQuote,
+    renderQuotes
   };
 
 })();

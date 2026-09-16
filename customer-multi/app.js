@@ -205,7 +205,6 @@ function renderCakeColumns() {
     renderPhotos(i);
   }
   syncCake2DeliveryBlocks();
-  reconnectDeliveryListeners();
   updateProgress();
 }
 function cakeColumnHtml(i) {
@@ -213,9 +212,6 @@ function cakeColumnHtml(i) {
   const p = (bn, en) => isBn ? bn : en;
   const num = bnCake(i);
   const single = '-' + i;
-  return ''
-    + '<div class="cake-col">'
-    + '<div class="col-header">🎂 ' + p('কেক ' + num, 'Cake ' + num) + '</div>'
     + '<div class="form-group">'
     + '<label>' + p('ওজন * (পাউন্ড বা KG)', 'Weight * (pound or KG)') + '</label>'
     + '<input type="text" id="f-weight' + single + '" placeholder="' + p('যেমন: 2 pound, 1 KG', 'e.g. 2 pound, 1 KG') + '" autocomplete="off" oninput="updateWeightHint(' + i + ');recalcPrice()" onchange="maybeAskWeightUnit(' + i + ')">'
@@ -590,9 +586,6 @@ function proceedToForm(phone) {
   document.getElementById('form-order-id').textContent = currentOrderId;
   setMinDate();
   updateProgress();
-  // Pre-fill name from last order
-  const lastName = localStorage.getItem('nitu-cust-name');
-  if (lastName) document.getElementById('f-name').value = lastName;
 }
 
 // Photo
@@ -1135,7 +1128,6 @@ function onFulfilmentChange() {
   document.getElementById('delivery-charge-field').style.display = pickup ? 'none' : 'block';
   const c2 = document.getElementById('delivery-charge2-field');
   if (c2) c2.style.display = pickup ? 'none' : 'block';
-  if (!pickup) showDeliveryPopup();
   if (pickup) {
     const dc = document.getElementById('f-delivery-charge'); if (dc) dc.value = '';
     const dc2 = document.getElementById('f-delivery-charge-2'); if (dc2) dc2.value = '';
@@ -1268,7 +1260,7 @@ function getOrderTotal() {
 }
 
 // Submit
-function submitOrder() {
+async function submitOrder() {
   if (!validate()) return;
 
   const phone = localStorage.getItem('nitu-cust-phone') || '';

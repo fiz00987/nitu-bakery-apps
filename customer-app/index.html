@@ -215,6 +215,12 @@ input.due-input:focus{outline:none;border-color:#dcdcdc;box-shadow:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 @media print{body>*{display:none!important}}
+/* ── Admin quote (single-cake) ── */
+.quote-banner{display:none;margin:12px 0 0;padding:12px 14px;border-radius:9px;font-size:13.5px;font-weight:600;line-height:1.7}
+.quote-banner.show{display:block}
+.quote-banner.ok{display:block;background:#e8f5e9;border:1.5px solid #66bb6a;color:#1b5e20}
+.quote-banner.err{display:block;background:#ffebee;border:1.5px solid #e57373;color:#b71c1c}
+.locked-field{opacity:.62;background:#f3efe8!important;border-style:dashed!important;cursor:not-allowed}
 </style>
 <script>
 /* Noir Gold light theme — applied automatically, no user control */
@@ -293,6 +299,7 @@ html.t-gold .order-number-badge{color:#a5813e}
     <img src="logo.png" alt="নিতুর বেকারি">
     <h2 data-bn="আপনার অর্ডার দিন" data-en="Place Your Order">আপনার অর্ডার দিন</h2>
     <div class="order-number-badge">অর্ডার নম্বর: <span id="form-order-id"></span></div>
+    <div class="quote-banner" id="quote-banner"></div>
     <button type="button" class="previous-orders-btn" onclick="showPreviousOrders()" data-bn="🧾 আপনার পূর্ববর্তী অর্ডার" data-en="🧾 Your Previous Orders">🧾 আপনার পূর্ববর্তী অর্ডার</button>
   </div>
   <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>

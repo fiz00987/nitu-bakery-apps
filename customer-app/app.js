@@ -127,6 +127,118 @@ function setLang(l) {
 
 function t(key) { return lang === 'en' ? (translationsEn[key] || key) : (translations[key] || key); }
 
+// ─── Admin quote redemption (?quote=TOKEN) — single-cake form ─────
+// The admin app creates quotes/<TOKEN>; the cake spec + money fields are
+// taken from the quote node at submit time (tamper-proof). Name & phone
+// stay editable; the link token is the customer's only "login".
+let quoteToken = '';
+let quoteData = null;
+
+function quoteTotalOf(q) {
+  if (q.cakePrice != null) return Number(q.cakePrice) || 0;
+  if (q.total != null) return Number(q.total) || 0;
+  return Number(q.cakeTotal) || 0;
+}
+function quoteBannerEl() { return document.getElementById('quote-banner'); }
+function showQuoteBanner(html, ok) {
+  const b = quoteBannerEl();
+  if (!b) return;
+  b.innerHTML = html;
+  b.className = 'quote-banner show ' + (ok ? 'ok' : 'err');
+}
+function lockEl(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.disabled = true;
+  el.classList.add('locked-field');
+}
+function applyQuoteLockVisual() {
+  if (!quoteData) return;
+  lockEl('f-weight');
+  lockEl('f-flavour');
+  lockEl('f-cake-price');
+  lockEl('f-delivery-charge');
+  lockEl('f-fulfilment');
+}
+function applyQuoteToForm() {
+  const q = quoteData;
+  const qc = (Array.isArray(q.cakes) ? q.cakes : [])[0] || {};
+  const wEl = document.getElementById('f-weight');
+  if (wEl) wEl.value = String(qc.weightLabel || qc.weight || '').trim();
+  const sel = document.getElementById('f-flavour');
+  if (sel) {
+    const fv = String(qc.flavour || '').trim();
+    const fn = String(qc.flavourName || '').trim();
+    const opts = Array.prototype.slice.call(sel.options || []);
+    const hit = opts.find(o => o.value === fv) ||
+      opts.find(o => (o.textContent || '').trim() === (fn || fv));
+    sel.value = hit ? hit.value : '';
+  }
+  const wr = document.getElementById('f-writing');
+  if (wr && (qc.writing || qc.cakeWriting)) wr.value = qc.writing || qc.cakeWriting;
+  const cp = document.getElementById('f-cake-price');
+  if (cp) cp.value = quoteTotalOf(q);
+  const ful = document.getElementById('f-fulfilment');
+  if (ful) { ful.value = q.fulfilment || 'delivery'; if (typeof onFulfilmentChange === 'function') onFulfilmentChange(); }
+  const dc = document.getElementById('f-delivery-charge');
+  if (dc) dc.value = (q.fulfilment === 'pickup') ? '' : (Number(q.deliveryCharge) || 0);
+  // Name & phone pre-filled from the quote but fully editable
+  const nm = document.getElementById('f-name');
+  if (nm && q.customer && !nm.value) nm.value = q.customer;
+  if (q.customerPhone) document.getElementById('entry-phone').value = q.customerPhone;
+  applyQuoteLockVisual();
+  const parts = ((String(qc.weightLabel || qc.weight || '').trim() + ' ' + (qc.flavourName || qc.flavour || '')).trim()) || 'কেক';
+  const del = q.fulfilment === 'pickup' ? 0 : (Number(q.deliveryCharge) || 0);
+  showQuoteBanner('🔒 এডমিনের দেওয়া কোটেশন: ' + esc(parts) +
+    ' — মোট ৳' + (quoteTotalOf(q) + del) +
+    (del ? ' (ডেলিভারি চার্জ ৳' + del + ' সহ)' : ''), true);
+}
+async function bootQuote() {
+  let token = '';
+  try { token = (new URLSearchParams(location.search).get('quote') || '').trim(); } catch (e) { token = ''; }
+  if (!token) return;
+  quoteToken = token;
+  let q = null;
+  try { const snap = await db.ref('quotes/' + token).once('value'); q = snap ? snap.val() : null; }
+  catch (e) { q = null; }
+  if (!q || (q.status && q.status !== 'open') || (q.expiresAt && Date.now() > q.expiresAt)) {
+    showQuoteBanner('❌ লিংকটি মেয়াদোত্তীর্ণ বা ভুল — সাধারণ ফর্মে অর্ডার করুন।', false);
+    showToast('লিংকটি মেয়াদোত্তীর্ণ বা ভুল');
+    quoteToken = '';
+    quoteData = null;
+    return;
+  }
+  quoteData = q;
+  applyQuoteToForm();
+}
+async function validateQuoteLock() {
+  if (!quoteToken || !quoteData) return { ok: true };
+  let fresh = null;
+  try { const snap = await db.ref('quotes/' + quoteToken).once('value'); fresh = snap ? snap.val() : null; }
+  catch (e) { fresh = null; }
+  if (!fresh || (fresh.status && fresh.status !== 'open') || (fresh.expiresAt && Date.now() > fresh.expiresAt)) {
+    return { ok: false, msg: '❌ কোটেশনটি আর কার্যকর নেই (ইতিমধ্যে ব্যবহৃত বা মেয়াদ শেষ)' };
+  }
+  const qc = (Array.isArray(fresh.cakes) ? fresh.cakes : [])[0] || {};
+  const expW = String(qc.weightLabel || qc.weight || '').trim().toLowerCase();
+  const gotW = String(document.getElementById('f-weight').value || '').trim().toLowerCase();
+  if (expW && gotW !== expW) return { ok: false, msg: '❌ ওজন মিলছে না (কোটেশন: ' + (qc.weightLabel || qc.weight) + ')' };
+  const expF = String(qc.flavour || '').trim();
+  const fEl = document.getElementById('f-flavour');
+  const gotF = fEl ? String(fEl.value).trim() : '';
+  const gotFTxt = (fEl && fEl.selectedIndex >= 0) ? String(fEl.options[fEl.selectedIndex].textContent || '').trim() : '';
+  if (expF && gotF !== expF && gotFTxt !== expF) return { ok: false, msg: '❌ ফ্লেভার মিলছে না' };
+  const expTotal = quoteTotalOf(fresh);
+  const gotTotal = parseFloat(document.getElementById('f-cake-price').value) || 0;
+  if (expTotal !== gotTotal) return { ok: false, msg: '❌ কেকের মূল্য মিলছে না (কোটেশন: ৳' + expTotal + ')' };
+  if ((fresh.fulfilment || 'delivery') !== 'pickup') {
+    const expDel = Number(fresh.deliveryCharge) || 0;
+    const gotDel = parseFloat(document.getElementById('f-delivery-charge').value) || 0;
+    if (expDel !== gotDel) return { ok: false, msg: '❌ ডেলিভারি চার্জ মিলছে না (কোটেশন: ৳' + expDel + ')' };
+  }
+  return { ok: true };
+}
+
 // Entry handler
 async function handleEntry() {
   const phone = document.getElementById('entry-phone').value.trim();
@@ -889,7 +1001,9 @@ function onFulfilmentChange() {
   const pickup = document.getElementById('f-fulfilment').value === 'pickup';
   document.getElementById('pickup-box').classList.toggle('show', pickup);
   document.getElementById('delivery-charge-field').style.display = pickup ? 'none' : 'block';
-  if (!pickup) showDeliveryPopup();
+  // In quotation mode the delivery charge is already locked by the admin —
+  // the "delivery info" popup is unnecessary.
+  if (!pickup && !quoteToken) showDeliveryPopup();
   if (pickup) document.getElementById('f-delivery-charge').value = '';
   document.getElementById('f-address').required = !pickup;
   if (pickup) document.getElementById('f-address').value = 'Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram';
@@ -980,8 +1094,14 @@ function getOrderTotal() {
 }
 
 // Submit
-function submitOrder() {
+async function submitOrder() {
   if (!validate()) return;
+  if (quoteToken && quoteData) {
+    showLoading(true);
+    const chk = await validateQuoteLock();
+    showLoading(false);
+    if (!chk.ok) { showToast(chk.msg); return; }
+  }
 
   const phone = localStorage.getItem('nitu-cust-phone') || '';
   const customerName = document.getElementById('f-name').value.trim();
@@ -1062,9 +1182,25 @@ function submitOrder() {
     updatedAt: Date.now()
   };
 
+  // Quotation mode: the cake spec & money come from the quote node, never
+  // from form values the customer could edit.
+  if (quoteToken && quoteData) {
+    const qc = (Array.isArray(quoteData.cakes) ? quoteData.cakes : [])[0] || {};
+    order.weight = order.weightLabel = String(qc.weightLabel || qc.weight || order.weight || '').trim();
+    order.flavour = String(qc.flavour || order.flavour).trim();
+    order.flavourName = String(qc.flavourName || order.flavourName).trim();
+    order.cakePrice = order.basePrice = order.subtotal = order.total = quoteTotalOf(quoteData);
+    if (quoteData.fulfilment === 'pickup') { order.fulfilment = 'pickup'; order.deliveryCharge = 0; }
+    else { order.fulfilment = 'delivery'; order.deliveryCharge = Number(quoteData.deliveryCharge) || 0; }
+    order.quoteToken = quoteToken;
+  }
+
   showLoading(true);
-  db.ref('orders').push(order).then(() => {
+  db.ref('orders').push(order).then(snap => {
     showLoading(false);
+    if (order.quoteToken) {
+      db.ref('quotes/' + order.quoteToken).update({ status: 'used', usedAt: Date.now(), usedOrderId: (snap && snap.key) || order.orderId }).catch(e => console.error(e));
+    }
     try { fireNtfyAlert(order); } catch (_) {}
     showSuccess(order);
   }).catch(err => {
@@ -1400,4 +1536,5 @@ function setMinDate() {
   const savedPhone = localStorage.getItem('nitu-cust-phone');
   if (savedPhone) document.getElementById('entry-phone').value = savedPhone;
   setMinDate();
+  bootQuote();
 })();

@@ -1482,6 +1482,16 @@ button { cursor: pointer; }
 }
 .fab:hover { transform: scale(1.06); box-shadow: 0 6px 28px rgba(15,90,80,0.5); }
 .fab:active { transform: scale(0.92); }
+/* Quotation-mode FAB — sits above the + (add manual order) FAB */
+.fab.fab-quote {
+  bottom: 96px;
+  font-size: 22px;
+  background: linear-gradient(135deg, #e09642, #d6783c);
+  box-shadow: 0 4px 18px rgba(214,120,60,0.45);
+}
+.fab.fab-quote:hover { box-shadow: 0 6px 28px rgba(214,120,60,0.6); }
+/* Emphasized link button while in quotation mode */
+.btn-quote-hot { box-shadow: 0 0 0 3px rgba(224,150,66,0.45); font-weight: 800; }
 .fab-ripple {
   position: absolute;
   width: 100%; height: 100%;
@@ -1762,6 +1772,21 @@ select:focus {
   color: #fff;
   box-shadow: 0 3px 12px rgba(15,90,80,0.35);
 }
+.btn-quote {
+  background: var(--surface2);
+  border-color: var(--border);
+  color: var(--text);
+}
+.quote-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.quote-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.quote-btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.quotes-empty { text-align: center; color: var(--text3); padding: 28px 12px; }
 
 /* =============================================
    CONFIRM DIALOG
@@ -2245,6 +2270,7 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
   <button class="tab"        id="tab-done" role="tab" aria-selected="false" aria-controls="view-done"    onclick="App.switchTab('done')">✅ <span data-i18n="tabDone">সম্পন্ন</span> <span class="tab-count" id="tc-done">0</span></button>
   <button class="tab"        id="tab-cdb"  role="tab" aria-selected="false" aria-controls="view-cdb"     onclick="App.switchTab('cdb')">🗂️ <span data-i18n="tabCdb">ডেটাবেজ</span> <span class="tab-count" id="tc-cdb">0</span></button>
   <button class="tab"        id="tab-rev"  role="tab" aria-selected="false" aria-controls="view-revenue" onclick="App.switchTab('revenue')">💰 <span data-i18n="tabRev">আয়</span></button>
+  <button class="tab"        id="tab-quotes"  role="tab" aria-selected="false" aria-controls="view-quotes" onclick="App.switchTab('quotes')">📨 কোটেশন <span class="tab-count" id="tc-quotes">0</span></button>
 </nav>
 
 <!-- VIEWS -->
@@ -2254,9 +2280,11 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
   <div id="view-done"    role="tabpanel" aria-labelledby="tab-done" class="section hidden"></div>
   <div id="view-cdb"     role="tabpanel" aria-labelledby="tab-cdb"  class="section hidden"></div>
   <div id="view-revenue" role="tabpanel" aria-labelledby="tab-rev"  class="revenue-section hidden"></div>
+  <div id="view-quotes" role="tabpanel" aria-labelledby="tab-quotes" class="section hidden"></div>
 </main>
 
 <!-- FAB -->
+<button class="fab fab-quote" onclick="App.openQuoteModal()" aria-label="Create quotation link" title="কোটেশন লিংক তৈরি করুন">📨</button>
 <button class="fab" onclick="App.openModal(null)" aria-label="Add new order">+</button>
 
 <!-- LIGHTBOX -->
@@ -2306,7 +2334,7 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
       <!-- Cake -->
       <div class="modal-section">
         <div class="modal-section-title">🎂 কেক বিবরণ</div>
-        <div class="field">
+        <div class="field" id="f-cake-count-field">
           <label>কেকের সংখ্যা * (সর্বোচ্চ ৫)</label>
           <select id="f-cake-count" onchange="App.setAdminCakeCount(this.value)">
             <option value="1">১টি কেক</option>
@@ -2488,6 +2516,7 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
 
     <div class="modal-footer">
       <button class="btn-cancel" id="btn-cancel" onclick="App.closeModal()">বাতিল</button>
+      <button class="btn-quote" id="btn-quote" type="button" onclick="App.createQuoteFromModal()">📨 কোটেশন লিংক</button>
       <button class="btn-save"   id="btn-save"   onclick="App.saveOrder()">☁️ সেভ করুন</button>
     </div>
   </div>
