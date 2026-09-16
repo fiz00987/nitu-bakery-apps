@@ -23,8 +23,11 @@ window.App = (() => {
   const db        = firebase.database();
   const auth      = firebase.auth();
   const ordersRef = db.ref('orders');
-  // Shared shopping notepad — a single string everyone can read & edit.
+  // Shared shopping notepad — multi-page (with photos), live-synced.
+  // notesRef keeps the legacy single-string in sync (page 1 / active page text)
+  // so any older reader of shopNotepad/text keeps working.
   const notesRef  = db.ref('shopNotepad/text');
+  const pagesRef  = db.ref('shopNotepad/pages');
   // Calendar off-days: map of 'YYYY-MM-DD' → { reason, by, createdAt }.
   const offDaysRef = db.ref('offDays');
 
@@ -41,6 +44,9 @@ window.App = (() => {
   let adminCakeCount = 1;           // cakes in the modal order (1-5)
   let currentDelPhoto = '';         // completed-cake photo (≤50KB data URL)
   let notepadText   = '';
+  let notepadPages  = [{ text: '', photos: [], createdAt: Date.now() }];
+  let notepadActive = 0;
+  try { notepadActive = parseInt(localStorage.getItem('nitu-notepad-page') || '0', 10) || 0; } catch (e) {}
   let notepadReady  = false;        // first Firebase snapshot received
   let notepadTimer  = null;
   let offDays       = {};           // 'YYYY-MM-DD' → { reason, ... }
@@ -478,12 +484,22 @@ window.App = (() => {
       });
 
       // Shared shopping notepad — live sync for everyone using the app
-      notesRef.on('value', snap => {
-        notepadText = String(snap.val() || '');
+      pagesRef.on('value', snap => {
+        const pages = snap.val();
+        if (Array.isArray(pages) && pages.length) {
+          notepadPages = pages;
+        } else if (!notepadReady) {
+          // First run: migrate the legacy single-string notepad into page 1
+          notepadReady = true;
+          notesRef.once('value').then(legacySnap => {
+            notepadPages = [{ text: String(legacySnap.val() || ''), photos: [], createdAt: Date.now() }];
+            notepadActive = 0;
+            return pagesRef.set(notepadPages);
+          }).catch(() => {});
+        }
         notepadReady = true;
-        const ta = document.getElementById('notepad-text');
-        // Never clobber what a user is actively typing
-        if (ta && document.activeElement !== ta) ta.value = notepadText;
+        notepadActive = Math.max(0, Math.min(notepadActive, notepadPages.length - 1));
+        renderNotepad();
         renderNotepadStatus();
       }, err => console.error('Notepad listener error:', err));
 
@@ -704,7 +720,10 @@ window.App = (() => {
     // phone regex below still finds the receiver's number.
     const rp = [o.receiver, o.receiverPhone].filter(Boolean).join(' ');
     const pm = rp.match(/(\+?880)?0?1[0-9]{9}/);
-    let msg = `আপনার নামঃ ${o.name}\n`;
+    // Use the receiver's name (the person who will collect the cake); fall
+    // back to the form-filler's name only when no receiver was entered.
+    const shownName = o.receiver || o.name || '';
+    let msg = `আপনার নামঃ ${shownName}\n`;
     msg += `ডেলিভারি পয়েন্টঃ ${o.address || ''}\n`;
     msg += `ডেলিভারির তারিখ এবং সময়ঃ ${o.date ? fmtDate(o.date) : ''} — ${o.time || ''}\n`;
     msg += `রিসিভার এর ফোন নাম্বারঃ ${pm ? pm[0] : rp}\n\n`;
@@ -721,6 +740,126 @@ window.App = (() => {
     else if (o.deliveryPaid === 'unpaid') msg += `due: Delivery charge`;
     else msg += `Delivery charge: Paid`;
     return msg;
+  };
+
+  // ─── Order-CONFIRMED WhatsApp message (Bangla only) ────────────
+  // Brand: নিতুবাবুর্চীর পোর্টফোলিও · Sender shop SIM: +8801303931284
+  // This exact text is ALSO the Meta template `order_confirmed_bn`
+  // (header = logo.png image, body vars {{1}}..{{8}}).
+  const SHOP_NAME_BN   = 'নিতুবাবুর্চীর পোর্টফোলিও';
+  const SHOP_CALL_LINE = '01303-931284';
+  const waPhoneOf = o => {
+    const src = String(o.customerPhone || o.phone || o.receiverPhone || '');
+    const m = src.match(/(?:\+?880|0)(1[3-9]\d{8})/);
+    return m ? `880${m[1]}` : '';
+  };
+  const confirmCakeLine = o => {
+    if (o.cakes && o.cakes.length > 1) {
+      return o.cakes.map(c => `${[c.weightLabel || c.weight, c.flavourName || c.flavour].filter(Boolean).join(' ')}`).join(', ');
+    }
+    return `${weightText(o)} ${flavourLabel(o)}`.trim() || 'কেক';
+  };
+  const confirmCakeMoneyLine = o => {
+    const total = Math.round(Number(o.total) || 0);
+    const paid  = Math.round(effectivePaid(o));
+    const due   = Math.max(0, Math.round(dueAmt(o)));
+    const f = n => `৳${fmtMoney(n)}`;
+    if (due <= 0) return `${f(total)} (সম্পূর্ণ পরিশোধিত ✅)`;
+    return `${f(total)} (জমা ${f(paid)}, বাকি ${f(due)})`;
+  };
+  const confirmDeliveryLine = o => {
+    const amt  = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
+    const paid = String(o.deliveryPaid || '');
+    if (o.fulfilment === 'pickup' || paid === 'na' || amt <= 0) return 'প্রযোজ্য নয় (সেল্ফ পিকআপ)';
+    return paid === 'paid' ? `৳${fmtMoney(amt)} (পরিশোধিত ✅)` : `৳${fmtMoney(amt)} (বাকি ⏳)`;
+  };
+  const confirmDeliveryWhen = o => {
+    const d = o.date ? fmtDate(o.date) : '';
+    const t = o.time || '';
+    return [d, t].filter(Boolean).join(', ') || '—';
+  };
+  const buildConfirmBnMsg = o => {
+    const name    = o.name || o.customerName || '';
+    const orderId = o.orderId || '';
+    const cake    = confirmCakeLine(o);
+    const writing = (o.writing || '').trim() || 'নেই';
+    const when    = confirmDeliveryWhen(o);
+    const addr    = (o.address || '').trim() || '—';
+    const money   = confirmCakeMoneyLine(o);
+    const dcLine  = confirmDeliveryLine(o);
+    return `আসসালামু আলাইকুম ${name}! 🌸\nআপনার অর্ডার ${orderId} কনফার্ম হয়েছে! ✅\n\n🎂 কেক: ${cake}\n✏️ কেকে লেখা: ${writing}\n🚚 ডেলিভারি: ${when}\n📍 ঠিকানা: ${addr}\n\n💰 কেকের মোট: ${money}\n🚚 ডেলিভারি চার্জ: ${dcLine}\n\n${SHOP_NAME_BN} তে অর্ডার করার জন্য ধন্যবাদ! 💛\nকোনো পরিবর্তন লাগলে এই চ্যাটে রিপ্লাই দিন অথবা কল করুন ${SHOP_CALL_LINE}।`;
+  };
+  const openConfirmWhatsApp = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) return;
+    const waPhone = waPhoneOf(o);
+    if (!waPhone) { showToast('❌ কাস্টমার ফোন নম্বর পাওয়া যায়নি'); return; }
+    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(buildConfirmBnMsg(o))}`, '_blank');
+  };
+  const copyConfirmMessage = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) return;
+    const msg = buildConfirmBnMsg(o);
+    const done = () => showToast('✅ কনফার্ম মেসেজ কপি হয়েছে!');
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(msg).then(done).catch(() => fallbackCopy(msg, done));
+    else fallbackCopy(msg, done);
+  };
+
+  // ─── Full-details copy (order details + delivery charge status) ──
+  const buildFullDetailsText = o => {
+    const L = [];
+    L.push(`🧾 অর্ডার বিস্তারিত${o.orderId ? ` — ${o.orderId}` : ''}`);
+    L.push(`👤 নাম: ${o.name || o.customerName || '—'}`);
+    const ph = o.customerPhone || o.phone || o.receiverPhone || '';
+    if (ph) L.push(`📞 ফোন: ${ph}`);
+    L.push(`📅 ডেলিভারি: ${o.date ? fmtDate(o.date) : '—'}${o.time ? ' — ' + o.time : ''}`);
+    L.push(`📍 ঠিকানা: ${o.address || '—'}`);
+    if (o.receiver) L.push(`👤 রিসিভার: ${o.receiver}${o.receiverPhone ? ` (${o.receiverPhone})` : ''}`);
+    if (o.cakes && o.cakes.length > 1) {
+      o.cakes.forEach(c => L.push(`🎂 কেক ${bnCake(c.cakeIndex || 0)}: ${[c.weightLabel || c.weight, c.flavourName || c.flavour].filter(Boolean).join(' — ')}${c.writing ? ` · ✍️ ${c.writing}` : ''}`));
+    } else {
+      L.push(`🎂 কেক: ${[weightText(o), flavourLabel(o)].filter(Boolean).join(' — ') || '—'}`);
+      if (o.writing) L.push(`✍️ লেখা: ${o.writing}`);
+    }
+    L.push(`💰 কেকের মোট: ৳${fmtMoney(Number(o.total) || 0)}`);
+    L.push(`💳 পরিশোধিত: ৳${fmtMoney(effectivePaid(o))}`);
+    const dk = dueAmt(o);
+    if (dk > 0) L.push(`🔴 কেকের বকেয়া: ৳${fmtMoney(dk)}`);
+    // Delivery charge — ALWAYS show paid/unpaid with the amount
+    const dc  = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
+    if (o.fulfilment === 'pickup' || o.deliveryPaid === 'na') {
+      L.push('🚚 ডেলিভারি চার্জ: প্রযোজ্য নয় (সেল্ফ পিকআপ)');
+    } else if (o.deliveryPaid === 'paid') {
+      L.push(`🚚 ডেলিভারি চার্জ: পরিশোধিত ✅${dc ? ` — ৳${fmtMoney(dc)}` : ''}`);
+    } else {
+      L.push(`🚚 ডেলিভারি চার্জ: বাকি 🔴 — ৳${fmtMoney(dc)}`);
+    }
+    if (o.trx) L.push(`🔗 ট্রানজেকশন/লাস্ট ৩ ডিজিট: ${o.trx}`);
+    if (o.notes) L.push(`📝 নোট: ${o.notes}`);
+    return L.join('\n');
+  };
+  const copyFullDetails = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) return;
+    const msg = buildFullDetailsText(o);
+    const done = () => showToast('✅ বিস্তারিত (ডেলিভারি চার্জসহ) কপি হয়েছে!');
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(msg).then(done).catch(() => fallbackCopy(msg, done));
+    else fallbackCopy(msg, done);
+  };
+
+  // ─── Messenger: open the customer's Facebook chat ──────────────
+  // Business Suite has no public deep-link to a specific conversation, so we
+  // open the customer's saved profile link (m.me/... or facebook.com/...) when
+  // present; otherwise fall back to the Business Suite inbox so the customer
+  // can be found there by name. Save the link once via ✏️ এডিট → it then opens
+  // this customer's chat directly forever.
+  const openMessenger = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) return;
+    const link = String(o.messengerLink || '').trim();
+    if (link) { window.open(link, '_blank'); return; }
+    showToast('💬 কাস্টমারের FB লিংক সেভ করা নেই — Business Suite ইনবক্স খুলছি। এডিটে লিংক সেভ করলে পরেরবার সরাসরি চ্যাট খুলবে।');
+    window.open('https://business.facebook.com/latest/inbox/', '_blank');
   };
 
   // ─── Copy-to-notepad (full order text) ─────────────────────────
@@ -763,13 +902,19 @@ window.App = (() => {
     L.push('');
     L.push('');
 
-    // Payment summary
+    // Payment summary — the delivery charge line always states the amount and
+    // whether the agent has been paid or it is still due.
     const methodName = (o.paymentMethodName || o.paymentChargesLabel || o.paymentMethod || '').toLowerCase();
+    const dcAmt = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
     L.push(`Total- ${Math.round(Number(o.total) || 0)}+ Delivery charge`);
     L.push('');
     L.push(`Paid- ${Math.round(Number(o.paid) || 0)}/- with ${methodName} charge`);
     L.push('');
-    L.push(`due : Delivery charge ( ${Math.round(Number(o.deliveryAmount) || 0)}/- )`);
+    if (o.deliveryPaid === 'unpaid') {
+      L.push(`due : Delivery charge ( ${dcAmt || '—'}/- ) 🔴 বাকি`);
+    } else {
+      L.push(`Delivery charge: Paid ✅ ( ${dcAmt}/- )`);
+    }
 
     return L.join('\n');
   };
@@ -822,10 +967,11 @@ window.App = (() => {
     const surpriseChip = o.surprise === 'yes' ? `<span class="chip chip-purple">🎁 সারপ্রাইজ</span>` : '';
     const tallyBadge   = o.source === 'tally'  ? `<span class="chip chip-tally">Tally</span>` : '';
     const customerBadge = o.source === 'customer' ? `<span class="chip chip-customer">অনলাইন অর্ডার</span>` : '';
+    const dcAmtChip = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
     const deliveryChip = o.deliveryPaid === 'paid'
-      ? `<span class="chip chip-green">🚚 ডেল. পরিশোধিত</span>`
+      ? `<span class="chip chip-green">🚚 ডেল. পরিশোধিত${dcAmtChip ? ` ৳${fmtMoney(dcAmtChip)}` : ''}</span>`
       : o.deliveryPaid === 'unpaid'
-      ? `<span class="chip chip-amber">🚚 ডেল. বাকি</span>` : '';
+      ? `<span class="chip chip-amber">🚚 ডেল. বাকি${dcAmtChip ? ` ৳${fmtMoney(dcAmtChip)}` : ''}</span>` : '';
     const cdChip = (o.status !== 'delivered' && o.status !== 'cancelled') ? countdownChip(o.date) : '';
 
     // WhatsApp link — customer's own phone is the primary contact
@@ -920,6 +1066,10 @@ window.App = (() => {
     <div class="card-actions">
       <button class="card-btn btn-note"   onclick="event.stopPropagation(); App.copyNotepad('${fk}')">📋 নোটপ্যাড কপি</button>
       <button class="card-btn btn-srs"   onclick="event.stopPropagation(); App.copySrsMessage('${fk}')">📋 SRS কপি</button>
+      <button class="card-btn btn-note"   onclick="event.stopPropagation(); App.copyFullDetails('${fk}')">🧾 বিস্তারিত+DC কপি</button>
+      <button class="card-btn btn-note"   onclick="event.stopPropagation(); App.copyConfirmMessage('${fk}')">✅ কনফার্ম কপি</button>
+      <button class="card-btn btn-call"   onclick="event.stopPropagation(); App.openMessenger('${fk}')">💬 Messenger</button>
+      ${waLink ? `<button class="card-btn btn-wa" onclick="event.stopPropagation(); App.openConfirmWhatsApp('${fk}')">✅ কনফার্ম পাঠান</button>` : ''}
       ${waLink ? `<button class="card-btn btn-wa" onclick="event.stopPropagation(); window.open('${waLink}','_blank')">💬 WhatsApp</button>` : ''}
       ${waPhone ? `<button class="card-btn btn-call" onclick="event.stopPropagation(); window.open('tel:${waPhone}')">${tr('call')}</button>` : ''}
       <button class="card-btn btn-edit"  onclick="event.stopPropagation(); App.openModal('${fk}')">✏️ এডিট</button>
@@ -1312,15 +1462,34 @@ window.App = (() => {
 
   // ─── Home-screen widget feed (/widgetFeed) ───────────────────
 
-  // ─── Shopping notepad (shared, live-synced) ──────────────────
-  const openNotepad = () => {
-    const ta = document.getElementById('notepad-text');
-    if (ta) {
-      ta.value = notepadText;
-      // Auto-grow for long notes
-      ta.style.height = 'auto';
-      ta.style.height = Math.max(ta.scrollHeight, window.innerHeight * 0.46) + 'px';
+  // ─── Shopping notepad (shared, live-synced, multi-page + photos) ──
+  const renderNotepad = () => {
+    const sel = document.getElementById('notepad-page-sel');
+    const ta  = document.getElementById('notepad-text');
+    const ph  = document.getElementById('notepad-photos');
+    if (sel) {
+      sel.innerHTML = notepadPages.map((p, i) =>
+        `<option value="${i}" ${i === notepadActive ? 'selected' : ''}>📄 পেজ ${i + 1}${(p.photos && p.photos.length) ? ' 🖼️' : ''}</option>`
+      ).join('');
     }
+    if (ta) {
+      const cur = notepadPages[notepadActive] || { text: '', photos: [] };
+      // Never clobber what a user is actively typing
+      if (document.activeElement !== ta) {
+        ta.value = cur.text || '';
+        ta.style.height = 'auto';
+        ta.style.height = Math.max(ta.scrollHeight, window.innerHeight * 0.46) + 'px';
+      }
+    }
+    if (ph) {
+      const cur = notepadPages[notepadActive] || { photos: [] };
+      ph.innerHTML = (cur.photos || []).map((src, i) =>
+        `<div class="np-thumb-wrap"><img src="${src}" class="np-thumb" onclick="App.notepadRemovePhoto(${i})" alt="নোট ছবি"><span class="np-thumb-x">✕</span></div>`
+      ).join('');
+    }
+  };
+  const openNotepad = () => {
+    renderNotepad();
     renderNotepadStatus();
     document.getElementById('notepad-overlay').classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -1334,32 +1503,120 @@ window.App = (() => {
   };
   const renderNotepadStatus = () => {
     const el = document.getElementById('notepad-status');
-    if (el) el.textContent = notepadReady ? '☁️ লাইভ সিঙ্ক চালু — সবাই একই নোট দেখছে' : 'সংযোগ হচ্ছে...';
+    if (el) el.textContent = notepadReady ? `☁️ লাইভ সিঙ্ক চালু — পেজ ${notepadActive + 1}/${notepadPages.length} · সবাই একই নোট দেখছে` : 'সংযোগ হচ্ছে...';
   };
-  const saveNotepadNow = val => {
+  const saveNotepadPages = () => {
     setSyncStatus('syncing', 'নোট সেভ হচ্ছে...');
-    notesRef.set(val)
+    pagesRef.set(notepadPages)
       .then(() => { setSyncStatus('ok'); })
       .catch(() => {
         setSyncStatus('error', '❌ নোট সেভ হয়নি');
         showToast('❌ নোট সেভ হয়নি — ইন্টারনেট চেক করুন');
       });
+    // Keep the legacy single-string notepad in sync (active page text)
+    const cur = notepadPages[notepadActive];
+    if (cur) notesRef.set(cur.text || '').catch(() => {});
   };
   const notepadInput = () => {
     const ta = document.getElementById('notepad-text');
     if (!ta) return;
-    notepadText = ta.value;
+    if (!notepadPages[notepadActive]) notepadPages[notepadActive] = { text: '', photos: [], createdAt: Date.now() };
+    notepadPages[notepadActive].text = ta.value;
     clearTimeout(notepadTimer);
-    notepadTimer = setTimeout(() => saveNotepadNow(notepadText), 700);
+    notepadTimer = setTimeout(saveNotepadPages, 700);
+  };
+  const rememberActivePage = () => {
+    try { localStorage.setItem('nitu-notepad-page', String(notepadActive)); } catch (e) {}
+  };
+  const addNotepadPage = () => {
+    notepadPages.push({ text: '', photos: [], createdAt: Date.now() });
+    notepadActive = notepadPages.length - 1;
+    rememberActivePage();
+    saveNotepadPages();
+    renderNotepad();
+    renderNotepadStatus();
+    showToast('📄 নতুন পেজ তৈরি হয়েছে');
+  };
+  const notepadSwitchPage = v => {
+    const ta = document.getElementById('notepad-text');
+    // Flush any typed-but-unsaved text of the old page before switching
+    if (ta && document.activeElement === ta && notepadPages[notepadActive]) {
+      notepadPages[notepadActive].text = ta.value;
+      clearTimeout(notepadTimer);
+      saveNotepadPages();
+    }
+    notepadActive = Math.max(0, Math.min(parseInt(v, 10) || 0, notepadPages.length - 1));
+    rememberActivePage();
+    renderNotepad();
+    renderNotepadStatus();
+  };
+  // Compress a notepad photo to a ≤50KB JPEG data URL (same approach as the
+  // delivered-cake photo compressor).
+  const compressNotepadPhoto = (file, cb) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 900;
+        let w = img.width, h = img.height;
+        if (Math.max(w, h) > MAX) { const s = MAX / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        let q = 0.7;
+        let out = canvas.toDataURL('image/jpeg', q);
+        while (out.length * 3 / 4 > 50 * 1024 && q > 0.3) { q -= 0.1; out = canvas.toDataURL('image/jpeg', q); }
+        cb(out);
+      };
+      img.onerror = () => showToast('❌ ছবিটি পড়া যায়নি');
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  const notepadAddPhoto = input => {
+    const file = input && input.files && input.files[0];
+    if (!file) return;
+    const cur = notepadPages[notepadActive];
+    if (cur && Array.isArray(cur.photos) && cur.photos.length >= 6) {
+      showToast('⚠️ এক পেজে সর্বোচ্চ ৬টি ছবি যোগ করা যায়');
+      input.value = '';
+      return;
+    }
+    showToast('🖼️ ছবি যোগ হচ্ছে...');
+    compressNotepadPhoto(file, dataUrl => {
+      if (!notepadPages[notepadActive]) notepadPages[notepadActive] = { text: '', photos: [], createdAt: Date.now() };
+      if (!Array.isArray(notepadPages[notepadActive].photos)) notepadPages[notepadActive].photos = [];
+      notepadPages[notepadActive].photos.push(dataUrl);
+      saveNotepadPages();
+      renderNotepad();
+      renderNotepadStatus();
+      showToast('✅ ছবি যোগ হয়েছে');
+      input.value = '';
+    });
+  };
+  const notepadRemovePhoto = i => {
+    const cur = notepadPages[notepadActive];
+    if (!cur || !cur.photos || !cur.photos[i]) return;
+    cur.photos.splice(i, 1);
+    saveNotepadPages();
+    renderNotepad();
+    showToast('🗑️ ছবি মুছে ফেলা হয়েছে');
   };
   const clearNotepad = () => {
-    showConfirm('নোটপ্যাড সম্পূর্ণ মুছবেন? 🗑️', 'এতে দেওয়া সব আইটেম সবার কাছ থেকে মুছে যাবে।', false, ok => {
+    showConfirm('এই পেজটি মুছবেন? 🗑️', 'এই পেজের সব লেখা ও ছবি সবার কাছ থেকে মুছে যাবে।', false, ok => {
       if (!ok) return;
       clearTimeout(notepadTimer);
-      const ta = document.getElementById('notepad-text');
-      if (ta) ta.value = '';
-      saveNotepadNow('');
-      showToast('🗑️ নোটপ্যাড মুছে ফেলা হয়েছে');
+      if (notepadPages.length > 1) {
+        notepadPages.splice(notepadActive, 1);
+        notepadActive = Math.min(notepadActive, notepadPages.length - 1);
+      } else {
+        notepadPages[0] = { text: '', photos: [], createdAt: Date.now() };
+      }
+      rememberActivePage();
+      saveNotepadPages();
+      renderNotepad();
+      renderNotepadStatus();
+      showToast('🗑️ পেজ মুছে ফেলা হয়েছে');
     });
   };
   // Debounced live-save while typing (registered after notepadInput exists)
@@ -1718,7 +1975,24 @@ window.App = (() => {
         ok => { if (ok) updateStatus(key, newVal); else sel.value = oldVal; }
       );
     } else {
-      updateStatus(key, newVal);
+      // When an order is moved to Confirmed (from Pending/any other status),
+      // offer to send the order-confirmed WhatsApp message to the customer.
+      if (newVal === 'confirmed') {
+        showConfirm(
+          'কনফার্মড হিসেবে মার্ক করুন? ✅',
+          lang === 'bn'
+            ? 'কাস্টমারের WhatsApp-এ অর্ডার কনফার্ম মেসেজ পাঠাবেন?'
+            : 'Send the order-confirmed WhatsApp message to the customer?',
+          true,
+          ok => {
+            if (!ok) { sel.value = oldVal; return; }
+            updateStatus(key, newVal);
+            openConfirmWhatsApp(key);
+          }
+        );
+      } else {
+        updateStatus(key, newVal);
+      }
     }
   };
 
@@ -1956,6 +2230,7 @@ window.App = (() => {
     g('f-surprise').value       = o.surprise  || 'no';
     g('f-delivery-paid').value  = o.deliveryPaid    || 'unpaid';
     g('f-delivery-amount').value = o.deliveryAmount || '';
+    g('f-messenger-link').value = o.messengerLink   || '';
     g('f-total').value          = o.total     || '';
     // f-paid shows the TOTAL SENT (charge-inclusive). The due field subtracts
     // the stored charge to recover the advance toward the cake.
@@ -2824,6 +3099,7 @@ window.App = (() => {
       paymentCharges: chargeToDeduct,
       paymentChargesLabel: chargeLabel,
       trx:            g('f-trx').value.trim(),
+      messengerLink:  g('f-messenger-link').value.trim(),
       notes:          g('f-notes').value.trim(),
       status:         g('f-status').value,
       bakingnotes:    g('f-bakingnotes').value.trim(),
@@ -2855,6 +3131,18 @@ window.App = (() => {
       o.advanceTotal = o.paid;
       o.dueAmount    = 0;
       if (fulfilmentVal === 'delivery') o.deliveryPaid = 'paid';
+    }
+
+    // ── Delivery charge DOUBLE-CHECK (mandatory) ──────────────────
+    // A delivery order can never move forward (confirmed/baking/delivered)
+    // without a delivery charge amount. Pending is allowed because the agent
+    // usually reports the charge after the order is placed.
+    if (fulfilmentVal === 'delivery' && totalDeliveryAmt <= 0
+        && ['confirmed', 'baking', 'delivered'].includes(o.status)) {
+      showToast('⚠️ ডেলিভারি চার্জ বাধ্যতামূলক! এজেন্টের কাছ থেকে চার্জ জেনে "ডেলিভারি চার্জের পরিমাণ" ঘরে লিখুন, তারপর সেভ করুন।');
+      const damtEl = document.getElementById('f-delivery-amount');
+      if (damtEl) { damtEl.focus(); if (damtEl.scrollIntoView) damtEl.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      return;
     }
 
     setSyncStatus('syncing', 'ক্লাউডে সেভ হচ্ছে...');
@@ -3334,6 +3622,10 @@ window.App = (() => {
     toggleCard,
     copyCardName,
     copySrsMessage,
+    copyConfirmMessage,
+    copyFullDetails,
+    openMessenger,
+    openConfirmWhatsApp,
     copyNotepad,
     openModal,
     closeModal,
@@ -3363,6 +3655,10 @@ window.App = (() => {
     closeNotepad,
     closeNotepadBg,
     clearNotepad,
+    addNotepadPage,
+    notepadSwitchPage,
+    notepadAddPhoto,
+    notepadRemovePhoto,
     renderCdb,
     openCdbLightbox,
   cdbAddPhoto,

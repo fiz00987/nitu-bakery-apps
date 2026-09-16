@@ -1373,6 +1373,7 @@ function submitOrder() {
     fulfilment: document.getElementById('f-fulfilment').value,
     trx: document.getElementById('f-trx').value.trim(),
     notes: document.getElementById('f-notes') ? document.getElementById('f-notes').value.trim() : '',
+    messengerLink: (function () { const e = document.getElementById('f-fb-link'); return e ? e.value.trim() : ''; })(),
     lang: lang,
     source: 'customer',
     status: 'pending',
@@ -1534,16 +1535,12 @@ function showSuccess(order) {
     ${order.dueAmount > 0 ? `<div class="due-alert">⚠️ বাকি: ৳${Math.round(order.dueAmount)}${order.deliveryCharge > 0 ? `<br>🚚 ডেলিভারি চার্জ (আলাদা): ৳${Math.round(order.deliveryCharge)}` : ''}</div>` : '<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ পূর্ণ পেমেন্ট সম্পন্ন</div>'}
   `;
 
-  // Start a 5-second timer after submitting. If the customer hasn't tapped Download
-  // by then, show the auto-close popup. (Downloading simply cancels this timer — the
-  // window will then close on its own after the download completes via scheduleWindowClose.)
-  downloadPressed = false;
-  if (autoCloseTimer) clearTimeout(autoCloseTimer);
-  autoCloseTimer = setTimeout(() => {
-    autoCloseTimer = null;
-    if (downloadPressed) return;
-    showAutoClosePopup();
-  }, 5000);
+  // Manual flow: no auto-download, no auto-close popup. The customer takes a
+  // screenshot of this summary and sends it to the Facebook page — the admin
+  // rechecks everything and confirms the order. Once submitted, closing the
+  // tab wipes all cached data automatically (see wipeOnTabClose).
+  try { sessionStorage.setItem('nitu-order-submitted', '1'); } catch (e) {}
+  window.addEventListener('pagehide', wipeOnTabClose);
 }
 
 function showAutoClosePopup() {
@@ -1649,25 +1646,26 @@ function triggerAnchorDownload(url, fileName) {
   } catch (err) { return false; }
 }
 
-function scheduleWindowClose() {
-  setTimeout(async () => {
-    // Clear every cached artifact first so nothing survives a reload either
-    try {
-      if ('caches' in window) { const keys = await caches.keys(); await Promise.all(keys.map(key => caches.delete(key))); }
-      sessionStorage.clear();
-      localStorage.clear();
-    } catch (err) { /* storage may be unavailable in private mode */ }
-
-    // Close the entire tab/window (works when this page was opened by a script or another window)
-    window.open('', '_self');
-    window.close();
-
-    // If the browser refuses to close the tab, fall back to a clean fresh load
-    setTimeout(() => {
-      if (!window.closed) window.location.replace(window.location.href.split('#')[0]);
-    }, 500);
-  }, 5000);
+// Submitted orders are wiped the moment the customer leaves this page — the
+// order form and every cached artifact disappear when the tab closes, so the
+// next visit always starts with a completely fresh form.
+function wipeSubmittedData() {
+  try {
+    if ('caches' in window) { caches.keys().then(ks => ks.forEach(k => caches.delete(k))).catch(() => {}); }
+    sessionStorage.clear();
+    localStorage.clear();
+  } catch (err) { /* storage may be unavailable in private mode */ }
 }
+
+function wipeOnTabClose() {
+  try {
+    if (sessionStorage.getItem('nitu-order-submitted') !== '1') return;
+  } catch (err) { return; }
+  wipeSubmittedData();
+}
+
+// Legacy name — now simply wipes the submitted data immediately.
+function scheduleWindowClose() { wipeSubmittedData(); }
 
 function orderIdForScreenshot() { return currentOrderId || 'nitu-bakery-order'; }
 

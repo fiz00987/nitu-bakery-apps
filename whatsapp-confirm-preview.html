@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp Confirmation Preview - Nitu's Bakery</title>
+<style>
+  *{box-sizing:border-box} body{margin:0;font-family:'Segoe UI',Roboto,Arial,sans-serif;background:#0b141a;display:flex;justify-content:center;min-height:100vh;padding:20px}
+  .wrap{max-width:480px;width:100%}
+  h2{color:#fff;text-align:center;font-weight:600}
+  .sub{color:#8696a0;text-align:center;font-size:13px;margin:-8px 0 16px}
+  .chat{background:#0b141a url('https://user-images.githubusercontent.com/15075759/28719144-86d343d8-752b-11e7-89d1-bcc636cfbd86.png');background-size:cover;border-radius:12px;padding:18px 12px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+  .date-chip{text-align:center;margin-bottom:12px}.date-chip span{background:#182229;color:#ffd279;font-size:11px;padding:5px 12px;border-radius:8px}
+  .sender{background:#062d2a;color:#7de08d;font-size:13px;font-weight:600;padding:8px 12px 0;border-radius:8px 8px 0 0}
+  .bubble{background:#005c4b;color:#e9edef;border-radius:0 0 8px 8px;padding:0 0 6px;overflow:hidden}
+  .bubble img.hdr{width:100%;height:220px;object-fit:cover;display:block;background:#fff}
+  .bubble .txt{padding:10px 12px;font-size:14.5px;line-height:1.55;white-space:pre-line}
+  .bubble .txt b{color:#fff}
+  .meta{text-align:right;font-size:11px;color:#ffffff99;padding:0 10px 4px}
+  .note{background:#182229;border-radius:10px;color:#d1d7db;font-size:13px;padding:12px 14px;margin-top:14px;line-height:1.6}
+  .note code{color:#00a884}
+  .btns{display:flex;gap:10px;margin-top:14px}
+  .btns button{flex:1;border:none;border-radius:10px;padding:12px;font-size:15px;font-weight:700;cursor:pointer}
+  .ok{background:#00a884;color:#fff}.no{background:#2a3942;color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🎂 Order Confirmed — WhatsApp Preview</h2>
+  <p class="sub">From: Nitu's Bakery • <b style="color:#fff">+8801303931284</b> (display name: Nitu's Bakery) &nbsp;|&nbsp; Template: <b style="color:#fff">order_confirmed</b></p>
+  <div class="chat">
+    <div class="date-chip"><span>TODAY</span></div>
+    <div class="sender">🧁 Nitu's Bakery ✓ verified</div>
+    <div class="bubble">
+      <img class="hdr" src="../customer-app/logo.png" alt="Nitu's Bakery logo header">
+      <div class="txt">Assalamu Alaikum <b>Keya Rahman</b>! 🌸
+Your order <b>NB202609135021</b> has been <b>CONFIRMED</b>! 🎂
+
+🎂 <b>Cake:</b> 2 Pound Chocolate Sponge
+✏️ <b>Writing:</b> Happy Birthday Ayan
+🚚 <b>Delivery:</b> 15th September, 4–6 PM
+📍 <b>Address:</b> House 12, Road 5, Dhanmondi, Dhaka
+💰 <b>Total:</b> ৳1,850 (Paid ৳500, Due ৳1,350)
+
+Thank you for ordering from <b>Nitu's Bakery</b>! 💛
+Need any change? Just reply here or call 01303-931284.</div>
+      <div class="meta">10:30 AM ✓✓</div>
+    </div>
+  </div>
+  <div class="note">
+    📋 <b>How Meta sees this template:</b><br>
+    Header: <code>IMAGE (logo.png public URL)</code><br>
+    Body vars: <code>{{1}}</code>=Name, <code>{{2}}</code>=Order ID, <code>{{3}}</code>=Cake line, <code>{{4}}</code>=Writing, <code>{{5}}</code>=Delivery, <code>{{6}}</code>=Address, <code>{{7}}</code>=Total line<br>
+    Footer: <code>Nitu's Bakery • Fresh &amp; Homemade</code><br>
+    Buttons: <code>[Call Bakery]</code> <code>[Message Us]</code><br><br>
+    ⚠️ Sender <code>+8801303931284</code> note: once this number is connected to Cloud API it <b>cannot stay in your normal WhatsApp app</b> — it becomes API-only. Use a shop SIM, keep your personal number separate.
+  </div>
+  <div class="btns">
+    <button class="ok" onclick="alert('Great! Reply OK + send logo if you want a different image.')">👍 Looks Good — Approve</button>
+    <button class="no" onclick="alert('Reply with what to change: text / Bangla version / price line / etc.')">✏️ Ask Changes</button>
+  </div>
+</div>
+</body>
+</html>

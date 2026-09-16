@@ -64,6 +64,103 @@ function bdDateString(now) {
 const TG_TOKEN = process.env.TG_BOT_TOKEN || '';
 const TG_CHAT  = process.env.TG_CHAT_ID  || '';
 
+// ─── Channel #4: WhatsApp Cloud API — order-CONFIRMED (Bangla) ─
+// Brand: নিতুবাবুর্চীর পোর্টফোলিও · Sender shop SIM: +8801303931284
+// Template `order_confirmed_bn` (UTILITY, bn): header IMAGE = logo.png,
+// body {{1}}..{{8}}, footer "নিতুবাবুর্চীর পোর্টফোলিও • ফ্রেশ ও হোমমেড".
+// Secrets: WHATSAPP_TOKEN, WHATSAPP_PHONE_ID, WHATSAPP_TEMPLATE_NAME
+// (default order_confirmed_bn), WHATSAPP_IMAGE_URL (public logo.png link).
+const WA_TOKEN    = process.env.WHATSAPP_TOKEN || '';
+const WA_PHONE_ID = process.env.WHATSAPP_PHONE_ID || '';
+const WA_TEMPLATE = process.env.WHATSAPP_TEMPLATE_NAME || 'order_confirmed_bn';
+// Default = your latest logo, already public on GitHub (verified HTTP 200,
+// image/png, 259632 bytes) — no upload needed. You can still override via
+// WHATSAPP_IMAGE_URL secret if you ever change the picture.
+const WA_IMAGE    = process.env.WHATSAPP_IMAGE_URL || 'https://raw.githubusercontent.com/fiz00987/nitu-bakery-apps/main/customer-app/logo.png';
+
+function waTo880(src) {
+  const m = String(src || '').match(/(?:\+?880|0)(1[3-9]\d{8})/);
+  return m ? `880${m[1]}` : '';
+}
+function waOrderName(o)    { return String(o.customerName || o.name || '').trim(); }
+function waOrderId(o, key) { return String(o.orderId || key.slice(-6)).trim(); }
+function waCakeLine(o) {
+  if (o && o.cakes && o.cakes.length > 1) {
+    return o.cakes.map(c => `${String(c.weightLabel || c.weight || '').trim()} ${String(c.flavourName || c.flavour || '').trim()}`.trim()).filter(Boolean).join(', ').slice(0, 200) || 'কেক';
+  }
+  const wRaw  = String(o.weightLabel || o.weight || '').trim();
+  const w     = (wRaw && wRaw.toLowerCase() !== 'custom') ? wRaw : '';
+  const flav  = String(o.flavourName || o.flavour || '').trim();
+  return `${w} ${flav}`.trim().slice(0, 200) || 'কেক';
+}
+function waCakeMoneyLine(o) {
+  const bn = n => Math.round(Number(n) || 0).toLocaleString('bn-BD');
+  const total = Math.round(Number(o.total) || 0);
+  const paid  = Math.round(Number(o.paid != null ? o.paid : (o.advanceTotal != null ? o.advanceTotal : o.advance)) || 0);
+  const due   = Math.max(0, total - paid);
+  if (due <= 0) return `৳${bn(total)} (সম্পূর্ণ পরিশোধিত ✅)`;
+  return `৳${bn(total)} (জমা ৳${bn(paid)}, বাকি ৳${bn(due)})`;
+}
+function waDeliveryChargeLine(o) {
+  const bn  = n => Math.round(Number(n) || 0).toLocaleString('bn-BD');
+  const amt = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
+  const st  = String(o.deliveryPaid || '');
+  if (o.fulfilment === 'pickup' || st === 'na' || amt <= 0) return 'প্রযোজ্য নয় (সেল্ফ পিকআপ)';
+  return st === 'paid' ? `৳${bn(amt)} (পরিশোধিত ✅)` : `৳${bn(amt)} (বাকি ⏳)`;
+}
+function waWhenLine(o) {
+  const d = String(o.deliveryDate || o.date || '').slice(0, 10);
+  const t = String(o.time || o.timeSlot || o.timeSlotLabel || '').trim();
+  return [d, t].filter(Boolean).join(', ') || '—';
+}
+// Same Bangla text the admin app one-tap button sends today, so switching
+// from manual wa.me to full-auto Cloud API never changes what customers see.
+function buildConfirmBnText(o, key) {
+  const name    = waOrderName(o);
+  const orderId = waOrderId(o, key);
+  const cake    = waCakeLine(o);
+  const writing = String(o.writing || o.cakeWriting || '').trim() || 'নেই';
+  const when    = waWhenLine(o);
+  const addr    = String(o.deliveryAddress || o.address || '').trim() || '—';
+  const money   = waCakeMoneyLine(o);
+  const dcLine  = waDeliveryChargeLine(o);
+  return `আসসালামু আলাইকুম ${name}! 🌸\nআপনার অর্ডার ${orderId} কনফার্ম হয়েছে! ✅\n\n🎂 কেক: ${cake}\n✏️ কেকে লেখা: ${writing}\n🚚 ডেলিভারি: ${when}\n📍 ঠিকানা: ${addr}\n\n💰 কেকের মোট: ${money}\n🚚 ডেলিভারি চার্জ: ${dcLine}\n\nনিতুবাবুর্চীর পোর্টফোলিও তে অর্ডার করার জন্য ধন্যবাদ! 💛\nকোনো পরিবর্তন লাগলে এই চ্যাটে রিপ্লাই দিন অথবা কল করুন 01303-931284।`;
+}
+async function sendWhatsAppConfirmed(order, key) {
+  if (!WA_TOKEN || !WA_PHONE_ID) return { skipped: 'whatsapp-not-configured' };
+  const to = waTo880(order.customerPhone || order.phone || order.receiverPhone);
+  if (!to) return { skipped: 'no-customer-phone' };
+  const params = [
+    waOrderName(order), waOrderId(order, key), waCakeLine(order),
+    String(order.writing || order.cakeWriting || '').trim() || 'নেই',
+    waWhenLine(order),
+    String(order.deliveryAddress || order.address || '').trim() || '—',
+    waCakeMoneyLine(order), waDeliveryChargeLine(order)
+  ].map(t => ({ type: 'text', text: String(t).slice(0, 900) }));
+  const res = await fetch(`https://graph.facebook.com/v22.0/${WA_PHONE_ID}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${WA_TOKEN}` },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'template',
+      template: {
+        name: WA_TEMPLATE,
+        language: { code: 'bn' },
+        components: [
+          ...(WA_IMAGE ? [{ type: 'header', parameters: [{ type: 'image', image: { link: WA_IMAGE } }] }] : []),
+          { type: 'body', parameters: params }
+        ]
+      }
+    })
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok || (j && j.error)) throw new Error(`WhatsApp failed: HTTP ${res.status} ${(j && j.error && j.error.message) || JSON.stringify(j).slice(0, 200)}`);
+  const msgId = j && j.messages && j.messages[0] && j.messages[0].id;
+  console.log(`✅ WhatsApp confirmed → ${to} (${msgId || 'sent'})`);
+  return { sent: true, id: msgId || '' };
+}
+
 async function sendTelegram(text) {
   if (!TG_TOKEN || !TG_CHAT) return; // channel not configured yet — skip quietly
   try {
@@ -307,6 +404,36 @@ async function pollNewOrders() {
   await STATE_REF.update({ knownKeys: known, lastRunAt: Date.now() });
 }
 
+/* ─── Mode 3: WhatsApp order-CONFIRMED sender (Bangla) ────── */
+// Fires on EVERY run: finds /orders with status == confirmed and no
+// whatsappSent flag, sends the order_confirmed_bn template (logo image
+// header + 8 Bangla body vars) via WhatsApp Cloud API, then stamps
+// whatsappSent/whatsappSentAt so it never double-sends. Safe to re-run.
+async function pollConfirmedWhatsApp(data) {
+  const keys = Object.keys(data || {});
+  let checked = 0, sent = 0, skipped = 0;
+  for (const key of keys) {
+    const o = data[key] || {};
+    if (String(o.status || '').toLowerCase() !== 'confirmed') continue;
+    if (o.whatsappSent) continue;
+    checked++;
+    try {
+      const r = await sendWhatsAppConfirmed(o, key);
+      if (r && r.sent) {
+        await ORDERS_REF.child(key).update({ whatsappSent: true, whatsappSentAt: Date.now() });
+        sent++;
+      } else {
+        skipped++;
+        console.log(`⏭️ WhatsApp skipped (${(r && r.skipped) || 'unknown'}): ${o.orderId || key.slice(-6)}`);
+      }
+    } catch (e) {
+      console.warn(`⚠️ WhatsApp failed for ${o.orderId || key.slice(-6)}:`, e && e.message);
+      try { await ORDERS_REF.child(key).update({ whatsappError: String((e && e.message) || e).slice(0, 300), whatsappErrorAt: Date.now() }); } catch (_) {}
+    }
+  }
+  if (checked) console.log(`💬 WhatsApp confirmed sweep: ${checked} pending, ${sent} sent, ${skipped} skipped.`);
+}
+
 /* ─── Mode 2: daily morning summary with names ─────────────── */
 async function dailySummary() {
   const today = bdDateString(new Date());
@@ -358,7 +485,16 @@ async function dailySummary() {
   const daily = process.argv.includes('--daily');
   try {
     if (daily) await dailySummary();
-    else       await pollNewOrders();
+    else {
+      await pollNewOrders();
+      // WhatsApp confirmed sweep runs on the same schedule (every run) —
+      // needs WHATSAPP_TOKEN + WHATSAPP_PHONE_ID secrets, else skips quietly.
+      try {
+        const snap = await ORDERS_REF.once('value');
+        if (!LAST_ORDERS_DATA) LAST_ORDERS_DATA = snap.val() || {};
+        await pollConfirmedWhatsApp(LAST_ORDERS_DATA);
+      } catch (e) { console.warn('⚠️ WhatsApp sweep error:', e && e.message); }
+    }
   } catch (err) {
     console.error('❌ FAILED:', err && err.stack ? err.stack : err);
     process.exitCode = 1;

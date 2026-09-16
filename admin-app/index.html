@@ -501,6 +501,39 @@ button { cursor: pointer; }
 .notepad-status {
   font-size: 11px; color: var(--text3); margin-top: 6px; min-height: 14px; text-align: right;
 }
+/* Notepad pages + photos */
+.np-toolbar {
+  display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+}
+#notepad-page-sel {
+  flex: 1; min-width: 0;
+  border: 1.5px solid var(--pink-soft); border-radius: 9px;
+  padding: 7px 8px; font-family: inherit; font-size: 13.5px;
+  background: var(--surface2); color: var(--text); outline: none;
+}
+.np-btn {
+  border: 1.5px solid var(--pink-soft); border-radius: 9px;
+  background: var(--pink-light); color: var(--pink-dark);
+  font-family: inherit; font-size: 12.5px; font-weight: 700;
+  padding: 7px 10px; white-space: nowrap;
+}
+.np-btn:active { transform: scale(0.97); }
+.np-photos {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;
+}
+.np-photos:empty { display: none; }
+.np-thumb-wrap { position: relative; }
+.np-thumb {
+  width: 64px; height: 64px; object-fit: cover; display: block;
+  border-radius: 8px; border: 1px solid var(--pink-soft); cursor: pointer;
+}
+.np-thumb-x {
+  position: absolute; top: -6px; right: -6px;
+  background: var(--red); color: #fff; font-size: 10px;
+  width: 18px; height: 18px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
 
 /* ─── Off-day dialog input ─────────────────────────────────── */
 #offday-reason {
@@ -2180,7 +2213,14 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
       </div>
     </div>
     <p class="notepad-hint">📋 যে আইটেমগুলো বেকারি শপ থেকে কিনতে হবে / শেষ হয়ে গেছে — এখানে লিখুন। অ্যাপ ব্যবহারকারী সবাই এটি দেখতে ও এডিট করতে পারবে, এবং নোটটি মুছে ফেলা না হওয়া পর্যন্ত থাকবে।</p>
+    <div class="np-toolbar">
+      <select id="notepad-page-sel" onchange="App.notepadSwitchPage(this.value)"></select>
+      <button type="button" class="np-btn" onclick="App.addNotepadPage()" title="নতুন পেজ তৈরি করুন">➕ নতুন পেজ</button>
+      <button type="button" class="np-btn" onclick="document.getElementById('notepad-photo-input').click()" title="ছবি যোগ করুন">🖼️ ছবি</button>
+      <input type="file" id="notepad-photo-input" accept="image/*" style="display:none" onchange="App.notepadAddPhoto(this)">
+    </div>
     <textarea id="notepad-text" placeholder="যেমন:&#10;• বাটার ২ কেজি লাগবে&#10;• চকলেট চিপস শেষ&#10;• ক্রিম ১ প্যাকেট"></textarea>
+    <div id="notepad-photos" class="np-photos"></div>
     <div class="notepad-status" id="notepad-status"></div>
   </div>
 </div>
@@ -2424,6 +2464,8 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
         </div>
 
         <div class="field"><label>ট্রানজেকশন আইডি / পেমেন্ট নম্বরের শেষ ৩ ডিজিট</label><input id="f-trx" placeholder="যেমন: 8K3N বা 456" type="text"></div>
+        <div class="field"><label>💬 কাস্টমারের Facebook / Messenger লিংক (ঐচ্ছিক)</label><input id="f-messenger-link" placeholder="যেমন: https://m.me/username" type="url">
+          <div class="due-hint">সেভ করলে অর্ডার কার্ডের 💬 Messenger বাটন সরাসরি এই কাস্টমারের চ্যাট খুলবে।</div></div>
         <div class="field"><label>অতিরিক্ত নোট (ঐচ্ছিক)</label><textarea id="f-notes" placeholder="বিশেষ কোনো নির্দেশনা থাকলে লিখুন..." style="min-height:40px"></textarea></div>
         <div class="field">
           <label>অর্ডার স্ট্যাটাস</label>

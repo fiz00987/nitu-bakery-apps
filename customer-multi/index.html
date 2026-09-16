@@ -182,8 +182,9 @@ input.due-input:focus{outline:none;border-color:#dcdcdc;box-shadow:none}
 .success-screen{display:none;text-align:center;padding:40px 20px;max-width:400px;margin:0 auto}
 .success-screen.active{display:block}
 .success-icon{font-size:64px;margin-bottom:16px}
-.success-title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px}
-.success-msg{font-size:14px;color:var(--text2);margin-bottom:24px;line-height:1.6}
+.success-title{font-size:22px;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Hind Siliguri',sans-serif}
+.success-msg{font-size:15px;color:var(--text2);margin-bottom:24px;line-height:1.8;font-family:'Hind Siliguri',sans-serif}
+.thanks-brand{color:var(--pink);font-weight:700;font-size:16px}
 .order-summary{background:var(--surface);border-radius:var(--radius);padding:16px;text-align:left;margin-bottom:24px;box-shadow:var(--shadow-sm);font-size:13px;position:relative;isolation:isolate;overflow:hidden}
 /* A subtle watermark remains behind the order details and is included in the downloaded card. */
 .order-summary::before{content:'';position:absolute;inset:0;background:url('logo.png') center/150px auto no-repeat;opacity:.07;pointer-events:none;z-index:0}
@@ -527,6 +528,11 @@ html.t-gold .order-number-badge{color:#a5813e}
       <label data-bn="অতিরিক্ত তথ্য (ঐচ্ছিক)" data-en="Additional Info (Optional)">অতিরিক্ত তথ্য (ঐচ্ছিক)</label>
       <textarea id="f-notes" placeholder="কোনো বিশেষ অনুরোধ থাকলে লিখুন"></textarea>
     </div>
+    <div class="field">
+      <label data-bn="Facebook প্রোফাইল লিংক (ঐচ্ছিক)" data-en="Facebook profile link (Optional)">Facebook প্রোফাইল লিংক (ঐচ্ছিক)</label>
+      <input type="url" id="f-fb-link" placeholder="যেমন: https://m.me/username" data-bn-placeholder="যেমন: https://m.me/username" data-en-placeholder="e.g. https://m.me/username">
+      <div class="note-box">লিখলে অর্ডার কনফার্ম করতে আমরা সরাসরি আপনার Messenger-এ মেসেজ করতে পারব।</div>
+    </div>
   </div>
 
   <button class="btn-primary" onclick="submitOrder()" id="submit-btn">✅ অর্ডার জমা দিন</button>
@@ -555,26 +561,12 @@ html.t-gold .order-number-badge{color:#a5813e}
 <!-- SUCCESS -->
 <div class="success-screen" id="success-screen">
   <div class="success-icon">✅</div>
-  <div class="success-title">অর্ডার সফলভাবে জমা হয়েছে!</div>
-  <div class="success-msg">আমরা শীঘ্রই আপনার সাথে যোগাযোগ করব। অর্ডার কনফার্ম হলে আপনাকে জানানো হবে।</div>
+  <div class="success-title">আপনার অর্ডার জমা হয়েছে</div>
+  <div class="success-msg">এডমিন সবকিছু যাচাই করে অর্ডারটি কনফার্ম করবেন।<br><span class="thanks-brand">নিতুবাবুর্চীর পোর্টফোলিও</span> তে অর্ডার করার জন্য ধন্যবাদ! 💛</div>
   <div class="order-summary" id="order-summary"></div>
-  <div class="screenshot-note">অর্ডার কার্ডটি ডাউনলোড করে আমাদের Facebook পেজের ইনবক্সে পাঠালে অর্ডার নম্বর দেখে দ্রুত ট্র্যাক করতে সুবিধা হবে।</div>
-  <button class="btn-primary" onclick="downloadOrderCard()" id="download-card-btn">📥 অর্ডার কার্ড ডাউনলোড করুন</button>
+  <div class="screenshot-note">📸 <b>এই পেজের একটি স্ক্রিনশট নিয়ে আমাদের Facebook পেজের ইনবক্সে পাঠান।</b><br>এডমিন সবকিছু যাচাই করে অর্ডার কনফার্ম করবেন।</div>
   <button type="button" class="previous-orders-btn" onclick="showPreviousOrders()" data-bn="🧾 আপনার পূর্ববর্তী অর্ডার" data-en="🧾 Your Previous Orders">🧾 আপনার পূর্ববর্তী অর্ডার</button>
   <button class="btn-primary" onclick="resetForm()">🔄 নতুন অর্ডার দিন</button>
-</div>
-
-<!-- AUTO-CLOSE POPUP -->
-<div class="auto-close-pop" id="auto-close-pop">
-  <div class="auto-close-box">
-    <div class="pc-icon">📥</div>
-    <div class="pc-title">অর্ডার কার্ডটি এখনই ডাউনলোড করুন</div>
-    <div class="pc-msg">এই উইন্ডোটি <span class="auto-close-count"><b id="auto-close-sec">৫</b> সেকেন্ড</span>-এর মধ্যে বন্ধ হয়ে যাবে। চাইলে কার্ডটি ডাউনলোড করতে পারেন।</div>
-    <div class="auto-close-actions">
-      <button class="btn-primary" onclick="downloadOrderCard()">📥 অর্ডার কার্ড ডাউনলোড করুন</button>
-      <button class="btn-ghost" onclick="keepWindowOpen()">✕ এই উইন্ডো খোলা রাখুন</button>
-    </div>
-  </div>
 </div>
 
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
@@ -625,7 +617,7 @@ html.t-gold .order-number-badge{color:#a5813e}
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="./firebase-config.js"></script>
 <script src="./utils.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
 <script>
 // The customer app never serves a stale app shell: its worker fetches each page
 // from the network with cache disabled and checks for worker updates on every open.
