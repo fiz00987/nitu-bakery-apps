@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backup files
+*.bak
+*.backup
+
+# Temporary files
+tmp/
+temp/
+_dev_server.js
+
+# Local logo backups (not for deployment/repo)
+
+# Local logo backups (not for deployment/repo)
+_old-logo-backup/
+
+# Telegram alert secrets — NEVER commit these
+customer-app/telegram-config.json
+blaze-free-notifier/notifier-secrets.json
+_old-logo-backup/
+
+# Dev analysis scratch files (regenerable via _tools/*.js)
+_tools/
+_decls.txt
+_structure.txt
+
+# Splash-screen design preview variants (view-only, not for deployment/repo)
+_splash-previews/

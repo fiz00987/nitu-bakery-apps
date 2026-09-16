@@ -1,0 +1,68 @@
+name: Bakery notifier
+
+on:
+  schedule:
+    # ── Reliability note ─────────────────────────────────────────
+    # GitHub's free scheduler frequently skips/delays '*​/5' crons (observed:
+    # zero firings for hours). Schedules here are therefore BACKUP pings only.
+    # PRIMARY alerting = instant ntfy bridge in the customer form +
+    # the admin app's 10-minute heartbeat sweep. This poller is idempotent
+    # (state lives in /notifierState), so overlapping pings cannot double-send.
+    - cron: '*/15 * * * *'
+    - cron: '3 1,7,13,19 * * *'
+    - cron: '11 2,8,14,20 * * *'
+    - cron: '19 4,10,16,22 * * *'
+    - cron: '27 5,11,17,23 * * *'
+    - cron: '33 0,6,12,18 * * *'
+    - cron: '41 1,7,13,19 * * *'
+    - cron: '49 3,9,15,21 * * *'
+    - cron: '57 4,10,16,22 * * *'
+    # Morning summary 09:00 Asia/Dhaka (03:35 UTC) + retry slot
+    - cron: '35 3 * * *'
+    - cron: '10 4 * * *'
+  workflow_dispatch: {}   # lets you press "Run workflow" manually
+
+concurrency:
+  group: bakery-notifier
+  cancel-in-progress: false
+
+jobs:
+  new-orders:
+    if: github.event_name != 'schedule' || (github.event.schedule != '35 3 * * *' && github.event.schedule != '10 4 * * *')
+    timeout-minutes: 8
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm ci --omit=dev
+      - run: node index.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+          WHATSAPP_PHONE_ID: ${{ secrets.WHATSAPP_PHONE_ID }}
+          WHATSAPP_TEMPLATE_NAME: ${{ secrets.WHATSAPP_TEMPLATE_NAME }}
+          WHATSAPP_IMAGE_URL: ${{ secrets.WHATSAPP_IMAGE_URL }}
+
+  daily-summary:
+    # Runs only for the two morning crons; --daily is idempotent per day,
+    # so the retry slot cannot double-send.
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '35 3 * * *' || github.event.schedule == '10 4 * * *'
+    timeout-minutes: 8
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm ci --omit=dev
+      - run: node index.js --daily
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}

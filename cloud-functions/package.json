@@ -1,0 +1,14 @@
+{
+  "name": "nitu-bakery-push",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Firebase Cloud Functions sender for Nitu Bakery order push notifications.",
+  "main": "index.js",
+  "engines": {
+    "node": "18"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.11.1",
+    "firebase-functions": "^4.9.0"
+  }
+}

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Pink rounded background -->
+    <path
+        android:fillColor="#c2185b"
+        android:pathData="M10,2 h28 a8,8 0 0 1 8,8 v28 a8,8 0 0 1 -8,8 h-28 a8,8 0 0 1 -8,-8 v-28 a8,8 0 0 1 8,-8 z" />
+    <!-- Cake base -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,34 h24 v5 h-24 z" />
+    <!-- Cake middle layer -->
+    <path
+        android:fillColor="#FFE0EB"
+        android:pathData="M14,27 h20 v6 h-20 z" />
+    <!-- Cake top layer -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M16,20 h16 v6 h-16 z" />
+    <!-- Candle -->
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M23,12 h2 v7 h-2 z" />
+    <!-- Flame -->
+    <path
+        android:fillColor="#FF9800"
+        android:pathData="M24,8 c1.2,1.5 1.8,2.5 1.8,3.3 a1.8,1.8 0 0 1 -3.6,0 c0,-0.8 0.6,-1.8 1.8,-3.3 z" />
+</vector>

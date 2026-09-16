@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>নিতুর বেকারি — অ্যাডমিন অ্যাপ UI ডেমো</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1d2433;--muted:#7c8698;--line:#e3e8f0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hind Siliguri',sans-serif;background:linear-gradient(180deg,#eef1f6,#e4e9f2);min-height:100vh;padding:26px 18px 70px;color:var(--ink)}
+.page-head{text-align:center;margin-bottom:6px}
+.page-head h1{font-size:24px}
+.page-head p{color:var(--muted);font-size:13.5px;margin-top:4px}
+.vtabs{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin:20px 0 6px;position:sticky;top:10px;z-index:50;background:rgba(238,241,246,.92);backdrop-filter:blur(8px);padding:10px;border-radius:999px}
+.vtab{padding:9px 17px;border-radius:999px;border:1.5px solid var(--line);background:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;color:var(--ink)}
+.vtab.active{background:#1d2433;color:#fff;border-color:#1d2433}
+.variant{display:none;margin:24px auto 0;max-width:1200px}
+.variant.show{display:block}
+.v-head{max-width:1080px;margin:0 auto 18px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px 20px;box-shadow:0 2px 10px rgba(20,30,60,.05)}
+.v-head h2{font-size:18px}
+.v-head p{font-size:13.5px;color:var(--muted);margin-top:4px;line-height:1.65}
+.swatches{display:flex;gap:8px;margin-top:10px}
+.sw{width:26px;height:26px;border-radius:8px;border:1px solid rgba(0,0,0,.08)}
+.row{display:flex;gap:28px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.phone-wrap{display:flex;flex-direction:column;align-items:center}
+.screen-label{font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:10px}
+.phone{width:322px;background:#0b0d12;border-radius:44px;padding:10px;box-shadow:0 30px 70px rgba(15,25,50,.30)}
+.screen{border-radius:35px;overflow:hidden;height:662px;background:var(--bg);display:flex;flex-direction:column;position:relative}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:88px;height:20px;background:#0b0d12;border-radius:999px;z-index:5}
+.statusbar{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--muted2);padding:14px 22px 4px}
+.content{flex:1;padding:8px 14px 16px;display:flex;flex-direction:column;gap:11px;overflow:hidden}
+.brand-row{display:flex;justify-content:space-between;align-items:center}
+.logo{width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;box-shadow:0 6px 16px var(--accentglow)}
+.lang{display:flex;gap:3px;background:var(--chipbg);border-radius:999px;padding:3px}
+.lang span{font-size:10px;font-weight:700;padding:4px 9px;border-radius:999px;color:var(--muted)}
+.lang .on{background:var(--accent);color:#fff}
+.card{background:var(--card);border-radius:var(--radius);border:var(--cardline);box-shadow:var(--shadow);padding:13px}
+.sec-title{font-size:12.5px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.stat{background:var(--card);border:var(--cardline);border-radius:12px;padding:9px 4px;text-align:center;box-shadow:var(--shadow)}
+.stat b{display:block;font-size:15px;color:var(--text)}
+.stat span{font-size:9px;font-weight:700;color:var(--muted)}
+.stat.hot b{color:var(--accent)}
+.pill{font-size:10px;font-weight:800;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.pill.pend{background:#fff3e0;color:#b26a00}
+.pill.bake{background:#e3f2fd;color:#1565c0}
+.pill.deli{background:#e8f5e9;color:#2e7d32}
+.a2 .pill.pend{background:rgba(255,179,0,.14);color:#ffc857}
+.a2 .pill.bake{background:rgba(66,165,245,.14);color:#7cc4ff}
+.a2 .pill.deli{background:rgba(102,187,106,.14);color:#81d68f}
+.oc-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.oc-name{font-size:13px;font-weight:800;color:var(--text)}
+.oc-meta{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5}
+.oc-price{font-size:12px;font-weight:800;color:var(--accent)}
+.oc-actions{display:flex;gap:6px;margin-top:10px}
+.abtn{flex:1;font-size:10.5px;font-weight:700;padding:7px 4px;border-radius:10px;border:1px solid var(--inputline2);background:var(--inputbg);color:var(--text);text-align:center}
+.abtn.pri{background:var(--accent);color:#fff;border-color:transparent}
+.deliv{display:flex;gap:10px;align-items:center}
+.deliv-time{font-size:10.5px;font-weight:800;color:var(--accent);background:var(--accentsoft);padding:6px 8px;border-radius:10px;text-align:center;min-width:52px;line-height:1.4}
+.dbgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.dbcard{background:var(--card);border:var(--cardline);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.dbimg{height:84px;display:flex;align-items:center;justify-content:center;font-size:30px;background:linear-gradient(135deg,var(--accentsoft),var(--chipbg))}
+.dbbody{padding:7px 9px 9px}
+.dbname{font-size:11px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dbmeta{font-size:9.5px;color:var(--muted);margin-top:2px}
+.dbfoot{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.dbfoot b{font-size:11px;font-weight:800;color:var(--accent)}
+.dbfoot span{font-size:9px;font-weight:700;color:var(--muted)}
+.dbadd{display:block;margin:6px auto 0;border:none;font-family:inherit;font-size:9.5px;font-weight:800;padding:4px 10px;border-radius:999px;background:var(--accent);color:#fff}
+.tabs2{display:flex;gap:4px;background:var(--chipbg);border-radius:12px;padding:4px}
+.tabs2 span{flex:1;text-align:center;font-size:10.5px;font-weight:700;padding:6px 2px;border-radius:9px;color:var(--muted)}
+.tabs2 .on{background:var(--accent);color:#fff}
+.btn{border:none;border-radius:14px;padding:13px;font-family:inherit;font-size:13.5px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 8px 20px var(--accentglow);width:100%}
+.sync{font-size:9.5px;font-weight:700;color:var(--ok)}
+.a1{--bg:#f4f6f8;--card:#ffffff;--text:#1c2733;--muted:#8494a5;--muted2:#5c6c7d;--accent:#0e7d68;--accent2:#18a085;--accentsoft:#e4f4f0;--accentglow:rgba(14,125,104,.22);--chipbg:#edf1f4;--inputbg:#fff;--inputline2:#e2e9ef;--ok:#0e7d68;--radius:14px;--shadow:0 2px 8px rgba(20,40,60,.07);--cardline:1px solid #e8edf2}
+.a2{--bg:#0e1620;--card:#16202b;--text:#e8eef4;--muted:#7e93a8;--muted2:#aebfd0;--accent:#35c99e;--accent2:#5fdcb8;--accentsoft:rgba(53,201,158,.12);--accentglow:rgba(53,201,158,.20);--chipbg:#1e2b38;--inputbg:#1e2b38;--inputline2:#28394a;--ok:#35c99e;--radius:14px;--shadow:0 4px 14px rgba(0,0,0,.35);--cardline:1px solid #22303f}
+.a2 .screen-label{color:#7e93a8}
+.a3{--bg:#faf5ef;--card:#ffffff;--text:#2b2015;--muted:#9b8d7c;--muted2:#6f6354;--accent:#c2185b;--accent2:#b0722d;--accentsoft:#fdeef4;--accentglow:rgba(194,24,91,.22);--chipbg:#f4ede4;--inputbg:#fff;--inputline2:#eadfd0;--ok:#2e9e5b;--radius:16px;--shadow:0 3px 12px rgba(150,110,60,.10);--cardline:1px solid #f1e7d9}
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>🗂️ নিতুর বেকারি — অ্যাডমিন অ্যাপ UI ডেমো</h1>
+  <p>৩টি ডিজাইন ভ্যারিয়েন্ট · ৩টি স্ক্রিন (ড্যাশবোর্ড · অর্ডার লিস্ট · কমপ্লিটেড ডেটাবেজ) · ক্লিক করে তুলনা করুন</p>
+</div>
+<div class="vtabs">
+  <button class="vtab active" onclick="showV('a1',this)">১ · ক্লিন লাইট</button>
+  <button class="vtab" onclick="showV('a2',this)">২ · ডার্ক অপস</button>
+  <button class="vtab" onclick="showV('a3',this)">৩ · ওয়ার্ম ব্র্যান্ড</button>
+  <button class="vtab" onclick="showAll(this)">সব একসাথে</button>
+</div>
+<section class="variant show" id="a1">
+  <div class="v-head">
+    <h2>১ · ক্লিন লাইট — পরিষ্কার, কাজের, দ্রুত পড়া যায়</h2>
+    <p>সাদা কার্ড + টিল-গ্রিন অ্যাকসেন্ট। স্ট্যাটাস পিল রঙিন — প্রথম চোখেই বোঝা যায় কোন অর্ডার কোথায় আছে। দিনে ঘন ঘন ব্যবহারের জন্য সবচেয়ে আরামদায়ক।</p>
+    <div class="swatches"><span class="sw" style="background:#f4f6f8"></span><span class="sw" style="background:#0e7d68"></span><span class="sw" style="background:#18a085"></span><span class="sw" style="background:#b26a00"></span><span class="sw" style="background:#1565c0"></span></div>
+  </div>
+  <div class="row">
+    <div class="phone-wrap"><div class="screen-label">ড্যাশবোর্ড</div><div class="phone"><div class="screen"><div class="notch"></div><div class="statusbar"><span>৯:৪১</span><span>📶 🔋</span></div>
+      <div class="content">
+        <div class="brand-row">
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="logo">নি</div>
+            <div><div style="font-size:12.5px;font-weight:800;color:var(--text)">নিতুর বেকারি</div><div class="sync">● সিংক হয়েছে</div></div>
+          </div>
+          <div class="lang"><span class="on">বাংলা</span><span>EN</span></div>
+        </div>
+        <div class="stats">
+          <div class="stat hot"><b>৩</b><span>আজকের অর্ডার</span></div>
+          <div class="stat"><b>২</b><span>বেকিং</span></div>
+          <div class="stat"><b>১</b><span>ডেলিভারি বাকি</span></div>
+          <div class="stat"><b>৳৪৮ক</b><span>মাসিক আয়</span></div>
+        </div>
+        <div class="card">
+          <div class="sec-title">🚚 আজকের ডেলিভারি</div>
+          <div class="deliv" style="margin-top:9px">
+            <div class="deliv-time">৪:০০<br>PM</div>
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:800;color:var(--text)">রাফি আহমেদ</div>
+              <div class="oc-meta">২ পাউন্ড · চকলেট স্পঞ্জ · আগ্রাবাদ CDA</div>
+            </div>
+            <div class="abtn pri" style="flex:0 0 auto;padding:8px 11px">📞</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="oc-head"><span class="oc-name">সুমাইয়া ইসলাম</span><span class="pill bake">বেকিং</span></div>
+          <div class="oc-meta">১ পাউন্ড · রেড ভেলভেট · <span class="oc-price">৳২,২০০</span> · অগ্রিম ✓</div>
+          <div class="oc-actions">
+            <div class="abtn">📋 নোট</div><div class="abtn pri">✏️ এডিট</div><div class="abtn">🛵 ডেলিভার্ড</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="oc-head"><span class="oc-name">তানভীর হাসান</span><span class="pill pend">পেন্ডিং</span></div>
+          <div class="oc-meta">২ পাউন্ড · চকলেট মাডকেক · <span class="oc-price">৳১,২০০</span> · অগ্রিম বাকি</div>
+          <div class="oc-actions">
+            <div class="abtn">📋 নোট</div><div class="abtn pri">✏️ এডিট</div><div class="abtn">🛵 ডেলিভার্ড</div>
+          </div>
+        </div>
+        <button class="btn" style="margin-top:auto">➕ নতুন অর্ডার</button>
+      </div>
+    </div></div></div>
+    <div class="phone-wrap"><div class="screen-label">অর্ডার লিস্ট</div><div class="phone"><div class="screen"><div class="notch"></div><div class="statusbar"><span>৯:৪১</span><span>📶 🔋</span></div>
+      <div class="content">
+        <div class="tabs2"><span class="on">সব</span><span>পেন্ডিং</span><span>বেকিং</span><span>ডেলিভার্ড</span></div>
+        <div class="card">
+          <div class="oc-head">
+            <div style="display:flex;gap:9px;align-items:center">
+              <div class="dbimg" style="width:44px;height:44px;border-radius:10px;font-size:20px">🎂</div>
+              <div><div class="oc-name">সুমাইয়া ইসলাম</div><div class="oc-meta">১২ সেপ্টে · ৪:০০ PM</div></div>
+            </div>
+            <span class="pill bake">বেকিং</span>
+          </div>
+          <div class="oc-meta" style="margin-top:7px">১ পাউন্ড · রেড ভেলভেট · ক্রিম চিজ · ডেলিভারি · আগ্রাবাদ</div>
+          <div class="oc-actions">
+            <div class="abtn">📋 নোট</div><div class="abtn">📋 SRS</div><div class="abtn pri">✏️ এডিট</div><div class="abtn">🗑</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="oc-head">
+            <div style="display:flex;gap:9px;align-items:center">
+              <div class="dbimg" style="width:44px;height:44px;border-radius:10px;font-size:20px">🧁</div>
+              <div><div class="oc-name">তানভীর হাসান</div><div class="oc-meta">১৩ সেপ্টে · ৬:৩০ PM</div></div>
+            </div>
+            <span class="pill pend">পেন্ডিং</span>
+          </div>
+          <div class="oc-meta" style="margin-top:7px">২ পাউন্ড · চকলেট মাডকেক · সেলফ পিকআপ · ট্রাংক রোড</div>
+          <div class="oc-actions">
+            <div class="abtn">📋 নোট</div><div class="abtn">📋 SRS</div><div class="abtn pri">✏️ এডিট</div><div class="abtn">🗑</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="oc-head">
+            <div style="display:flex;gap:9px;align-items:center">
+              <div class="dbimg" style="width:44px;height:44px;border-radius:10px;font-size:20px">🍰</div>
+              <div><div class="oc-name">নুসরাত জাহান</div><div class="oc-meta">১৪ সেপ্টে · ২:০০ PM</div></div>
+            </div>
+            <span class="pill deli">ডেলিভার্ড</span>
+          </div>
+          <div class="oc-meta" style="margin-top:7px">মিনি কেক · ব্লুবেরি · ৳৬০০ · পূর্ণ পরিশোধ ✓</div>
+        </div>
+      </div>
+    </div></div></div>
+    <div class="phone-wrap"><div class="screen-label">কমপ্লিটেড ডেটাবেজ</div><div class="phone"><div class="screen"><div class="notch"></div><div class="statusbar"><span>৯:৪১</span><span>📶 🔋</span></div>
+      <div class="content">
+        <div class="brand-row">
+          <div class="sec-title">🗂️ কমপ্লিটেড অর্ডার ডেটাবেজ</div>
+          <span class="pill deli">১৪৮</span>
+        </div>
+        <div class="oc-meta">অর্ডারে ট্যাপ = ফর্ম খুলবে · ছবিতে ট্যাপ = বড় দেখা যাবে</div>
+        <div class="dbgrid">
+          <div class="dbcard">
+            <div class="dbimg">🎂</div>
+            <div class="dbbody">
+              <div class="dbname">রাফি আহমেদ</div>
+              <div class="dbmeta">২ পাউন্ড · চকলেট স্পঞ্জ</div>
+              <div class="dbfoot"><b>৳৯০০</b><span>১২ সেপ্টে</span></div>
+              <button class="dbadd">📷 ছবি বদলান</button>
+            </div>
+          </div>
+          <div class="dbcard">
+            <div class="dbimg" style="background:linear-gradient(135deg,#f9d9e4,#f3e3c3)">🧁</div>
+            <div class="dbbody">
+              <div class="dbname">সুমাইয়া ইসলাম</div>
+              <div class="dbmeta">১ পাউন্ড · রেড ভেলভেট</div>
+              <div class="dbfoot"><b>৳২,২০০</b><span>১১ সেপ্টে</span></div>
+              <button class="dbadd">📷 ছবি বদলান</button>
+            </div>
+          </div>
+          <div class="dbcard">
+            <div class="dbimg" style="background:linear-gradient(135deg,#d9ecf7,#e8f5e9)">🍰</div>
+            <div class="dbbody">
+              <div class="dbname">নুসরাত জাহান</div>
+              <div class="dbmeta">মিনি · ব্লুবেরি</div>
+              <div class="dbfoot"><b>৳৬০০</b><span>১০ সেপ্টে</span></div>
+              <button class="dbadd">📷 ছবি বদলান</button>
+            </div>
+          </div>
+          <div class="dbcard">
+            <div class="dbimg"><span style="font-size:11px;color:var(--muted)">ছবি নেই</span></div>
+            <div class="dbbody">
+              <div class="dbname">তানভীর হাসান</div>
+              <div class="dbmeta">২ পাউন্ড · মালাই কেক</div>
+              <div class="dbfoot"><b>৳১,০০০</b><span>০৯ সেপ্টে</span></div>
+              <button class="dbadd">📷 ছবি যোগ করুন</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div></div>
+  </div>
+</section>
+<section class="variant" id="a2">
+  <div class="v-head">
+    <h2>২ · ডার্ক অপস — রাতের শিফটের জন্য, প্রিমিয়াম টুল ফিল</h2>
+    <p>ডার্ক স্লেট + মিন্ট অ্যাকসেন্ট। রাতে অর্ডার দেখা/এডিট করলে চোখে আরাম, স্ট্যাটাস পিলগুলো ডার্কেও উজ্জ্বল থাকে।</p>
+    <div class="swatches"><span class="sw" style="background:#0e1620"></span><span class="sw" style="background:#16202b"></span><span class="sw" style="background:#35c99e"></span><span class="sw" style="background:#ffc857"></span><span class="sw" style="background:#7cc4ff"></span></div>
+  </div>
+  <div class="row" data-clone="a1"></div>
+</section>
+<section class="variant" id="a3">
+  <div class="v-head">
+    <h2>৩ · ওয়ার্ম ব্র্যান্ড — কাস্টমার অ্যাপের সাথে ম্যাচিং ব্র্যান্ড লুক</h2>
+    <p>ক্রিম ব্যাকগ্রাউন্ড + গোলাপি-ক্যারামেল অ্যাকসেন্ট। কাস্টমার অ্যাপের সাথে একই ব্র্যান্ড ফিলিং — দুই অ্যাপ একই পরিবারের মনে হয়।</p>
+    <div class="swatches"><span class="sw" style="background:#faf5ef"></span><span class="sw" style="background:#c2185b"></span><span class="sw" style="background:#b0722d"></span><span class="sw" style="background:#f4ede4"></span><span class="sw" style="background:#2e9e5b"></span></div>
+  </div>
+  <div class="row" data-clone="a1"></div>
+</section>
+<!--VARIANTS-->
+<script>
+document.querySelectorAll('[data-clone]').forEach(row => {
+  const src = document.getElementById(row.dataset.clone).querySelector('.row');
+  if (src) row.innerHTML = src.innerHTML;
+});
+function showV(id,btn){document.querySelectorAll('.variant').forEach(v=>v.classList.remove('show'));document.querySelectorAll('.vtab').forEach(b=>b.classList.remove('active'));document.getElementById(id).classList.add('show');btn.classList.add('active');window.scrollTo({top:0,behavior:'smooth'});}
+function showAll(btn){document.querySelectorAll('.variant').forEach(v=>v.classList.add('show'));document.querySelectorAll('.vtab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+showV('a1',document.querySelector('.vtab'));
+</script>
+</body>
+</html>

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>নিতুর বেকারি — প্রিমিয়াম থিম ডেমো (Light + Dark)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1d2433;--muted:#7c8698;--line:#e3e8f0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hind Siliguri',sans-serif;background:linear-gradient(180deg,#eef0f4,#e3e7ee);min-height:100vh;padding:26px 18px 70px;color:var(--ink)}
+.page-head{text-align:center;margin-bottom:6px}
+.page-head h1{font-size:23px}
+.page-head h1 span{font-family:'Playfair Display',serif;letter-spacing:2px}
+.page-head p{color:var(--muted);font-size:13.5px;margin-top:4px}
+.bars{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin:20px 0 6px;position:sticky;top:10px;z-index:50;background:rgba(238,240,244,.92);backdrop-filter:blur(8px);padding:10px;border-radius:999px}
+.bar{padding:9px 17px;border-radius:999px;border:1.5px solid var(--line);background:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;color:var(--ink)}
+.bar.active{background:#1d2433;color:#fff;border-color:#1d2433}
+.bar.mode{min-width:86px}
+.variant{display:none;margin:24px auto 0;max-width:1500px}
+.variant.show{display:block}
+.v-head{max-width:1100px;margin:0 auto 18px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px 20px;box-shadow:0 2px 10px rgba(20,30,60,.05)}
+.v-head h2{font-size:18px}
+.v-head p{font-size:13.5px;color:var(--muted);margin-top:4px;line-height:1.65}
+.swatches{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.sw{width:26px;height:26px;border-radius:8px;border:1px solid rgba(0,0,0,.08);display:flex;align-items:flex-end}
+.row{display:flex;gap:28px;flex-wrap:wrap;justify-content:center;align-items:flex-start;margin-bottom:30px}
+.row-title{width:100%;text-align:center;font-size:12px;font-weight:800;letter-spacing:2.5px;color:#8a94a6;text-transform:uppercase;margin-bottom:2px}
+.phone-wrap{display:flex;flex-direction:column;align-items:center}
+.screen-label{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;letter-spacing:.4px}
+.phone{width:322px;background:#08090c;border-radius:44px;padding:10px;box-shadow:0 30px 70px rgba(15,25,50,.32)}
+.screen{border-radius:35px;overflow:hidden;height:664px;background:var(--bg);display:flex;flex-direction:column;position:relative}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:88px;height:20px;background:#08090c;border-radius:999px;z-index:5}
+.statusbar{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--muted);padding:14px 22px 4px}
+.content{flex:1;padding:10px 16px 16px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.brand-row{display:flex;justify-content:space-between;align-items:center}
+.lang{display:flex;gap:3px;border:1px solid var(--line);border-radius:999px;padding:3px}
+.lang span{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:999px;color:var(--muted)}
+.lang .on{background:var(--accent);color:var(--btnfg)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;box-shadow:var(--shadow)}
+.microlabel{font-size:9px;font-weight:800;letter-spacing:2.2px;text-transform:uppercase;color:var(--muted)}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px}
+.field{margin-bottom:12px}
+.input{background:transparent;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:12.5px;font-weight:600;color:var(--text);font-family:inherit;width:100%}
+.hint{font-size:10.5px;color:var(--muted);margin-top:6px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:6px 13px;border-radius:999px;font-size:11px;font-weight:700;border:1px solid var(--line);color:var(--muted)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--btnfg)}
+.chipgrid{display:flex;flex-direction:column;gap:7px}
+.fchip{border:1px solid var(--line);background:transparent;border-radius:10px;padding:10px 12px;font-size:11.5px;font-weight:800;color:var(--text);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.fchip small{font-weight:600;color:var(--muted);font-size:10.5px}
+.fchip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.fchip.on small{color:var(--accent)}
+.progress{height:2px;background:var(--line)}
+.progress i{display:block;height:100%;background:var(--accent)}
+.step{font-size:9.5px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--accent)}
+.btn{border:none;border-radius:11px;padding:14px;font-family:inherit;font-size:13px;font-weight:800;letter-spacing:.5px;background:var(--accent);color:var(--btnfg);width:100%;cursor:pointer}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+.hairline{height:1px;background:var(--line);border:none}
+.logo{width:46px;height:46px;border-radius:50%;border:1px solid var(--accent);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;background:var(--accent-soft)}
+.brand-title{font-family:'Playfair Display',serif;font-size:12.5px;letter-spacing:4px;color:var(--accent);text-transform:uppercase}
+.sumrow{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);font-weight:600;padding:5px 0}
+.sumrow.total{border-top:1px solid var(--line);margin-top:6px;padding-top:10px;color:var(--text);font-weight:800;font-size:13.5px}
+.done{width:62px;height:62px;border-radius:50%;border:1.5px solid var(--ok);color:var(--ok);display:flex;align-items:center;justify-content:center;font-size:25px;margin:8px auto 0;font-weight:700}
+.order-id{font-size:10px;font-weight:800;letter-spacing:2px;color:var(--accent);margin:10px auto 0}
+.method{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:12.5px;font-weight:800;color:var(--text)}
+.method.on{border-color:var(--accent);background:var(--accent-soft)}
+.method small{display:block;font-weight:600;color:var(--muted);font-size:10.5px}
+.radio{width:15px;height:15px;border-radius:50%;border:1.5px solid var(--accent);position:relative;flex-shrink:0}
+.radio i{position:absolute;inset:2.5px;border-radius:50%;background:var(--accent)}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%}
+.d-amber{background:#d97706}.d-blue{background:#4f83c0}.d-green{background:#43946b}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 4px;text-align:center}
+.stat b{display:block;font-size:15px;color:var(--text)}
+.stat span{font-size:8.5px;font-weight:700;color:var(--muted)}
+.stat.hot b{color:var(--accent)}
+.oc-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.oc-name{font-size:13px;font-weight:800;color:var(--text)}
+.oc-meta{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.55}
+.oc-price{font-size:12px;font-weight:800;color:var(--accent)}
+.oc-actions{display:flex;gap:6px;margin-top:10px}
+.abtn{flex:1;font-size:10.5px;font-weight:700;padding:7px 4px;border-radius:9px;border:1px solid var(--line);background:transparent;color:var(--text);text-align:center}
+.abtn.pri{background:var(--accent);color:var(--btnfg);border-color:var(--accent)}
+.deliv{display:flex;gap:10px;align-items:center}
+.deliv-time{font-size:10.5px;font-weight:800;color:var(--accent);border:1px solid var(--accent);padding:6px 8px;border-radius:10px;text-align:center;min-width:52px;line-height:1.4}
+.dbgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.dbcard{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.dbimg{height:84px;display:flex;align-items:center;justify-content:center;font-size:30px;background:var(--chipbg)}
+.dbbody{padding:8px 10px 10px}
+.dbname{font-size:11px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dbmeta{font-size:9.5px;color:var(--muted);margin-top:2px}
+.dbfoot{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.dbfoot b{font-size:11px;font-weight:800;color:var(--accent)}
+.dbfoot span{font-size:9px;font-weight:700;color:var(--muted)}
+.dbadd{display:block;margin:7px auto 0;border:1px solid var(--accent);background:transparent;font-family:inherit;font-size:9.5px;font-weight:800;padding:4px 11px;border-radius:999px;color:var(--accent)}
+.tabs2{display:flex;gap:4px;border:1px solid var(--line);border-radius:11px;padding:4px}
+.tabs2 span{flex:1;text-align:center;font-size:10.5px;font-weight:700;padding:6px 2px;border-radius:8px;color:var(--muted)}
+.tabs2 .on{background:var(--accent);color:var(--btnfg)}
+.sync{font-size:9.5px;font-weight:700;color:var(--ok)}
+/* ─── THEMES ─── */
+.t1{--bg:#f6f1e7;--card:#fffcf5;--line:#e6dcc6;--text:#2a2317;--muted:#93866a;--accent:#a5813e;--accent-soft:#f2e8d2;--btnfg:#fffdf8;--ok:#43946b;--chipbg:#efe7d5;--r:10px;--shadow:0 1px 2px rgba(60,45,20,.05)}
+.t1.dark{--bg:#0d0b08;--card:#161310;--line:#2c251a;--text:#f0e8d8;--muted:#93866c;--accent:#d4af6a;--accent-soft:rgba(212,175,106,.12);--btnfg:#14100a;--ok:#7fce9a;--chipbg:#1e1a13;--shadow:0 1px 2px rgba(0,0,0,.4)}
+.t2{--bg:#faf9f7;--card:#ffffff;--line:#e8e5df;--text:#1b1916;--muted:#8f8b84;--accent:#b0553a;--accent-soft:#f8ebe5;--btnfg:#fff;--ok:#43946b;--chipbg:#f1efeb;--r:12px;--shadow:0 1px 2px rgba(30,25,20,.04)}
+.t2.dark{--bg:#131110;--card:#1c1917;--line:#2f2b26;--text:#f0ece6;--muted:#9a948b;--accent:#d98e73;--accent-soft:rgba(217,142,115,.13);--btnfg:#1c1210;--ok:#7fce9a;--chipbg:#242019;--shadow:0 1px 2px rgba(0,0,0,.4)}
+.t3{--bg:#f4f7f5;--card:#ffffff;--line:#e3eae5;--text:#131a16;--muted:#7f8c85;--accent:#3e6b54;--accent-soft:#e7f1eb;--btnfg:#fff;--ok:#3e6b54;--chipbg:#ecf2ee;--r:12px;--shadow:0 1px 2px rgba(20,40,30,.05)}
+.t3.dark{--bg:#0e1411;--card:#161f1a;--line:#26332c;--text:#e8efe9;--muted:#8fa096;--accent:#7db894;--accent-soft:rgba(125,184,148,.12);--btnfg:#0e1411;--ok:#7db894;--chipbg:#1b2620;--shadow:0 1px 2px rgba(0,0,0,.4)}
+.t4{--bg:#fbf7f6;--card:#ffffff;--line:#efe4e2;--text:#2b2124;--muted:#a08d90;--accent:#bd6076;--accent-soft:#f9edf0;--btnfg:#fff;--ok:#43946b;--chipbg:#f6eef0;--r:14px;--shadow:0 1px 2px rgba(80,40,50,.05)}
+.t4.dark{--bg:#161013;--card:#1f171b;--line:#32242b;--text:#f4eaee;--muted:#a08b93;--accent:#e08ca0;--accent-soft:rgba(224,140,160,.12);--btnfg:#201317;--ok:#7fce9a;--chipbg:#291e24;--shadow:0 1px 2px rgba(0,0,0,.4)}
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>✦ Nitu's Bakery — <span>Premium Theme Studio</span></h1>
+  <p>৪টি লাক্সারি ডিজাইন · প্রতিটির নিজস্ব Light + Dark মোড · উপরের Light/Dark বাটনে মোড বদলান · থিম বাটনে ডিজাইন বদলান</p>
+</div>
+<div class="bars">
+  <button class="bar active" onclick="showT('t1',this)">✦ Noir Gold</button>
+  <button class="bar" onclick="showT('t2',this)">✦ Ivory Editorial</button>
+  <button class="bar" onclick="showT('t3',this)">✦ Nordic Sage</button>
+  <button class="bar" onclick="showT('t4',this)">✦ Rose Porcelain</button>
+  <button class="bar" onclick="showAll(this)">সব একসাথে</button>
+  <button class="bar mode active" id="m-light" onclick="setMode(false,this)">☀️ Light</button>
+  <button class="bar mode" id="m-dark" onclick="setMode(true,this)">🌙 Dark</button>
+</div>
+<section class="variant show" id="t1">
+  <div class="v-head">
+    <h2>✦ ১ · Noir Gold — ডার্কে শ্যাম্পেন গোল্ড, লাইটে আইভরি-গোল্ড (লাক্সারি পাতিসারি)</h2>
+    <p>সবচেয়ে "এক্সপেন্সিভ" লুক — থিন হেয়ারলাইন বর্ডার, সেরিফ ব্র্যান্ড টাইটেল, গোল্ড অ্যাকসেন্ট। Dark মোডে একদম ব্ল্যাক-গোল্ড জুয়েলারি ফিল, Light মোডে আইভরি বুটিক।</p>
+    <div class="swatches"><span class="sw" style="background:#f6f1e7"></span><span class="sw" style="background:#a5813e"></span><span class="sw" style="background:#0d0b08"></span><span class="sw" style="background:#d4af6a"></span><span class="sw" style="background:#161310"></span></div>
+  </div>
+  <div class="row-title">Customer App</div>
+  <div class="row" data-row="cx">
+    <div class="phone-wrap"><div class="screen-label">হোম</div><div class="phone"><div class="screen"><div class="notch"></div><div class="statusbar"><span>৯:৪১</span><span>📶 🔋</span></div>
+      <div class="content" style="gap:14px">
+        <div class="brand-row"><span class="microlabel">Est. Chattogram</span><div class="lang"><span class="on">বাংলা</span><span>EN</span></div></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center">
+          <div class="logo" style="width:64px;height:64px;font-size:24px">নি</div>
+          <div><div class="brand-title">Nitu's Bakery</div><div style="font-size:22px;font-weight:800;color:var(--text);margin-top:4px">নিতুর বেকারি</div></div>
+          <hr class="hairline" style="width:56px">
+          <div style="font-size:12px;color:var(--muted);line-height:1.9">ঘরে বানানো তাজা কেক<br>শুধু অর্ডারেই বানানো হয়</div>
+        </div>
+        <button class="btn">অর্ডার শুরু করুন</button>
+        <div style="text-align:center;font-size:9.5px;color:var(--muted);letter-spacing:2px">FACEBOOK · WHATSAPP</div>
+      </div>
+    </div></div></div>
+    <div class="phone-wrap"><div class="screen-label">অর্ডার ফর্ম</div><div class="phone"><div class="screen"><div class="notch"></div><div class="statusbar"><span>৯:৪১</span><span>📶 🔋</span></div>
+      <div class="content">
+        <div class="brand-row"><span class="step">Step 1 / 5 · কেক তথ্য</span><div class="lang"><span class="on">বাংলা</span><span>EN</span></div></div>
+        <div class="progress"><i style="width:20%"></i></div>
+        <div class="card">
+          <div class="field"><label>আপনার নাম *</label><div class="input">রাফি আহমেদ</div></div>
+          <div class="field" style="margin-bottom:0"><label>ওজন *</label><div class="chips"><span class="chip">১ পাউন্ড</span><span class="chip on">২ পাউন্ড</span><span class="chip">১ KG</span></div></div>
+        </div>
+        <div class="card">
+          <div class="microlabel" style="margin-bottom:9px">Flavour · ফ্লেভার</div>
+          <div class="chipgrid">
+            <div class="fchip on"><span>চকলেট স্পঞ্জ</span><small>৳৯০০+</small></div>
+            <div class="fchip"><span>ভ্যানিলা স্পঞ্জ</span><small>৳৮২০+</small></div>
+            <div class="fchip"><span>ব্ল্যাক ফরেস্ট</span><small>৳৯২০+</small></div>
+            <div class="fchip"><span>চকলেট মাডকেক</span><small>৳১,২০০+</small></div>
+          </div>
+          <div class="field" style="margin:12px 0 0"><label>কেকের নির্ধারিত মূল্য *</label><div class="input">৯০০</div></div>
+        </div>
+        <button class="btn" style="margin-top:auto">পরবর্তী →</button>
+      </div>
+    </div></div></div>
+    <div class="phone-wrap"><div class="screen-label">পেমেন্ট</div><div class="phone"><div class="screen"><div class="notch"></div><div class="statusbar"><span>৯:৪১</span><span>📶 🔋</span></div>
+      <div class="content">
+        <span class="step">Step 4 / 5 · পেমেন্ট</span>
+        <div class="card">
+          <div class="sumrow"><span>কেক · ২ পাউন্ড চকলেট স্পঞ্জ</span><span>৳৯০০</span></div>
+          <div class="sumrow"><span>ডেলিভারি (আলাদা)</span><span>৳৬০</span></div>
+          <div class="sumrow total"><span>মোট</span><span>৳৯০০</span></div>
+        </div>
+        <div class="card" style="display:flex;flex-direction:column;gap:8px">
+          <div class="microlabel">Payment Method</div>
+          <div class="method on"><span>বিকাশ<small>চার্জ ১.৮২% যোগ হবে</small></span><span class="radio"><i></i></span></div>
+          <div class="method"><span>নগদ<small>চার্জ ১.৪৯% যোগ হবে</small></span><span class="radio"></span></div>
+          <div class="method"><span>ব্যাংক (NPSB)<small>কোনো চার্জ নেই</small></span><span class="radio"></span></div>
+        </div>
+        <div class="card">
+          <div class="microlabel" style="margin-bottom:8px">Advance</div>
+          <div class="chips"><span class="chip on">৫০% অগ্রিম</span><span class="chip">১০০% পরিশোধ</span></div>
+          <div class="input" style="margin-top:9px;font-weight:800">৳৪৬২</div>
+          <div class="hint">অটো হিসাব (চার্জসহ) · বাকি ৳৪৩৮ পরে দিতে হবে</div>
+        </div>
+        <button class="btn" style="margin-top:auto">অর্ডার জমা দিন ✓</button>
+      </div>
+    </div></div></div>
+    <div class="phone-wrap"><div class="screen-label">সাকসেস</div><div class="phone"><div class="screen"><div class="notch"></div><div class="statusbar"><span>৯:৪১</span><span>📶 🔋</span></div>
+      <div class="content" style="text-align:center">
+        <div class="done">✓</div>
+        <div style="font-size:18px;font-weight:800;color:var(--text);margin-top:6px">অর্ডার সফলভাবে জমা হয়েছে</div>
+        <div class="order-id">ORDER · NB-0509-4821</div>
+        <div class="card" style="text-align:left">
+          <div class="sumrow"><span>কেক</span><span>২ পাউন্ড · চকলেট স্পঞ্জ</span></div>
+          <div class="sumrow"><span>ডেলিভারি</span><span>১২ সেপ্টে · ৪:০০ PM</span></div>
+          <div class="sumrow"><span>মোট</span><span>৳৯০০</span></div>
+          <div class="sumrow"><span>প্রদান</span><span style="color:var(--ok);font-weight:800">৳৪৬২</span></div>
+          <div class="sumrow total"><span>বাকি</span><span>৳৪৩৮</span></div>
+        </div>
+        <button class="btn">অর্ডার কার্ড ডাউনলোড</button>
+        <button class="btn ghost">নতুন অর্ডার দিন</button>
+      </div>
+    </div></div></div>
+  </div>
+  <div class="row-title">Admin App</div>
+  <div class="row" data-row="ax">
+    <div class="phone-wrap"><div class="screen-label">ড্যাশবোর্ড</div><div class="phone"><div class="screen"><div class="notch"></div><div class="statusbar"><span>৯:৪১</span><span>📶 🔋</span></div>
+      <div class="content">
+        <div class="brand-row">
+          <div style="display:flex;gap:9px;align-items:center">
+            <div class="logo">নি</div>
+            <div><div style="font-size:12.5px;font-weight:800;color:var(--text)">নিতুর বেকারি</div><div class="sync">● সিংক হয়েছে</div></div>
+          </div>
+          <div class="lang"><span class="on">বাংলা</span><span>EN</span></div>
+        </div>
+        <div class="stats">
+          <div class="stat hot"><b>৩</b><span>আজকের অর্ডার</span></div>
+          <div class="stat"><b>২</b><span>বেকিং</span></div>
+          <div class="stat"><b>১</b><span>ডেলিভারি বাকি</span></div>
+          <div class="stat"><b>৳৪৮ক</b><span>মাসিক আয়</span></div>
+        </div>
+        <div class="card">
+          <div class="microlabel" style="margin-bottom:9px">আজকের ডেলিভারি</div>
+          <div class="deliv">
+            <div class="deliv-time">৪:০০<br>PM</div>
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:800;color:var(--text)">রাফি আহমেদ</div>
+              <div class="oc-meta">২ পাউন্ড · চকলেট স্পঞ্জ · আগ্রাবাদ CDA</div>
+            </div>
+            <div class="abtn pri" style="flex:0 0 auto;padding:8px 11px">📞</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="oc-head"><span class="oc-name">সুমাইয়া ইসলাম</span><span class="pill"><i class="dot d-blue"></i>বেকিং</span></div>
+          <div class="oc-meta">১ পাউন্ড · রেড ভেলভেট · <span class="oc-price">৳২,২০০</span> · অগ্রিম ✓</div>
+          <div class="oc-actions">
+            <div class="abtn">📋 নোট</div><div class="abtn pri">✏️ এডিট</div><div class="abtn">🛵 ডেলিভার্ড</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="oc-head"><span class="oc-name">তানভীর হাসান</span><span class="pill"><i class="dot d-amber"></i>পেন্ডিং</span></div>
+          <div class="oc-meta">২ পাউন্ড · চকলেট মাডকেক · <span class="oc-price">৳১,২০০</span> · অগ্রিম বাকি</div>
+          <div class="oc-actions">
+            <div class="abtn">📋 নোট</div><div class="abtn pri">✏️ এডিট</div><div class="abtn">🛵 ডেলিভার্ড</div>
+          </div>
+        </div>
+        <button class="btn" style="margin-top:auto">➕ নতুন অর্ডার</button>
+      </div>
+    </div></div></div>
+    <div class="phone-wrap"><div class="screen-label">অর্ডার লিস্ট</div><div class="phone"><div class="screen"><div class="notch"></div><div class="statusbar"><span>৯:৪১</span><span>📶 🔋</span></div>
+      <div class="content">
+        <div class="tabs2"><span class="on">সব</span><span>পেন্ডিং</span><span>বেকিং</span><span>ডেলিভার্ড</span></div>
+        <div class="card">
+          <div class="oc-head">
+            <div style="display:flex;gap:9px;align-items:center">
+              <div class="dbimg" style="width:44px;height:44px;border-radius:10px;font-size:20px">🎂</div>
+              <div><div class="oc-name">সুমাইয়া ইসলাম</div><div class="oc-meta">১২ সেপ্টে · ৪:০০ PM</div></div>
+            </div>
+            <span class="pill"><i class="dot d-blue"></i>বেকিং</span>
+          </div>
+          <div class="oc-meta" style="margin-top:7px">১ পাউন্ড · রেড ভেলভেট · ক্রিম চিজ · ডেলিভারি · আগ্রাবাদ</div>
+          <div class="oc-actions">
+            <div class="abtn">📋 নোট</div><div class="abtn">📋 SRS</div><div class="abtn pri">✏️ এডিট</div><div class="abtn">🗑</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="oc-head">
+            <div style="display:flex;gap:9px;align-items:center">
+              <div class="dbimg" style="width:44px;height:44px;border-radius:10px;font-size:20px">🧁</div>
+              <div><div class="oc-name">তানভীর হাসান</div><div class="oc-meta">১৩ সেপ্টে · ৬:৩০ PM</div></div>
+            </div>
+            <span class="pill"><i class="dot d-amber"></i>পেন্ডিং</span>
+          </div>
+          <div class="oc-meta" style="margin-top:7px">২ পাউন্ড · চকলেট মাডকেক · সেলফ পিকআপ · ট্রাংক রোড</div>
+          <div class="oc-actions">
+            <div class="abtn">📋 নোট</div><div class="abtn">📋 SRS</div><div class="abtn pri">✏️ এডিট</div><div class="abtn">🗑</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="oc-head">
+            <div style="display:flex;gap:9px;align-items:center">
+              <div class="dbimg" style="width:44px;height:44px;border-radius:10px;font-size:20px">🍰</div>
+              <div><div class="oc-name">নুসরাত জাহান</div><div class="oc-meta">১৪ সেপ্টে · ২:০০ PM</div></div>
+            </div>
+            <span class="pill"><i class="dot d-green"></i>ডেলিভার্ড</span>
+          </div>
+          <div class="oc-meta" style="margin-top:7px">মিনি কেক · ব্লুবেরি · ৳৬০০ · পূর্ণ পরিশোধ ✓</div>
+        </div>
+      </div>
+    </div></div></div>
+    <div class="phone-wrap"><div class="screen-label">কমপ্লিটেড ডেটাবেজ</div><div class="phone"><div class="screen"><div class="notch"></div><div class="statusbar"><span>৯:৪১</span><span>📶 🔋</span></div>
+      <div class="content">
+        <div class="brand-row">
+          <div class="sec-title">🗂️ কমপ্লিটেড ডেটাবেজ</div>
+          <span class="pill"><i class="dot d-green"></i>১৪৮</span>
+        </div>
+        <div class="oc-meta">অর্ডারে ট্যাপ = ফর্ম · ছবিতে ট্যাপ = জুম</div>
+        <div class="dbgrid">
+          <div class="dbcard">
+            <div class="dbimg">🎂</div>
+            <div class="dbbody">
+              <div class="dbname">রাফি আহমেদ</div>
+              <div class="dbmeta">২ পাউন্ড · চকলেট স্পঞ্জ</div>
+              <div class="dbfoot"><b>৳৯০০</b><span>১২ সেপ্টে</span></div>
+              <button class="dbadd">📷 ছবি বদলান</button>
+            </div>
+          </div>
+          <div class="dbcard">
+            <div class="dbimg">🧁</div>
+            <div class="dbbody">
+              <div class="dbname">সুমাইয়া ইসলাম</div>
+              <div class="dbmeta">১ পাউন্ড · রেড ভেলভেট</div>
+              <div class="dbfoot"><b>৳২,২০০</b><span>১১ সেপ্টে</span></div>
+              <button class="dbadd">📷 ছবি বদলান</button>
+            </div>
+          </div>
+          <div class="dbcard">
+            <div class="dbimg">🍰</div>
+            <div class="dbbody">
+              <div class="dbname">নুসরাত জাহান</div>
+              <div class="dbmeta">মিনি · ব্লুবেরি</div>
+              <div class="dbfoot"><b>৳৬০০</b><span>১০ সেপ্টে</span></div>
+              <button class="dbadd">📷 ছবি বদলান</button>
+            </div>
+          </div>
+          <div class="dbcard">
+            <div class="dbimg"><span style="font-size:11px;color:var(--muted)">ছবি নেই</span></div>
+            <div class="dbbody">
+              <div class="dbname">তানভীর হাসান</div>
+              <div class="dbmeta">২ পাউন্ড · মালাই কেক</div>
+              <div class="dbfoot"><b>৳১,০০০</b><span>০৯ সেপ্টে</span></div>
+              <button class="dbadd">📷 ছবি যোগ করুন</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div></div>
+  </div>
+</section>
+<section class="variant" id="t2">
+  <div class="v-head">
+    <h2>✦ ২ · Ivory Editorial — উষ্ণ মিনিমাল, টেরাকোটা অ্যাকসেন্ট (বুটিক ম্যাগাজিন)</h2>
+    <p>খুব পরিষ্কার এডিটোরিয়াল লেআউট — প্রচুর ফাঁকা জায়গা, টেরাকোটা/ক্লে অ্যাকসেন্ট। Dark মোডে উষ্ণ কোকো-চারকোল।</p>
+    <div class="swatches"><span class="sw" style="background:#faf9f7"></span><span class="sw" style="background:#b0553a"></span><span class="sw" style="background:#131110"></span><span class="sw" style="background:#d98e73"></span><span class="sw" style="background:#43946b"></span></div>
+  </div>
+  <div class="row" data-clone="t1" data-row="cx"></div>
+  <div class="row" data-clone="t1" data-row="ax"></div>
+</section>
+<section class="variant" id="t3">
+  <div class="v-head">
+    <h2>✦ ৩ · Nordic Sage — ঠান্ডা মিনিমাল, সেজ-গ্রিন (স্ক্যান্ডিনেভিয়ান স্টুডিও)</h2>
+    <p>একদম ক্লিন প্রফেশনাল — সেজ-গ্রিন অ্যাকসেন্ট, নরম নিউট্রাল। Dark মোডে ফরেস্ট-গ্রাফাইট। যারা "সিম্পল কিন্তু দামি" চান।</p>
+    <div class="swatches"><span class="sw" style="background:#f4f7f5"></span><span class="sw" style="background:#3e6b54"></span><span class="sw" style="background:#0e1411"></span><span class="sw" style="background:#7db894"></span><span class="sw" style="background:#161f1a"></span></div>
+  </div>
+  <div class="row" data-clone="t1" data-row="cx"></div>
+  <div class="row" data-clone="t1" data-row="ax"></div>
+</section>
+<section class="variant" id="t4">
+  <div class="v-head">
+    <h2>✦ ৪ · Rose Porcelain — কোমল ডাস্টি-রোজ (পরসেলিন জুয়েলারি বক্স)</h2>
+    <p>নরম পরসেলিন সাদা + ডাস্টি রোজ — কোমল, নারী-নজরকারী, তবু প্রিমিয়াম। Dark মোডে গভীর প্লাম-ওয়াইন।</p>
+    <div class="swatches"><span class="sw" style="background:#fbf7f6"></span><span class="sw" style="background:#bd6076"></span><span class="sw" style="background:#161013"></span><span class="sw" style="background:#e08ca0"></span><span class="sw" style="background:#1f171b"></span></div>
+  </div>
+  <div class="row" data-clone="t1" data-row="cx"></div>
+  <div class="row" data-clone="t1" data-row="ax"></div>
+</section>
+<!--SECTIONS-->
+<script>
+document.querySelectorAll('[data-clone]').forEach(row => {
+  const src = document.querySelector('#' + row.dataset.clone + ' [data-row="' + row.dataset.row + '"]');
+  if (src) row.innerHTML = src.innerHTML;
+});
+var curT = 't1';
+function showT(id,btn){document.querySelectorAll('.variant').forEach(v=>v.classList.remove('show'));document.querySelectorAll('.bar:not(.mode)').forEach(b=>b.classList.remove('active'));document.getElementById(id).classList.add('show');btn.classList.add('active');curT=id;window.scrollTo({top:0,behavior:'smooth'});}
+function showAll(btn){document.querySelectorAll('.variant').forEach(v=>v.classList.add('show'));document.querySelectorAll('.bar:not(.mode)').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+function setMode(dark,btn){document.querySelectorAll('.variant').forEach(v=>v.classList.toggle('dark',dark));document.querySelectorAll('.bar.mode').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+Bank payment: NPSB only
+
+Bank Account Number: 0210165544851
+IFIC Bank, Amanbazar sub-branch.
+Routing Number: 120 153 224
+Swift code: IFICBDDH
+Account holder name: Sabrina Akter Bhuiyan
+Contact no: 01521400475

@@ -1,0 +1,26 @@
+{
+  "name": "নিতুর বেকারি — অর্ডার ফর্ম",
+  "short_name": "নিতুর বেকারি",
+  "description": "নিতুর বেকারি থেকে সহজে কেক অর্ডার করুন — ফ্লেভার, ওজন ও ডেলিভারি সময় বেছে নিন",
+  "id": "./",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#c2185b",
+  "theme_color": "#c2185b",
+  "orientation": "portrait",
+  "lang": "bn",
+  "dir": "ltr",
+  "categories": ["food", "shopping"],
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "screenshots": [
+    { "src": "screenshots/customer-wide.png", "sizes": "1280x720", "type": "image/png", "form_factor": "wide", "label": "নিতুর বেকারি — কেক অর্ডার ফর্ম" },
+    { "src": "screenshots/customer-narrow.png", "sizes": "720x1280", "type": "image/png", "form_factor": "narrow", "label": "নিতুর বেকারি — মোবাইল অর্ডার ভিউ" }
+  ],
+  "icons": [
+    { "src": "home-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "home-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

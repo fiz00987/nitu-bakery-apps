@@ -1,0 +1,2621 @@
+﻿<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f5a50">
+<title>🎂 নিতুর বেকারি — অর্ডার ম্যানেজার</title>
+<link rel="icon" type="image/png" href="logo.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* =============================================
+   ROOT DESIGN TOKENS
+   ============================================= */
+:root {
+  /* Brand palette */
+  --pink:          #0f5a50;
+  --pink-dark:     #093f38;
+  --pink-mid:      #1d7a6c;
+  --pink-light:    #e2f1ec;
+  --pink-soft:     #bcd9d2;
+  --pink-glow:     rgba(15,90,80,0.18);
+
+  /* Semantic */
+  --green:         #2e7d32;
+  --green-light:   #e8f5e9;
+  --green-mid:     #43a047;
+  --amber:         #e65100;
+  --amber-light:   #fff3e0;
+  --red:           #c62828;
+  --red-light:     #ffebee;
+  --blue:          #1565c0;
+  --blue-light:    #e3f2fd;
+  --purple:        #6a1b9a;
+  --purple-light:  #f3e5f5;
+
+  /* Neutrals */
+  --text:          #1a1a2e;
+  --text2:         #555577;
+  --text3:         #9999bb;
+  --border:        #e8e8f0;
+  --border-focus:  var(--pink);
+  --surface:       #ffffff;
+  --surface2:      #f7f7fb;
+  --bg:            #f3f3f8;
+  --divider:       rgba(0,0,0,0.06);
+
+  /* Shape */
+  --radius:        14px;
+  --radius-sm:     9px;
+  --radius-xs:     6px;
+  --radius-pill:   999px;
+
+  /* Shadows */
+  --shadow-sm:  0 1px 4px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04);
+  --shadow-md:  0 4px 18px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-pink: 0 4px 20px rgba(15,90,80,0.35);
+
+  /* Transitions */
+  --ease:        cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast:   140ms;
+  --dur-base:   220ms;
+  --dur-slow:   350ms;
+
+  /* Topbar height (used for sticky offset) */
+  --topbar-h: 154px;
+  --tabs-h:   44px;
+}
+
+/* =============================================
+   RESET & BASE
+   ============================================= */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html { scroll-behavior: smooth; }
+
+/* Language-aware typography */
+body[data-lang="bn"] {
+  font-family: 'Hind Siliguri', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+body[data-lang="en"] {
+  font-family: 'Poppins', 'Hind Siliguri', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  font-family: 'Poppins', 'Hind Siliguri', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  background-image: url('https://images.unsplash.com/photo-1517433670267-08bbd4be890f?w=1200&q=60');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-blend-mode: overlay;
+  color: var(--text);
+  min-height: 100vh;
+  padding-bottom: 96px;
+  overscroll-behavior-y: contain;
+  -webkit-font-smoothing: antialiased;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(243,243,248,0.88);
+  z-index: -1;
+  pointer-events: none;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+button { cursor: pointer; }
+
+/* =============================================
+   UTILITY
+   ============================================= */
+.hidden { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* =============================================
+   TOPBAR
+   ============================================= */
+.topbar {
+  background: linear-gradient(135deg, var(--pink-dark) 0%, var(--pink) 45%, var(--pink-mid) 100%);
+  padding: 14px 16px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 16px rgba(9,63,56,0.3);
+}
+
+.topbar-row1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.topbar-brand img {
+  height: 50px;
+  width: auto;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));
+}
+.topbar-brand-text {
+  display: flex;
+  flex-direction: column;
+}
+.topbar-brand h1 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.2;
+  letter-spacing: -0.2px;
+}
+.topbar-brand p {
+  font-size: 10px;
+  color: rgba(255,255,255,0.65);
+  margin-top: 1px;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Notification bell button */
+.notif-bell-btn {
+  position: relative;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.28);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  color: #fff;
+  transition: background var(--dur-fast), transform var(--dur-fast);
+  flex-shrink: 0;
+}
+.notif-bell-btn:hover { background: rgba(255,255,255,0.25); }
+.notif-bell-btn:active { transform: scale(0.92); }
+.notif-bell-btn.active {
+  background: rgba(76,175,80,0.35);
+  border-color: rgba(76,175,80,0.6);
+}
+.notif-bell-btn.denied {
+  opacity: 0.5;
+}
+.notif-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: var(--red);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  line-height: 1;
+}
+.notif-badge.hidden { display: none; }
+
+@keyframes bellRing {
+  0%, 100% { transform: rotate(0deg); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-14deg); }
+  45% { transform: rotate(10deg); }
+  60% { transform: rotate(-10deg); }
+  75% { transform: rotate(4deg); }
+}
+.notif-bell-btn.ringing { animation: bellRing 0.6s ease; }
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  transition: background var(--dur-fast);
+}
+.status-pill.error { background: rgba(255,255,255,0.1); border-color: rgba(255,100,100,0.5); }
+
+.sync-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #69f0ae;
+  flex-shrink: 0;
+  transition: background var(--dur-base);
+}
+.sync-dot.error { background: #ff6b6b; }
+.sync-dot.syncing {
+  background: #ffd54f;
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* Layout 3 — two compact rows of text buttons (2×3 grid):
+   Row 1: backup · restore · sort | Row 2: calendar · note · today's new */
+.topbar-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  border-radius: 9px;
+  border: 1px solid rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.13);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--dur-fast);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  -webkit-appearance: none;
+}
+.action-btn:hover { background: rgba(255,255,255,0.22); }
+.action-btn:active { background: rgba(255,255,255,0.32); transform: scale(0.97); }
+
+/* Order calendar button */
+.cal-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  border-radius: 9px;
+  border: 1px solid rgba(255,255,255,0.5);
+  background: linear-gradient(135deg, var(--pink), var(--pink-mid));
+  color: #fff;
+  cursor: pointer;
+  transition: transform var(--dur-fast), box-shadow var(--dur-fast);
+  white-space: nowrap;
+}
+.cal-btn:active { transform: scale(0.97); }
+
+/* =============================================
+   SEARCH BAR
+   ============================================= */
+.search-wrap {
+  padding: 10px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  box-shadow: 0 1px 0 var(--divider);
+}
+
+.search-box {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-icon {
+  position: absolute;
+  left: 11px;
+  font-size: 14px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+.search-input {
+  width: 100%;
+  font-size: 13px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 34px 9px 32px;
+  background: var(--surface2);
+  color: var(--text);
+  transition: border-color var(--dur-fast), background var(--dur-fast), box-shadow var(--dur-fast);
+}
+.search-input:focus {
+  outline: none;
+  border-color: var(--pink);
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--pink-glow);
+}
+.search-clear {
+  position: absolute;
+  right: 8px;
+  background: var(--text3);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 18px; height: 18px;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  transition: opacity var(--dur-fast);
+  pointer-events: none;
+}
+.search-clear.visible { opacity: 1; pointer-events: all; }
+
+.filter-select {
+  font-size: 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 8px;
+  background: var(--surface2);
+  color: var(--text);
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: border-color var(--dur-fast);
+  min-width: 90px;
+}
+.filter-select:focus { outline: none; border-color: var(--pink); }
+
+/* =============================================
+   MINI CALENDAR
+   ============================================= */
+.minical-wrap {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px 12px;
+}
+.minical-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.minical-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.minical-nav {
+  width: 28px; height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--text2);
+  font-size: 17px; line-height: 1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.minical-nav:active { background: var(--pink-light); color: var(--pink); }
+.minical-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+}
+.minical-grid > * { width: 100%; }
+.minical-dow {
+  text-align: center;
+  font-size: 9px;
+  color: var(--text3);
+  font-weight: 600;
+  padding: 1px 0;
+}
+.minical-cell {
+  height: 30px;
+  border-radius: 8px;
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.minical-cell .mc-day { font-size: 12px; font-weight: 700; }
+.minical-cell.empty { visibility: hidden; }
+.minical-cell.c-0    { background: var(--surface2); color: var(--text3); }
+.minical-cell.c-ok   { background: var(--green-mid);   color: #fff; }
+.minical-cell.c-warn { background: var(--amber);        color: #fff; }
+.minical-cell.c-bad  { background: var(--red);          color: #fff; }
+.minical-cell.today  { box-shadow: inset 0 0 0 2px var(--pink); }
+.minical-legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text3);
+  flex-wrap: wrap;
+}
+.minical-legend .lg {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 3px;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+.lg-ok { background: var(--green-mid); }
+.lg-warn { background: var(--amber); }
+.lg-bad { background: var(--red); }
+/* ─── Off-day cell (marked with ✕) ─────────────────────────── */
+.minical-cell.c-off {
+  background: var(--surface);
+  color: var(--red);
+  box-shadow: inset 0 0 0 2px var(--red);
+}
+.minical-cell .mc-x { font-size: 15px; font-weight: 800; color: var(--red); line-height: 1; }
+.minical-cell:not(.empty) { cursor: pointer; }
+.minical-cell:not(.empty):active { filter: brightness(0.92); }
+.lg-off { background: var(--surface2); box-shadow: inset 0 0 0 2px var(--red); }
+
+/* ─── Shopping notepad popup ───────────────────────────────── */
+.notepad-hint {
+  font-size: 11.5px; color: var(--text3);
+  margin: 2px 0 8px; line-height: 1.5;
+}
+#notepad-text {
+  width: 100%; min-height: 46vh; resize: vertical;
+  border: 1.5px solid var(--pink-soft); border-radius: 10px;
+  padding: 12px; font-size: 15px; line-height: 1.7;
+  font-family: inherit; color: var(--text);
+  background: var(--surface2); outline: none;
+}
+#notepad-text:focus { border-color: var(--pink); }
+.notepad-status {
+  font-size: 11px; color: var(--text3); margin-top: 6px; min-height: 14px; text-align: right;
+}
+/* Notepad pages + photos */
+.np-toolbar {
+  display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+}
+#notepad-page-sel {
+  flex: 1; min-width: 0;
+  border: 1.5px solid var(--pink-soft); border-radius: 9px;
+  padding: 7px 8px; font-family: inherit; font-size: 13.5px;
+  background: var(--surface2); color: var(--text); outline: none;
+}
+.np-btn {
+  border: 1.5px solid var(--pink-soft); border-radius: 9px;
+  background: var(--pink-light); color: var(--pink-dark);
+  font-family: inherit; font-size: 12.5px; font-weight: 700;
+  padding: 7px 10px; white-space: nowrap;
+}
+.np-btn:active { transform: scale(0.97); }
+.np-photos {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;
+}
+.np-photos:empty { display: none; }
+.np-thumb-wrap { position: relative; }
+.np-thumb {
+  width: 64px; height: 64px; object-fit: cover; display: block;
+  border-radius: 8px; border: 1px solid var(--pink-soft); cursor: pointer;
+}
+.np-thumb-x {
+  position: absolute; top: -6px; right: -6px;
+  background: var(--red); color: #fff; font-size: 10px;
+  width: 18px; height: 18px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+
+/* ─── Off-day dialog input ─────────────────────────────────── */
+#offday-reason {
+  width: 100%; margin-top: 4px;
+  border: 1.5px solid var(--pink-soft); border-radius: 10px;
+  padding: 10px 12px; font-size: 14px; font-family: inherit;
+  background: var(--surface2); color: var(--text); outline: none;
+}
+#offday-reason:focus { border-color: var(--pink); }
+
+/* ─── Completed Order Database grid ────────────────────────── */
+.cdb-head {
+  font-size: 15px; font-weight: 800; color: var(--text);
+  margin-bottom: 4px;
+}
+.cdb-sub {
+  font-size: 11.5px; color: var(--text3); margin-bottom: 12px;
+}
+.cdb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.cdb-card {
+  background: var(--surface); border: 1px solid var(--pink-soft);
+  border-radius: 14px; overflow: hidden;
+  cursor: pointer; transition: transform .12s ease, box-shadow .12s ease;
+}
+.cdb-card:active { transform: scale(0.97); }
+.cdb-thumb-wrap {
+  position: relative; width: 100%; aspect-ratio: 1 / 0.85;
+  background: var(--surface2); display: flex; align-items: center; justify-content: center;
+}
+.cdb-thumb {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.cdb-thumb-ph { font-size: 34px; opacity: .55; }
+.cdb-body { padding: 8px 10px 10px; }
+.cdb-name {
+  font-size: 13px; font-weight: 700; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cdb-meta {
+  font-size: 11px; color: var(--text3); margin-top: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cdb-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 6px; gap: 6px;
+}
+.cdb-price {
+  font-size: 13px; font-weight: 800; color: var(--pink);
+  white-space: nowrap;
+}
+.cdb-date {
+  font-size: 10.5px; color: var(--text3); white-space: nowrap;
+}
+.cdb-noimg-badge {
+  position: absolute; top: 6px; right: 6px;
+  background: rgba(0,0,0,.55); color: #fff;
+  font-size: 9.5px; padding: 2px 6px; border-radius: 999px;
+}
+.cdb-add-photo {
+  position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+  background: var(--pink); color: #fff;
+  border: none; border-radius: 999px;
+  font-size: 11px; font-weight: 700; padding: 5px 12px;
+  cursor: pointer; white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(15,90,80,.35);
+}
+.cdb-add-photo:active { transform: translateX(-50%) scale(0.94); }
+
+/* ─── Completed cake photo (edit modal) ────────────────────── */
+.del-photo-thumb {
+  position: relative; width: 110px; height: 90px;
+  border-radius: 10px; overflow: hidden; margin-top: 8px;
+  border: 1.5px solid var(--pink-soft);
+}
+.del-photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.del-photo-size {
+  position: absolute; bottom: 4px; right: 4px;
+  background: rgba(0,0,0,.6); color: #fff;
+  font-size: 9.5px; padding: 1px 6px; border-radius: 999px;
+}
+
+/* Calendar popup (opened from the Order Calendar button) */
+.cal-popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,8,30,0.55);
+  backdrop-filter: blur(3px);
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-base);
+  padding: 16px;
+}
+.cal-popup-overlay.open { opacity: 1; pointer-events: all; }
+.cal-popup {
+  background: var(--surface);
+  border-radius: 18px;
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 480px;
+  min-width: 0;
+  max-height: 92vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 14px 14px 16px;
+}
+/* Keep the month controls and seven-column grid inside the popup on narrow screens. */
+.cal-popup .minical-head { gap: 8px; }
+.cal-popup .minical-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cal-popup .minical-nav { flex: 0 0 28px; }
+.cal-popup .minical-grid {
+  min-width: 0;
+  gap: clamp(2px, 1.5vw, 4px);
+  align-content: start;
+  grid-auto-rows: 30px;
+}
+.cal-popup .minical-cell,
+.cal-popup .minical-dow { min-width: 0; }
+.cal-popup .minical-dow { overflow: hidden; text-overflow: clip; white-space: nowrap; }
+@media (max-width: 380px) {
+  .cal-popup-overlay { padding: 10px; }
+  .cal-popup { padding: 12px 10px 14px; }
+}
+.cal-popup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.cal-popup-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.cal-popup-close {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text3);
+  font-size: 15px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.cal-popup-close:active { background: var(--pink-light); color: var(--pink); }
+
+/* =============================================
+   TABS
+   ============================================= */
+.tabs {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: 90;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.tabs::-webkit-scrollbar { display: none; }
+
+.tab {
+  flex: 1;
+  min-width: 64px;
+  padding: 11px 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  border: none;
+  background: none;
+  color: var(--text2);
+  cursor: pointer;
+  border-bottom: 2.5px solid transparent;
+  white-space: nowrap;
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+  position: relative;
+}
+.tab .tab-count {
+  display: inline-block;
+  background: var(--surface2);
+  color: var(--text3);
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: var(--radius-pill);
+  margin-left: 4px;
+  vertical-align: middle;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.tab.active {
+  color: var(--pink);
+  border-bottom-color: var(--pink);
+  font-weight: 700;
+}
+.tab.active .tab-count {
+  background: var(--pink-light);
+  color: var(--pink);
+}
+
+/* =============================================
+   SECTIONS & VIEWS
+   ============================================= */
+.section { padding: 14px; }
+.revenue-section { padding: 14px; }
+
+.day-group { margin-bottom: 24px; }
+.day-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 0 2px;
+}
+.day-label-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.day-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-today    { background: var(--red); box-shadow: 0 0 6px rgba(198,40,40,0.5); }
+.dot-tomorrow { background: var(--amber); }
+.dot-later    { background: var(--blue); }
+.day-count {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text3);
+  background: var(--surface2);
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+}
+
+/* =============================================
+   ORDER CARDS
+   ============================================= */
+.card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: border-color var(--dur-base) var(--ease-smooth),
+              box-shadow var(--dur-base) var(--ease-smooth),
+              transform var(--dur-fast);
+  animation: card-in 280ms var(--ease) both;
+}
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.card:active { transform: scale(0.995); }
+.card.expanded {
+  border-color: var(--pink);
+  box-shadow: 0 3px 18px var(--pink-glow);
+}
+.card.overdue-payment {
+  border-left: 3px solid var(--red);
+}
+.card.status-delivered { opacity: 0.82; }
+.card.status-cancelled { opacity: 0.65; }
+
+/* Card header */
+.card-head {
+  padding: 14px 14px 12px;
+  cursor: pointer;
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.card-stripe {
+  width: 3.5px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  align-self: stretch;
+  min-height: 44px;
+  border-radius: var(--radius-pill);
+}
+.col-confirmed { background: var(--pink); }
+.col-baking    { background: var(--amber); }
+.col-delivered { background: var(--green); }
+.col-cancelled { background: var(--text3); }
+
+.card-head-body { flex: 1; min-width: 0; }
+.card-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.card-order-id {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--pink, #0f5a50);
+  letter-spacing: .4px;
+  margin-bottom: 3px;
+}
+.name-copy-btn {
+  border: 1px solid var(--border);
+  background: var(--surface2, #f7f7fb);
+  border-radius: 6px;
+  font-size: 11px;
+  padding: 2px 7px;
+  cursor: pointer;
+  color: var(--text2);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.name-copy-btn:active { background: var(--pink-soft, #bcd9d2); color: var(--pink-dark, #093f38); }
+.card-meta {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 2px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+/* Chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1;
+}
+.chip-pink   { background: var(--pink-light); color: var(--pink); }
+.chip-green  { background: var(--green-light); color: var(--green); }
+.chip-amber  { background: var(--amber-light); color: var(--amber); }
+.chip-red    { background: var(--red-light); color: var(--red); }
+.chip-blue   { background: var(--blue-light); color: var(--blue); }
+.chip-gray   { background: var(--surface2); color: var(--text3); }
+.chip-purple { background: var(--purple-light); color: var(--purple); }
+.chip-tally  { background: #e8eaf6; color: #3949ab; font-size: 10px; padding: 2px 7px; }
+.chip-customer { background: #e0f2f1; color: #00695c; font-size: 10px; padding: 2px 7px; }
+
+/* Countdown */
+.countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  padding: 2.5px 8px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  margin-top: 5px;
+  margin-bottom: 1px;
+}
+.countdown.urgent  { background: var(--red-light); color: var(--red); }
+.countdown.soon    { background: var(--amber-light); color: var(--amber); }
+.countdown.later   { background: var(--blue-light); color: var(--blue); }
+.countdown.overdue { background: var(--red); color: #fff; }
+
+/* Chevron */
+.card-chevron {
+  font-size: 20px;
+  color: var(--text3);
+  margin-top: 1px;
+  transition: transform var(--dur-base) var(--ease-smooth);
+  flex-shrink: 0;
+  line-height: 1;
+}
+.card.expanded .card-chevron { transform: rotate(180deg); }
+
+/* Payment progress bar */
+.pay-progress-wrap {
+  padding: 0 14px 10px;
+  display: none;
+}
+.card.expanded .pay-progress-wrap { display: block; }
+.pay-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--text3);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.pay-progress-bar {
+  height: 5px;
+  background: var(--border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.pay-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green-mid), var(--green));
+  border-radius: var(--radius-pill);
+  transition: width 0.6s var(--ease-smooth);
+}
+.pay-progress-fill.partial { background: linear-gradient(90deg, var(--amber), #ffa000); }
+.pay-progress-fill.zero    { background: var(--red-light); }
+
+/* Card details */
+.card-details {
+  display: none;
+  border-top: 1px solid var(--border);
+  animation: details-in var(--dur-base) var(--ease-smooth) both;
+}
+@keyframes details-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.card.expanded .card-details { display: block; }
+
+.detail-section {
+  padding: 12px 14px 0;
+}
+.detail-section:last-of-type { padding-bottom: 4px; }
+.detail-title {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.detail-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.detail-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+  align-items: flex-start;
+}
+.detail-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 22px;
+  text-align: center;
+  margin-top: 1px;
+}
+.detail-body { flex: 1; min-width: 0; }
+.detail-label { font-size: 10px; color: var(--text3); margin-bottom: 1px; font-weight: 600; }
+.detail-val { font-size: 13px; color: var(--text); line-height: 1.5; word-break: break-word; white-space: pre-wrap; }
+
+/* Payment box */
+.pay-box {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+}
+.pay-cell {
+  background: var(--surface2);
+  padding: 10px 6px;
+  text-align: center;
+}
+.pay-lbl { font-size: 10px; color: var(--text3); font-weight: 500; }
+.pay-val {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+  margin-top: 3px;
+  letter-spacing: -0.3px;
+}
+.pay-val.green { color: var(--green); }
+.pay-val.red   { color: var(--red); }
+.pay-val.zero  { color: var(--text3); }
+.pay-note { font-size: 11px; color: var(--text3); margin-top: 6px; line-height: 1.5; }
+
+.overdue-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--red-light);
+  border: 1px solid #ef9a9a;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin: 10px 14px 0;
+  font-size: 12px;
+  color: var(--red);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Card photo */
+.card-photo-wrap {
+  padding: 12px 14px 0;
+}
+.card-photo {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  cursor: zoom-in;
+  display: block;
+  transition: opacity var(--dur-fast);
+}
+.card-photo:active { opacity: 0.85; }
+
+/* Baking notes */
+.baking-notes-wrap {
+  padding: 10px 14px;
+}
+.notes-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--pink);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.notes-input {
+  width: 100%;
+  font-size: 13px;
+  border: 1.5px solid var(--pink-soft);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--pink-light);
+  color: var(--text);
+  resize: none;
+  min-height: 76px;
+  line-height: 1.5;
+  transition: border-color var(--dur-fast), background var(--dur-fast), box-shadow var(--dur-fast);
+}
+.notes-input:focus {
+  outline: none;
+  border-color: var(--pink);
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--pink-glow);
+}
+
+/* Status select */
+.status-select-wrap {
+  padding: 4px 14px 0;
+}
+.status-select {
+  width: 100%;
+  font-size: 13px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  background: var(--surface2);
+  color: var(--text);
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239999bb'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  transition: border-color var(--dur-fast);
+}
+.status-select:focus { outline: none; border-color: var(--pink); }
+
+/* Card actions */
+.card-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 7px;
+  padding: 10px 14px 14px;
+}
+.card-btn {
+  min-width: 0;
+  padding: 8px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid;
+  cursor: pointer;
+  transition: opacity var(--dur-fast), transform var(--dur-fast), box-shadow var(--dur-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-btn:active { opacity: 0.7; transform: scale(0.96); }
+.btn-srs   { background: var(--green-light); border-color: #a5d6a7; color: var(--green); }
+.btn-note  { background: var(--pink-light); border-color: #82b8ae; color: var(--pink-dark, #093f38); }
+.btn-wa    { background: #e8f5e9; border-color: #a5d6a7; color: #1b5e20; }
+.btn-dup   { background: var(--purple-light); border-color: #ce93d8; color: var(--purple); }
+.btn-edit  { background: #fff; border-color: var(--border); color: var(--text2); }
+.btn-del   { background: #fff; border-color: #ffcdd2; color: var(--red); }
+.btn-call     { background: var(--blue-light); border-color: #90caf9; color: var(--blue); }
+.btn-markpaid { background: var(--green-light); border-color: #a5d6a7; color: var(--green); }
+
+/* =============================================
+   REVENUE VIEW
+   ============================================= */
+.rev-header {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+}
+.rev-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.rev-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 12px;
+  text-align: center;
+  transition: box-shadow var(--dur-fast);
+}
+.rev-icon { font-size: 22px; margin-bottom: 4px; }
+.rev-num {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--pink);
+  letter-spacing: -0.5px;
+}
+.rev-num.green { color: var(--green); }
+.rev-num.red   { color: var(--red); }
+.rev-num.blue  { color: var(--blue); }
+.rev-lbl { font-size: 10.5px; color: var(--text3); margin-top: 3px; font-weight: 500; }
+.rev-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.earn-note {
+  font-size: 10.5px;
+  color: var(--text3);
+  text-align: center;
+  line-height: 1.55;
+  padding: 0 10px;
+  margin-bottom: 8px;
+}
+
+/* Mini chart */
+.mini-chart-wrap {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.mini-chart-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text2);
+  margin-bottom: 12px;
+}
+.chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 72px;
+}
+.chart-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.chart-bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, var(--pink-mid), var(--pink));
+  min-height: 4px;
+  transition: height 0.6s var(--ease-smooth);
+  position: relative;
+}
+.chart-bar:hover { opacity: 0.85; }
+.chart-bar-lbl { font-size: 9px; color: var(--text3); font-weight: 600; text-align: center; white-space: nowrap; }
+.chart-bar-val { font-size: 9px; color: var(--pink); font-weight: 700; }
+
+.rev-divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+.due-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.due-item:last-child { border: none; }
+.due-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.due-meta { font-size: 10.5px; color: var(--text3); margin-top: 2px; }
+.due-amount { font-weight: 800; color: var(--red); font-size: 15px; }
+
+.delivery-alert {
+  background: var(--amber-light);
+  border: 1.5px solid #ffcc80;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--amber);
+  font-weight: 600;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* =============================================
+   LOGIN SCREEN
+   ============================================= */
+/* SPLASH (welcome, ~2.5s) */
+.splash-screen{position:fixed;inset:0;z-index:5000;background:#fbf4e8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .6s ease,visibility .6s}
+.splash-screen.gone{opacity:0;visibility:hidden;pointer-events:none}
+.splash-fx{position:absolute;inset:0;pointer-events:none}
+.splash-blob{position:absolute;border-radius:50%;filter:blur(70px)}
+.sb1{width:420px;height:420px;background:rgba(224,150,66,.30);top:-120px;left:-90px;animation:drift1 17s ease-in-out infinite alternate}
+.sb2{width:380px;height:380px;background:rgba(47,143,119,.24);bottom:-110px;right:-80px;animation:drift2 21s ease-in-out infinite alternate}
+.sb3{width:280px;height:280px;background:rgba(214,120,60,.20);top:18%;right:8%;animation:drift3 14s ease-in-out infinite alternate}
+@keyframes drift1{to{transform:translate(80px,60px) scale(1.15)}}
+@keyframes drift2{to{transform:translate(-70px,-50px) scale(1.1)}}
+@keyframes drift3{to{transform:translate(-50px,40px) scale(.88)}}
+.splash-orbit{position:absolute;top:50%;left:50%;width:0;height:0;animation:spin 16s linear infinite;pointer-events:none}
+.splash-orbit i{position:absolute;width:9px;height:9px;border-radius:50%}
+@keyframes spin{to{transform:rotate(360deg)}}
+.splash-logo{width:min(320px,68vw);display:block;filter:drop-shadow(0 16px 30px rgba(120,80,30,.28));animation:logoDrop .95s cubic-bezier(.3,1.5,.4,1) both,logoFloat 4.5s ease-in-out 1.1s infinite}
+@keyframes logoDrop{from{opacity:0;transform:translateY(-70px) scale(.8) rotate(-4deg)}to{opacity:1;transform:translateY(0) scale(1) rotate(0)}}
+@keyframes logoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.splash-chip{background:#fff;color:#7a4a2b;font-size:14px;font-weight:700;padding:8px 18px;border-radius:99px;box-shadow:0 8px 22px rgba(120,80,30,.16);animation:sFadeUp .8s ease .95s both}
+.splash-moto{color:#a3803f;font-weight:600;font-size:13px;letter-spacing:3.5px;text-transform:uppercase;animation:sCanvas 2s cubic-bezier(.2,.6,.3,1) 1.15s both}
+@keyframes sCanvas{from{opacity:0;transform:translateY(18px);filter:blur(8px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
+@keyframes sFadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.splash-loader{width:190px;height:4px;border-radius:99px;background:rgba(122,74,43,.12);overflow:hidden;animation:sFadeUp .8s ease 1.6s both}
+.splash-loader i{display:block;height:100%;width:45%;border-radius:99px;background:linear-gradient(90deg,#c96a2e,#e2a23b,#2f8f77);animation:sSlide 2.4s ease-in-out infinite}
+@keyframes sSlide{0%{transform:translateX(-110%)}100%{transform:translateX(330%)}}
+.splash-spr{position:absolute;top:-14px;width:3px;height:10px;border-radius:3px;animation:sFall linear infinite}
+@keyframes sFall{to{transform:translateY(112vh) rotate(560deg)}}
+
+.login-screen {
+  position: fixed;
+  inset: 0;
+  background: #fbf4e8;
+  overflow-y: auto;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  transition: opacity 0.4s, visibility 0.4s;
+}
+.login-screen.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.login-bgfx{position:fixed;inset:0;pointer-events:none}
+.login-wrap{position:relative;z-index:2;width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center}
+.login-logo {
+  margin-bottom: 6px;
+}
+.login-logo img {
+  width: 150px;
+  height: auto;
+  filter: drop-shadow(0 12px 24px rgba(120,80,30,.25));
+  animation: logoDrop .95s cubic-bezier(.3,1.5,.4,1) both;
+}
+.login-brand{font-size:22px;font-weight:800;color:#7a4a2b;text-align:center;line-height:1.25;animation:sFadeUp .8s ease .35s both}
+.login-moto{margin-top:5px;margin-bottom:14px;color:#a3803f;font-weight:600;font-size:11px;letter-spacing:3px;text-transform:uppercase;animation:sFadeUp .8s ease .55s both}
+.login-box {
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(8px);
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,.7);
+  padding: 22px 18px;
+  width: 100%;
+  box-shadow: 0 14px 40px rgba(120,80,30,.16);
+  text-align: center;
+  animation: cardUp .8s cubic-bezier(.2,.9,.3,1) .7s both;
+}
+@keyframes cardUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+.login-title {
+  display: none;
+}
+.login-subtitle {
+  font-size: 13px;
+  color: #a3803f;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+.login-field {
+  margin-bottom: 12px;
+  text-align: left;
+}
+.login-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 4px;
+}
+.login-field input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  background: var(--surface2);
+  color: var(--text);
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.login-field input:focus {
+  outline: none;
+  border-color: var(--pink);
+  box-shadow: 0 0 0 3px var(--pink-glow);
+}
+.login-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--pink-dark), var(--pink-mid));
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: transform var(--dur-fast), box-shadow var(--dur-fast);
+}
+.login-btn:active {
+  transform: scale(0.98);
+}
+.login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.login-error {
+  background: var(--red-light);
+  color: var(--red);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: none;
+}
+.login-error.show {
+  display: block;
+}
+
+/* =============================================
+   LIGHTBOX
+   ============================================= */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-base);
+  touch-action: none;          /* pinch/pan handled by app.js, not the browser */
+  -webkit-user-select: none;
+  user-select: none;
+  padding: 20px;
+}
+.lightbox.open { opacity: 1; pointer-events: all; }
+.lightbox-img {
+  max-width: 100%;
+  max-height: 88vh;
+  border-radius: var(--radius);
+  object-fit: contain;
+  transform: scale(0.9);
+  transition: transform var(--dur-slow) var(--ease);
+  touch-action: none;
+  -webkit-user-drag: none;
+  user-select: none;
+  will-change: transform;
+  cursor: zoom-in;
+}
+.lightbox.open .lightbox-img { transform: scale(1); }
+.lightbox-img.zoomed { cursor: grab; }
+.lightbox-img.zoomed:active { cursor: grabbing; }
+.lightbox-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 40px; height: 40px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* =============================================
+   FAB
+   ============================================= */
+.fab {
+  position: fixed;
+  bottom: 24px; right: 18px;
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--pink-dark), var(--pink-mid));
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-pink);
+  z-index: 200;
+  font-size: 28px;
+  color: #fff;
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast);
+  line-height: 1;
+}
+.fab:hover { transform: scale(1.06); box-shadow: 0 6px 28px rgba(15,90,80,0.5); }
+.fab:active { transform: scale(0.92); }
+/* Quotation-mode FAB — sits above the + (add manual order) FAB */
+.fab.fab-quote {
+  bottom: 96px;
+  font-size: 22px;
+  background: linear-gradient(135deg, #e09642, #d6783c);
+  box-shadow: 0 4px 18px rgba(214,120,60,0.45);
+}
+.fab.fab-quote:hover { box-shadow: 0 6px 28px rgba(214,120,60,0.6); }
+/* Emphasized link button while in quotation mode */
+.btn-quote-hot { box-shadow: 0 0 0 3px rgba(224,150,66,0.45); font-weight: 800; }
+.fab-ripple {
+  position: absolute;
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  animation: ripple 0.5s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes ripple {
+  from { transform: scale(0); opacity: 1; }
+  to   { transform: scale(2.2); opacity: 0; }
+}
+
+/* =============================================
+   EMPTY STATES
+   ============================================= */
+.empty {
+  text-align: center;
+  padding: 52px 24px;
+}
+.empty-icon { font-size: 52px; margin-bottom: 14px; line-height: 1; }
+.empty h3 { font-size: 16px; font-weight: 700; color: var(--text2); margin-bottom: 6px; }
+.empty p  { font-size: 13px; color: var(--text3); line-height: 1.6; max-width: 240px; margin: 0 auto; }
+
+/* Skeleton loading */
+.skeleton-wrap { padding: 14px; }
+.skeleton-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  padding: 14px;
+  overflow: hidden;
+  position: relative;
+}
+.skeleton-line {
+  background: linear-gradient(90deg, var(--surface2) 25%, #e9e9f3 50%, var(--surface2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-xs);
+  height: 12px;
+  margin-bottom: 8px;
+}
+.skeleton-line.wide  { width: 70%; }
+.skeleton-line.short { width: 45%; }
+.skeleton-line.xshort { width: 30%; height: 9px; }
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* =============================================
+   MODAL
+   ============================================= */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,8,30,0.55);
+  backdrop-filter: blur(3px);
+  z-index: 300;
+  display: flex;
+  align-items: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-base);
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+
+.modal {
+  background: var(--surface);
+  border-radius: 22px 22px 0 0;
+  padding: 0;
+  width: 100%;
+  max-height: 94vh;
+  overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform var(--dur-slow) var(--ease);
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+
+.modal-handle {
+  width: 40px; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 12px auto 0;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 0;
+}
+.modal-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+.modal-close-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: none;
+  font-size: 16px;
+  color: var(--text3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--dur-fast);
+}
+.modal-close-btn:active { background: var(--border); }
+
+.modal-body { padding: 14px 18px 32px; }
+
+.modal-section { margin-bottom: 20px; }
+.modal-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.field { margin-bottom: 11px; }
+.field label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text2);
+  display: block;
+  margin-bottom: 4px;
+}
+.field input,
+.field textarea,
+.field select {
+  width: 100%;
+  font-size: 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--surface2);
+  color: var(--text);
+  -webkit-appearance: none;
+  transition: border-color var(--dur-fast), background var(--dur-fast), box-shadow var(--dur-fast);
+}
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--pink);
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--pink-glow);
+}
+.field textarea {
+  resize: none;
+  min-height: 64px;
+  line-height: 1.5;
+}
+.field select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239999bb'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 10px;
+  padding-right: 32px;
+}
+select:focus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c2185b'/%3E%3C/svg%3E");
+}
+.field input[type="date"] { color-scheme: light; }
+
+/* Required marker */
+.field label .req { color: var(--pink); margin-left: 2px; }
+
+/* Photo upload */
+.photo-upload-btn {
+  border: 2px dashed var(--pink-soft);
+  border-radius: var(--radius-sm);
+  background: var(--pink-light);
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--pink);
+  font-size: 13px;
+  font-weight: 600;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.photo-upload-btn:active { background: var(--pink-soft); }
+.photo-preview {
+  position: relative;
+  margin-top: 8px;
+}
+.photo-preview img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  display: block;
+}
+.photo-remove-btn {
+  position: absolute;
+  top: 7px; right: 7px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 28px; height: 28px;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Multi-photo grid (mirrors customer app) */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.photo-thumb { position: relative; }
+.photo-thumb img {
+  width: 100%;
+  height: 84px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  display: block;
+  cursor: zoom-in;
+}
+.photo-thumb .photo-remove-btn { width: 24px; height: 24px; font-size: 13px; top: 4px; right: 4px; }
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.modal-footer {
+  display: flex;
+  gap: 10px;
+  padding: 0 18px 32px;
+  position: sticky;
+  bottom: 0;
+  background: var(--surface);
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  z-index: 1;
+}
+.modal-footer button {
+  flex: 1;
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid;
+  transition: opacity var(--dur-fast), transform var(--dur-fast);
+}
+.modal-footer button:active { opacity: 0.8; transform: scale(0.97); }
+.btn-cancel {
+  background: var(--surface2);
+  border-color: var(--border);
+  color: var(--text2);
+}
+.btn-save {
+  background: linear-gradient(135deg, var(--pink-dark), var(--pink-mid));
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(15,90,80,0.35);
+}
+.btn-quote {
+  background: var(--surface2);
+  border-color: var(--border);
+  color: var(--text);
+}
+.mode-switch .mode-btn {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+}
+.mode-switch .mode-btn.active {
+  background: linear-gradient(135deg, var(--pink-dark), var(--pink-mid));
+  border-color: transparent;
+  color: #fff;
+}
+.quote-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.quote-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.quote-btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.quotes-empty { text-align: center; color: var(--text3); padding: 28px 12px; }
+
+/* =============================================
+   CONFIRM DIALOG
+   ============================================= */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,8,30,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-base);
+}
+.confirm-overlay.open { opacity: 1; pointer-events: all; }
+
+.confirm-box {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 26px 22px 20px;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+  transform: scale(0.88);
+  transition: transform var(--dur-slow) var(--ease);
+  box-shadow: var(--shadow-lg);
+}
+.confirm-overlay.open .confirm-box { transform: scale(1); }
+.confirm-box h3 {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.confirm-box p {
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 22px;
+  line-height: 1.5;
+}
+.confirm-btns { display: flex; gap: 10px; }
+.confirm-btns button {
+  flex: 1;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid;
+  transition: opacity var(--dur-fast);
+}
+.confirm-btns button:active { opacity: 0.7; }
+.btn-cnf-no  { background: var(--surface2); border-color: var(--border); color: var(--text2); }
+.btn-cnf-yes { background: var(--red); border-color: var(--red); color: #fff; }
+.btn-cnf-yes.green { background: var(--green); border-color: var(--green); }
+
+/* =============================================
+   TOAST
+   ============================================= */
+.toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: #1a1a2e;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  z-index: 600;
+  opacity: 0;
+  transition: opacity var(--dur-base), transform var(--dur-base) var(--ease);
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+  max-width: calc(100vw - 40px);
+  text-align: center;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+  /* ─── New-order alert banner (free, works on Android + iPhone) ─── */
+  #alert-banner{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:#fff;border:2px solid var(--red);color:var(--red);padding:10px 16px;border-radius:8px;font-size:13px;font-weight:700;z-index:3000;display:none;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+  #alert-banner.show{display:flex}
+  #alert-banner .ab-close{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;line-height:1}
+  #alert-banner .ab-badge{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--red);margin-right:4px;box-shadow:0 0 8px var(--red);animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+  /* ─── Today's-delivery banner (names list) ─── */
+  #today-banner{position:fixed;top:56px;left:50%;transform:translateX(-50%) translateY(-16px);background:#fff;border:2px solid var(--pink);border-radius:14px;padding:12px 40px 12px 16px;min-width:min(320px,92vw);max-width:92vw;z-index:2999;box-shadow:0 8px 24px rgba(0,0,0,.22);opacity:0;pointer-events:none;transition:all .25s ease;font-size:13px}
+  #today-banner.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  #today-banner .tb-title{font-weight:800;color:var(--pink);margin-bottom:6px;font-size:14px}
+  #today-banner .tb-item{padding:2px 0;color:#333;font-weight:600}
+  #today-banner .tb-close{position:absolute;top:8px;right:10px;background:none;border:none;font-size:15px;color:#999;cursor:pointer;line-height:1}
+  /* ─── Daily "orders placed today" popup (resets at 12 AM) ─── */
+  #daily-popup-overlay{position:fixed;inset:0;background:rgba(10,8,30,.55);backdrop-filter:blur(3px);z-index:3500;display:none;align-items:center;justify-content:center;padding:18px}
+  #daily-popup-overlay.open{display:flex}
+  .daily-popup{background:var(--surface);border-radius:18px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:dpop .25s var(--ease)}
+  @keyframes dpop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+  .daily-popup-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 10px;border-bottom:1px solid var(--border)}
+  .daily-popup-title{font-weight:800;font-size:16px;color:var(--pink)}
+  .daily-popup-close{background:none;border:none;font-size:18px;color:var(--text3);cursor:pointer;line-height:1}
+  .daily-popup-list{padding:10px 18px}
+  .daily-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px dashed var(--border);font-size:13px;line-height:1.55}
+  .daily-item:last-child{border-bottom:none}
+  .daily-item .d-num{flex-shrink:0;width:24px;height:24px;border-radius:50%;background:var(--pink-light);color:var(--pink);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:2px}
+  .daily-item .d-name{font-weight:700;color:var(--text)}
+  .daily-item .d-meta{color:var(--text2)}
+  .daily-item .d-price{color:var(--green);font-weight:700}
+  .daily-dismiss{flex-shrink:0;align-self:flex-start;width:26px;height:26px;border:none;border-radius:50%;background:var(--surface2);color:var(--text3);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .daily-dismiss:active{background:var(--red);color:#fff}
+  .daily-popup-foot{padding:10px 18px 16px}
+  .daily-popup-foot button{width:100%;padding:12px;border:none;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--pink-dark),var(--pink-mid));color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+
+/* Payment-charges popup (advance → gateway charges) */
+.pc-overlay{position:fixed;inset:0;background:rgba(10,8,30,.55);backdrop-filter:blur(3px);z-index:3600;display:none;align-items:center;justify-content:center;padding:18px;overscroll-behavior:contain}
+.pc-overlay.open{display:flex}
+.pc-box{background:var(--surface);border-radius:18px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 16px 50px rgba(0,0,0,.28)}
+.pc-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 10px;border-bottom:1px solid var(--border)}
+.pc-title{font-weight:800;font-size:16px;color:var(--pink)}
+.pc-close{background:none;border:none;font-size:18px;color:var(--text3);cursor:pointer;line-height:1}
+.pc-sub{padding:12px 18px 4px;font-size:12px;color:var(--text3);line-height:1.5}
+.pc-body{padding:10px 18px}
+.pc-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--border)}
+.pc-row:last-child{border-bottom:none}
+.pc-row.selected{background:var(--pink-light);border-radius:8px;padding-left:6px;padding-right:6px}
+.pc-check{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text);flex:1;cursor:pointer}
+.pc-check input{width:18px;height:18px;accent-color:var(--pink)}
+.pc-rate{font-size:11px;color:var(--pink-dark);background:var(--pink-light);padding:2px 7px;border-radius:99px;font-weight:700}
+.pc-calc{font-size:13px;font-weight:800;color:var(--green);white-space:nowrap}
+.pc-note{padding:0 18px 4px;font-size:11px;color:var(--text3);line-height:1.5}
+.pc-foot{display:flex;gap:10px;padding:12px 18px 16px}
+.pc-foot button{flex:1;padding:12px;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer}
+.pc-btn-cancel{background:var(--surface2);color:var(--text2)}
+.pc-btn-ok{background:linear-gradient(135deg,var(--green),var(--green-mid));color:#fff}
+/* Read-only due amount field (auto: total − advance) */
+.due-input{background:var(--surface2)!important;color:var(--text2)!important;font-weight:800!important;cursor:not-allowed}
+.due-input:focus{outline:none;border-color:var(--line)}
+.due-hint{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5}
+
+/* ─── Multi-cake order blocks (manual orders, 1-5 cakes) ─────── */
+.cake-block{background:var(--surface2);border:1px solid var(--line,var(--border));border-radius:10px;padding:12px 12px 4px;margin-top:12px}
+.cake-block-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.cake-block-title{font-weight:700;font-size:14px;color:var(--pink)}
+.cake-block-header .cake-remove{background:var(--red-light,#ffebee);color:var(--red,#c62828);border:none;border-radius:6px;font-size:11.5px;font-weight:700;padding:5px 9px;cursor:pointer}
+.same-check{display:flex;align-items:flex-start;gap:7px;background:var(--green-light,#e8f5e9);border:1px dashed var(--green,#2e7d32);border-radius:6px;padding:8px 10px;margin:8px 0;font-size:12.5px;color:var(--green,#2e7d32);cursor:pointer;line-height:1.45}
+.same-check input{width:17px;height:17px;margin:1px 0 0;flex-shrink:0;accent-color:var(--green,#2e7d32)}
+.cake-delivery-sub{border-top:1px dashed var(--line,var(--border));margin-top:12px;padding-top:8px}
+.cake-delivery-sub-title{font-size:12.5px;font-weight:700;color:var(--text2);margin-bottom:2px}
+</style>
+<script>
+/* Theme system — visual only, no order logic touched */
+var ADMIN_THEMES=['t-gold','t-ivory','t-sage','t-rose'];
+function readThemeState(){try{var s=JSON.parse(localStorage.getItem('nitu-admin-theme-v2')||'null');if(s)return s;}catch(e){}try{if(localStorage.getItem('nitu-admin-theme')==='dark')return{dark:true}}catch(e){}return{}}
+function saveThemeState(s){try{localStorage.setItem('nitu-admin-theme-v2',JSON.stringify(s))}catch(e){}}
+function applyAdminTheme(){
+  var s=readThemeState();
+  ADMIN_THEMES.forEach(function(t){document.documentElement.classList.remove(t)});
+  if(s.theme)document.documentElement.classList.add(s.theme);
+  document.documentElement.classList.toggle('dark',!!s.dark);
+  document.querySelectorAll('.tp-opt').forEach(function(o){o.classList.toggle('active',(o.dataset.t||'')===(s.theme||''))});
+  document.querySelectorAll('.tp-mode').forEach(function(o){o.classList.toggle('active',(o.dataset.dark==='1')===!!s.dark)});
+  var mb=document.getElementById('theme-mode-btn');
+  if(mb)mb.textContent=s.dark?'☀️':'🌙';
+}
+function toggleTheme(){var s=readThemeState();s.dark=!document.documentElement.classList.contains('dark');saveThemeState(s);applyAdminTheme();}
+function pickTheme(el){var s=readThemeState();s.theme=el.dataset.t||'';saveThemeState(s);applyAdminTheme();}
+function setPanelMode(d){var s=readThemeState();s.dark=d;saveThemeState(s);applyAdminTheme();}
+function openThemePanel(){document.getElementById('themePanel').classList.toggle('open');}
+try{(function(){var s=JSON.parse(localStorage.getItem('nitu-admin-theme-v2')||'null');if(!s&&localStorage.getItem('nitu-admin-theme')==='dark')s={dark:true};if(s){if(s.theme)document.documentElement.classList.add(s.theme);if(s.dark)document.documentElement.classList.add('dark')}})()}catch(e){}
+</script>
+<style>
+/* ─── DARK MODE + THEME SYSTEM (visual only) ─── */
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark){
+  --text:#e6edf3;--text2:#aebbc7;--text3:#6f8090;--border:#263541;--divider:rgba(255,255,255,.08);
+  --surface:#152230;--surface2:#1b2a3a;--bg:#0d1620;
+  --pink-mid:#35b295;
+  --pink-light:#12332e;--pink-soft:#1d4b43;--pink-glow:rgba(53,201,158,.22);
+  --green-light:#12301a;--amber-light:#33260f;--red-light:#331818;--blue-light:#12253c;--purple-light:#2a1a38;
+  --shadow-sm:0 1px 4px rgba(0,0,0,.40);--shadow-md:0 4px 18px rgba(0,0,0,.50);--shadow-lg:0 8px 32px rgba(0,0,0,.60);
+}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) body::before{background:rgba(10,17,24,.90)}
+/* Pin the few hardcoded white backgrounds (theme-aware via variables) */
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .search-input,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .notes-input,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .field input,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .field select,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .field textarea{background:var(--surface2)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .btn-edit{background:var(--surface2)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .btn-del{background:rgba(226,105,95,.10);border-color:rgba(226,105,95,.35)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .btn-wa{background:rgba(95,189,130,.10);border-color:rgba(95,189,130,.35);color:#81d68f}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .btn-note{color:var(--pink-mid);border-color:var(--pink-soft)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .pc-rate{color:var(--pink-mid)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) #alert-banner,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) #today-banner{background:var(--surface)}
+/* ── Theme palettes ── Noir Gold */
+html.t-gold{--bg:#f6f1e7;--surface:#fffcf5;--surface2:#f3ecdd;--border:#e6dcc6;--divider:rgba(60,45,20,.08);--text:#2a2317;--text2:#6f6350;--text3:#a2947a;--pink:#a5813e;--pink-dark:#7c5f2b;--pink-mid:#c09a52;--pink-light:#f2e8d2;--pink-soft:#e3d3ac;--pink-glow:rgba(165,129,62,.22);--shadow-sm:0 1px 4px rgba(60,45,20,.07);--shadow-md:0 4px 18px rgba(60,45,20,.10);--shadow-lg:0 8px 32px rgba(60,45,20,.16);--shadow-pink:0 4px 20px rgba(165,129,62,.35)}
+html.t-gold.dark{--bg:#0d0b08;--surface:#161310;--surface2:#1e1a13;--border:#2c251a;--divider:rgba(255,255,255,.07);--text:#f0e8d8;--text2:#b3a68c;--text3:#7d715c;--pink:#d4af6a;--pink-dark:#8a6a30;--pink-mid:#c9a24f;--pink-light:rgba(212,175,106,.12);--pink-soft:rgba(212,175,106,.28);--pink-glow:rgba(212,175,106,.25);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(212,175,106,.30)}
+/* ── Ivory Editorial */
+html.t-ivory{--bg:#faf9f7;--surface:#ffffff;--surface2:#f1efeb;--border:#e8e5df;--divider:rgba(30,25,20,.07);--text:#1b1916;--text2:#5c574f;--text3:#98938a;--pink:#b0553a;--pink-dark:#8f422c;--pink-mid:#c97a5e;--pink-light:#f8ebe5;--pink-soft:#eecfc2;--pink-glow:rgba(176,85,58,.20);--shadow-sm:0 1px 4px rgba(30,25,20,.06);--shadow-md:0 4px 18px rgba(30,25,20,.09);--shadow-lg:0 8px 32px rgba(30,25,20,.14);--shadow-pink:0 4px 20px rgba(176,85,58,.32)}
+html.t-ivory.dark{--bg:#131110;--surface:#1c1917;--surface2:#242019;--border:#2f2b26;--divider:rgba(255,255,255,.07);--text:#f0ece6;--text2:#b5aea4;--text3:#837c72;--pink:#d98e73;--pink-dark:#8f422c;--pink-mid:#c77b5f;--pink-light:rgba(217,142,115,.12);--pink-soft:rgba(217,142,115,.28);--pink-glow:rgba(217,142,115,.25);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(217,142,115,.28)}
+/* ── Nordic Sage */
+html.t-sage{--bg:#f4f7f5;--surface:#ffffff;--surface2:#ecf2ee;--border:#e3eae5;--divider:rgba(20,40,30,.07);--text:#131a16;--text2:#4d5c54;--text3:#8a9990;--pink:#3e6b54;--pink-dark:#2f5340;--pink-mid:#5d9177;--pink-light:#e7f1eb;--pink-soft:#c6dfd2;--pink-glow:rgba(62,107,84,.22);--shadow-sm:0 1px 4px rgba(20,40,30,.06);--shadow-md:0 4px 18px rgba(20,40,30,.09);--shadow-lg:0 8px 32px rgba(20,40,30,.14);--shadow-pink:0 4px 20px rgba(62,107,84,.32)}
+html.t-sage.dark{--bg:#0e1411;--surface:#161f1a;--surface2:#1b2620;--border:#26332c;--divider:rgba(255,255,255,.07);--text:#e8efe9;--text2:#a8b8ad;--text3:#6e8076;--pink:#7db894;--pink-dark:#2f5340;--pink-mid:#5d9177;--pink-light:rgba(125,184,148,.12);--pink-soft:rgba(125,184,148,.28);--pink-glow:rgba(125,184,148,.25);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(125,184,148,.28)}
+/* ── Rose Porcelain */
+html.t-rose{--bg:#fbf7f6;--surface:#ffffff;--surface2:#f6eef0;--border:#efe4e2;--divider:rgba(80,40,50,.07);--text:#2b2124;--text2:#6d5a60;--text3:#a58f95;--pink:#bd6076;--pink-dark:#96485c;--pink-mid:#d07f93;--pink-light:#f9edf0;--pink-soft:#f0d6dc;--pink-glow:rgba(189,96,118,.22);--shadow-sm:0 1px 4px rgba(80,40,50,.06);--shadow-md:0 4px 18px rgba(80,40,50,.09);--shadow-lg:0 8px 32px rgba(80,40,50,.14);--shadow-pink:0 4px 20px rgba(189,96,118,.32)}
+html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#32242b;--divider:rgba(255,255,255,.07);--text:#f4eaee;--text2:#bda4ad;--text3:#8a7079;--pink:#e08ca0;--pink-dark:#96485c;--pink-mid:#d07f93;--pink-light:rgba(224,140,160,.12);--pink-soft:rgba(224,140,160,.28);--pink-glow:rgba(224,140,160,.25);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(224,140,160,.28)}
+/* Compact icon buttons in the topbar (language · mode · theme · logout) */
+.ico-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);border-radius:50%;width:33px;height:33px;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;cursor:pointer;color:#fff;flex-shrink:0;transition:background var(--dur-fast),transform var(--dur-fast)}
+.ico-btn:hover{background:rgba(255,255,255,.25)}
+.ico-btn:active{transform:scale(.9)}
+/* Live status = tiny green dot light only (labels hidden, states kept in JS) */
+.status-pill{display:flex;align-items:center;background:transparent;border:none;padding:0;gap:0;width:auto;white-space:nowrap}
+.status-pill.error{background:transparent;border:none}
+#sync-label{display:none}
+.sync-dot{width:9px;height:9px;border-radius:50%;background:#69f0ae;flex-shrink:0;box-shadow:0 0 0 3px rgba(105,240,174,.22);transition:background var(--dur-base)}
+.sync-dot.error{background:#ff6b6b;box-shadow:0 0 0 3px rgba(255,107,107,.22)}
+.sync-dot.syncing{background:#ffd54f;animation:pulse-dot 1s ease-in-out infinite;box-shadow:0 0 0 3px rgba(255,213,79,.25)}
+/* Phone fit: compact the icon row so it stays on one line on narrow screens */
+@media (max-width: 420px){
+  .topbar{padding:10px 12px}
+  .topbar-row1{gap:8px}
+  .topbar-right{gap:5px}
+  .ico-btn{width:29px;height:29px;font-size:13px}
+  .notif-bell-btn{width:30px;height:30px;font-size:14px}
+  .topbar-brand img{height:40px}
+  .topbar-brand p{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
+.theme-panel{position:fixed;top:calc(var(--topbar-h) + 8px);right:14px;z-index:4001;width:240px;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:14px;display:none}
+.theme-panel.open{display:block}
+.tp-title{font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px}
+.tp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tp-opt{border:1.5px solid var(--border);background:var(--surface2);border-radius:12px;padding:10px 6px;font-family:inherit;font-size:10.5px;font-weight:800;color:var(--text);cursor:pointer;line-height:1.3}
+.tp-opt.active{border-color:var(--pink);box-shadow:0 0 0 2px var(--pink-glow)}
+.tp-sw{display:flex;gap:4px;justify-content:center;margin-bottom:6px}
+.tp-sw i{width:13px;height:13px;border-radius:50%;border:1px solid rgba(0,0,0,.12)}
+.tp-modes{display:flex;gap:6px;margin-top:10px}
+.tp-mode{flex:1;padding:9px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--text);font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer}
+.tp-mode.active{border-color:var(--pink);color:var(--pink);background:var(--pink-light)}
+.tp-hint{font-size:9.5px;color:var(--text3);margin-top:9px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<div class="theme-panel" id="themePanel">
+  <div class="tp-title">🎨 থিম বাছাই — সাথে সাথেই পরিবর্তন হবে</div>
+  <div class="tp-grid">
+    <button type="button" class="tp-opt" data-t="" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#0f5a50"></i><i style="background:#f3f3f8"></i></span>Original</button>
+    <button type="button" class="tp-opt" data-t="t-gold" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#d4af6a"></i><i style="background:#0d0b08"></i></span>Noir Gold</button>
+    <button type="button" class="tp-opt" data-t="t-ivory" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#b0553a"></i><i style="background:#faf9f7"></i></span>Ivory Editorial</button>
+    <button type="button" class="tp-opt" data-t="t-sage" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#3e6b54"></i><i style="background:#f4f7f5"></i></span>Nordic Sage</button>
+    <button type="button" class="tp-opt" data-t="t-rose" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#bd6076"></i><i style="background:#fbf7f6"></i></span>Rose Porcelain</button>
+  </div>
+  <div class="tp-modes">
+    <button type="button" class="tp-mode" data-dark="0" onclick="setPanelMode(false)">☀️ Light</button>
+    <button type="button" class="tp-mode" data-dark="1" onclick="setPanelMode(true)">🌙 Dark</button>
+  </div>
+  <div class="tp-hint">যেকোনো থিমে ক্লিক করলেই সাথে সাথে পুরো অ্যাপ বদলে যাবে · কাজ করার সময়ও যখন খুশি বদলাতে পারবেন · পছন্দ মনে রাখা হবে</div>
+</div>
+<script>if (typeof applyAdminTheme === 'function') applyAdminTheme();</script>
+
+<!-- New-order alert banner (free, cross-platform sound + banner) -->
+<div id="alert-banner"><span class="ab-badge"></span><span id="ab-text"></span><span class="ab-close" id="ab-close">✕</span></div>
+
+<!-- Today's deliveries banner (shows names of everyone due today) -->
+<div id="today-banner" role="status">
+  <div class="tb-title" id="tb-title"></div>
+  <div id="tb-list"></div>
+  <button class="tb-close" id="tb-close" aria-label="বন্ধ করুন">✕</button>
+</div>
+
+<!-- Daily "orders placed today" popup (shows on open, resets at 12 AM) -->
+<div id="daily-popup-overlay" onclick="App.closeDailyPopupBg(event)" role="dialog" aria-modal="true" aria-label="আজকের নতুন অর্ডার">
+  <div class="daily-popup">
+    <div class="daily-popup-head">
+      <div class="daily-popup-title" id="daily-popup-title">🎉 আজকের নতুন অর্ডার</div>
+      <button class="daily-popup-close" onclick="App.closeDailyPopup()" aria-label="বন্ধ করুন">✕</button>
+    </div>
+    <div class="daily-popup-list" id="daily-popup-list"></div>
+    <div class="daily-popup-foot">
+      <button onclick="App.closeDailyPopup()">ঠিক আছে 👍</button>
+    </div>
+  </div>
+</div>
+
+<!-- Payment charges popup: pick the gateway(s) the advance came through,
+     enter the actual market charge for each — deducted from the payment. -->
+<div class="pc-overlay" id="pay-charge-overlay" onclick="App.closePayChargeBg(event)" role="dialog" aria-modal="true" aria-label="পেমেন্ট চার্জ">
+  <div class="pc-box">
+    <div class="pc-head">
+      <div class="pc-title">💰 পেমেন্ট চার্জ</div>
+      <button class="pc-close" onclick="App.closePayCharge()" aria-label="বন্ধ করুন">✕</button>
+    </div>
+    <div class="pc-sub">অ্যাডভান্স কীভাবে পেয়েছেন? একটি পদ্ধতি বাছাই করুন — সেই পদ্ধতির চার্জ অ্যাডভান্সের সাথে যোগ হয়ে পূর্ণ পরিমাণ দেখাবে।</div>
+    <div class="pc-body" id="pc-body">
+      <div class="pc-row" data-ch="bkash">
+        <label class="pc-check"><input type="radio" name="pc-channel" id="pc-bkash" onclick="App.pcSelect('bkash')"> 📱 bKash <span class="pc-rate">১.৮২%</span></label>
+        <span class="pc-calc" id="pc-bkash-calc">৳0</span>
+      </div>
+      <div class="pc-row" data-ch="nagad">
+        <label class="pc-check"><input type="radio" name="pc-channel" id="pc-nagad" onclick="App.pcSelect('nagad')"> 📱 Nagad <span class="pc-rate">১.৪৯%</span></label>
+        <span class="pc-calc" id="pc-nagad-calc">৳0</span>
+      </div>
+      <div class="pc-row" data-ch="bank">
+        <label class="pc-check"><input type="radio" name="pc-channel" id="pc-bank" onclick="App.pcSelect('bank')"> 🏦 ব্যাংক (NPSB) <span class="pc-rate">ফ্রি</span></label>
+        <span class="pc-calc" id="pc-bank-calc">৳0</span>
+      </div>
+    </div>
+    <div class="pc-note" id="pc-note">পদ্ধতি বাছাই করুন — চার্জসহ মোট পাঠানোর পরিমাণ নিচে দেখাবে।</div>
+    <div class="pc-foot">
+      <button class="pc-btn-cancel" onclick="App.closePayCharge()">বাতিল</button>
+      <button class="pc-btn-ok" onclick="App.applyPayCharge()">✅ ঠিক আছে</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPLASH (welcome) -->
+<div class="splash-screen" id="splash-screen">
+  <div class="splash-fx" id="splash-fx">
+    <div class="splash-blob sb1"></div><div class="splash-blob sb2"></div><div class="splash-blob sb3"></div>
+  </div>
+  <img class="splash-logo" src="logo.png" alt="নিতুর বেকারি">
+  <div class="splash-chip">🎂 নিতুবাবুর্চীর পোর্টফোলিও</div>
+  <div class="splash-moto">THE CAKE IS A CANVAS</div>
+  <div class="splash-loader"><i></i></div>
+</div>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-bgfx" id="login-bgfx">
+    <div class="splash-blob sb1"></div><div class="splash-blob sb2"></div><div class="splash-blob sb3"></div>
+  </div>
+  <div class="login-wrap">
+    <div class="login-logo">
+      <img src="logo.png" alt="নিতুর বেকারি">
+    </div>
+    <div class="login-brand">নিতুবাবুর্চীর পোর্টফোলিও</div>
+    <div class="login-moto">The Cake Is A Canvas</div>
+    <div class="login-box">
+    <h1 class="login-title">অর্ডার ম্যানেজার</h1>
+    <p class="login-subtitle" id="login-subtitle">লগইন করুন</p>
+    
+    <div class="login-error" id="login-error"></div>
+    
+    <div class="login-field">
+      <label for="login-email">ইমেইল</label>
+      <input type="email" id="login-email" placeholder="your@email.com" autocomplete="email">
+    </div>
+    <div class="login-field">
+      <label for="login-password">পাসওয়ার্ড</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    
+    <button class="login-btn" id="login-btn" onclick="App.handleLogin()">লগইন</button>
+    
+    </div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<header class="topbar" role="banner">
+  <div class="topbar-row1">
+    <div class="topbar-brand">
+      <img src="logo-white.png" alt="নিতুর বেকারি">
+      <div class="topbar-brand-text">
+        <h1 data-i18n="brand">অর্ডার ম্যানেজার</h1>
+        <p id="last-sync-text" data-i18n="connecting">ক্লাউডে সংযুক্ত হচ্ছে...</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button type="button" class="ico-btn" onclick="App.openQuoteModal()" title="কোটেশন লিংক তৈরি করুন — কাস্টমারের জন্য লক করা দাম" aria-label="Quotation">📨</button>
+      <button type="button" class="ico-btn" onclick="App.toggleLang()" title="ভাষা / Language" aria-label="Language">🌐</button>
+      <button type="button" class="ico-btn" id="theme-mode-btn" onclick="toggleTheme()" title="লাইট / ডার্ক মোড" aria-label="Theme mode">🌙</button>
+      <button type="button" class="ico-btn" onclick="openThemePanel()" title="থিম বাছাই — ৫টি থিম" aria-label="Theme picker">🎨</button>
+      <button type="button" class="ico-btn" onclick="App.handleLogout()" title="লগআউট" aria-label="Logout">🚪</button>
+      <button class="notif-bell-btn active" id="notif-bell" onclick="App.toggleNotifications()" title="নোটিফিকেশন সবসময় চালু — প্রতিদিন ২ বার রিমাইন্ড পাবেন" aria-label="Notifications (always on)">
+        🔔
+        <span class="notif-badge hidden" id="notif-badge"></span>
+      </button>
+      <div class="status-pill" id="status-pill" aria-live="polite">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-label">সংযোগ...</span>
+      </div>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <button class="action-btn" onclick="App.exportData()" data-i18n="backup" aria-label="Backup">⬆ ব্যাকআপ</button>
+    <label class="action-btn" for="import-file" role="button" data-i18n="restore" aria-label="Restore">⬇ রিস্টোর</label>
+    <input type="file" id="import-file" accept=".json" class="hidden" aria-hidden="true">
+    <button class="action-btn" id="sort-btn" onclick="App.toggleSort()" aria-label="Change sort">⇅ <span id="sort-label">তারিখ</span></button>
+    <button class="cal-btn" onclick="App.openCalendar()" aria-label="Order Calendar">📅 <span>ক্যালেন্ডার</span></button>
+    <button class="cal-btn" onclick="App.openNotepad()" aria-label="শপিং নোটপ্যাড">📝 <span>শপিং নোট</span></button>
+    <button class="cal-btn" id="daily-log-btn" onclick="App.showDailyPopup()" aria-label="আজকের নতুন অর্ডার" style="display:none">🆕 <span data-i18n="dailyNewShort">নতুন</span> <span id="daily-count" style="background:var(--red);color:#fff;border-radius:999px;padding:0 6px;font-size:11px;font-weight:700">0</span></button>
+  </div>
+</header>
+
+<!-- SEARCH -->
+<div class="search-wrap" role="search">
+  <div class="search-box">
+    <span class="search-icon" aria-hidden="true">🔍</span>
+    <input
+      class="search-input"
+      id="search-input"
+      type="search"
+      placeholder="নাম, অর্ডার নং, TrxID বা পেমেন্টের শেষ ৩ ডিজিট..."
+      autocomplete="off"
+      data-i18n-ph="searchPlaceholder"
+      aria-label="Search orders"
+    >
+    <button class="search-clear" id="search-clear" aria-label="Clear search" onclick="App.clearSearch()">✕</button>
+  </div>
+</div>
+
+<!-- ORDER CALENDAR POPUP -->
+<div class="cal-popup-overlay" id="cal-popup-overlay" onclick="App.closeCalendarBg(event)">
+  <div class="cal-popup" role="dialog" aria-modal="true" aria-label="অর্ডার ক্যালেন্ডার">
+    <div class="cal-popup-head">
+      <div class="cal-popup-title">📅 অর্ডার ক্যালেন্ডার</div>
+      <button class="cal-popup-close" onclick="App.closeCalendar()" aria-label="Close">✕</button>
+    </div>
+    <div class="minical-head">
+      <button class="minical-nav" onclick="App.calPrev()" aria-label="আগের মাস">‹</button>
+      <div class="minical-title" id="cal-title"></div>
+      <button class="minical-nav" onclick="App.calNext()" aria-label="পরের মাস">›</button>
+    </div>
+    <div class="minical-grid" id="cal-grid"></div>
+    <div class="minical-legend">
+      <span><i class="lg lg-ok"></i> ১ অর্ডার</span>
+      <span><i class="lg lg-warn"></i> ২ অর্ডার</span>
+      <span><i class="lg lg-bad"></i> ৩ অর্ডার</span>
+      <span><i class="lg lg-off"></i> ✕ বন্ধ</span>
+    </div>
+    <div style="font-size:10.5px;color:var(--text3);text-align:center;margin-top:6px">💡 যেকোনো তারিখে ট্যাপ করে বন্ধের দিন সেট/সরান</div>
+  </div>
+</div>
+
+<!-- SHOPPING NOTEPAD POPUP (shared — everyone can view & edit) -->
+<div class="cal-popup-overlay" id="notepad-overlay" onclick="App.closeNotepadBg(event)">
+  <div class="cal-popup" role="dialog" aria-modal="true" aria-label="শপিং নোটপ্যাড">
+    <div class="cal-popup-head">
+      <div class="cal-popup-title">📝 শপিং নোটপ্যাড</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="cal-popup-close" onclick="App.clearNotepad()" title="সব মুছুন" aria-label="সব মুছুন">🗑️</button>
+        <button class="cal-popup-close" onclick="App.closeNotepad()" aria-label="Close">✕</button>
+      </div>
+    </div>
+    <p class="notepad-hint">📋 যে আইটেমগুলো বেকারি শপ থেকে কিনতে হবে / শেষ হয়ে গেছে — এখানে লিখুন। অ্যাপ ব্যবহারকারী সবাই এটি দেখতে ও এডিট করতে পারবে, এবং নোটটি মুছে ফেলা না হওয়া পর্যন্ত থাকবে।</p>
+    <div class="np-toolbar">
+      <select id="notepad-page-sel" onchange="App.notepadSwitchPage(this.value)"></select>
+      <button type="button" class="np-btn" onclick="App.addNotepadPage()" title="নতুন পেজ তৈরি করুন">➕ নতুন পেজ</button>
+      <button type="button" class="np-btn" onclick="document.getElementById('notepad-photo-input').click()" title="ছবি যোগ করুন">🖼️ ছবি</button>
+      <input type="file" id="notepad-photo-input" accept="image/*" style="display:none" onchange="App.notepadAddPhoto(this)">
+    </div>
+    <textarea id="notepad-text" placeholder="যেমন:&#10;• বাটার ২ কেজি লাগবে&#10;• চকলেট চিপস শেষ&#10;• ক্রিম ১ প্যাকেট"></textarea>
+    <div id="notepad-photos" class="np-photos"></div>
+    <div class="notepad-status" id="notepad-status"></div>
+  </div>
+</div>
+
+<!-- OFF-DAY DIALOG -->
+<div class="confirm-overlay" id="offday-overlay" role="alertdialog" aria-modal="true">
+  <div class="confirm-box">
+    <h3 id="offday-title">বন্ধের দিন? ✕</h3>
+    <p id="offday-date-label"></p>
+    <input id="offday-reason" type="text" maxlength="120" placeholder="কারণ লিখুন (যেমন: পারিবারিক অনুষ্ঠান, অসুস্থতা...)">
+    <div class="confirm-btns">
+      <button class="btn-cnf-no"  onclick="App.closeOffday()">বাতিল</button>
+      <button class="btn-cnf-yes green" onclick="App.saveOffday()">বন্ধ করুন ✕</button>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<nav class="tabs" role="tablist" aria-label="ভিউ নির্বাচন">
+  <button class="tab active" id="tab-plan" role="tab" aria-selected="true"  aria-controls="view-plan"    onclick="App.switchTab('plan')">📅 <span data-i18n="tabPlan">প্ল্যান</span> <span class="tab-count" id="tc-plan">0</span></button>
+  <button class="tab"        id="tab-all"  role="tab" aria-selected="false" aria-controls="view-all"     onclick="App.switchTab('all')">📦 <span data-i18n="tabAll">অর্ডার</span> <span class="tab-count" id="tc-all">0</span></button>
+  <button class="tab"        id="tab-done" role="tab" aria-selected="false" aria-controls="view-done"    onclick="App.switchTab('done')">✅ <span data-i18n="tabDone">সম্পন্ন</span> <span class="tab-count" id="tc-done">0</span></button>
+  <button class="tab"        id="tab-cdb"  role="tab" aria-selected="false" aria-controls="view-cdb"     onclick="App.switchTab('cdb')">🗂️ <span data-i18n="tabCdb">ডেটাবেজ</span> <span class="tab-count" id="tc-cdb">0</span></button>
+  <button class="tab"        id="tab-rev"  role="tab" aria-selected="false" aria-controls="view-revenue" onclick="App.switchTab('revenue')">💰 <span data-i18n="tabRev">আয়</span></button>
+</nav>
+
+<!-- VIEWS -->
+<main>
+  <div id="view-plan"    role="tabpanel" aria-labelledby="tab-plan" class="section"><div class="skeleton-wrap" id="sk-plan"></div></div>
+  <div id="view-all"     role="tabpanel" aria-labelledby="tab-all"  class="section hidden"></div>
+  <div id="view-done"    role="tabpanel" aria-labelledby="tab-done" class="section hidden"></div>
+  <div id="view-cdb"     role="tabpanel" aria-labelledby="tab-cdb"  class="section hidden"></div>
+  <div id="view-revenue" role="tabpanel" aria-labelledby="tab-rev"  class="revenue-section hidden"></div>
+</main>
+
+<!-- FAB -->
+<button class="fab" onclick="App.openModal(null)" aria-label="Add new order">+</button>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="রেফারেন্স ছবি">
+  <img class="lightbox-img" id="lightbox-img" src="" alt="রেফারেন্স কেক">
+  <button class="lightbox-close" onclick="App.closeLightbox()" aria-label="বন্ধ করুন">✕</button>
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div class="confirm-overlay" id="confirm-overlay" role="alertdialog" aria-modal="true">
+  <div class="confirm-box">
+    <h3 id="confirm-title">নিশ্চিত করুন</h3>
+    <p  id="confirm-msg">এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।</p>
+    <div class="confirm-btns">
+      <button class="btn-cnf-no"  onclick="App.closeConfirm(false)">বাতিল</button>
+      <button class="btn-cnf-yes" id="confirm-yes-btn" onclick="App.closeConfirm(true)">নিশ্চিত</button>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="App.closeModalBg(event)" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal" id="modal-sheet">
+    <div class="modal-handle" aria-hidden="true"></div>
+    <div class="modal-header">
+      <h2 class="modal-title" id="modal-title">নতুন অর্ডার</h2>
+      <button class="modal-close-btn" onclick="App.closeModal()" aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="mode-switch" style="display:flex;gap:8px;margin-bottom:12px">
+        <button type="button" id="mode-manual" class="mode-btn active" onclick="App.setQuoteMode(false)">📝 ম্যানুয়াল অর্ডার</button>
+        <button type="button" id="mode-quote" class="mode-btn" onclick="App.setQuoteMode(true)">📨 কোটেশন</button>
+      </div>
+      <input type="checkbox" id="f-mode-quote" onchange="App.onModeSwitch()" style="display:none" aria-hidden="true">
+      <!-- Customer -->
+      <div class="modal-section">
+        <div class="modal-section-title">👤 কাস্টমার তথ্য</div>
+        <div class="row2">
+          <div class="field"><label>নাম<span class="req">*</span></label><input id="f-name" placeholder="রিনা বেগম" type="text" autocomplete="off"></div>
+          <div class="field">
+            <label>ফোন<span class="req">*</span></label>
+            <input id="f-phone" placeholder="017xx-xxxxxx" type="tel" autocomplete="off">
+            <label class="same-check" style="margin-top:6px">
+              <input type="checkbox" id="f-receiver-same-cust" onchange="App.toggleAdminReceiverSamePhone(this)">
+              <span>রিসিভারের ফোনও একই নম্বর</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cake -->
+      <div class="modal-section">
+        <div class="modal-section-title">🎂 কেক বিবরণ</div>
+        <div class="field" id="f-cake-count-field">
+          <label>কেকের সংখ্যা * (সর্বোচ্চ ৫)</label>
+          <select id="f-cake-count" onchange="App.setAdminCakeCount(this.value)">
+            <option value="1">১টি কেক</option>
+            <option value="2">২টি কেক</option>
+            <option value="3">৩টি কেক</option>
+            <option value="4">৪টি কেক</option>
+            <option value="5">৫টি কেক</option>
+          </select>
+        </div>
+        <div class="cake-block" id="admin-cake-block-1">
+          <div class="cake-block-header"><span class="cake-block-title">🎂 কেক ১</span></div>
+        <div class="row2">
+          <div class="field">
+            <label>ওজন</label>
+            <input id="f-weight" placeholder="২ পাউন্ড" type="text">
+          </div>
+          <div class="field">
+            <label>ফ্লেভার</label>
+            <select id="f-flavour">
+              <option value="">নির্বাচন করুন</option>
+              <option value="vanilla-sponge">ভ্যানিলা স্পঞ্জ</option>
+              <option value="chocolate-sponge">চক্লেট স্পঞ্জ</option>
+              <option value="double-layer-chocolate">ডাবল লেয়ারড চকলেট</option>
+              <option value="black-forest">ব্ল্যাক ফরেস্ট</option>
+              <option value="white-forest">হোয়াইট ফরেস্ট</option>
+              <option value="lemon">লেমন কেক</option>
+              <option value="orange">অরেঞ্জ কেক</option>
+              <option value="strawberry">স্ট্রবেরি কেক</option>
+              <option value="blueberry">ব্লুবেরি</option>
+              <option value="malai">মালাই কেক</option>
+              <option value="butterscotch">বাটারস্কচ কেক</option>
+              <option value="special-vanilla">স্পেশাল ভ্যানিলা</option>
+              <option value="chocolate-mud">চকলেট মাডকেক</option>
+              <option value="red-velvet">রেড ভেলভেট</option>
+              <option value="cream-cheese-fruit">ক্রিম চিজ ফ্রস্টিং উইথ ফ্রুট ফিলিং</option>
+              <option value="custom">কাস্টম</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>সাইজ</label><input id="f-size" placeholder="৬ ইঞ্চি, উচ্চতা কেক" type="text"></div>
+        <div class="field">
+          <label>কেকে লেখা</label>
+          <textarea id="f-writing" placeholder="যেমন: Take my hand&#10;Take my whole life too&#10;But I can't help falling in love with you 💗" style="min-height:80px;white-space:pre-wrap"></textarea>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin:6px 0 0">
+            <input type="checkbox" id="f-no-writing" onchange="App.toggleWriting()" style="width:auto;margin:0">
+            <span>লেখা নেই</span>
+          </label>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">লাইন বাই লাইন ঠিক যেমন লেখা হবে সেভ করুন — এন্টার দিয়ে নতুন লাইন করুন</div>
+        </div>
+        <div class="field">
+          <label>📷 রেফারেন্স ছবি (ঐচ্ছিক)</label>
+          <div class="photo-upload-btn" onclick="document.getElementById('f-photo-file').click()" role="button" tabindex="0">
+            <span>📎</span> ছবি আপলোড করুন
+          </div>
+          <input type="file" id="f-photo-file" accept="image/*" multiple class="hidden" aria-hidden="true">
+          <div id="modal-photo-grid" class="photo-grid"></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">📸 একাধিক ছবি দিতে পারেন (সর্বোচ্চ ৪টি)</div>
+        </div>
+        <div class="field">
+          <label>📝 ছবির নোট / ডিজাইন নোট</label>
+          <textarea id="f-photo-note" placeholder="যেমন: কেকের কালার থিমটা রেড থেকে পিংক করতে চাচ্ছি" style="min-height:44px"></textarea>
+        </div>
+        </div><!-- /admin-cake-block-1 -->
+        <div id="admin-extra-cakes"></div>
+        <div class="field">
+          <label>🍰 ডেলিভার করা কেকের ছবি (১টি — কমপ্লিটেড ডেটাবেজের জন্য)</label>
+          <div class="photo-upload-btn" onclick="document.getElementById('f-delphoto-file').click()" role="button" tabindex="0">
+            <span>📷</span> ডেলিভার করা কেকের ছবি আপলোড করুন
+          </div>
+          <input type="file" id="f-delphoto-file" accept="image/*" class="hidden" aria-hidden="true">
+        <!-- Hidden input used by the completed-database grid "📷 ছবি যোগ করুন" button -->
+        <input type="file" id="cdb-photo-file" accept="image/*" class="hidden" aria-hidden="true">
+          <div id="modal-delphoto-wrap"></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">📸 ডেলিভার্ড ট্যাগ দেওয়ার আগে এই ছবিটি দিন — ছবিটি ৫০KB এর নিচে কমপ্রেস হয়ে সেভ হবে।</div>
+        </div>
+      </div>
+
+      <!-- Delivery -->
+      <div class="modal-section">
+        <div class="modal-section-title">🚚 ডেলিভারি তথ্য</div>
+        <div class="field">
+          <label>ডেলিভারি ধরন <span class="req">*</span></label>
+          <select id="f-fulfilment" onchange="App.onFulfilmentChange()">
+            <option value="delivery">ডেলিভারি</option>
+            <option value="pickup">সেলফ পিকআপ</option>
+          </select>
+        </div>
+        <div class="row2">
+          <div class="field"><label>তারিখ<span class="req">*</span></label><input id="f-date" type="date"></div>
+          <div class="field">
+            <label>সময় (ঘণ্টা ১-১২)</label>
+            <div class="row2" style="gap:8px">
+              <input id="f-time" inputmode="decimal" placeholder="যেমন: 3.00" type="text" autocomplete="off" style="flex:1;min-width:0" onblur="App.normalizeTimeInput()">
+              <select id="f-time-ampm" style="width:84px;flex-shrink:0">
+                <option value="">--</option>
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;margin:6px 0 0">
+              <input type="checkbox" id="f-no-time" onchange="App.toggleTime()" style="width:auto;margin:0">
+              <span>নির্ধারিত নয়</span>
+            </label>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label data-i18n="fReceiver">রিসিভারের নাম</label><input id="f-receiver" placeholder="কে নেবেন" type="text"></div>
+          <div class="field">
+            <label data-i18n="fReceiverPhone">রিসিভারের ফোন</label>
+            <input id="f-receiver-phone" placeholder="017xx-xxxxxx" type="tel" maxlength="14">
+          </div>
+        </div>
+        <div class="field"><label>ডেলিভারি ঠিকানা</label><textarea id="f-address" placeholder="কান্টা গার্লস হোস্টেল, চট্টগ্রাম মেডিকেল" style="min-height:52px"></textarea></div>
+        <div class="row2">
+          <div class="field">
+            <label>সারপ্রাইজ?</label>
+            <select id="f-surprise">
+              <option value="no">না</option>
+              <option value="yes">হ্যাঁ — সারপ্রাইজ 🎁</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>🚚 ডেলিভারি চার্জ</label>
+            <select id="f-delivery-paid">
+              <option value="unpaid">🔴 বাকি আছে</option>
+              <option value="paid">✅ পরিশোধিত</option>
+              <option value="na">— প্রযোজ্য নয়</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>ডেলিভারি চার্জের পরিমাণ (৳)</label><input id="f-delivery-amount" type="number" placeholder="60" min="0"></div>
+      </div>
+
+      <!-- Payment -->
+      <div class="modal-section">
+        <div class="modal-section-title" data-i18n="secPayment">💳 পেমেন্ট</div>
+
+        <div class="field">
+          <label data-i18n="fTotal">কেকের মূল্য (৳)</label>
+          <input id="f-total" type="number" placeholder="1850" min="0" oninput="App.totalInput()">
+        </div>
+
+        <div class="field">
+          <label data-i18n="fPaid">পরিশোধিত (৳)</label>
+          <input id="f-paid" type="number" placeholder="0" min="0" oninput="App.advanceInput()" onblur="App.advanceBlur(event)">
+        </div>
+
+        <input id="f-charge-deduct" type="hidden">
+        <input id="f-bkash-charge" type="hidden">
+
+        <div class="field" id="due-field" style="display:none">
+          <label>বাকি (Due) (৳)</label>
+          <input id="f-due" class="due-input" type="number" placeholder="0" readonly tabindex="-1" onfocus="this.blur()">
+          <div class="due-hint" id="due-hint">অ্যাডভান্সের পর বাকি পরিমাণ — স্বয়ংক্রিয়ভাবে হিসাব হয় (ডেলিভারি চার্জ আলাদা)</div>
+        </div>
+
+        <div class="field"><label>ট্রানজেকশন আইডি / পেমেন্ট নম্বরের শেষ ৩ ডিজিট</label><input id="f-trx" placeholder="যেমন: 8K3N বা 456" type="text"></div>
+        <div class="field"><label>অতিরিক্ত নোট (ঐচ্ছিক)</label><textarea id="f-notes" placeholder="বিশেষ কোনো নির্দেশনা থাকলে লিখুন..." style="min-height:40px"></textarea></div>
+        <div class="field">
+          <label>অর্ডার স্ট্যাটাস</label>
+          <select id="f-status">
+            <option value="pending">⏳ পেন্ডিং — রিভিউ দরকার</option>
+            <option value="confirmed">কনফার্মড ✅</option>
+            <option value="baking">আজ রাতে বেক 🔄</option>
+            <option value="delivered">ডেলিভার দেওয়া হয়েছে 🎉</option>
+            <option value="cancelled">বাতিল ❌</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="modal-section">
+        <div class="modal-section-title">✍️ নিতুর বেকিং নোটস</div>
+        <div class="field">
+          <textarea id="f-bakingnotes" placeholder="বেকিং প্ল্যান, টিপস, রিমাইন্ডার..." style="background:var(--pink-light);border-color:var(--pink-soft);min-height:80px"></textarea>
+        </div>
+      </div>
+    </div><!-- /modal-body -->
+
+    <div class="modal-footer">
+      <button class="btn-cancel" id="btn-cancel" onclick="App.closeModal()">বাতিল</button>
+      <button class="btn-quote" id="btn-quote" type="button" onclick="App.createQuoteFromModal()">📨 কোটেশন লিংক</button>
+      <button class="btn-save"   id="btn-save"   onclick="App.saveOrder()">☁️ সেভ করুন</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- Firebase -->
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://nitusbakingplanv2-default-rtdb.asia-southeast1.firebasedatabase.app" crossorigin>
+<link rel="dns-prefetch" href="https://www.gstatic.com">
+<link rel="dns-prefetch" href="https://nitusbakingplanv2-default-rtdb.asia-southeast1.firebasedatabase.app">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
+
+<script>
+/* =============================================================
+   PUSH NOTIFICATIONS (Firebase Cloud Messaging / Web Push)
+   -------------------------------------------------------------
+   THIS REPLACES the old "Notification-only" system and makes the
+   bell work on BOTH Android (any browser) and iPhone/iPad.
+
+   iOS IMPORTANT: Apple only allows notifications for installed
+   PWAs over HTTPS. For iPhone the admin must:
+     1) Open this app in Safari
+     2) Tap Share (square icon) -> "Add to Home Screen"
+     3) Open the app FROM the home screen icon
+   Only then will the bell be able to ring on iPhone. Normal
+   Safari tabs cannot ring on iOS (Apple restriction).
+
+   VAPID KEY STATUS: ✅ CONFIGURED (see FCM_VAPID_KEY below).
+   If push ever stops working on all devices at once, regenerate the
+   key pair in (Firebase Console -> Project Settings -> Cloud Messaging
+    -> Web Push certificates), paste the new "Key pair" below, and tap
+   🔔 once on every device to re-subscribe.
+============================================================= */
+var FCM_VAPID_KEY = "BBacqw-SjR_gR2tMoQRTnSz7WFeOZ9A2KA_VizN_T__LkUUE-D2MZKiciUeSfod7E2FrU601kKFfStzcdThWTMc";
+// Web Push application server key (VAPID) — CONFIGURED ✅
+// (Firebase Console → Project settings → Cloud Messaging → Web Push
+//  certificates). If you ever regenerate the key pair there, paste the
+// new one here AND have every device tap 🔔 once more to re-subscribe,
+// because old push subscriptions stop working when the key changes.
+// Auto-detects a missing/placeholder key:
+var FCM_VAPID_MISSING = !FCM_VAPID_KEY || FCM_VAPID_KEY.indexOf("REPLACE") === 0;
+var FCM_APP_NAME  = "nitusbakingplanv2";
+var FCM_INIT_DONE = false;
+var FCM_SW_REGISTERED = false;
+
+function registerServiceWorkers() {
+  if (!('serviceWorker' in navigator)) return;
+  if (FCM_SW_REGISTERED) return Promise.resolve();
+  FCM_SW_REGISTERED = true;
+  // Single service worker: firebase-messaging-sw.js handles BOTH Firebase
+  // Cloud Messaging and offline app-shell caching (see that file). Registering
+  // it at the app root gives it scope over the whole app.
+  try {
+    return navigator.serviceWorker.register('./firebase-messaging-sw.js', { updateViaCache: 'none' }).then(function (reg) {
+      FCM_SW_REGISTERED = true;
+      // Check the worker source on every launch without using the browser HTTP cache.
+      reg.update().catch(function () {});
+      return reg;
+    }).catch(function () {
+      FCM_SW_REGISTERED = false;
+      return null;
+    });
+  } catch (e) { return Promise.resolve(null); }
+}
+
+function isIosDevice() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform && /Mac/.test(navigator.platform) &&
+     navigator.maxTouchPoints > 1);
+}
+</script>
+
+<script src="./app.js?v=2026-09-16-speed1"></script>
+
+<!-- PUSH NOTIFICATION SYSTEM (Firebase Cloud Messaging / Web Push) — deferred so
+     it never competes with the first orders download on slow networks. -->
+<script src="./notifications.js?v=2026-09-16-speed1" defer></script></body>
+</html>
