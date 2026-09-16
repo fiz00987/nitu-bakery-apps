@@ -1149,27 +1149,6 @@ function getTimeError() {
   return '';
 }
 
-// ─── Messenger confirmation: one tap, zero typing ──────────────
-// Copies the Order ID, then opens our page's Messenger chat. The customer's
-// message (with the Order ID) lands in the page inbox, where the admin finds
-// it instantly by searching the Order ID in Business Suite.
-// 👉 SET THIS to our page's real m.me link (facebook.com/<username> of the page):
-const SHOP_MME_LINK = 'https://m.me/nituscake';
-function messengerConfirm() {
-  const msg = 'আমার অর্ডার আইডি: ' + (currentOrderId || '');
-  showToast('📋 অর্ডার আইডি কপি হয়েছে — Messenger-এ পেস্ট করে পাঠান');
-  // Copy inside the user gesture, then navigate THIS tab immediately —
-  // same-tab navigation is what makes mobile browsers hand off to the
-  // Messenger app (a delayed window.open gets popup-blocked or opens
-  // messenger.com instead of the app).
-  const go = () => { window.location.href = SHOP_MME_LINK; };
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(msg).then(go, go);
-  } else {
-    go();
-  }
-}
-
 // Success
 function showSuccess(order) {
   document.getElementById('form-screen').classList.remove('active');
