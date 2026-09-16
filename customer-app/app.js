@@ -973,7 +973,6 @@ function submitOrder() {
     fulfilment: document.getElementById('f-fulfilment').value,
     trx: document.getElementById('f-trx').value.trim(),
     notes: document.getElementById('f-notes').value.trim(),
-    messengerLink: (function () { const e = document.getElementById('f-fb-link'); return e ? e.value.trim() : ''; })(),
     lang: lang,
     source: 'customer',
     status: 'pending',
@@ -1097,6 +1096,21 @@ function getTimeError() {
     return lang === 'en' ? 'Please select AM or PM' : 'AM অথবা PM নির্বাচন করুন';
   }
   return '';
+}
+
+// ─── Messenger confirmation: one tap, zero typing ──────────────
+// Copies the Order ID, then opens our page's Messenger chat. The customer's
+// message (with the Order ID) lands in the page inbox, where the admin finds
+// it instantly by searching the Order ID in Business Suite.
+// 👉 SET THIS to our page's real m.me link (facebook.com/<username> of the page):
+const SHOP_MME_LINK = 'https://m.me/nituscake';
+function messengerConfirm() {
+  const msg = 'আমার অর্ডার আইডি: ' + (currentOrderId || '');
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(msg);
+  } catch (e) {}
+  showToast('📋 অর্ডার আইডি কপি হয়েছে — Messenger-এ পেস্ট করে পাঠান');
+  setTimeout(() => { window.open(SHOP_MME_LINK, '_blank'); }, 350);
 }
 
 // Success
