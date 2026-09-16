@@ -522,8 +522,11 @@ html.t-gold .order-number-badge{color:#a5813e}
     <div class="pay-footnote" id="pay-footnote"></div>
 
     <div class="field" style="margin-top:12px">
-      <label data-bn="ট্রানজেকশন আইডি / পেমেন্ট নম্বরের শেষ ৩ ডিজিট *" data-en="Transaction ID / Last 3 Digits of Payment Number *">ট্রানজেকশন আইডি / পেমেন্ট নম্বরের শেষ ৩ ডিজিট *</label>
-      <input type="text" id="f-trx" placeholder="যেমন: 8K3N বা 456">
+      <label data-bn="💳 পেমেন্টের স্ক্রিনশট *" data-en="Payment screenshot *">💳 পেমেন্টের স্ক্রিনশট *</label>
+      <input type="file" id="f-payshot" accept="image/*" style="display:none" onchange="handlePayShot(event)">
+      <div class="photo-upload" onclick="document.getElementById('f-payshot').click()">📎<div>পেমেন্টের স্ক্রিনশট আপলোড করুন</div></div>
+      <div class="photo-grid" id="payshot-grid"></div>
+      <div class="note-box">bKash / Nagad / ব্যাংক পেমেন্টের কনফার্মেশন পেজের ছবি দিন। এডমিন এটা দেখেই অর্ডার কনফার্ম করবেন।</div>
     </div>
     <div class="field">
       <label data-bn="অতিরিক্ত তথ্য (ঐচ্ছিক)" data-en="Additional Info (Optional)">অতিরিক্ত তথ্য (ঐচ্ছিক)</label>

@@ -1054,7 +1054,12 @@ window.App = (() => {
       </div>
       ${bkashCharge(o) > 0 ? `<div class="pay-note">💰 ${tr('bkashDeducted')}: ৳${fmtMoney(o.paid)} − ৳${fmtMoney(bkashCharge(o))}${o.paymentChargesLabel ? ` (${esc(o.paymentChargesLabel)})` : ''} = ৳${fmtMoney(effectivePaid(o))}</div>` : ''}
       ${o.paynote ? `<div class="pay-note">💳 ${esc(o.paynote)}</div>` : ''}
-      ${o.source === 'customer' && o.advance ? `<div class="pay-note">📱 কাস্টমার অগ্রিম: ৳${fmtMoney(o.advance)}${o.advanceCharge > 0 ? ` (+চার্জ ৳${fmtMoney(o.advanceCharge)})` : ''} = ৳${fmtMoney(o.advanceTotal)} | ট্রানজেকশন: ${esc(o.trx || '')}</div>` : ''}
+      ${o.source === 'customer' && o.advance ? `<div class="pay-note">📱 কাস্টমার অগ্রিম: ৳${fmtMoney(o.advance)}${o.advanceCharge > 0 ? ` (+চার্জ ৳${fmtMoney(o.advanceCharge)})` : ''} = ৳${fmtMoney(o.advanceTotal)}${o.trx ? ` | ট্রানজেকশন: ${esc(o.trx)}` : ''}</div>` : ''}
+      ${o.source === 'customer' && o.advance
+        ? (o.payShot
+          ? `<div class="card-photo-wrap" style="margin-top:8px"><div class="pay-note">💳 পেমেন্ট স্ক্রিনশট — ট্যাপ করলে বড় হবে</div><img class="card-photo" src="${o.payShot}" onclick="event.stopPropagation();App.openPayShot('${fk}')" alt="পেমেন্ট স্ক্রিনশট" loading="lazy"></div>`
+          : `<div class="overdue-alert">⚠️ পেমেন্ট স্ক্রিনশট নেই — পেমেন্ট ছাড়া জমা দেওয়া অর্ডার!</div>`)
+        : ''}
     </div>
 
     <div class="status-select-wrap">
@@ -1818,6 +1823,12 @@ window.App = (() => {
     const o = orders.find(x => x.firebaseKey === key);
     if (!o?.photo) return;
     openLightboxFor(o.photo);
+  };
+  // Payment proof screenshot — same shared lightbox, pinched to zoom
+  const openPayShot = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o?.payShot) return;
+    openLightboxFor(o.payShot);
   };
   // Open the shared lightbox for a raw image source (data URL or URL)
   const openLightboxFor = src => {
@@ -3647,6 +3658,7 @@ window.App = (() => {
     saveOrder,
     exportData,
     openLightbox,
+    openPayShot,
     closeLightbox,
     confirmStatusChange,
     updateNotes,

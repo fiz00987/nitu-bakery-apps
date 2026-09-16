@@ -99,7 +99,6 @@ function setLang(l) {
     'f-surprise': 'Surprise Cake?',
     'f-fulfilment': 'Fulfilment type *',
     'f-payment-method': 'Payment Method *',
-    'f-trx': 'Transaction ID / Last 3 Digits of Payment Number *',
     'f-notes': 'Additional Info (Optional)'
   } : {};
   Object.entries(labelMap).forEach(([id, text]) => {
@@ -655,6 +654,31 @@ function removePhoto(i, idx) {
   renderPhotos(idx);
 }
 
+// ─── Payment screenshot (mandatory proof-of-payment) ───────────
+// Same compressor as reference photos (≤ ~80KB JPEG data URL).
+let payShot = '';
+
+async function handlePayShot(e) {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { showToast('ছবি ৫MB এর কম হতে হবে'); return; }
+  try { payShot = await compressImage(file); } catch (_) { showToast('ছবি লোড করা যায়নি'); return; }
+  renderPayShot();
+  updateProgress();
+}
+function renderPayShot() {
+  document.getElementById('payshot-grid').innerHTML = payShot ? `
+    <div class="photo-thumb">
+      <img src="${payShot}" alt="পেমেন্ট স্ক্রিনশট">
+      <button type="button" class="photo-remove" onclick="removePayShot()">✕</button>
+    </div>` : '';
+}
+function removePayShot() {
+  payShot = '';
+  renderPayShot();
+}
+
 // Payment change
 function onPaymentChange() {
   const methodId = document.getElementById('f-payment-method').value;
@@ -1139,7 +1163,7 @@ document.getElementById('f-surprise').addEventListener('change', function() {
 
 // Progress
 function updateProgress() {
-  const fields = ['f-name', 'f-cake-price', 'f-date', 'f-payment-method', 'f-advance', 'f-trx',
+  const fields = ['f-name', 'f-cake-price', 'f-date', 'f-payment-method', 'f-advance',
                   'f-address', 'f-receiver', 'f-receiver-phone'];
   for (let i = 1; i <= cakeCount; i++) {
     fields.push('f-weight-' + i, 'f-flavour-' + i, 'f-writing-' + i);
@@ -1163,11 +1187,17 @@ function validate() {
     ['f-name', 'নাম দিন'], ['f-cake-price', 'কেকের মূল্য দিন'],
     ['f-date', 'তারিখ দিন'],
     ['f-payment-method', 'পেমেন্ট পদ্ধতি নির্বাচন করুন'],
-    ['f-advance', 'অগ্রিম পরিমাণ দিন'], ['f-trx', 'ট্রানজেকশন আইডি দিন']
+    ['f-advance', 'অগ্রিম পরিমাণ দিন']
   ];
   for (const [id, msg] of req) {
     const el = document.getElementById(id);
     if (!el || !el.value.trim()) { showToast(msg); el.focus(); return false; }
+  }
+  // Payment screenshot is mandatory — the proof of payment
+  if (!payShot) {
+    showToast('💳 পেমেন্টের স্ক্রিনশট দিন — bKash / Nagad / ব্যাংক কনফার্মেশন পেজের ছবি');
+    document.getElementById('f-payshot').scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return false;
   }
   const isPickup = document.getElementById('f-fulfilment').value === 'pickup';
   // Each cake: weight + flavour + writing
@@ -1388,7 +1418,7 @@ function submitOrder() {
     advanceAutoTotal: (advanceType && lastAutoSend > 0 && sendAmount !== lastAutoSend) ? lastAutoSend : null,
     dueAmount: dueAmount,
     fulfilment: document.getElementById('f-fulfilment').value,
-    trx: document.getElementById('f-trx').value.trim(),
+    payShot,
     notes: document.getElementById('f-notes') ? document.getElementById('f-notes').value.trim() : '',
     lang: lang,
     source: 'customer',
@@ -1698,7 +1728,8 @@ function resetForm() {
   document.getElementById('entry-security').value = '';
   document.querySelectorAll('#form-screen input:not(#entry-phone), #form-screen textarea').forEach(el => { if (!el.readOnly) el.value = ''; });
   document.querySelectorAll('#form-screen select').forEach(el => el.selectedIndex = 0);
-  currentPhotos = [];
+  currentPhotos = []; payShot = '';
+  if (typeof renderPayShot === 'function') renderPayShot();
   extraPhotos = {};
   advanceType = ''; lastAutoSend = 0; lastAutoBase = 0; isSurprise = false; cakeWritingNoticeShown = false;
   advanceMethod = '';
