@@ -936,6 +936,12 @@ button { cursor: pointer; }
 .countdown.overdue { background: var(--red); color: #fff; }
 
 /* Chevron */
+.card-chevron-wrap {
+  flex-shrink: 0;
+  padding: 6px 2px 14px 10px;
+  margin: -6px -2px -14px -6px;
+  cursor: pointer;
+}
 .card-chevron {
   font-size: 20px;
   color: var(--text3);
@@ -943,6 +949,7 @@ button { cursor: pointer; }
   transition: transform var(--dur-base) var(--ease-smooth);
   flex-shrink: 0;
   line-height: 1;
+  pointer-events: none;
 }
 .card.expanded .card-chevron { transform: rotate(180deg); }
 

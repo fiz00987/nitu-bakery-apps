@@ -1107,7 +1107,7 @@ window.App = (() => {
       ${cdChip}
       <div class="card-chips">${statusChip(o)}${dueChip}${surpriseChip}${deliveryChip}</div>
     </div>
-    <div class="card-chevron" aria-hidden="true">⌄</div>
+    <div class="card-chevron-wrap" aria-hidden="true"><div class="card-chevron">⌄</div></div>
   </div>
 
   ${payProgressBar(o)}
