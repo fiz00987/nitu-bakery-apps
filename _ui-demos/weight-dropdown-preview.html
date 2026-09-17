@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nitu — Weight dropdown + 50% lock preview</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hind Siliguri','Poppins',system-ui,sans-serif;background:#241a12;color:#fff;padding:24px 16px 60px}
+h1{font-size:19px;margin-bottom:6px}
+h2{font-size:14px;color:#ffd9a0;margin:26px 0 10px}
+.sub{color:#d8c3a8;font-size:13px;margin-bottom:18px}
+.card{max-width:400px;margin:0 auto;background:#fff;color:#1a1a2e;border-radius:14px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+label{display:block;font-size:12.5px;font-weight:600;color:#555577;margin-bottom:5px}
+input,select{width:100%;padding:10px 12px;border:1.5px solid #e8e8f0;border-radius:9px;font-size:14px;font-family:inherit;color:#1a1a2e;background:#fff}
+select{margin-top:8px;font-weight:600}
+.hint{font-size:11px;color:#1565c0;margin-top:5px}
+.row{display:flex;gap:8px;margin-bottom:12px}
+.opt{flex:1;padding:11px 8px;border:2px solid #e8e8f0;border-radius:9px;text-align:center;font-size:13.5px;font-weight:700;color:#555577;background:#f7f7fb;position:relative}
+.opt.active{border-color:#c2185b;background:#fce4ec;color:#c2185b}
+.opt.locked{background:#ececec;border-color:#d8d8d8;color:#9a9a9a;cursor:not-allowed}
+.opt.locked::after{content:'🔒';position:absolute;top:2px;right:5px;font-size:10px}
+.calc{border:1px solid #e8e8f0;border-radius:10px;overflow:hidden;margin:12px 0}
+.calc div{display:flex;justify-content:space-between;padding:7px 12px;font-size:13px}
+.calc div+div{border-top:1px dashed #eee}
+.calc .tot{background:#f7f7fb;font-weight:800}
+.chip{display:inline-block;background:#fce4ec;color:#880e4f;border:1px solid #f8bbd0;border-radius:99px;padding:3px 10px;font-size:11.5px;font-weight:700;margin-bottom:10px}
+</style>
+</head>
+<body>
+<h1>🎂 Weight dropdown + 100% payment lock — client form</h1>
+<div class="sub">Left = before (mini + medium buttons). Right/below = after (dropdown + rule).</div>
+
+<h2>1 · Weight section — the two dropdown states</h2>
+<div class="card">
+  <div class="chip">Normal cake selected</div>
+  <label>ওজন * (পাউন্ড বা KG)</label>
+  <input type="text" value="2 pound" placeholder="যেমন: 2 pound, 2.5 pound, 1 KG">
+  <select><option>সাধারণ কেক</option><option>মিনি কেক</option></select>
+  <div class="hint">2 pound = 0.91 KG</div>
+</div>
+<div style="height:14px"></div>
+<div class="card">
+  <div class="chip">Mini cake selected</div>
+  <label>ওজন * (পাউন্ড বা KG)</label>
+  <div style="padding:10px 12px;border:1.5px dashed #d8d8d8;border-radius:9px;color:#9a9a9a;font-size:13px;background:#fafafa">pound/KG input hidden for mini cake</div>
+  <select><option>সাধারণ কেক</option><option selected>মিনি কেক</option></select>
+  <div class="hint">মিনি কেক তথ্য popup opens automatically (size, weight range, price)</div>
+</div>
+
+<h2>2 · Payment — 50% locked for surprise / mini, full = cake 100% + delivery</h2>
+<div class="card">
+  <div class="chip">Mini cake · cake ৳500 + delivery ৳80 via bKash</div>
+  <label>আপনি কত টাকা পাঠাতে চান? *</label>
+  <div class="row">
+    <div class="opt locked">৫০% অগ্রিম</div>
+    <div class="opt active">১০০% পরিশোধ</div>
+  </div>
+  <input type="text" value="591" readonly style="background:#eee;font-weight:700;font-size:16px">
+  <div class="calc">
+    <div><span>কেকের মূল্য:</span><span>৳500</span></div>
+    <div><span>ডেলিভারি:</span><span>৳80</span></div>
+    <div class="tot"><span>মোট পেমেন্ট:</span><span>৳580</span></div>
+  </div>
+  <div class="hint">অটো হিসাব: পুরো পেমেন্ট 580 + বিকাশ চার্জ ৳11 = পাঠাতে হবে ৳591</div>
+</div>
+<div style="height:14px"></div>
+<div class="card">
+  <div class="chip">Surprise cake · cake ৳1000 + delivery ৳100 via bKash</div>
+  <div class="row">
+    <div class="opt locked">৫০% অগ্রিম</div>
+    <div class="opt active">১০০% পরিশোধ</div>
+  </div>
+  <input type="text" value="1121" readonly style="background:#eee;font-weight:700;font-size:16px">
+  <div class="hint">অটো হিসাব: পুরো পেমেন্ট ৳1100 + বিকাশ চার্জ ৳21 = পাঠাতে হবে ৳1121</div>
+</div>
+<div style="height:14px"></div>
+<div class="card">
+  <div class="chip">Normal cake, not surprise · cake ৳1000 + delivery ৳100</div>
+  <div class="row">
+    <div class="opt active">৫০% অগ্রিম</div>
+    <div class="opt">১০০% পরিশোধ</div>
+  </div>
+  <input type="text" value="510" readonly style="background:#eee;font-weight:700;font-size:16px">
+  <div class="hint">৫০% অগ্রিম ৳500 + বিকাশ চার্জ ৳10 = পাঠাতে হবে ৳510 · বাকি ৳500 পরে · ডেলিভারি চার্জ ৳100 আলাদা</div>
+</div>
+</body>
+</html>

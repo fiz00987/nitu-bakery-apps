@@ -142,6 +142,8 @@ function setLang(l) {
     document.querySelector('#f-fulfilment option[value="pickup"]').textContent = 'Self pickup';
     document.querySelector('#f-surprise option[value="no"]').textContent = 'No';
     document.querySelector('#f-surprise option[value="yes"]').textContent = 'Yes - surprise';
+    document.querySelector('#f-cake-kind option[value="normal"]').textContent = 'Normal cake';
+    document.querySelector('#f-cake-kind option[value="mini"]').textContent = 'Mini cake';
     FLAVOURS.forEach(f => { const option = document.querySelector(`#f-flavour option[value="${f.value}"]`); if (option) option.textContent = f.labelEn; });
     PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.nameEn; });
   } else {
@@ -149,6 +151,8 @@ function setLang(l) {
     document.getElementById('f-weight').placeholder = 'যেমন: 2 pound, 2.5 pound, 1 KG';
     document.getElementById('f-timeslot').placeholder = 'যেমন: 3.00';
     document.getElementById('f-writing').placeholder = 'যেমন: তোমার হাসিই আমাদের ঘরের আলো';
+    document.querySelector('#f-cake-kind option[value="normal"]').textContent = 'সাধারণ কেক';
+    document.querySelector('#f-cake-kind option[value="mini"]').textContent = 'মিনি কেক';
     FLAVOURS.forEach(f => { const option = document.querySelector(`#f-flavour option[value="${f.value}"]`); if (option) option.textContent = f.label; });
     PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.name; });
   }
@@ -184,6 +188,7 @@ function lockEl(id) {
 function applyQuoteLockVisual() {
   if (!quoteData) return;
   lockEl('f-weight');
+  lockEl('f-cake-kind');   // cake kind follows the quoted spec — mini stays mini
   lockEl('f-flavour');
   lockEl('f-cake-price');
   lockEl('f-delivery-charge');
@@ -739,7 +744,93 @@ function getCakeWritingError(text) {
     : '';
 }
 
+// ─── Cake kind (normal / mini) ───────────────────────────────
+// Dropdown: 1st option normal cake, 2nd option mini cake. Mini hides the
+// free pound/KG input (a mini has no such weight) and behaves like the old
+// "mini preset"; normal shows the input for the customer's desired weight.
+// Mini ALWAYS counts as full payment too (same rule as surprise + delivery).
+let cakeKind = 'normal';   // 'normal' | 'mini'
+
+const MINI_FILL_BN = '\u09ae\u09bf\u09a8\u09bf \u0995\u09c7\u0995';
+const MINI_FILL_EN = 'Mini cake';
+
+function getCakeKind() {
+  const el = document.getElementById('f-cake-kind');
+  cakeKind = (el && el.value === 'mini') ? 'mini' : 'normal';
+  return cakeKind;
+}
+
+function onCakeKindChange() {
+  const kind = getCakeKind();
+  const wEl = document.getElementById('f-weight');
+  const hintEl = document.getElementById('weight-hint');
+  if (kind === 'mini') {
+    // Mini cake: no pound/KG to type — the pound/KG input disappears and the
+    // size name is stored as the weight (same as the old mini quick-select).
+    wEl.value = lang === 'en' ? MINI_FILL_EN : MINI_FILL_BN;
+    wEl.disabled = true;
+    wEl.style.display = 'none';
+    wEl.classList.add('locked-field');
+    if (hintEl) hintEl.textContent = '';
+  } else {
+    // Normal cake: show the free input for the desired pound / KG.
+    wEl.value = '';
+    wEl.disabled = false;
+    wEl.style.display = '';
+    wEl.classList.remove('locked-field');
+  }
+  updateWeightHint();
+  syncFullOnlyPayment();   // mini => 50% locked off too
+  recalcPrice();
+  updateProgress();
+  if (kind === 'mini') showMiniCakeInfo();   // size / weight / price guide
+}
+
+// A payment that is ALWAYS full: surprise cakes and mini cakes. For these the
+// total counts the 100% cake price PLUS the delivery charge. Everything else
+// (normal cake, not surprise) keeps the normal 50% / 100% choice.
+function isFullOnlyPayment() {
+  if (isSurprise) return true;
+  if (getCakeKind() === 'mini') return true;
+  return false;
+}
+
+// Total payment = 100% of the cake price + the delivery charge (if any).
+// This is what a "full payment" must cover; the locked 50% option can't
+// be picked while isFullOnlyPayment().
+function getFullBase() {
+  const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
+  const delivery = getDeliveryCharge();
+  return Math.round(cakePrice) + Math.round(delivery);
+}
+
+// Grey out the 50% option (locked, untappable) whenever only full payment
+// is allowed; restore it otherwise.
+function syncFullOnlyPayment() {
+  const lock = isFullOnlyPayment();
+  const opt50 = document.getElementById('opt-50');
+  if (opt50) {
+    opt50.classList.toggle('adv-locked', lock);
+    opt50.style.opacity = lock ? '0.4' : '';
+    opt50.style.pointerEvents = lock ? 'none' : '';
+  }
+  if (lock && advanceType === '50') {
+    advanceType = 'full';
+    document.querySelectorAll('.advance-opt').forEach(el => el.classList.remove('active'));
+    const full = document.getElementById('opt-full');
+    if (full) full.classList.add('active');
+    lastAutoSend = 0; lastAutoBase = 0;
+  }
+  return lock;
+}
+
 function setAdvanceType(type) {
+  if (type === '50' && isFullOnlyPayment()) {
+    showToast(lang === 'en'
+      ? 'Only full payment for surprise / mini cake'
+      : 'সারপ্রাইজ / মিনি কেকে শুধু ১০০% পেমেন্ট');
+    return;   // 50% stays locked
+  }
   advanceType = type;
   document.querySelectorAll('.advance-opt').forEach(el => el.classList.remove('active'));
   document.getElementById('opt-' + type).classList.add('active');
@@ -838,11 +929,23 @@ function showAdvanceWarn() {
   document.getElementById('advance-warn-popup').classList.add('show');
 }
 
+// Grey-box amounts always use the CURRENT cake price + delivery, so a price
+// or delivery edit never leaves a stale auto figure sitting in the box.
+function getDeliveryCharge() {
+  return document.getElementById('f-fulfilment').value === 'pickup'
+    ? 0
+    : (parseFloat(document.getElementById('f-delivery-charge').value) || 0);
+}
+
 function recalcPrice(manualEdit) {
   const methodId = document.getElementById('f-payment-method').value;
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
   const advInput = document.getElementById('f-advance');
   const typedSend = parseFloat(advInput.value) || 0;
+
+  // 50% lock can come and go as surprise / cake-kind / fulfilment change,
+  // so re-check it on every recalculation (not just on option taps).
+  const fullOnly = syncFullOnlyPayment();
 
   // The payment preview depends ONLY on the cake price — not on the weight
   // field — so the auto-count works as soon as the customer types a price,
@@ -855,16 +958,21 @@ function recalcPrice(manualEdit) {
   }
 
   const rate = getGatewayRate();
-  const delivery = document.getElementById('f-fulfilment').value === 'pickup' ? 0 : (parseFloat(document.getElementById('f-delivery-charge').value) || 0);
+  const delivery = getDeliveryCharge();
   const paymentMethod = getPaymentMethod(methodId);
   const total = cakePrice;
 
   let base, charge, sendAmount, isAuto = false;
   if (advanceType && !manualEdit) {
-    // AUTO: base = chosen % of the cake price; send = base + gateway charge
-    // (charge rounded up, e.g. 50% of ৳1000 via bKash → 500 + 10 = 510)
+    // AUTO: full-only payments use 100% cake price + delivery charge;
+    // normal orders use the chosen % of the cake price. The last-auto math
+    // remembers which base it used so a price edit can't leave a stale box.
     isAuto = true;
-    base = advanceType === '50' ? Math.round(cakePrice / 2) : Math.round(cakePrice);
+    if (fullOnly || advanceType === 'full') {
+      base = getFullBase();                     // cake 100% + delivery
+    } else {
+      base = advanceType === '50' ? Math.round(cakePrice / 2) : Math.round(cakePrice);
+    }
     charge = rate > 0 ? Math.ceil(base * rate) : 0;
     sendAmount = base + charge;
     lastAutoBase = base;
@@ -975,22 +1083,21 @@ function isPresetWeight(raw) {
   return WEIGHT_PRESET_ALIASES.includes(String(raw || '').toLowerCase().replace(/\s+/g, ''));
 }
 
+// ─── Mini cake info popup (shown when the mini kind is picked) ──
+function showMiniCakeInfo() {
+  const p = WEIGHT_PRESETS.mini;
+  showTextPopup(p.file, lang === 'en' ? p.titleEn : p.title);
+}
+
 function setWeightPreset(kind, btn) {
   const p = WEIGHT_PRESETS[kind];
   if (!p) return;
   document.getElementById('f-weight').value = lang === 'en' ? p.fillEn : p.fill;
-  document.querySelectorAll('.weight-preset').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
   updateWeightHint();
   recalcPrice();
   updateProgress();
   showTextPopup(p.file, lang === 'en' ? p.titleEn : p.title);
 }
-
-document.getElementById('f-weight').addEventListener('input', function() {
-  // Keep the quick-select highlight in sync when the user edits the box by hand
-  if (!isPresetWeight(this.value)) document.querySelectorAll('.weight-preset').forEach(b => b.classList.remove('active'));
-});
 
 document.getElementById('f-weight').addEventListener('change', function() {
   // Bare numbers (e.g. "1") get the POUND/KG unit popup on blur instead
@@ -1072,11 +1179,13 @@ document.getElementById('f-surprise').addEventListener('change', function() {
   document.getElementById('surprise-note').classList.toggle('show', isSurprise);
   if (isSurprise) {
     setAdvanceType('full');
+    // 50% locks while surprise is on (sync also re-locks on every recalc)
     document.querySelectorAll('.advance-opt').forEach(el => el.style.opacity = '0.5');
     document.getElementById('opt-full').style.opacity = '1';
   } else {
     document.querySelectorAll('.advance-opt').forEach(el => el.style.opacity = '1');
   }
+  syncFullOnlyPayment();
 });
 
 // Progress
@@ -1116,6 +1225,19 @@ function validate() {
     return false;
   }
   if (!resolveWeight()) { showToast('সঠিক ওজন লিখুন (যেমন: 2 pound বা 1 KG)'); return false; }
+  // Normal cake: the typed weight must be a real amount (e.g. "2 pound", "1 KG").
+  // Bare numbers get converted by the POUND/KG popup; size names stay allowed.
+  if (getCakeKind() === 'normal') {
+    const wRaw = document.getElementById('f-weight').value.trim();
+    if (wRaw && !isPresetWeight(wRaw) && !parseWeightText(wRaw)) {
+      showToast(lang === 'en'
+        ? 'Write the weight with a unit (2 pound / 1 KG)'
+        : 'ওজন এককসহ লিখুন (2 pound / 1 KG)');
+      maybeAskWeightUnit();
+      document.getElementById('f-weight').focus();
+      return false;
+    }
+  }
   if (document.getElementById('f-fulfilment').value === 'delivery' && !document.getElementById('f-address').value.trim()) { showToast('ঠিকানা দিন'); document.getElementById('f-address').focus(); return false; }
   // Delivery charge is OPTIONAL — blank means not-paid yet (admin/agent collects later).
   if (!validateBangladeshPhone(document.getElementById('f-receiver-phone').value.trim())) {
@@ -1135,6 +1257,21 @@ if (timeError) { showToast(timeError); document.getElementById('f-timeslot').foc
     const total = getOrderTotal();
     if (adv < total) { showToast('সারপ্রাইজের জন্য পূর্ণ পেমেন্ট দিন'); return false; }
   }
+  // Mini cake / delivery orders: 100% of the cake price + the delivery
+  // charge must be covered (the gateway charge sits on top of that).
+  if (isFullOnlyPayment()) {
+    const cake = Math.round(parseFloat(document.getElementById('f-cake-price').value) || 0);
+    const del  = Math.round(getDeliveryCharge());
+    const need = cake + del;
+    const send = Math.round(parseFloat(document.getElementById('f-advance').value) || 0);
+    if (send < need) {
+      showToast((lang === 'en'
+        ? 'Full payment needed: cake ৳' + cake + (del ? ' + delivery ৳' + del : '') + ' = ৳' + need
+        : 'পূর্ণ পেমেন্ট দিতে হবে: কেক ৳' + cake + (del ? ' + ডেলিভারি ৳' + del : '') + ' = ৳' + need));
+      document.getElementById('f-advance').focus();
+      return false;
+    }
+  }
   return true;
 }
 
@@ -1142,7 +1279,8 @@ function getOrderTotal() {
   const wt = resolveWeight();
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
   if (!wt || cakePrice <= 0) return 0;
-  return cakePrice;
+  // Full-only orders (surprise / mini / delivery) must cover cake + delivery.
+  return isFullOnlyPayment() ? getFullBase() : cakePrice;
 }
 
 // Submit
@@ -1183,13 +1321,18 @@ async function submitOrder() {
   const total = cakePrice;
   const advanceTotal = Math.round(sendAmount);
   const dueAmount = Math.max(0, subtotal - advance);
+  // Full-only orders (surprise / mini / delivery) pay cake 100% + delivery
+  // upfront, so the delivery charge counts as settled with the cake.
+  const fullOnlyOrder = isFullOnlyPayment();
+  const deliverySettled = fullOnlyOrder && delivery > 0 && advance >= (Math.round(cakePrice) + Math.round(delivery));
 
   const order = {
     orderId: currentOrderId || generateOrderId(),
     customerPhone: phone,
     customerName: customerName,
     category: 'custom',
-    categoryName: 'কাস্টম কেক',
+    categoryName: cakeKind === 'mini' ? 'মিনি কেক' : 'কাস্টম কেক',
+    cakeKind: cakeKind,
     weight: wt.value,
     weightLabel: wt.label,
     flavour: fl.value,
@@ -1218,7 +1361,8 @@ async function submitOrder() {
     deliveryCharge: delivery,
     deliveryAmount: delivery,
     // Blank/0 delivery charge on a delivery order = NOT PAID (admin/agent collects later).
-    deliveryPaid: document.getElementById('f-fulfilment').value === 'pickup' ? 'na' : 'unpaid',
+    // Full-only orders already include the delivery charge in the paid amount.
+    deliveryPaid: document.getElementById('f-fulfilment').value === 'pickup' ? 'na' : (deliverySettled ? 'paid' : 'unpaid'),
     paymentCharges: charge,
     subtotal: subtotal,
     total: total,
@@ -1545,8 +1689,14 @@ function resetForm() {
   document.getElementById('due-field').classList.remove('show');
   document.getElementById('surprise-note').classList.remove('show');
   document.getElementById('payment-info').classList.remove('show');
-  document.querySelectorAll('.advance-opt').forEach(el => { el.classList.remove('active'); el.style.opacity = '1'; });
-  document.querySelectorAll('.weight-preset').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.advance-opt').forEach(el => { el.classList.remove('active', 'adv-locked'); el.style.opacity = ''; el.style.pointerEvents = ''; });
+  // Cake kind back to "normal" + weight box unlocked & cleared
+  const ck = document.getElementById('f-cake-kind');
+  if (ck) { ck.selectedIndex = 0; ck.style.display = ''; }
+  cakeKind = 'normal';
+  const wEl = document.getElementById('f-weight');
+  if (wEl) { wEl.disabled = false; wEl.style.display = ''; wEl.classList.remove('locked-field'); }
+  syncFullOnlyPayment();   // fresh form → 50% available again
   document.getElementById('entry-btn').textContent = 'অর্ডার শুরু করুন';
   document.getElementById('entry-btn').onclick = handleEntry;
   updateProgress();
