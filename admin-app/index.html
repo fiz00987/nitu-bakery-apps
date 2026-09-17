@@ -8,8 +8,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f5a50">
 <title>🎂 নিতুর বেকারি — অর্ডার ম্যানেজার</title>
-<link rel="icon" type="image/png" href="logo.png">
+<link rel="icon" type="image/png" href="favicon-64.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
+<!-- Splash/login logo: 320px optimised copy (~140KB) instead of the 1.6MB original,
+     preloaded with high priority so the welcome screen appears immediately. -->
+<link rel="preload" as="image" href="logo-splash.png" fetchpriority="high">
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2189,7 +2192,7 @@ html.t-cafe.dark{--bg:#121212;--surface:#1a1a1a;--surface2:#232323;--border:#2e2
   <div class="splash-fx" id="splash-fx">
     <div class="splash-blob sb1"></div><div class="splash-blob sb2"></div><div class="splash-blob sb3"></div>
   </div>
-  <img class="splash-logo" src="logo.png" alt="নিতুর বেকারি">
+  <img class="splash-logo" src="logo-splash.png" alt="নিতুর বেকারি" width="320" fetchpriority="high" decoding="async">
   <div class="splash-chip">🎂 নিতুবাবুর্চীর পোর্টফোলিও</div>
   <div class="splash-moto">THE CAKE IS A CANVAS</div>
   <div class="splash-loader"><i></i></div>
@@ -2202,7 +2205,7 @@ html.t-cafe.dark{--bg:#121212;--surface:#1a1a1a;--surface2:#232323;--border:#2e2
   </div>
   <div class="login-wrap">
     <div class="login-logo">
-      <img src="logo.png" alt="নিতুর বেকারি">
+      <img src="logo-splash.png" alt="নিতুর বেকারি" width="150" decoding="async">
     </div>
     <div class="login-brand">নিতুবাবুর্চীর পোর্টফোলিও</div>
     <div class="login-moto">The Cake Is A Canvas</div>

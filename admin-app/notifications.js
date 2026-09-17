@@ -138,7 +138,7 @@
         var title = n.title || d.title || "🎂 নিতুর বেকারি";
         var body  = n.body  || d.body  || "নতুন বিজ্ঞপ্তি";
         if (supportsNotification() && Notification.permission === "granted") {
-          try { new Notification(title, { body: body, icon: "./logo.png", tag: "nitu-" + Date.now() }); } catch(e){}
+          try { new Notification(title, { body: body, icon: "./logo-splash.png", tag: "nitu-" + Date.now() }); } catch(e){}
         } else {
           showNotifToast(title + " — " + body);
         }

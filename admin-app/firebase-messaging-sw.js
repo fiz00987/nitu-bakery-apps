@@ -35,7 +35,7 @@ messaging.onBackgroundMessage(function (payload) {
   var body = notif.body || (data && data.body) || 'নতুন বিজ্ঞপ্তি';
   var options = {
     body: body,
-    icon: './logo.png',
+    icon: './logo-splash.png',
     badge: './icons/icon-192.png',
     tag: data && data.tag ? data.tag : ('nitu-' + Date.now()),
     renotify: true,
@@ -69,17 +69,18 @@ self.addEventListener('notificationclick', function (event) {
 });
 
 /* ─── Offline caching (bulletproof edition) ────────────────── */
-var CACHE_NAME = 'nitu-bakery-v14';
+var CACHE_NAME = 'nitu-bakery-v15';
 // Build stamp — bump on every deploy so you can confirm in DevTools which
 // version the browser is actually running.
-var ADMIN_BUILD = '2026-09-18-donecdb';
-try { console.log('Nitu admin build:', ADMIN_BUILD, '— Done/DB panels crash-proof render'); } catch (e) {}
+var ADMIN_BUILD = '2026-09-18-loading-speed';
+try { console.log('Nitu admin build:', ADMIN_BUILD, '— fast splash + fast orders'); } catch (e) {}
 var INDEX_KEY  = './index.html';
 var APP_SHELL = [
   './index.html',
   './',
   './manifest.json',
-  './logo.png',
+  './logo-splash.png',
+  './favicon-64.png',
   './logo-white.png',
   './icons/icon-192.png',
   './icons/icon-512.png',

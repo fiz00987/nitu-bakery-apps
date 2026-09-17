@@ -402,6 +402,93 @@ window.App = (() => {
     return d;
   }
 
+  // ─── Order cache (instant first paint) ───────────────────────
+  // The cache used to live in localStorage, which caps out near 5 MB. Orders
+  // carry base64 photos, so the stringified snapshot blew past that limit and
+  // setItem threw — and the old code swallowed the error. Net effect: no cache
+  // ever existed, so every launch waited for the full cloud download
+  // ("orders take ages"). IndexedDB has a far larger quota and never blocks
+  // the main thread.
+  const CACHE_DB    = 'nitu-admin-cache';
+  const CACHE_STORE = 'snapshots';
+  const CACHE_KEY   = 'orders';
+  const CACHE_MAX_ORDERS = 80;
+  const CACHE_MAX_BYTES  = 6 * 1024 * 1024;   // keeps parse time sane
+
+  const idbOpen = () => new Promise((resolve, reject) => {
+    if (!window.indexedDB) { reject(new Error('indexedDB unavailable')); return; }
+    const req = indexedDB.open(CACHE_DB, 1);
+    req.onupgradeneeded = () => {
+      const idb = req.result;
+      if (!idb.objectStoreNames.contains(CACHE_STORE)) idb.createObjectStore(CACHE_STORE);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
+  });
+  const idbSet = (key, val) => idbOpen().then(idb => new Promise((resolve, reject) => {
+    const tx = idb.transaction(CACHE_STORE, 'readwrite');
+    tx.objectStore(CACHE_STORE).put(val, key);
+    tx.oncomplete = () => { idb.close(); resolve(); };
+    tx.onerror    = () => { idb.close(); reject(tx.error); };
+  }));
+  const idbGet = key => idbOpen().then(idb => new Promise((resolve, reject) => {
+    const tx = idb.transaction(CACHE_STORE, 'readonly');
+    const rq = tx.objectStore(CACHE_STORE).get(key);
+    rq.onsuccess = () => { idb.close(); resolve(rq.result); };
+    rq.onerror   = () => { idb.close(); reject(rq.error); };
+  }));
+
+  // Retire the old localStorage cache: at best it is stale, at worst it is the
+  // quota-hog that made every save fail. It has also been eating the 5 MB that
+  // other features legitimately need.
+  try { localStorage.removeItem('nitu-orders-cache'); } catch (e) {}
+
+  // Snapshot builder: newest orders first, each one stored WHOLE. The previous
+  // cache stripped photos to save space, which was dangerous too — editing an
+  // order painted from that cache would have written the missing photos back
+  // as empty. Dropping an entire order (via the caps below) is safe: the live
+  // listener brings it in a moment later.
+  const buildCachePayload = fp => {
+    const pool = orders.slice(-CACHE_MAX_ORDERS).slice().reverse();
+    const kept = [];
+    let bytes = 0;
+    for (let i = 0; i < pool.length; i++) {
+      const json = JSON.stringify(pool[i]);
+      if (kept.length && bytes + json.length > CACHE_MAX_BYTES) break;
+      bytes += json.length;
+      kept.push(pool[i]);
+    }
+    return { fp, savedAt: Date.now(), orders: kept };
+  };
+
+  let cacheSaveTimer = null;
+  let liveSnapshotSeen = false;   // guards against the cache overwriting live data
+  const scheduleCacheSave = fp => {
+    if (cacheSaveTimer) return;              // one write per burst of updates
+    cacheSaveTimer = setTimeout(() => {
+      cacheSaveTimer = null;
+      try {
+        idbSet(CACHE_KEY, buildCachePayload(fp))
+          .catch(e => console.warn('[cache] save skipped:', e && e.message));
+      } catch (e) {}
+    }, 4000);
+  };
+
+  // Instant first paint from the last snapshot. Never clobbers live data that
+  // has already arrived.
+  const paintFromCache = () => {
+    idbGet(CACHE_KEY).then(cached => {
+      if (!cached || !Array.isArray(cached.orders) || !cached.orders.length) return;
+      if (liveSnapshotSeen) return;   // cloud already answered — trust it
+      if (orders.length) return;
+      orders = cached.orders.map(o => normalizeCustomerOrder(o));
+      sortOrders();
+      render();
+      updateDailyBadge();
+      console.log('[cache] painted ' + orders.length + ' order(s) from cache');
+    }).catch(e => console.warn('[cache] read failed (harmless):', e && e.message));
+  };
+
   // ─── Firebase listeners ──────────────────────────────────────
   // Auth state listener - MUST be set up before database listeners
   auth.onAuthStateChanged(user => {
@@ -415,18 +502,7 @@ window.App = (() => {
       // then let the live listener below replace it with fresh data. Also show
       // a "connecting" state immediately so the app never looks dead on slow net.
       setSyncStatus('syncing');
-      try {
-        const raw = localStorage.getItem('nitu-orders-cache');
-        if (raw) {
-          const cached = JSON.parse(raw);
-          if (cached && Array.isArray(cached.orders) && cached.orders.length) {
-            orders = cached.orders.map(o => normalizeCustomerOrder(o));
-            sortOrders();
-            render();
-            updateDailyBadge();
-          }
-        }
-      } catch (e) { console.error('[cache-paint] failed (harmless, live data will render):', e); }
+      paintFromCache();
       let firstOrdersSnap = true;   // first live snapshot must ALWAYS render
       const ordersTimer = setTimeout(() => {
         if (firstOrdersSnap) setSyncStatus('syncing', lang === 'bn' ? '☁️ ক্লাউডে সংযুক্ত হচ্ছে...' : '☁️ Connecting to cloud...');
@@ -435,6 +511,7 @@ window.App = (() => {
         try {
         const isFirstSnap = firstOrdersSnap;   // captured BEFORE flipping below
         firstOrdersSnap = false;
+        liveSnapshotSeen = true;               // cloud responded — cache must stand down
         clearTimeout(ordersTimer);
         isConnected = true;
         setSyncStatus('ok');
@@ -507,25 +584,10 @@ window.App = (() => {
         sortOrders();
         render();
         updateDailyBadge();
-        // Remember this snapshot on disk so the next app open can paint
-        // instantly from cache while Firebase reconnects. Photos are the
-        // biggest payload — keep only the last 60 orders in cache.
-        try {
-          localStorage.setItem('nitu-orders-cache', JSON.stringify({
-            fp,
-            savedAt: Date.now(),
-            orders: orders.slice(-60).map(o => {
-              const c = Object.assign({}, o);
-              if (Array.isArray(c.photos) && c.photos.length > 1) c.photos = c.photos.slice(0, 1);
-              if (Array.isArray(c.cakes)) c.cakes = c.cakes.map(k => {
-                const kc = Object.assign({}, k);
-                if (Array.isArray(kc.photos) && kc.photos.length > 1) kc.photos = kc.photos.slice(0, 1);
-                return kc;
-              });
-              return c;
-            })
-          }));
-        } catch (e) {}
+        // Remember this snapshot on disk (IndexedDB) so the next app open can
+        // paint instantly while Firebase reconnects. Debounced: rebuilding and
+        // writing the blob on every single snapshot was itself a stall.
+        scheduleCacheSave(fp);
         // On the very first snapshot of a session, pop the daily
         // "orders placed today" list (only when there is something to show)
         if (isFirstSnap && !dailyPopupShownThisSession) {
@@ -646,7 +708,10 @@ window.App = (() => {
         (ordersArr || []).forEach(o => { if (o && o.firebaseKey) hbKnownIds[o.firebaseKey] = true; });
         trimHbMemory();
         try { localStorage.setItem('nitu_hb_known', JSON.stringify(hbKnownIds)); } catch (e) {}
-        repairStuckDeliveries(null);
+        // Reuse the list we already have in memory — a fresh ordersRef.once('value')
+        // here downloaded the entire orders node a SECOND time on every launch
+        // (all base64 photos included), which made startup crawl.
+        repairStuckDeliveries(ordersArr);
         return;
       }
       var unseen = (ordersArr || []).filter(o => o && o.firebaseKey && !hbKnownIds[o.firebaseKey]);
@@ -663,20 +728,13 @@ window.App = (() => {
   // Every 10 min: ensure Telegram knows about every pending customer order.
   // If any other layer ever stalls, this sweep guarantees delivery.
   function repairStuckDeliveries(listOverride) {
-    var job = listOverride ? Promise.resolve(listOverride)
-      : Promise.resolve().then(() => {
-          if (!currentUser) return null;
-          return ordersRef.once('value').then(snap => {
-            var out = [];
-            var data = snap.val() || {};
-            Object.keys(data).forEach(k => {
-              var o = normalizeCustomerOrder(data[k]);
-              o.firebaseKey = k;
-              out.push(o);
-            });
-            return out;
-          });
-        });
+    // Always work from the live in-memory list. The old fallback did a fresh
+    // ordersRef.once('value') — re-downloading every order (base64 photos and
+    // all) on launch and every 10 minutes, for data the realtime listener
+    // already holds. Pointless bandwidth, and it slowed startup badly.
+    var job = Promise.resolve(
+      (listOverride && listOverride.length) ? listOverride : (orders || [])
+    );
     return job.then(list => {
       if (!list || !list.length) return;
       var missing = [];
@@ -3718,10 +3776,32 @@ window.App = (() => {
       }
       fx.appendChild(orbit);
     }
-    // Fade out after ~4.5s so the welcome animation plays fully and lingers
-    if (!splash.classList.contains('gone')) {
-      setTimeout(() => splash.classList.add('gone'), 4500);
+    // Fade out as soon as the logo is actually painted, after a short brand
+    // beat — with a hard cap so a slow connection can never make the splash
+    // linger (it used to sit there for a fixed 4.5s no matter what).
+    const MIN_MS = 900;      // let the logo animation register
+    const MAX_MS = 2400;     // absolute ceiling
+    const startedAt = Date.now();
+    let hidden = false;
+    const hideSplash = () => {
+      if (hidden || splash.classList.contains('gone')) return;
+      hidden = true;
+      splash.classList.add('gone');
+    };
+    const hideAfterBrandBeat = () => {
+      const wait = Math.max(0, MIN_MS - (Date.now() - startedAt));
+      setTimeout(hideSplash, wait);
+    };
+    const logoImg = splash.querySelector('.splash-logo');
+    if (logoImg && logoImg.complete && logoImg.naturalWidth) {
+      hideAfterBrandBeat();                       // already cached → instant
+    } else if (logoImg) {
+      logoImg.addEventListener('load',  hideAfterBrandBeat, { once: true });
+      logoImg.addEventListener('error', hideAfterBrandBeat, { once: true });
+    } else {
+      hideAfterBrandBeat();
     }
+    setTimeout(hideSplash, MAX_MS);               // never exceed the cap
   })();
 
   // Enter key support for login

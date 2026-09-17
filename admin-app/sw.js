@@ -11,7 +11,7 @@
    ============================================= */
 'use strict';
 
-const CACHE_NAME = 'nitu-bakery-v11';
+const CACHE_NAME = 'nitu-bakery-v13';
 
 const APP_SHELL = [
   './',
@@ -20,7 +20,8 @@ const APP_SHELL = [
   './app.js',
   './notifications.js',
   './manifest.json',
-  './logo.png',
+  './logo-splash.png',
+  './favicon-64.png',
   './logo-white.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
