@@ -159,9 +159,9 @@ button { cursor: pointer; }
    brand gradient, a dark veil keeps white text readable, and the buttons
    become frosted glass — see-through but clearly visible. ── */
 .topbar.tb-photo{overflow:hidden}
-.topbar.tb-photo::before{content:'';position:absolute;inset:0;background:var(--tb-bg,none) center/cover no-repeat;opacity:.88;pointer-events:none}
+.topbar-photo{position:absolute;inset:0;opacity:.88;background-position:center;background-size:cover;background-repeat:no-repeat;pointer-events:none}
 .topbar.tb-photo::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(9,63,56,.55),rgba(0,0,0,.48));pointer-events:none}
-.topbar.tb-photo>*{position:relative;z-index:1}
+.topbar.tb-photo>*:not(.topbar-photo){position:relative;z-index:1}
 .topbar.tb-photo .action-btn,
 .topbar.tb-photo .ico-btn,
 .topbar.tb-photo .notif-bell-btn,
@@ -1342,6 +1342,8 @@ button { cursor: pointer; }
 /* Splash photo layer — sits UNDER the fx/logo/chip, slightly faded */
 .splash-bg{position:absolute;inset:0;background:url('splash-bg.jpg') center/cover no-repeat;opacity:.30;pointer-events:none}
 .splash-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(251,244,232,.25),rgba(251,244,232,.05) 45%,rgba(251,244,232,.35))}
+/* Everything on the splash (fx, logo, chip, motto, loader) paints ABOVE the photo layer */
+.splash-screen>*:not(.splash-bg){position:relative;z-index:2}
 .splash-screen.gone{opacity:0;visibility:hidden;pointer-events:none}
 .splash-fx{position:absolute;inset:0;pointer-events:none}
 .splash-blob{position:absolute;border-radius:50%;filter:blur(70px)}
@@ -2276,6 +2278,7 @@ html.t-cafe.dark{--bg:#121212;--surface:#1a1a1a;--surface2:#232323;--border:#2e2
 
 <!-- TOPBAR -->
 <header class="topbar" role="banner">
+  <div class="topbar-photo" id="topbar-photo"></div>
   <div class="topbar-row1">
     <div class="topbar-brand">
       <img src="logo-white.png" alt="নিতুর বেকারি">

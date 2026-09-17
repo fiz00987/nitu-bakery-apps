@@ -499,12 +499,13 @@ window.App = (() => {
   const TOPBAR_BGS = ['./bg-1.jpg', './bg-2.jpg', './bg-3.jpg', './bg-4.jpg', './bg-5.jpg', './bg-6.jpg'];
   const applyTopbarPhoto = () => {
     const tb = document.querySelector('.topbar');
-    if (!tb) return;
+    const layer = document.getElementById('topbar-photo');
+    if (!tb || !layer) return;
     const pick = TOPBAR_BGS[Math.floor(Math.random() * TOPBAR_BGS.length)];
     // Warm the image while the login transition plays, then paint it.
     const img = new Image();
     img.onload = () => {
-      tb.style.setProperty('--tb-bg', `url('${pick}')`);
+      layer.style.backgroundImage = `url('${pick}')`;
       tb.classList.add('tb-photo');
     };
     img.src = pick;
