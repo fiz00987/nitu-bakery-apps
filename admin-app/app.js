@@ -1054,6 +1054,17 @@ window.App = (() => {
   };
 
   // ─── Render a single card ────────────────────────────────────
+  // Crash-proof PER CARD: one bad order (missing date/name/photo) renders
+  // a simple fallback instead of killing the whole Done/Database list.
+  const renderCardSafe = o => {
+    try { return renderCard(o); }
+    catch (err) {
+      console.error('[card] failed for', o && (o.orderId || o.firebaseKey), err);
+      const name = esc((o && (o.name || o.customerName)) || 'অর্ডার');
+      const oid  = esc((o && o.orderId) || '');
+      return `<div class="card" id="card-${o && o.firebaseKey}"><div class="card-head"><div class="card-head-body"><div class="card-name">${name}</div><div class="card-meta">${oid}</div></div></div></div>`;
+    }
+  };
   const renderCard = o => {
     const d          = dueAmt(o);
     const t          = today0();
@@ -1197,9 +1208,13 @@ window.App = (() => {
 
   // ─── Render views ────────────────────────────────────────────
   const renderPlan = () => {
+    const viewEl = document.getElementById('view-plan');
+    if (!viewEl) return;
+    let pool = [];
+    try { pool = getFiltered(orders.filter(o => isActiveOrder(o) && !isLogicallyComplete(o))); }
+    catch (e) { console.error('[orders] filter failed:', e); }
     const t   = today0();
     const tm  = new Date(t); tm.setDate(tm.getDate() + 1);
-    const pool = getFiltered(orders.filter(o => isActiveOrder(o) && !isLogicallyComplete(o)));
 
     const groups = {};
     pool.forEach(o => {
@@ -1223,7 +1238,7 @@ window.App = (() => {
           <span class="day-label-text">${k}</span>
           <span class="day-count">${g.orders.length}</span>
         </div>
-        ${g.orders.map(renderCard).join('')}
+        ${g.orders.map(renderCardSafe).join('')}
       </div>`;
     });
 
@@ -1233,8 +1248,12 @@ window.App = (() => {
       <p>+ বাটন চাপুন নতুন অর্ডার যোগ করতে।</p>
     </div>`;
 
-    document.getElementById('view-plan').innerHTML = html;
-    document.getElementById('tc-plan').textContent = pool.length + (document.getElementById('search-input').value.trim() ? '/' : '');
+    try { viewEl.innerHTML = html; } catch (e) { console.error('[orders] render failed:', e); }
+    const badge = document.getElementById('tc-plan');
+    if (badge) {
+      try { badge.textContent = pool.length + ((document.getElementById('search-input').value || '').trim() ? '/' : ''); }
+      catch (e) {}
+    }
   };
 
   const renderAll = () => switchTab('plan');
@@ -1244,11 +1263,16 @@ window.App = (() => {
   // photo (compressed to ≤50KB when uploaded), price, flavour, weight
   // and delivery date. Tap a card for a zoomable lightbox of the photo.
   const renderCdb = () => {
-    const db_ = orders
-      .filter(o => o.status === 'delivered')
-      .sort((a, b) => toDate(b.date || '2000-01-01') - toDate(a.date || '2000-01-01'));
+    let db_ = [];
+    try {
+      db_ = orders
+        .filter(o => String(o.status || '').trim().toLowerCase() === 'delivered')
+        .sort((a, b) => toDate(b.date || '2000-01-01') - toDate(a.date || '2000-01-01'));
+    } catch (e) { console.error('[cdb] filter failed:', e); }
     const el = document.getElementById('view-cdb');
-    document.getElementById('tc-cdb').textContent = db_.length;
+    const badge = document.getElementById('tc-cdb');
+    if (badge) badge.textContent = db_.length;
+    if (!el) return;
 
     if (!db_.length) {
       el.innerHTML = `<div class="empty"><div class="empty-icon">🗂️</div>
@@ -1282,7 +1306,7 @@ window.App = (() => {
       </div>`;
     });
     html += `</div>`;
-    el.innerHTML = html;
+    try { el.innerHTML = html; } catch (e) { console.error('[cdb] render failed:', e); }
   };
 
   // Completed-database photo lightbox (reuses the zoomable lightbox)
@@ -1295,13 +1319,22 @@ window.App = (() => {
   };
 
   const renderDone = () => {
-    const pool = getFiltered(orders.filter(isArchivedOrder))
-      .sort((a, b) => toDate(b.date || '2000-01-01') - toDate(a.date || '2000-01-01'));
+    let pool = [];
+    try {
+      pool = getFiltered(orders.filter(o => {
+        const s = String(o.status || '').trim().toLowerCase();
+        return s === 'delivered' || s === 'cancelled' || isLogicallyComplete(o);
+      })).sort((a, b) => toDate(b.date || '2000-01-01') - toDate(a.date || '2000-01-01'));
+    } catch (e) { console.error('[done] filter failed:', e); }
     const el = document.getElementById('view-done');
-    el.innerHTML = pool.length
-      ? pool.map(renderCard).join('')
-      : `<div class="empty"><div class="empty-icon">✅</div><h3>কোনো সম্পন্ন অর্ডার নেই</h3><p>ডেলিভার করা অর্ডার এখানে দেখাবে।</p></div>`;
-    document.getElementById('tc-done').textContent = pool.length;
+    const badge = document.getElementById('tc-done');
+    if (badge) badge.textContent = pool.length;
+    if (!el) return;
+    try {
+      el.innerHTML = pool.length
+        ? pool.map(renderCardSafe).join('')
+        : `<div class="empty"><div class="empty-icon">✅</div><h3>কোনো সম্পন্ন অর্ডার নেই</h3><p>ডেলিভার করা অর্ডার এখানে দেখাবে।</p></div>`;
+    } catch (e) { console.error('[done] render failed:', e); }
   };
 
   // ─── Earn concept ────────────────────────────────────────────
@@ -1777,8 +1810,13 @@ window.App = (() => {
       const searchEl = document.getElementById('search-input');
       const searchTerm = searchEl ? (searchEl.value || '').trim() : '';
       const ordersCount = getFiltered(orders.filter(o => isActiveOrder(o) && !isLogicallyComplete(o))).length;
-      const doneCount = getFiltered(orders.filter(isArchivedOrder)).length;
-      const cdbCount = orders.filter(o => o.status === 'delivered').length;
+      // Done = delivered/cancelled/logically-complete · CDB = delivered (case-safe)
+      const donePool = orders.filter(o => {
+        const s = String(o.status || '').trim().toLowerCase();
+        return s === 'delivered' || s === 'cancelled' || isLogicallyComplete(o);
+      });
+      const doneCount = getFiltered(donePool).length;
+      const cdbCount = orders.filter(o => String(o.status || '').trim().toLowerCase() === 'delivered').length;
       const setTc = (id, n) => { const _e = document.getElementById(id); if (_e) _e.textContent = n; };
       setTc('tc-plan', ordersCount + (searchTerm ? '/' : ''));
       setTc('tc-done', doneCount);
@@ -1790,12 +1828,10 @@ window.App = (() => {
     try { renderCalendar(); } catch (e) { console.error('[calendar] failed:', e); }
 
     // Render active tab content (each guarded so one view can't kill the rest)
-    try { if (activeTab === 'plan')    renderPlan(); } catch (e) { console.error('[orders] failed:', e); }
-    try { if (activeTab === 'all')     switchTab('plan'); } catch (e) {}
+    try { if (activeTab === 'plan' || activeTab === 'all' || activeTab === 'quotes') renderPlan(); } catch (e) { console.error('[orders] failed:', e); }
     try { if (activeTab === 'done')    renderDone(); } catch (e) { console.error('[done] failed:', e); }
     try { if (activeTab === 'cdb')     renderCdb(); } catch (e) { console.error('[cdb] failed:', e); }
     try { if (activeTab === 'revenue') renderRevenue(); } catch (e) { console.error('[revenue] failed:', e); }
-    try { if (activeTab === 'quotes')  renderQuotes(); } catch (e) { console.error('[quotes] failed:', e); }
   };
 
   const QUOTE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -1945,21 +1981,22 @@ window.App = (() => {
   // 'all' is merged into 'plan' — old links/keys redirect automatically.
   const switchTab = t => {
     if (t === 'all') t = 'plan';
+    if (t === 'quotes') t = 'plan';
     activeTab = t;
-    ['plan','done','cdb','revenue','quotes'].forEach(n => {
-      document.getElementById(`view-${n}`).classList.toggle('hidden', n !== t);
+    ['plan','done','cdb','revenue'].forEach(n => {
+      const view = document.getElementById(`view-${n}`);
+      if (view) view.classList.toggle('hidden', n !== t);
       const btn = document.getElementById(`tab-${n === 'revenue' ? 'rev' : n}`);
       if (!btn) return;
       const isActive = n === t;
       btn.classList.toggle('active', isActive);
       btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
-    // Lazy render on switch
-    if (t === 'plan')    renderPlan();
+    // Lazy render on switch ('all'/'quotes' redirect to Orders)
+    if (t === 'plan' || t === 'all' || t === 'quotes') renderPlan();
     if (t === 'done')    renderDone();
     if (t === 'cdb')     renderCdb();
     if (t === 'revenue') renderRevenue();
-    if (t === 'quotes')  renderQuotes();
   };
 
   // ─── Toggle card expand ──────────────────────────────────────
