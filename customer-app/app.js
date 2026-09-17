@@ -48,9 +48,14 @@ let flavourNoticeShown = false; // "select the exact flavour" notice — once pe
     for (let i = 0; i < 26; i++) {
       const s = document.createElement('span');
       s.className = 'splash-spr';
+      // Random drift + spin + size per sprinkle — no two fall the same way
+      const dx = (a, b) => Math.round(a + Math.random() * (b - a));
+      const r = Math.random();
       s.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % 4]};` +
-        `animation-duration:${(6 + Math.random() * 8).toFixed(1)}s;animation-delay:${(-Math.random() * 12).toFixed(1)}s;` +
-        `opacity:${(.4 + Math.random() * .5).toFixed(2)}`;
+        `--dx1:${dx(-80, 80)}px;--dx2:${dx(-80, 80)}px;--dx3:${dx(-40, 40)}px;--op:${(.4 + Math.random() * .5).toFixed(2)};` +
+        `width:${(2 + r * 2.5).toFixed(1)}px;height:${(7 + r * 8).toFixed(0)}px;` +
+        `animation-duration:${(6 + Math.random() * 8).toFixed(1)}s;animation-delay:${(-Math.random() * 12).toFixed(1)}s` +
+        ``;
       fx.appendChild(s);
     }
     const orbit = document.createElement('div');
@@ -69,9 +74,13 @@ let flavourNoticeShown = false; // "select the exact flavour" notice — once pe
     for (let i = 0; i < 16; i++) {
       const s = document.createElement('span');
       s.className = 'splash-spr';
+      // Random drift + spin + size per sprinkle — no two fall the same way
+      const dx = (a, b) => Math.round(a + Math.random() * (b - a));
+      const r = Math.random();
       s.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % 4]};` +
-        `animation-duration:${(7 + Math.random() * 8).toFixed(1)}s;animation-delay:${(-Math.random() * 12).toFixed(1)}s;` +
-        `opacity:${(.3 + Math.random() * .4).toFixed(2)}`;
+        `--dx1:${dx(-80, 80)}px;--dx2:${dx(-80, 80)}px;--dx3:${dx(-40, 40)}px;--op:${(.3 + Math.random() * .4).toFixed(2)};` +
+        `width:${(2 + r * 2.5).toFixed(1)}px;height:${(7 + r * 8).toFixed(0)}px;` +
+        `animation-duration:${(7 + Math.random() * 8).toFixed(1)}s;animation-delay:${(-Math.random() * 12).toFixed(1)}s`;
       efx.appendChild(s);
     }
   }

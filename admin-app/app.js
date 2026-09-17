@@ -1947,8 +1947,13 @@ window.App = (() => {
     return t;
   };
 
-  const buildQuoteLink = token =>
-    `${location.origin}${location.pathname.replace(/admin-app.*/, 'customer-app/')}?quote=${token}`;
+  const buildQuoteLink = token => {
+    // On Firebase the customer app lives on its own hosting site; on GitHub
+    // Pages (or any single-host setup) it is the sibling folder.
+    if (/(^|\.)(web\.app|firebaseapp\.com)$/.test(location.hostname))
+      return `https://nitusbakingplanv2-customer.web.app/?quote=${token}`;
+    return `${location.origin}${location.pathname.replace(/admin-app.*/, 'customer-app/')}?quote=${token}`;
+  };
 
   const copyQuoteLink = token => {
     const link = buildQuoteLink(token);
@@ -3825,9 +3830,13 @@ window.App = (() => {
       for (let i = 0; i < 26; i++) {
         const s = document.createElement('span');
         s.className = 'splash-spr';
+        // Random drift + spin + size per sprinkle — no two fall the same way
+        const dx = (a, b) => Math.round(a + Math.random() * (b - a));
+        const r = Math.random();
         s.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % 4]};` +
-          `animation-duration:${(6 + Math.random() * 8).toFixed(1)}s;animation-delay:${(-Math.random() * 12).toFixed(1)}s;` +
-          `opacity:${(.4 + Math.random() * .5).toFixed(2)}`;
+          `--dx1:${dx(-80, 80)}px;--dx2:${dx(-80, 80)}px;--dx3:${dx(-40, 40)}px;--op:${(.4 + Math.random() * .5).toFixed(2)};` +
+          `width:${(2 + r * 2.5).toFixed(1)}px;height:${(7 + r * 8).toFixed(0)}px;` +
+          `animation-duration:${(6 + Math.random() * 8).toFixed(1)}s;animation-delay:${(-Math.random() * 12).toFixed(1)}s`;
         fx.appendChild(s);
       }
       const orbit = document.createElement('div');

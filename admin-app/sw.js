@@ -11,7 +11,7 @@
    ============================================= */
 'use strict';
 
-const CACHE_NAME = 'nitu-bakery-v16';
+const CACHE_NAME = 'nitu-bakery-v17';
 
 const APP_SHELL = [
   './',

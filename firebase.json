@@ -1,35 +1,67 @@
 {
-  "hosting": {
-    "public": "admin-app",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**",
-      "_splash-previews/**",
-      "screenshots/**",
-      "_old-logo-backup/**",
-      "_cache-test.html",
-      "themes-preview.html"
-    ],
-    "headers": [
-      {
-        "source": "**/*.@(jpg|jpeg|png|webp|svg|gif|ico)",
-        "headers": [
-          { "key": "Cache-Control", "value": "max-age=604800" }
-        ]
-      },
-      {
-        "source": "/index.html",
-        "headers": [
-          { "key": "Cache-Control", "value": "no-cache" }
-        ]
-      },
-      {
-        "source": "/@(app|utils|notifications).js",
-        "headers": [
-          { "key": "Cache-Control", "value": "no-cache" }
-        ]
-      }
-    ]
-  }
+  "hosting": [
+    {
+      "target": "admin",
+      "public": "admin-app",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**",
+        "_splash-previews/**",
+        "screenshots/**",
+        "_old-logo-backup/**",
+        "_cache-test.html",
+        "themes-preview.html"
+      ],
+      "headers": [
+        {
+          "source": "**/*.@(jpg|jpeg|png|webp|svg|gif|ico)",
+          "headers": [
+            { "key": "Cache-Control", "value": "max-age=604800" }
+          ]
+        },
+        {
+          "source": "/index.html",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache" }
+          ]
+        },
+        {
+          "source": "/@(app|utils|notifications).js",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache" }
+          ]
+        }
+      ]
+    },
+    {
+      "target": "customer",
+      "public": "customer-app",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "headers": [
+        {
+          "source": "**/*.@(jpg|jpeg|png|webp|svg|gif|ico)",
+          "headers": [
+            { "key": "Cache-Control", "value": "max-age=604800" }
+          ]
+        },
+        {
+          "source": "/index.html",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache" }
+          ]
+        },
+        {
+          "source": "/@(app|utils).js",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache" }
+          ]
+        }
+      ]
+    }
+  ]
 }
