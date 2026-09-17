@@ -46,3 +46,5 @@ _structure.txt
 
 # Splash-screen design preview variants (view-only, not for deployment/repo)
 _splash-previews/
+
+.firebase/
