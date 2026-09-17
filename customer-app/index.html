@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="bn">
 <head>
 <meta charset="UTF-8">
@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#c2185b">
-<title>নিতুর বেকারি — অর্ডার ফর্ম</title>
+<title>à¦¨à¦¿à¦¤à§à¦° à¦¬à§‡à¦•à¦¾à¦°à¦¿ â€” à¦…à¦°à§à¦¡à¦¾à¦° à¦«à¦°à§à¦®</title>
 <link rel="icon" type="image/png" href="logo.png">
 <link rel="apple-touch-icon" href="logo.png">
 <link rel="manifest" href="manifest.json">
@@ -37,6 +37,10 @@ button{cursor:pointer}
 
 /* SPLASH (welcome, ~2.5s) */
 .splash-screen{position:fixed;inset:0;z-index:5000;background:#fbf4e8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .6s ease,visibility .6s}
+/* Client photo layer â€” random bakery photo behind the splash, slightly faded */
+.splash-bg{position:absolute;inset:0;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:.30;pointer-events:none}
+.splash-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(251,244,232,.25),rgba(251,244,232,.05) 45%,rgba(251,244,232,.35))}
+.splash-screen>*:not(.splash-bg){position:relative;z-index:2}
 .splash-screen.gone{opacity:0;visibility:hidden;pointer-events:none}
 .splash-fx{position:absolute;inset:0;pointer-events:none}
 .splash-blob{position:absolute;border-radius:50%;filter:blur(70px)}
@@ -140,10 +144,10 @@ button{cursor:pointer}
 .adv-method-opt{flex:1;padding:10px 6px;border:2px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-size:13px;font-weight:700;cursor:pointer;color:var(--text2);background:var(--surface2)}
 .adv-method-opt.active{border-color:var(--pink);background:var(--pink-light);color:var(--pink)}
 .adv-method-opt small{display:block;font-weight:500;font-size:10.5px;margin-top:2px;opacity:.75;color:inherit}
-/* Auto-calculated payment amount — grey box, bold; editable but warns on tap */
+/* Auto-calculated payment amount â€” grey box, bold; editable but warns on tap */
 input.advance-input{background:#eeeeee;border:1.5px solid #cfcfcf;font-weight:700;font-size:16px;color:var(--text)}
 input.advance-input:focus{border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-glow)}
-/* Due amount — auto-calculated, greyed out, read-only */
+/* Due amount â€” auto-calculated, greyed out, read-only */
 .due-field{display:none}
 .due-field.show{display:block}
 input.due-input{background:#eeeeee;border:1.5px solid #dcdcdc;color:#808080;font-weight:600;font-size:15px;cursor:not-allowed}
@@ -182,6 +186,13 @@ input.due-input:focus{outline:none;border-color:#dcdcdc;box-shadow:none}
 /* SUCCESS */
 .success-screen{display:none;text-align:center;padding:40px 20px;max-width:400px;margin:0 auto}
 .success-screen.active{display:block}
+/* Order photo card â€” screenshot card: random photo â†’ strong logo â†’ order info */
+.order-photo-card{position:relative;border-radius:18px;overflow:hidden;box-shadow:0 10px 26px rgba(0,0,0,.18);margin:16px 0 12px;background:#fbf4e8}
+.opc-photo{position:absolute;inset:0;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:.30}
+.opc-photo::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(251,244,232,.2),rgba(251,244,232,.05) 40%,rgba(251,244,232,.3))}
+.opc-logo{position:relative;z-index:2;width:130px;height:auto;display:block;margin:18px auto 8px;filter:drop-shadow(0 6px 16px rgba(0,0,0,.4))}
+.opc-inner{position:relative;z-index:3;background:rgba(255,255,255,.9);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);margin:0 10px 10px;border-radius:12px;padding:10px 12px;text-align:left}
+.order-photo-card .order-summary{margin:0}
 .success-icon{font-size:64px;margin-bottom:16px}
 .success-title{font-size:22px;font-weight:700;color:var(--text);margin-bottom:8px;font-family:'Hind Siliguri',sans-serif}
 .success-msg{font-size:15px;color:var(--text2);margin-bottom:24px;line-height:1.8;font-family:'Hind Siliguri',sans-serif}
@@ -215,7 +226,7 @@ input.due-input:focus{outline:none;border-color:#dcdcdc;box-shadow:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 @media print{body>*{display:none!important}}
-/* ── Admin quote (single-cake) ── */
+/* â”€â”€ Admin quote (single-cake) â”€â”€ */
 .quote-banner{display:none;margin:12px 0 0;padding:12px 14px;border-radius:9px;font-size:13.5px;font-weight:600;line-height:1.7}
 .quote-banner.show{display:block}
 .quote-banner.ok{display:block;background:#e8f5e9;border:1.5px solid #66bb6a;color:#1b5e20}
@@ -223,11 +234,11 @@ input.due-input:focus{outline:none;border-color:#dcdcdc;box-shadow:none}
 .locked-field{opacity:.62;background:#f3efe8!important;border-style:dashed!important;cursor:not-allowed}
 </style>
 <script>
-/* Noir Gold light theme — applied automatically, no user control */
+/* Noir Gold light theme â€” applied automatically, no user control */
 (function(){document.documentElement.classList.add('t-gold');})();
 </script>
 <style>
-/* ─── NOIR GOLD THEME (variable overrides only) ─── */
+/* â”€â”€â”€ NOIR GOLD THEME (variable overrides only) â”€â”€â”€ */
 html.t-gold{
   --text:#2a2317;--text2:#6f6350;--text3:#a2947a;--border:#e6dcc6;--border-focus:var(--pink);
   --surface:#fffcf5;--surface2:#f3ecdd;--bg:#f6f1e7;
@@ -237,7 +248,7 @@ html.t-gold{
   --shadow-md:0 4px 18px rgba(90,70,35,.10),0 1px 4px rgba(90,70,35,.05);
 }
 html.t-gold body{background:linear-gradient(rgba(246,241,231,.92),rgba(246,241,231,.96)),url('https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=75') center/cover fixed}
-/* Gold button text — dark ink on gold reads best */
+/* Gold button text â€” dark ink on gold reads best */
 html.t-gold .btn-primary,html.t-gold .weight-preset.active,html.t-gold .lang .on{color:#2a2317}
 /* Keep the login (entry) + splash screens exactly as designed */
 html.t-gold .entry-screen .field input,html.t-gold .entry-screen .field select,html.t-gold .entry-screen .field textarea{background:#fff;border-color:#e8e8f0;color:#1a1a2e}
@@ -252,11 +263,12 @@ html.t-gold .order-number-badge{color:#a5813e}
 
 <!-- SPLASH (welcome) -->
 <div class="splash-screen" id="splash-screen">
+<div class="splash-bg" id="splash-bg"></div>
   <div class="splash-fx" id="splash-fx">
     <div class="splash-blob sb1"></div><div class="splash-blob sb2"></div><div class="splash-blob sb3"></div>
   </div>
-  <img class="splash-logo" src="logo.png" alt="নিতুর বেকারি">
-  <div class="splash-chip">🎂 নিতুবাবুর্চীর পোর্টফোলিও</div>
+  <img class="splash-logo" src="logo.png" alt="à¦¨à¦¿à¦¤à§à¦° à¦¬à§‡à¦•à¦¾à¦°à¦¿">
+  <div class="splash-chip">ðŸŽ‚ à¦¨à¦¿à¦¤à§à¦¬à¦¾à¦¬à§à¦°à§à¦šà§€à¦° à¦ªà§‹à¦°à§à¦Ÿà¦«à§‹à¦²à¦¿à¦“</div>
   <div class="splash-moto">THE CAKE IS A CANVAS</div>
   <div class="splash-loader"><i></i></div>
 </div>
@@ -267,28 +279,28 @@ html.t-gold .order-number-badge{color:#a5813e}
     <div class="splash-blob sb1"></div><div class="splash-blob sb2"></div><div class="splash-blob sb3"></div>
   </div>
   <div class="entry-wrap">
-    <div class="entry-logo"><img src="logo.png" alt="নিতুর বেকারি"></div>
-    <div class="entry-brand">নিতুবাবুর্চীর পোর্টফোলিও</div>
+    <div class="entry-logo"><img src="logo.png" alt="à¦¨à¦¿à¦¤à§à¦° à¦¬à§‡à¦•à¦¾à¦°à¦¿"></div>
+    <div class="entry-brand">à¦¨à¦¿à¦¤à§à¦¬à¦¾à¦¬à§à¦°à§à¦šà§€à¦° à¦ªà§‹à¦°à§à¦Ÿà¦«à§‹à¦²à¦¿à¦“</div>
     <div class="entry-moto">The Cake Is A Canvas</div>
   <div class="entry-box">
     <div class="lang-row">
-      <button class="lang-btn active" id="lang-bn" onclick="setLang('bn')">বাংলা</button>
+      <button class="lang-btn active" id="lang-bn" onclick="setLang('bn')">à¦¬à¦¾à¦‚à¦²à¦¾</button>
       <button class="lang-btn" id="lang-en" onclick="setLang('en')">English</button>
     </div>
     <div class="entry-error" id="entry-error"></div>
     <div class="field">
-      <label data-bn="ফোন নম্বর *" data-en="Phone Number *">ফোন নম্বর *</label>
+      <label data-bn="à¦«à§‹à¦¨ à¦¨à¦®à§à¦¬à¦° *" data-en="Phone Number *">à¦«à§‹à¦¨ à¦¨à¦®à§à¦¬à¦° *</label>
       <input type="tel" id="entry-phone" placeholder="017xx-xxxxxx" autocomplete="tel" maxlength="14">
     </div>
     <div class="security-box" id="security-box">
       <label id="security-label"></label>
-      <input type="text" inputmode="numeric" id="entry-security" placeholder="উত্তর">
+      <input type="text" inputmode="numeric" id="entry-security" placeholder="à¦‰à¦¤à§à¦¤à¦°">
     </div>
     <div class="previous-orders" id="previous-orders">
       <div class="previous-orders-title" id="prev-title"></div>
       <div id="prev-list"></div>
     </div>
-    <button class="btn-primary" id="entry-btn" onclick="handleEntry()">অর্ডার শুরু করুন</button>
+    <button class="btn-primary" id="entry-btn" onclick="handleEntry()">à¦…à¦°à§à¦¡à¦¾à¦° à¦¶à§à¦°à§ à¦•à¦°à§à¦¨</button>
   </div>
   </div>
 </div>
@@ -296,183 +308,183 @@ html.t-gold .order-number-badge{color:#a5813e}
 <!-- FORM SCREEN -->
 <div class="form-screen" id="form-screen">
   <div class="form-header">
-    <img src="logo.png" alt="নিতুর বেকারি">
-    <h2 data-bn="আপনার অর্ডার দিন" data-en="Place Your Order">আপনার অর্ডার দিন</h2>
-    <div class="order-number-badge">অর্ডার নম্বর: <span id="form-order-id"></span></div>
+    <img src="logo.png" alt="à¦¨à¦¿à¦¤à§à¦° à¦¬à§‡à¦•à¦¾à¦°à¦¿">
+    <h2 data-bn="à¦†à¦ªà¦¨à¦¾à¦° à¦…à¦°à§à¦¡à¦¾à¦° à¦¦à¦¿à¦¨" data-en="Place Your Order">à¦†à¦ªà¦¨à¦¾à¦° à¦…à¦°à§à¦¡à¦¾à¦° à¦¦à¦¿à¦¨</h2>
+    <div class="order-number-badge">à¦…à¦°à§à¦¡à¦¾à¦° à¦¨à¦®à§à¦¬à¦°: <span id="form-order-id"></span></div>
     <div class="quote-banner" id="quote-banner"></div>
-    <button type="button" class="previous-orders-btn" onclick="showPreviousOrders()" data-bn="🧾 আপনার পূর্ববর্তী অর্ডার" data-en="🧾 Your Previous Orders">🧾 আপনার পূর্ববর্তী অর্ডার</button>
+    <button type="button" class="previous-orders-btn" onclick="showPreviousOrders()" data-bn="ðŸ§¾ à¦†à¦ªà¦¨à¦¾à¦° à¦ªà§‚à¦°à§à¦¬à¦¬à¦°à§à¦¤à§€ à¦…à¦°à§à¦¡à¦¾à¦°" data-en="ðŸ§¾ Your Previous Orders">ðŸ§¾ à¦†à¦ªà¦¨à¦¾à¦° à¦ªà§‚à¦°à§à¦¬à¦¬à¦°à§à¦¤à§€ à¦…à¦°à§à¦¡à¦¾à¦°</button>
   </div>
   <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
 
   <!-- CAKE INFO -->
   <div class="section">
-    <div class="section-title">🎂 <span data-bn="কেক তথ্য" data-en="Cake Details">কেক তথ্য</span></div>
+    <div class="section-title">ðŸŽ‚ <span data-bn="à¦•à§‡à¦• à¦¤à¦¥à§à¦¯" data-en="Cake Details">à¦•à§‡à¦• à¦¤à¦¥à§à¦¯</span></div>
     <div class="field">
-      <label data-bn="আপনার নাম *" data-en="Your Name *">আপনার নাম *</label>
+      <label data-bn="à¦†à¦ªà¦¨à¦¾à¦° à¦¨à¦¾à¦® *" data-en="Your Name *">à¦†à¦ªà¦¨à¦¾à¦° à¦¨à¦¾à¦® *</label>
       <input type="text" id="f-name" placeholder="Place your exact Facebook profile name here">
-      <div class="hint-box">Facebook প্রোফাইলে যে নাম আছে, ঠিক সেভাবে লিখুন — যেন আমরা আপনাকে সহজে খুঁজে পাই।</div>
+      <div class="hint-box">Facebook à¦ªà§à¦°à§‹à¦«à¦¾à¦‡à¦²à§‡ à¦¯à§‡ à¦¨à¦¾à¦® à¦†à¦›à§‡, à¦ à¦¿à¦• à¦¸à§‡à¦­à¦¾à¦¬à§‡ à¦²à¦¿à¦–à§à¦¨ â€” à¦¯à§‡à¦¨ à¦†à¦®à¦°à¦¾ à¦†à¦ªà¦¨à¦¾à¦•à§‡ à¦¸à¦¹à¦œà§‡ à¦–à§à¦à¦œà§‡ à¦ªà¦¾à¦‡à¥¤</div>
     </div>
     <div class="field">
       <div style="display:flex;align-items:center;gap:5px">
-        <label data-bn="ওজন * (পাউন্ড বা KG)" data-en="Weight * (pound or KG)">ওজন * (পাউন্ড বা KG)</label>
-        <button type="button" title="বেস মূল্য নির্দেশিকা / Base price guide" onclick="showTextPopup('base price.txt', 'বেস মূল্য নির্দেশিকা')" style="background:none;border:none;font-size:13px;line-height:1;cursor:pointer;padding:0 2px;color:var(--pink)">❗</button>
+        <label data-bn="à¦“à¦œà¦¨ * (à¦ªà¦¾à¦‰à¦¨à§à¦¡ à¦¬à¦¾ KG)" data-en="Weight * (pound or KG)">à¦“à¦œà¦¨ * (à¦ªà¦¾à¦‰à¦¨à§à¦¡ à¦¬à¦¾ KG)</label>
+        <button type="button" title="à¦¬à§‡à¦¸ à¦®à§‚à¦²à§à¦¯ à¦¨à¦¿à¦°à§à¦¦à§‡à¦¶à¦¿à¦•à¦¾ / Base price guide" onclick="showTextPopup('base price.txt', 'à¦¬à§‡à¦¸ à¦®à§‚à¦²à§à¦¯ à¦¨à¦¿à¦°à§à¦¦à§‡à¦¶à¦¿à¦•à¦¾')" style="background:none;border:none;font-size:13px;line-height:1;cursor:pointer;padding:0 2px;color:var(--pink)">â—</button>
       </div>
-      <input type="text" id="f-weight" placeholder="যেমন: 2 pound, 2.5 pound, 1 KG" data-bn-placeholder="যেমন: 2 pound, 2.5 pound, 1 KG" data-en-placeholder="Example: 2 pound, 2.5 pound, 1 KG" autocomplete="off" oninput="updateWeightHint();recalcPrice()">
+      <input type="text" id="f-weight" placeholder="à¦¯à§‡à¦®à¦¨: 2 pound, 2.5 pound, 1 KG" data-bn-placeholder="à¦¯à§‡à¦®à¦¨: 2 pound, 2.5 pound, 1 KG" data-en-placeholder="Example: 2 pound, 2.5 pound, 1 KG" autocomplete="off" oninput="updateWeightHint();recalcPrice()">
       <div class="weight-presets">
-        <button type="button" class="weight-preset" id="wp-mini" onclick="setWeightPreset('mini', this)">🍰 <span data-bn="মিনি কেক" data-en="Mini Cake">মিনি কেক</span></button>
-        <button type="button" class="weight-preset" id="wp-medium" onclick="setWeightPreset('medium', this)">🎂 <span data-bn="মিডিয়াম কেক" data-en="Medium Cake">মিডিয়াম কেক</span></button>
+        <button type="button" class="weight-preset" id="wp-mini" onclick="setWeightPreset('mini', this)">ðŸ° <span data-bn="à¦®à¦¿à¦¨à¦¿ à¦•à§‡à¦•" data-en="Mini Cake">à¦®à¦¿à¦¨à¦¿ à¦•à§‡à¦•</span></button>
+        <button type="button" class="weight-preset" id="wp-medium" onclick="setWeightPreset('medium', this)">ðŸŽ‚ <span data-bn="à¦®à¦¿à¦¡à¦¿à¦¯à¦¼à¦¾à¦® à¦•à§‡à¦•" data-en="Medium Cake">à¦®à¦¿à¦¡à¦¿à¦¯à¦¼à¦¾à¦® à¦•à§‡à¦•</span></button>
       </div>
       <div class="hint-box" id="weight-hint"></div>
     </div>
     <div class="field">
       <div style="display:flex;align-items:center;gap:5px">
-        <label data-bn="ফ্লেভার *" data-en="Flavour *">ফ্লেভার *</label>
-        <button type="button" title="ফ্লেভার নির্দেশিকা / Flavour guide" onclick="showFlavourPopup()" style="background:none;border:none;font-size:13px;line-height:1;cursor:pointer;padding:0 2px;color:var(--pink)">❗</button>
+        <label data-bn="à¦«à§à¦²à§‡à¦­à¦¾à¦° *" data-en="Flavour *">à¦«à§à¦²à§‡à¦­à¦¾à¦° *</label>
+        <button type="button" title="à¦«à§à¦²à§‡à¦­à¦¾à¦° à¦¨à¦¿à¦°à§à¦¦à§‡à¦¶à¦¿à¦•à¦¾ / Flavour guide" onclick="showFlavourPopup()" style="background:none;border:none;font-size:13px;line-height:1;cursor:pointer;padding:0 2px;color:var(--pink)">â—</button>
       </div>
-      <select id="f-flavour" onfocus="showFlavourNotice()"><option value="">নির্বাচন করুন</option></select>
-      <div class="note-box">সব ফ্লেভার সব সময় পাওয়া নাও যেতে পারে। কিছু ফ্লেভারের জন্য নির্দিষ্ট ওজন প্রয়োজন। বিস্তারিত জানতে আমাদের Facebook পেজে যোগাযোগ করুন।</div>
+      <select id="f-flavour" onfocus="showFlavourNotice()"><option value="">à¦¨à¦¿à¦°à§à¦¬à¦¾à¦šà¦¨ à¦•à¦°à§à¦¨</option></select>
+      <div class="note-box">à¦¸à¦¬ à¦«à§à¦²à§‡à¦­à¦¾à¦° à¦¸à¦¬ à¦¸à¦®à¦¯à¦¼ à¦ªà¦¾à¦“à¦¯à¦¼à¦¾ à¦¨à¦¾à¦“ à¦¯à§‡à¦¤à§‡ à¦ªà¦¾à¦°à§‡à¥¤ à¦•à¦¿à¦›à§ à¦«à§à¦²à§‡à¦­à¦¾à¦°à§‡à¦° à¦œà¦¨à§à¦¯ à¦¨à¦¿à¦°à§à¦¦à¦¿à¦·à§à¦Ÿ à¦“à¦œà¦¨ à¦ªà§à¦°à¦¯à¦¼à§‹à¦œà¦¨à¥¤ à¦¬à¦¿à¦¸à§à¦¤à¦¾à¦°à¦¿à¦¤ à¦œà¦¾à¦¨à¦¤à§‡ à¦†à¦®à¦¾à¦¦à§‡à¦° Facebook à¦ªà§‡à¦œà§‡ à¦¯à§‹à¦—à¦¾à¦¯à§‹à¦— à¦•à¦°à§à¦¨à¥¤</div>
     </div>
     <div class="field">
       <div style="display:flex;align-items:center;gap:5px">
-        <label data-bn="কেকে কী লিখতে চান? (ঐচ্ছিক)" data-en="Cake writing text (Optional)">কেকে কী লিখতে চান? (ঐচ্ছিক)</label>
-        <button type="button" title="লেখার নীতিমালা / Writing policy" onclick="showCakeWritingPolicy()" style="background:none;border:none;font-size:13px;line-height:1;cursor:pointer;padding:0 2px;color:var(--pink)">❗</button>
+        <label data-bn="à¦•à§‡à¦•à§‡ à¦•à§€ à¦²à¦¿à¦–à¦¤à§‡ à¦šà¦¾à¦¨? (à¦à¦šà§à¦›à¦¿à¦•)" data-en="Cake writing text (Optional)">à¦•à§‡à¦•à§‡ à¦•à§€ à¦²à¦¿à¦–à¦¤à§‡ à¦šà¦¾à¦¨? (à¦à¦šà§à¦›à¦¿à¦•)</label>
+        <button type="button" title="à¦²à§‡à¦–à¦¾à¦° à¦¨à§€à¦¤à¦¿à¦®à¦¾à¦²à¦¾ / Writing policy" onclick="showCakeWritingPolicy()" style="background:none;border:none;font-size:13px;line-height:1;cursor:pointer;padding:0 2px;color:var(--pink)">â—</button>
       </div>
-      <textarea id="f-writing" placeholder="যেমন: তোমার হাসিই আমাদের ঘরের আলো" onfocus="showCakeWritingNotice()" onclick="showCakeWritingNotice()" oninput="updateWritingCount()"></textarea>
+      <textarea id="f-writing" placeholder="à¦¯à§‡à¦®à¦¨: à¦¤à§‹à¦®à¦¾à¦° à¦¹à¦¾à¦¸à¦¿à¦‡ à¦†à¦®à¦¾à¦¦à§‡à¦° à¦˜à¦°à§‡à¦° à¦†à¦²à§‹" onfocus="showCakeWritingNotice()" onclick="showCakeWritingNotice()" oninput="updateWritingCount()"></textarea>
       <div id="writing-count" style="font-size:10.5px;color:var(--text3);text-align:right;margin-top:3px">0 / 500</div>
-      <div class="hint-box">Religious issue তে Happy Birthday/Anniversary এই টাইপ উইশ লিখা হয়না । এছাড়া যেকোনো নোট/নাম/কোট/meaningful যেকোনো লিখা দিতে পারেন।</div>
+      <div class="hint-box">Religious issue à¦¤à§‡ Happy Birthday/Anniversary à¦à¦‡ à¦Ÿà¦¾à¦‡à¦ª à¦‰à¦‡à¦¶ à¦²à¦¿à¦–à¦¾ à¦¹à¦¯à¦¼à¦¨à¦¾ à¥¤ à¦à¦›à¦¾à¦¡à¦¼à¦¾ à¦¯à§‡à¦•à§‹à¦¨à§‹ à¦¨à§‹à¦Ÿ/à¦¨à¦¾à¦®/à¦•à§‹à¦Ÿ/meaningful à¦¯à§‡à¦•à§‹à¦¨à§‹ à¦²à¦¿à¦–à¦¾ à¦¦à¦¿à¦¤à§‡ à¦ªà¦¾à¦°à§‡à¦¨à¥¤</div>
     </div>
     <div class="field">
-      <label data-bn="রেফারেন্স ছবি (ঐচ্ছিক)" data-en="Reference Photo (Optional)">রেফারেন্স ছবি (ঐচ্ছিক)</label>
-      <div class="photo-upload" onclick="document.getElementById('f-photo').click()">📎<div>ছবি আপলোড করুন</div></div>
+      <label data-bn="à¦°à§‡à¦«à¦¾à¦°à§‡à¦¨à§à¦¸ à¦›à¦¬à¦¿ (à¦à¦šà§à¦›à¦¿à¦•)" data-en="Reference Photo (Optional)">à¦°à§‡à¦«à¦¾à¦°à§‡à¦¨à§à¦¸ à¦›à¦¬à¦¿ (à¦à¦šà§à¦›à¦¿à¦•)</label>
+      <div class="photo-upload" onclick="document.getElementById('f-photo').click()">ðŸ“Ž<div>à¦›à¦¬à¦¿ à¦†à¦ªà¦²à§‹à¦¡ à¦•à¦°à§à¦¨</div></div>
       <input type="file" id="f-photo" accept="image/*" multiple style="display:none" onchange="handlePhoto(event)">
       <div class="photo-grid" id="photo-grid"></div>
-      <div style="font-size:11px;color:var(--text3);margin-top:4px">📸 একাধিক ছবি দিতে পারেন (সর্বোচ্চ ৪টি)</div>
-      <label data-bn="ছবির নোট (ঐচ্ছিক)" data-en="Photo Note (Optional)" style="margin-top:10px">ছবির নোট (ঐচ্ছিক)</label>
-      <textarea id="f-photo-note" placeholder="যেমন: কেকের কালার থিমটা রেড থেকে পিংক করতে চাচ্ছি"></textarea>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">ðŸ“¸ à¦à¦•à¦¾à¦§à¦¿à¦• à¦›à¦¬à¦¿ à¦¦à¦¿à¦¤à§‡ à¦ªà¦¾à¦°à§‡à¦¨ (à¦¸à¦°à§à¦¬à§‹à¦šà§à¦š à§ªà¦Ÿà¦¿)</div>
+      <label data-bn="à¦›à¦¬à¦¿à¦° à¦¨à§‹à¦Ÿ (à¦à¦šà§à¦›à¦¿à¦•)" data-en="Photo Note (Optional)" style="margin-top:10px">à¦›à¦¬à¦¿à¦° à¦¨à§‹à¦Ÿ (à¦à¦šà§à¦›à¦¿à¦•)</label>
+      <textarea id="f-photo-note" placeholder="à¦¯à§‡à¦®à¦¨: à¦•à§‡à¦•à§‡à¦° à¦•à¦¾à¦²à¦¾à¦° à¦¥à¦¿à¦®à¦Ÿà¦¾ à¦°à§‡à¦¡ à¦¥à§‡à¦•à§‡ à¦ªà¦¿à¦‚à¦• à¦•à¦°à¦¤à§‡ à¦šà¦¾à¦šà§à¦›à¦¿"></textarea>
     </div>
   </div>
 
   <!-- DELIVERY -->
   <div class="section">
-    <div class="section-title">🚚 <span data-bn="ডেলিভারি তথ্য" data-en="Delivery Info">ডেলিভারি তথ্য</span></div>
+    <div class="section-title">ðŸšš <span data-bn="à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦¤à¦¥à§à¦¯" data-en="Delivery Info">à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦¤à¦¥à§à¦¯</span></div>
     <div class="field">
-      <label data-bn="ডেলিভারি ঠিকানা *" data-en="Delivery Address *">ডেলিভারি ঠিকানা *</label>
-      <textarea id="f-address" placeholder="পূর্ণ ঠিকানা লিখুন"></textarea>
+      <label data-bn="à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦ à¦¿à¦•à¦¾à¦¨à¦¾ *" data-en="Delivery Address *">à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦ à¦¿à¦•à¦¾à¦¨à¦¾ *</label>
+      <textarea id="f-address" placeholder="à¦ªà§‚à¦°à§à¦£ à¦ à¦¿à¦•à¦¾à¦¨à¦¾ à¦²à¦¿à¦–à§à¦¨"></textarea>
     </div>
     <div class="field delivery-charge-field" id="delivery-charge-field">
-      <label>ডেলিভারি চার্জ (ফাঁকা রাখলে বাকি ⏳ — এজেন্টকে দিতে হবে)</label>
-      <input type="number" id="f-delivery-charge" min="0" step="1" placeholder="জানা থাকলে লিখুন, না জানলে ফাঁকা রাখুন" oninput="recalcPrice()">
-      <div class="note-box" id="dc-agent-note">এই চার্জটি কেকের দামের অংশ নয়। পুরো টাকা ডেলিভারি এজেন্টকে দেওয়া হবে।</div>
-      <div class="note-box" id="dc-pickup-note" style="display:none">🚫 ডেলিভারি চার্জ প্রযোজ্য নয় — আপনি নিজেই দোকান থেকে কেক নিয়ে নেবেন।</div>
+      <label>à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦šà¦¾à¦°à§à¦œ (à¦«à¦¾à¦à¦•à¦¾ à¦°à¦¾à¦–à¦²à§‡ à¦¬à¦¾à¦•à¦¿ â³ â€” à¦à¦œà§‡à¦¨à§à¦Ÿà¦•à§‡ à¦¦à¦¿à¦¤à§‡ à¦¹à¦¬à§‡)</label>
+      <input type="number" id="f-delivery-charge" min="0" step="1" placeholder="à¦œà¦¾à¦¨à¦¾ à¦¥à¦¾à¦•à¦²à§‡ à¦²à¦¿à¦–à§à¦¨, à¦¨à¦¾ à¦œà¦¾à¦¨à¦²à§‡ à¦«à¦¾à¦à¦•à¦¾ à¦°à¦¾à¦–à§à¦¨" oninput="recalcPrice()">
+      <div class="note-box" id="dc-agent-note">à¦à¦‡ à¦šà¦¾à¦°à§à¦œà¦Ÿà¦¿ à¦•à§‡à¦•à§‡à¦° à¦¦à¦¾à¦®à§‡à¦° à¦…à¦‚à¦¶ à¦¨à¦¯à¦¼à¥¤ à¦ªà§à¦°à§‹ à¦Ÿà¦¾à¦•à¦¾ à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦à¦œà§‡à¦¨à§à¦Ÿà¦•à§‡ à¦¦à§‡à¦“à¦¯à¦¼à¦¾ à¦¹à¦¬à§‡à¥¤</div>
+      <div class="note-box" id="dc-pickup-note" style="display:none">ðŸš« à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦šà¦¾à¦°à§à¦œ à¦ªà§à¦°à¦¯à§‹à¦œà§à¦¯ à¦¨à¦¯à¦¼ â€” à¦†à¦ªà¦¨à¦¿ à¦¨à¦¿à¦œà§‡à¦‡ à¦¦à§‹à¦•à¦¾à¦¨ à¦¥à§‡à¦•à§‡ à¦•à§‡à¦• à¦¨à¦¿à¦¯à¦¼à§‡ à¦¨à§‡à¦¬à§‡à¦¨à¥¤</div>
     </div>
     <div class="row2">
       <div class="field">
-        <label data-bn="ডেলিভারির তারিখ *" data-en="Delivery Date *">ডেলিভারির তারিখ *</label>
+        <label data-bn="à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿à¦° à¦¤à¦¾à¦°à¦¿à¦– *" data-en="Delivery Date *">à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿à¦° à¦¤à¦¾à¦°à¦¿à¦– *</label>
         <input type="date" id="f-date">
       </div>
       <div class="field">
-        <label data-bn="ডেলিভারির সময় *" data-en="Delivery Time *">ডেলিভারির সময় *</label>
+        <label data-bn="à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿à¦° à¦¸à¦®à¦¯à¦¼ *" data-en="Delivery Time *">à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿à¦° à¦¸à¦®à¦¯à¦¼ *</label>
         <div style="display:flex;gap:6px">
-          <input type="text" id="f-timeslot" inputmode="decimal" placeholder="যেমন: 3.00" data-bn-placeholder="যেমন: 3.00" data-en-placeholder="Example: 3.00" autocomplete="off" style="flex:1;min-width:0" onblur="normalizeTimeInput()">
+          <input type="text" id="f-timeslot" inputmode="decimal" placeholder="à¦¯à§‡à¦®à¦¨: 3.00" data-bn-placeholder="à¦¯à§‡à¦®à¦¨: 3.00" data-en-placeholder="Example: 3.00" autocomplete="off" style="flex:1;min-width:0" onblur="normalizeTimeInput()">
           <select id="f-time-ampm" style="width:84px;flex-shrink:0">
             <option value="">--</option>
             <option value="AM">AM</option>
             <option value="PM">PM</option>
           </select>
         </div>
-        <div class="note-box">নিরাপত্তার জন্য ডেলিভারি সর্বোচ্চ রাত ৮টা পর্যন্ত করা হয়।</div>
+        <div class="note-box">à¦¨à¦¿à¦°à¦¾à¦ªà¦¤à§à¦¤à¦¾à¦° à¦œà¦¨à§à¦¯ à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦¸à¦°à§à¦¬à§‹à¦šà§à¦š à¦°à¦¾à¦¤ à§®à¦Ÿà¦¾ à¦ªà¦°à§à¦¯à¦¨à§à¦¤ à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à¥¤</div>
       </div>
     </div>
     <div class="row2">
       <div class="field">
-        <label data-bn="রিসিভারের নাম *" data-en="Receiver Name *">রিসিভারের নাম *</label>
-        <input type="text" id="f-receiver" placeholder="কে নেবেন">
+        <label data-bn="à¦°à¦¿à¦¸à¦¿à¦­à¦¾à¦°à§‡à¦° à¦¨à¦¾à¦® *" data-en="Receiver Name *">à¦°à¦¿à¦¸à¦¿à¦­à¦¾à¦°à§‡à¦° à¦¨à¦¾à¦® *</label>
+        <input type="text" id="f-receiver" placeholder="à¦•à§‡ à¦¨à§‡à¦¬à§‡à¦¨">
       </div>
       <div class="field">
-        <label data-bn="রিসিভারের ফোন *" data-en="Receiver Phone *">রিসিভারের ফোন *</label>
+        <label data-bn="à¦°à¦¿à¦¸à¦¿à¦­à¦¾à¦°à§‡à¦° à¦«à§‹à¦¨ *" data-en="Receiver Phone *">à¦°à¦¿à¦¸à¦¿à¦­à¦¾à¦°à§‡à¦° à¦«à§‹à¦¨ *</label>
         <input type="tel" id="f-receiver-phone" placeholder="017xx-xxxxxx" maxlength="14">
       </div>
     </div>
     <div class="field">
-      <label data-bn="সারপ্রাইজ কেক?" data-en="Surprise Cake?">সারপ্রাইজ কেক?</label>
+      <label data-bn="à¦¸à¦¾à¦°à¦ªà§à¦°à¦¾à¦‡à¦œ à¦•à§‡à¦•?" data-en="Surprise Cake?">à¦¸à¦¾à¦°à¦ªà§à¦°à¦¾à¦‡à¦œ à¦•à§‡à¦•?</label>
       <select id="f-surprise">
-        <option value="no">না</option>
-        <option value="yes">হ্যাঁ — সারপ্রাইজ 🎁</option>
+        <option value="no">à¦¨à¦¾</option>
+        <option value="yes">à¦¹à§à¦¯à¦¾à¦ â€” à¦¸à¦¾à¦°à¦ªà§à¦°à¦¾à¦‡à¦œ ðŸŽ</option>
       </select>
-      <div class="surprise-note" id="surprise-note">⚠️ সারপ্রাইজ কেকের জন্য ১০০% অগ্রিম পেমেন্ট আবশ্যক।</div>
+      <div class="surprise-note" id="surprise-note">âš ï¸ à¦¸à¦¾à¦°à¦ªà§à¦°à¦¾à¦‡à¦œ à¦•à§‡à¦•à§‡à¦° à¦œà¦¨à§à¦¯ à§§à§¦à§¦% à¦…à¦—à§à¦°à¦¿à¦® à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ à¦†à¦¬à¦¶à§à¦¯à¦•à¥¤</div>
     </div>
     <div class="field">
-      <label>ডেলিভারি ধরন *</label>
-      <select id="f-fulfilment" onchange="onFulfilmentChange()"><option value="delivery">ডেলিভারি</option><option value="pickup">সেলফ পিকআপ</option></select>
-      <div class="pickup-box" id="pickup-box">সেলফ পিকআপ ঠিকানা: Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram.<br><a href="https://maps.app.goo.gl/vAk44BoEWRbppBuz8" target="_blank" rel="noopener">Google Maps-এ ঠিকানা খুলুন</a></div>
+      <label>à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦§à¦°à¦¨ *</label>
+      <select id="f-fulfilment" onchange="onFulfilmentChange()"><option value="delivery">à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿</option><option value="pickup">à¦¸à§‡à¦²à¦« à¦ªà¦¿à¦•à¦†à¦ª</option></select>
+      <div class="pickup-box" id="pickup-box">à¦¸à§‡à¦²à¦« à¦ªà¦¿à¦•à¦†à¦ª à¦ à¦¿à¦•à¦¾à¦¨à¦¾: Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram.<br><a href="https://maps.app.goo.gl/vAk44BoEWRbppBuz8" target="_blank" rel="noopener">Google Maps-à¦ à¦ à¦¿à¦•à¦¾à¦¨à¦¾ à¦–à§à¦²à§à¦¨</a></div>
     </div>
   </div>
 
   <!-- PAYMENT -->
   <div class="section">
-    <div class="section-title">💳 <span data-bn="পেমেন্ট" data-en="Payment">পেমেন্ট</span></div>
+    <div class="section-title">ðŸ’³ <span data-bn="à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ" data-en="Payment">à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ</span></div>
     <div class="field">
-      <label data-bn="কেকের নির্ধারিত মূল্য * (৳)" data-en="Total payment of the cake * (Tk)">কেকের নির্ধারিত মূল্য * (৳)</label>
-      <input type="number" id="f-cake-price" min="0" placeholder="কেকের মূল্য লিখুন" data-bn-placeholder="কেকের মূল্য লিখুন" data-en-placeholder="Enter cake price" oninput="recalcPrice()">
+      <label data-bn="à¦•à§‡à¦•à§‡à¦° à¦¨à¦¿à¦°à§à¦§à¦¾à¦°à¦¿à¦¤ à¦®à§‚à¦²à§à¦¯ * (à§³)" data-en="Total payment of the cake * (Tk)">à¦•à§‡à¦•à§‡à¦° à¦¨à¦¿à¦°à§à¦§à¦¾à¦°à¦¿à¦¤ à¦®à§‚à¦²à§à¦¯ * (à§³)</label>
+      <input type="number" id="f-cake-price" min="0" placeholder="à¦•à§‡à¦•à§‡à¦° à¦®à§‚à¦²à§à¦¯ à¦²à¦¿à¦–à§à¦¨" data-bn-placeholder="à¦•à§‡à¦•à§‡à¦° à¦®à§‚à¦²à§à¦¯ à¦²à¦¿à¦–à§à¦¨" data-en-placeholder="Enter cake price" oninput="recalcPrice()">
     </div>
     <div class="calc-box" id="calc-box">
-      <div class="calc-row"><span>কেকের মূল্য:</span><span id="calc-base">৳0</span></div>
-      <div class="calc-row"><span>ডেলিভারি:</span><span id="calc-delivery">৳0</span></div>
-      <div class="calc-row total"><span>মোট পেমেন্ট:</span><span id="calc-total">৳0</span></div>
+      <div class="calc-row"><span>à¦•à§‡à¦•à§‡à¦° à¦®à§‚à¦²à§à¦¯:</span><span id="calc-base">à§³0</span></div>
+      <div class="calc-row"><span>à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿:</span><span id="calc-delivery">à§³0</span></div>
+      <div class="calc-row total"><span>à¦®à§‹à¦Ÿ à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ:</span><span id="calc-total">à§³0</span></div>
     </div>
     <div class="field">
-      <label data-bn="পেমেন্ট পদ্ধতি *" data-en="Payment Method *">পেমেন্ট পদ্ধতি *</label>
+      <label data-bn="à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ à¦ªà¦¦à§à¦§à¦¤à¦¿ *" data-en="Payment Method *">à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ à¦ªà¦¦à§à¦§à¦¤à¦¿ *</label>
       <select id="f-payment-method" onchange="onPaymentChange()">
-        <option value="">নির্বাচন করুন</option>
+        <option value="">à¦¨à¦¿à¦°à§à¦¬à¦¾à¦šà¦¨ à¦•à¦°à§à¦¨</option>
       </select>
     </div>
     <div class="payment-info-box" id="payment-info"></div>
     <div class="field">
-      <label data-bn="আপনি কিভাবে পেমেন্ট করেছেন? *" data-en="Payment method *">আপনি কিভাবে পেমেন্ট করেছেন? *</label>
+      <label data-bn="à¦†à¦ªà¦¨à¦¿ à¦•à¦¿à¦­à¦¾à¦¬à§‡ à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ à¦•à¦°à§‡à¦›à§‡à¦¨? *" data-en="Payment method *">à¦†à¦ªà¦¨à¦¿ à¦•à¦¿à¦­à¦¾à¦¬à§‡ à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ à¦•à¦°à§‡à¦›à§‡à¦¨? *</label>
       <div class="adv-method-grid" id="adv-method-grid">
-        <div class="adv-method-opt" id="adv-opt-bkash" onclick="chooseAdvanceMethod('bkash')">বিকাশ<small>চার্জ ১.৮২%</small></div>
-        <div class="adv-method-opt" id="adv-opt-nagad" onclick="chooseAdvanceMethod('nagad')">নগদ<small>চার্জ ১.৪৯%</small></div>
-        <div class="adv-method-opt" id="adv-opt-bank" onclick="chooseAdvanceMethod('bank')">ব্যাংক<small>চার্জ নেই</small></div>
+        <div class="adv-method-opt" id="adv-opt-bkash" onclick="chooseAdvanceMethod('bkash')">à¦¬à¦¿à¦•à¦¾à¦¶<small>à¦šà¦¾à¦°à§à¦œ à§§.à§®à§¨%</small></div>
+        <div class="adv-method-opt" id="adv-opt-nagad" onclick="chooseAdvanceMethod('nagad')">à¦¨à¦—à¦¦<small>à¦šà¦¾à¦°à§à¦œ à§§.à§ªà§¯%</small></div>
+        <div class="adv-method-opt" id="adv-opt-bank" onclick="chooseAdvanceMethod('bank')">à¦¬à§à¦¯à¦¾à¦‚à¦•<small>à¦šà¦¾à¦°à§à¦œ à¦¨à§‡à¦‡</small></div>
       </div>
     </div>
     <div class="field">
-      <label data-bn="আপনি কত টাকা পাঠাতে চান? *" data-en="How much do you want to send? *">আপনি কত টাকা পাঠাতে চান? *</label>
+      <label data-bn="à¦†à¦ªà¦¨à¦¿ à¦•à¦¤ à¦Ÿà¦¾à¦•à¦¾ à¦ªà¦¾à¦ à¦¾à¦¤à§‡ à¦šà¦¾à¦¨? *" data-en="How much do you want to send? *">à¦†à¦ªà¦¨à¦¿ à¦•à¦¤ à¦Ÿà¦¾à¦•à¦¾ à¦ªà¦¾à¦ à¦¾à¦¤à§‡ à¦šà¦¾à¦¨? *</label>
       <div class="advance-options" id="advance-options">
-        <div class="advance-opt" id="opt-50" onclick="setAdvanceType('50')">৫০% অগ্রিম</div>
-        <div class="advance-opt" id="opt-full" onclick="setAdvanceType('full')">১০০% পরিশোধ</div>
+        <div class="advance-opt" id="opt-50" onclick="setAdvanceType('50')">à§«à§¦% à¦…à¦—à§à¦°à¦¿à¦®</div>
+        <div class="advance-opt" id="opt-full" onclick="setAdvanceType('full')">à§§à§¦à§¦% à¦ªà¦°à¦¿à¦¶à§‹à¦§</div>
       </div>
-      <input type="number" id="f-advance" class="advance-input" placeholder="৳ পরিমাণ লিখুন" min="0" oninput="recalcPrice(true)" onclick="onAdvanceClick()" onfocus="onAdvanceClick()">
+      <input type="number" id="f-advance" class="advance-input" placeholder="à§³ à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦²à¦¿à¦–à§à¦¨" min="0" oninput="recalcPrice(true)" onclick="onAdvanceClick()" onfocus="onAdvanceClick()">
       <div class="hint-box" id="advance-hint"></div>
     </div>
 
-    <!-- Due amount: auto-calculated (total − advance), greyed out, read-only -->
+    <!-- Due amount: auto-calculated (total âˆ’ advance), greyed out, read-only -->
     <div class="field due-field" id="due-field">
-      <label data-bn="বাকি পেমেন্ট (অটো হিসাব)" data-en="Due amount (auto-calculated)">বাকি পেমেন্ট (অটো হিসাব)</label>
-      <input type="text" id="f-due" class="due-input" readonly tabindex="-1" onfocus="this.blur()" placeholder="৳ 0">
+      <label data-bn="à¦¬à¦¾à¦•à¦¿ à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ (à¦…à¦Ÿà§‹ à¦¹à¦¿à¦¸à¦¾à¦¬)" data-en="Due amount (auto-calculated)">à¦¬à¦¾à¦•à¦¿ à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ (à¦…à¦Ÿà§‹ à¦¹à¦¿à¦¸à¦¾à¦¬)</label>
+      <input type="text" id="f-due" class="due-input" readonly tabindex="-1" onfocus="this.blur()" placeholder="à§³ 0">
       <div class="hint-box" id="due-hint"></div>
     </div>
 
     <div class="pay-footnote" id="pay-footnote"></div>
 
     <div class="field" style="margin-top:12px">
-      <label data-bn="💳 পেমেন্টের স্ক্রিনশট *" data-en="Payment screenshot *">💳 পেমেন্টের স্ক্রিনশট *</label>
+      <label data-bn="ðŸ’³ à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿà§‡à¦° à¦¸à§à¦•à§à¦°à¦¿à¦¨à¦¶à¦Ÿ *" data-en="Payment screenshot *">ðŸ’³ à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿà§‡à¦° à¦¸à§à¦•à§à¦°à¦¿à¦¨à¦¶à¦Ÿ *</label>
       <input type="file" id="f-payshot" accept="image/*" style="display:none" onchange="handlePayShot(event)">
-      <div class="photo-upload" onclick="document.getElementById('f-payshot').click()">📎<div>পেমেন্টের স্ক্রিনশট আপলোড করুন</div></div>
+      <div class="photo-upload" onclick="document.getElementById('f-payshot').click()">ðŸ“Ž<div>à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿà§‡à¦° à¦¸à§à¦•à§à¦°à¦¿à¦¨à¦¶à¦Ÿ à¦†à¦ªà¦²à§‹à¦¡ à¦•à¦°à§à¦¨</div></div>
       <div class="photo-grid" id="payshot-grid"></div>
-      <div class="note-box">bKash / Nagad / ব্যাংক পেমেন্টের কনফার্মেশন পেজের ছবি দিন। এডমিন এটা দেখেই অর্ডার কনফার্ম করবেন।</div>
+      <div class="note-box">bKash / Nagad / à¦¬à§à¦¯à¦¾à¦‚à¦• à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿà§‡à¦° à¦•à¦¨à¦«à¦¾à¦°à§à¦®à§‡à¦¶à¦¨ à¦ªà§‡à¦œà§‡à¦° à¦›à¦¬à¦¿ à¦¦à¦¿à¦¨à¥¤ à¦à¦¡à¦®à¦¿à¦¨ à¦à¦Ÿà¦¾ à¦¦à§‡à¦–à§‡à¦‡ à¦…à¦°à§à¦¡à¦¾à¦° à¦•à¦¨à¦«à¦¾à¦°à§à¦® à¦•à¦°à¦¬à§‡à¦¨à¥¤</div>
     </div>
     <div class="field">
-      <label data-bn="অতিরিক্ত তথ্য (ঐচ্ছিক)" data-en="Additional Info (Optional)">অতিরিক্ত তথ্য (ঐচ্ছিক)</label>
-      <textarea id="f-notes" placeholder="কোনো বিশেষ অনুরোধ থাকলে লিখুন"></textarea>
+      <label data-bn="à¦…à¦¤à¦¿à¦°à¦¿à¦•à§à¦¤ à¦¤à¦¥à§à¦¯ (à¦à¦šà§à¦›à¦¿à¦•)" data-en="Additional Info (Optional)">à¦…à¦¤à¦¿à¦°à¦¿à¦•à§à¦¤ à¦¤à¦¥à§à¦¯ (à¦à¦šà§à¦›à¦¿à¦•)</label>
+      <textarea id="f-notes" placeholder="à¦•à§‹à¦¨à§‹ à¦¬à¦¿à¦¶à§‡à¦· à¦…à¦¨à§à¦°à§‹à¦§ à¦¥à¦¾à¦•à¦²à§‡ à¦²à¦¿à¦–à§à¦¨"></textarea>
     </div>
   </div>
 
-  <button class="btn-primary" onclick="submitOrder()" id="submit-btn">✅ অর্ডার জমা দিন</button>
+  <button class="btn-primary" onclick="submitOrder()" id="submit-btn">âœ… à¦…à¦°à§à¦¡à¦¾à¦° à¦œà¦®à¦¾ à¦¦à¦¿à¦¨</button>
 </div>
 
 <div class="popup-overlay" id="text-popup" onclick="closeTextPopup(event)">
   <div class="popup" role="dialog" aria-modal="true">
-    <div class="popup-header"><h3 id="popup-title"></h3><button type="button" class="popup-close" onclick="closeTextPopup()">×</button></div>
+    <div class="popup-header"><h3 id="popup-title"></h3><button type="button" class="popup-close" onclick="closeTextPopup()">Ã—</button></div>
     <div class="popup-content" id="popup-content"></div>
   </div>
 </div>
@@ -480,7 +492,7 @@ html.t-gold .order-number-badge{color:#a5813e}
 <!-- PREVIOUS ORDERS -->
 <div class="popup-overlay" id="weight-unit-popup" onclick="closeWeightUnitPopup(event)">
   <div class="popup" style="max-width:340px" role="alertdialog" aria-modal="true">
-    <div class="popup-header"><h3 style="font-size:16px">ওজন একক</h3><button type="button" class="popup-close" onclick="closeWeightUnitPopup()">×</button></div>
+    <div class="popup-header"><h3 style="font-size:16px">à¦“à¦œà¦¨ à¦à¦•à¦•</h3><button type="button" class="popup-close" onclick="closeWeightUnitPopup()">Ã—</button></div>
     <div class="popup-content" id="weight-unit-msg" style="text-align:center;font-weight:600"></div>
     <div style="display:flex;gap:10px;padding:0 18px 18px">
       <button type="button" class="btn-primary" style="flex:1" onclick="chooseWeightUnit('pound')">POUND</button>
@@ -490,40 +502,44 @@ html.t-gold .order-number-badge{color:#a5813e}
 </div>
 <div class="popup-overlay" id="previous-orders-popup" onclick="closePreviousOrders(event)">
   <div class="popup order-history-popup" role="dialog" aria-modal="true" aria-labelledby="previous-orders-title">
-    <div class="popup-header"><h3 id="previous-orders-title">আপনার পূর্ববর্তী অর্ডার</h3><button type="button" class="popup-close" onclick="closePreviousOrders()" aria-label="Close">×</button></div>
+    <div class="popup-header"><h3 id="previous-orders-title">à¦†à¦ªà¦¨à¦¾à¦° à¦ªà§‚à¦°à§à¦¬à¦¬à¦°à§à¦¤à§€ à¦…à¦°à§à¦¡à¦¾à¦°</h3><button type="button" class="popup-close" onclick="closePreviousOrders()" aria-label="Close">Ã—</button></div>
     <div class="popup-content" id="previous-orders-content"></div>
     <div class="order-history-nav" id="previous-orders-nav">
-      <button type="button" id="previous-order-back" onclick="changePreviousOrder(-1)">← আগেরটি</button>
+      <button type="button" id="previous-order-back" onclick="changePreviousOrder(-1)">â† à¦†à¦—à§‡à¦°à¦Ÿà¦¿</button>
       <span id="previous-order-position"></span>
-      <button type="button" id="previous-order-next" onclick="changePreviousOrder(1)">পরেরটি →</button>
+      <button type="button" id="previous-order-next" onclick="changePreviousOrder(1)">à¦ªà¦°à§‡à¦°à¦Ÿà¦¿ â†’</button>
     </div>
   </div>
 </div>
 
 <!-- SUCCESS -->
 <div class="success-screen" id="success-screen">
-  <div class="success-icon">✅</div>
-  <div class="success-title">আপনার অর্ডার জমা হয়েছে</div>
-  <div class="success-msg">এডমিন সবকিছু যাচাই করে অর্ডারটি কনফার্ম করবেন।<br><span class="thanks-brand">নিতুবাবুর্চীর পোর্টফোলিও</span> তে অর্ডার করার জন্য ধন্যবাদ! 💛</div>
-  <div class="order-summary" id="order-summary"></div>
-  <div class="screenshot-note">📸 <b>এই পেজের একটি স্ক্রিনশট নিয়ে আমাদের Facebook পেজের ইনবক্সে পাঠান।</b><br>এডমিন সবকিছু যাচাই করে অর্ডার কনফার্ম করবেন।</div>
-  <button type="button" class="previous-orders-btn" onclick="showPreviousOrders()" data-bn="🧾 আপনার পূর্ববর্তী অর্ডার" data-en="🧾 Your Previous Orders">🧾 আপনার পূর্ববর্তী অর্ডার</button>
-  <button class="btn-primary" onclick="resetForm()">🔄 নতুন অর্ডার দিন</button>
+  <div class="success-icon">âœ…</div>
+  <div class="success-title">à¦†à¦ªà¦¨à¦¾à¦° à¦…à¦°à§à¦¡à¦¾à¦° à¦œà¦®à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡</div>
+  <div class="success-msg">à¦à¦¡à¦®à¦¿à¦¨ à¦¸à¦¬à¦•à¦¿à¦›à§ à¦¯à¦¾à¦šà¦¾à¦‡ à¦•à¦°à§‡ à¦…à¦°à§à¦¡à¦¾à¦°à¦Ÿà¦¿ à¦•à¦¨à¦«à¦¾à¦°à§à¦® à¦•à¦°à¦¬à§‡à¦¨à¥¤<br><span class="thanks-brand">à¦¨à¦¿à¦¤à§à¦¬à¦¾à¦¬à§à¦°à§à¦šà§€à¦° à¦ªà§‹à¦°à§à¦Ÿà¦«à§‹à¦²à¦¿à¦“</span> à¦¤à§‡ à¦…à¦°à§à¦¡à¦¾à¦° à¦•à¦°à¦¾à¦° à¦œà¦¨à§à¦¯ à¦§à¦¨à§à¦¯à¦¬à¦¾à¦¦! ðŸ’›</div>
+  <div class="order-photo-card">
+    <div class="opc-photo" id="opc-photo"></div>
+    <img class="opc-logo" src="logo.png" alt="à¦¨à¦¿à¦¤à§à¦° à¦¬à§‡à¦•à¦¾à¦°à¦¿">
+    <div class="order-summary opc-inner" id="order-summary"></div>
+  </div>
+  <div class="screenshot-note">ðŸ“¸ <b>à¦à¦‡ à¦ªà§‡à¦œà§‡à¦° à¦à¦•à¦Ÿà¦¿ à¦¸à§à¦•à§à¦°à¦¿à¦¨à¦¶à¦Ÿ à¦¨à¦¿à¦¯à¦¼à§‡ à¦†à¦®à¦¾à¦¦à§‡à¦° Facebook à¦ªà§‡à¦œà§‡à¦° à¦‡à¦¨à¦¬à¦•à§à¦¸à§‡ à¦ªà¦¾à¦ à¦¾à¦¨à¥¤</b><br>à¦à¦¡à¦®à¦¿à¦¨ à¦¸à¦¬à¦•à¦¿à¦›à§ à¦¯à¦¾à¦šà¦¾à¦‡ à¦•à¦°à§‡ à¦…à¦°à§à¦¡à¦¾à¦° à¦•à¦¨à¦«à¦¾à¦°à§à¦® à¦•à¦°à¦¬à§‡à¦¨à¥¤</div>
+  <button type="button" class="previous-orders-btn" onclick="showPreviousOrders()" data-bn="ðŸ§¾ à¦†à¦ªà¦¨à¦¾à¦° à¦ªà§‚à¦°à§à¦¬à¦¬à¦°à§à¦¤à§€ à¦…à¦°à§à¦¡à¦¾à¦°" data-en="ðŸ§¾ Your Previous Orders">ðŸ§¾ à¦†à¦ªà¦¨à¦¾à¦° à¦ªà§‚à¦°à§à¦¬à¦¬à¦°à§à¦¤à§€ à¦…à¦°à§à¦¡à¦¾à¦°</button>
+  <button class="btn-primary" onclick="resetForm()">ðŸ”„ à¦¨à¦¤à§à¦¨ à¦…à¦°à§à¦¡à¦¾à¦° à¦¦à¦¿à¦¨</button>
 </div>
 
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
 <div class="toast" id="toast"></div>
 
-<!-- "How did you pay?" popup — auto-opens after an advance option is picked -->
+<!-- "How did you pay?" popup â€” auto-opens after an advance option is picked -->
 <div class="popup-overlay" id="adv-method-popup" onclick="closeAdvanceMethodPopup(event)">
   <div class="popup" style="max-width:400px" role="dialog" aria-modal="true" aria-labelledby="adv-method-popup-title">
-    <div class="popup-header"><h3 id="adv-method-popup-title" style="font-size:16px" data-bn="💰 কীভাবে পরিশোধ করবেন?" data-en="💰 How will you pay?">💰 কীভাবে পরিশোধ করবেন?</h3><button type="button" class="popup-close" onclick="closeAdvanceMethodPopup()">×</button></div>
+    <div class="popup-header"><h3 id="adv-method-popup-title" style="font-size:16px" data-bn="ðŸ’° à¦•à§€à¦­à¦¾à¦¬à§‡ à¦ªà¦°à¦¿à¦¶à§‹à¦§ à¦•à¦°à¦¬à§‡à¦¨?" data-en="ðŸ’° How will you pay?">ðŸ’° à¦•à§€à¦­à¦¾à¦¬à§‡ à¦ªà¦°à¦¿à¦¶à§‹à¦§ à¦•à¦°à¦¬à§‡à¦¨?</h3><button type="button" class="popup-close" onclick="closeAdvanceMethodPopup()">Ã—</button></div>
     <div class="popup-content" style="font-size:13.5px">
-      <span data-bn="আপনার অগ্রিমের সাথে ক্যাশআউট চার্জ যোগ হয়। আপনি কোন মাধ্যমে টাকা পাঠাবেন?" data-en="A cash-out charge is added to your advance. How will you send the money?">আপনার অগ্রিমের সাথে ক্যাশআউট চার্জ যোগ হয়। আপনি কোন মাধ্যমে টাকা পাঠাবেন?</span>
+      <span data-bn="à¦†à¦ªà¦¨à¦¾à¦° à¦…à¦—à§à¦°à¦¿à¦®à§‡à¦° à¦¸à¦¾à¦¥à§‡ à¦•à§à¦¯à¦¾à¦¶à¦†à¦‰à¦Ÿ à¦šà¦¾à¦°à§à¦œ à¦¯à§‹à¦— à¦¹à¦¯à¦¼à¥¤ à¦†à¦ªà¦¨à¦¿ à¦•à§‹à¦¨ à¦®à¦¾à¦§à§à¦¯à¦®à§‡ à¦Ÿà¦¾à¦•à¦¾ à¦ªà¦¾à¦ à¦¾à¦¬à§‡à¦¨?" data-en="A cash-out charge is added to your advance. How will you send the money?">à¦†à¦ªà¦¨à¦¾à¦° à¦…à¦—à§à¦°à¦¿à¦®à§‡à¦° à¦¸à¦¾à¦¥à§‡ à¦•à§à¦¯à¦¾à¦¶à¦†à¦‰à¦Ÿ à¦šà¦¾à¦°à§à¦œ à¦¯à§‹à¦— à¦¹à¦¯à¦¼à¥¤ à¦†à¦ªà¦¨à¦¿ à¦•à§‹à¦¨ à¦®à¦¾à¦§à§à¦¯à¦®à§‡ à¦Ÿà¦¾à¦•à¦¾ à¦ªà¦¾à¦ à¦¾à¦¬à§‡à¦¨?</span>
       <div class="adv-method-grid" style="margin-top:12px">
-        <div class="adv-method-opt" onclick="chooseAdvanceMethod('bkash')">বিকাশ<small>চার্জ ১.৮২%</small></div>
-        <div class="adv-method-opt" onclick="chooseAdvanceMethod('nagad')">নগদ<small>চার্জ ১.৪৯%</small></div>
-        <div class="adv-method-opt" onclick="chooseAdvanceMethod('bank')">ব্যাংক<small>চার্জ নেই</small></div>
+        <div class="adv-method-opt" onclick="chooseAdvanceMethod('bkash')">à¦¬à¦¿à¦•à¦¾à¦¶<small>à¦šà¦¾à¦°à§à¦œ à§§.à§®à§¨%</small></div>
+        <div class="adv-method-opt" onclick="chooseAdvanceMethod('nagad')">à¦¨à¦—à¦¦<small>à¦šà¦¾à¦°à§à¦œ à§§.à§ªà§¯%</small></div>
+        <div class="adv-method-opt" onclick="chooseAdvanceMethod('bank')">à¦¬à§à¦¯à¦¾à¦‚à¦•<small>à¦šà¦¾à¦°à§à¦œ à¦¨à§‡à¦‡</small></div>
       </div>
     </div>
   </div>
@@ -532,24 +548,24 @@ html.t-gold .order-number-badge{color:#a5813e}
 <!-- Advance-edit warning popup (payment auto-calculated incl. gateway charge) -->
 <div class="popup-overlay" id="advance-warn-popup" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="popup" style="max-width:380px" role="alertdialog" aria-modal="true">
-    <div class="popup-header"><h3 style="font-size:16px">⚠️ অটো হিসাব</h3><button type="button" class="popup-close" onclick="closeAdvanceWarn()">×</button></div>
+    <div class="popup-header"><h3 style="font-size:16px">âš ï¸ à¦…à¦Ÿà§‹ à¦¹à¦¿à¦¸à¦¾à¦¬</h3><button type="button" class="popup-close" onclick="closeAdvanceWarn()">Ã—</button></div>
     <div style="padding:16px 18px;font-size:13.5px;line-height:1.7;color:var(--text2)" id="advance-warn-msg"></div>
-    <div style="padding:0 18px 18px"><button type="button" class="btn-primary" style="margin-top:0" id="advance-warn-ok" onclick="closeAdvanceWarn()">বুঝেছি</button></div>
+    <div style="padding:0 18px 18px"><button type="button" class="btn-primary" style="margin-top:0" id="advance-warn-ok" onclick="closeAdvanceWarn()">à¦¬à§à¦à§‡à¦›à¦¿</button></div>
   </div>
 </div>
 
-<!-- "Select the exact flavour" notice — one friendly reminder before the
+<!-- "Select the exact flavour" notice â€” one friendly reminder before the
      customer picks a flavour, so the dropdown matches the Facebook chat.
-     Full flavour details remain available via the ❗ button / the link inside. -->
+     Full flavour details remain available via the â— button / the link inside. -->
 <div class="popup-overlay" id="flavour-notice-popup" onclick="closeFlavourNotice(event)">
   <div class="popup" style="max-width:380px" role="alertdialog" aria-modal="true" aria-labelledby="flavour-notice-title">
-    <div class="popup-header"><h3 id="flavour-notice-title" style="font-size:16px">মনোযোগ</h3><button type="button" class="popup-close" onclick="closeFlavourNotice()">×</button></div>
+    <div class="popup-header"><h3 id="flavour-notice-title" style="font-size:16px">à¦®à¦¨à§‹à¦¯à§‹à¦—</h3><button type="button" class="popup-close" onclick="closeFlavourNotice()">Ã—</button></div>
     <div class="popup-content" id="flavour-notice-body" style="font-size:14px;line-height:1.9;text-align:center"></div>
     <div style="padding:0 18px 14px;text-align:center">
       <a href="javascript:void(0)" id="flavour-notice-link" onclick="openFlavourGuideFromNotice()" style="color:var(--pink);font-size:12.5px;text-decoration:underline"></a>
     </div>
     <div style="padding:0 18px 18px">
-      <button type="button" class="btn-primary" style="width:100%;margin-top:0" id="flavour-notice-ok" onclick="closeFlavourNotice()">ঠিক আছে</button>
+      <button type="button" class="btn-primary" style="width:100%;margin-top:0" id="flavour-notice-ok" onclick="closeFlavourNotice()">à¦ à¦¿à¦• à¦†à¦›à§‡</button>
     </div>
   </div>
 </div>

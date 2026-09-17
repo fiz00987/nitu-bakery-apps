@@ -17,6 +17,26 @@ let autoCloseTimer = null;
 let autoCloseTick = null;
 let flavourNoticeShown = false; // "select the exact flavour" notice — once per session
 
+// ─── Client photo backgrounds (random per app open) ──────────
+// Three positions get their own random pick: splash, order form and the
+// post-submission order card the client screenshots.
+(function initClientPhotos() {
+  const CLIENT_BGS = ['./client-bg-1.jpg', './client-bg-2.jpg', './client-bg-3.jpg', './client-bg-4.jpg', './client-bg-5.jpg', './client-bg-6.jpg'];
+  const pick = () => CLIENT_BGS[Math.floor(Math.random() * CLIENT_BGS.length)];
+  try {
+    // 1 · Loading screen (under the logo/chip — CSS keeps content above)
+    const sb = document.getElementById('splash-bg');
+    if (sb) sb.style.backgroundImage = `url('${pick()}')`;
+    // 2 · Order form page background (light veil stays from the base CSS)
+    const fb = pick();
+    document.body.style.backgroundImage =
+      `linear-gradient(rgba(247,244,246,.88),rgba(247,244,246,.93)), url('${fb}')`;
+    // 3 · Order card background (photo behind the strong logo + order info)
+    const oc = document.getElementById('opc-photo');
+    if (oc) oc.style.backgroundImage = `url('${pick()}')`;
+  } catch (e) {}
+})();
+
 // ─── Splash screen (~2.5s welcome, then fade to the entry screen) ──
 (function initSplash() {
   const splash = document.getElementById('splash-screen');

@@ -296,8 +296,8 @@ window.App = (() => {
     if (msg) sub.textContent = msg;
     if (state === 'ok') {
       const locale = lang === 'bn' ? 'bn-BD' : 'en-US';
-      sub.textContent = (lang === 'bn' ? '☁️ সব ডেটা ক্লাউডে সেভ · ' : '☁️ All data saved to cloud · ')
-        + new Date().toLocaleTimeString(locale);
+      // Time removed — the topbar clock already shows it (no duplicate).
+      sub.textContent = (lang === 'bn' ? '☁️ সব ডেটা ক্লাউডে সেভ' : '☁️ All data saved to cloud');
     }
   };
 
@@ -2692,6 +2692,22 @@ window.App = (() => {
     const o = key ? orders.find(x => x.firebaseKey === key) : null;
     document.getElementById('modal-title').textContent =
       o ? 'অর্ডার সম্পাদনা করুন' : 'নতুন অর্ডার';
+    // Show exactly WHEN the client placed this order (date + time).
+    const oa = document.getElementById('modal-ordered-at');
+    if (oa) {
+      if (o && o.createdAt) {
+        const d = new Date(o.createdAt);
+        let h = d.getHours();
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12; if (h === 0) h = 12;
+        oa.textContent = '🕐 অর্ডার করা হয়েছে: '
+          + ORDINAL(d.getDate()) + ' ' + MONTHS_SHORT[d.getMonth()] + ' ' + d.getFullYear()
+          + ', ' + h + '.' + String(d.getMinutes()).padStart(2, '0') + '.' + String(d.getSeconds()).padStart(2, '0') + ' ' + ampm;
+        oa.style.display = 'block';
+      } else {
+        oa.style.display = 'none';
+      }
+    }
     populateForm(o || {});
     document.getElementById('modal-overlay').classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -3826,8 +3842,8 @@ window.App = (() => {
     // Fade out as soon as the logo is actually painted, after a short brand
     // beat — with a hard cap so a slow connection can never make the splash
     // linger (it used to sit there for a fixed 4.5s no matter what).
-    const MIN_MS = 900;      // let the logo animation register
-    const MAX_MS = 2400;     // absolute ceiling
+    const MIN_MS = 1800;     // let the FULL logo-drop animation play + the brand beat
+    const MAX_MS = 3200;     // absolute ceiling
     const startedAt = Date.now();
     let hidden = false;
     const hideSplash = () => {

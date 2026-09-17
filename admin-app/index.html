@@ -2136,6 +2136,14 @@ html.t-cafe.dark{--bg:#121212;--surface:#1a1a1a;--surface2:#232323;--border:#2e2
   .topbar-brand img{height:40px}
   .topbar-brand p{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 }
+/* When the client placed this order — shown under the edit-modal title */
+.modal-ordered-at{display:block;margin:2px 0 10px;font-size:12px;font-weight:700;color:var(--pink-dark);background:var(--pink-light);border:1px solid var(--pink-soft);border-radius:9px;padding:7px 11px;font-variant-numeric:tabular-nums}
+/* Topbar never overflows: rows wrap onto extra lines instead of pushing
+   icons off-screen — works no matter how many buttons are added/removed. */
+.topbar{max-width:100vw;overflow-x:hidden}
+.topbar-row1{flex-wrap:wrap}
+.topbar-right{flex-wrap:wrap;justify-content:flex-end;row-gap:5px;max-width:100%}
+.topbar-actions{max-width:100%}
 .theme-panel{position:fixed;top:calc(var(--topbar-h) + 8px);right:14px;z-index:4001;width:min(430px,calc(100vw - 28px));max-height:min(70vh,560px);overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:14px;display:none}
 .theme-panel.open{display:block}
 .tp-title{font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px}
@@ -2285,14 +2293,13 @@ html.t-cafe.dark{--bg:#121212;--surface:#1a1a1a;--surface2:#232323;--border:#2e2
       <div class="topbar-brand-text">
         <h1 data-i18n="brand">অর্ডার ম্যানেজার</h1>
         <p id="last-sync-text" data-i18n="connecting">ক্লাউডে সংযুক্ত হচ্ছে...</p>
-        <div class="tb-clock" id="tb-clock"><span class="tb-time" id="tb-time">--</span> · <span id="tb-date">--</span></div>
+        <div class="tb-clock" id="tb-clock"><div id="tb-date">--</div><div class="tb-time" id="tb-time">--</div></div>
       </div>
     </div>
     <div class="topbar-right">
       <button type="button" class="ico-btn" onclick="App.openQuoteModal()" title="কোটেশন লিংক তৈরি করুন — কাস্টমারের জন্য লক করা দাম" aria-label="Quotation">📨</button>
       <button type="button" class="ico-btn" onclick="App.toggleLang()" title="ভাষা / Language" aria-label="Language">🌐</button>
-      <button type="button" class="ico-btn" id="theme-mode-btn" onclick="toggleTheme()" title="লাইট / ডার্ক মোড" aria-label="Theme mode">🌙</button>
-      <button type="button" class="ico-btn" onclick="openThemePanel()" title="থিম বাছাই — ৫টি থিম" aria-label="Theme picker">🎨</button>
+            <button type="button" class="ico-btn" onclick="openThemePanel()" title="থিম বাছাই — ৫টি থিম" aria-label="Theme picker">🎨</button>
       <button type="button" class="ico-btn" onclick="App.handleLogout()" title="লগআউট" aria-label="Logout">🚪</button>
       <button class="notif-bell-btn active" id="notif-bell" onclick="App.toggleNotifications()" title="নোটিফিকেশন সবসময় চালু — প্রতিদিন ২ বার রিমাইন্ড পাবেন" aria-label="Notifications (always on)">
         🔔
@@ -2434,6 +2441,7 @@ html.t-cafe.dark{--bg:#121212;--surface:#1a1a1a;--surface2:#232323;--border:#2e2
     <div class="modal-handle" aria-hidden="true"></div>
     <div class="modal-header">
       <h2 class="modal-title" id="modal-title">নতুন অর্ডার</h2>
+<div class="modal-ordered-at" id="modal-ordered-at" style="display:none"></div>
       <button class="modal-close-btn" onclick="App.closeModal()" aria-label="Close">✕</button>
     </div>
 

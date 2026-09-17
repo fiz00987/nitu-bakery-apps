@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nitu — Upgrade Preview v2 (local only, not deployed)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hind Siliguri','Poppins',system-ui,sans-serif;background:#241a12;color:#fff;padding:26px 16px 60px}
+h1{font-size:20px;margin-bottom:4px}
+h2{font-size:15px;margin:34px 0 12px;color:#ffd9a0}
+.sub{color:#d8c3a8;font-size:13px;margin-bottom:24px}
+.shot{border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.4);max-width:420px;margin:0 auto 6px;position:relative}
+.cap{text-align:center;font-size:12px;color:#cbb69b;margin-bottom:26px}
+.splash{position:relative;height:620px;background:#fbf4e8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+.splash-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.30}
+.splash-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(251,244,232,.25),rgba(251,244,232,.05) 45%,rgba(251,244,232,.35))}
+.splash>*:not(.splash-bg){position:relative;z-index:2}
+.splash-logo{width:min(320px,80vw);filter:drop-shadow(0 16px 30px rgba(120,80,30,.28))}
+.splash-chip{background:#fff;color:#7a4a2b;font-size:14px;font-weight:700;padding:8px 18px;border-radius:99px}
+.splash-moto{color:#a3803f;font-weight:600;font-size:13px;letter-spacing:3.5px;text-transform:uppercase}
+.topbar{position:relative;overflow:hidden;background:linear-gradient(135deg,#880e4f,#c2185b 45%,#e91e8c);padding:12px 14px;max-width:420px;margin:0 auto 6px;border-radius:14px}
+.topbar::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(9,63,56,.55),rgba(0,0,0,.48))}
+.topbar>*{position:relative;z-index:1}
+.row1{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand img{height:46px;margin-top:10px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35))}
+.btext h3{font-size:14px;font-weight:600}
+.btext p{font-size:10px;color:rgba(255,255,255,.65)}
+.tb-clock{margin-top:2px;font-size:10px;font-weight:600;color:rgba(255,255,255,.88);text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.tb-clock .tb-time{font-size:10.5px;font-weight:700}
+.icons{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.ico-btn{background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.38);border-radius:50%;width:33px;height:33px;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.action-btn{display:flex;align-items:center;justify-content:center;padding:9px 4px;font-size:10.5px;font-weight:600;border-radius:9px;border:1px solid rgba(255,255,255,.38);background:rgba(0,0,0,.26);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45)}
+</style>
+</head>
+<body>
+<h1>🎂 Upgrade Preview v2 — admin + client</h1>
+<div class="sub">Local only. Admin: longer splash, single clock (date top / time bottom), 🌙 removed, icons wrap. Client: photo splash, form, order-card with strong logo.</div>
+
+<h2>1 · Admin — splash now holds long enough to SEE the animation (min 1.8s)</h2>
+<div class="shot"><div class="splash">
+  <div class="splash-bg" style="background-image:url('../admin-app/splash-bg.jpg')"></div>
+  <img class="splash-logo" src="../admin-app/logo-splash.png">
+  <div class="splash-chip">🎂 নিতুবাবুর্চীর পোর্টফোলিও</div>
+  <div class="splash-moto">THE CAKE IS A CANVAS</div>
+</div></div>
+<div class="cap">Full logo-drop animation plays (~1s) + brand beat before fade — total ≈1.8–3.2s.</div>
+
+<h2>2 · Admin — topbar: 🌙 removed, ONE clock (date on top, time below), icons wrap safely</h2>
+<div class="topbar">
+  <div class="row1">
+    <div class="brand"><img src="../admin-app/logo-white.png"><div class="btext"><h3>অর্ডার ম্যানেজার</h3><p>☁️ সব ডেটা ক্লাউডে সেভ</p><div class="tb-clock"><div>17th Sep 26</div><div class="tb-time">10.04.37 AM</div></div></div></div>
+    <div class="icons"><span class="ico-btn">📨</span><span class="ico-btn">🌐</span><span class="ico-btn">🎨</span><span class="ico-btn">🚪</span><span class="ico-btn">🔔</span></div>
+  </div>
+  <div class="grid"><span class="action-btn">⬆ ব্যাকআপ</span><span class="action-btn">⬇ রিস্টোর</span><span class="action-btn">⇅ তারিখ</span><span class="action-btn">📅 ক্যালেন্ডার</span><span class="action-btn">📝 শপিং নোট</span><span class="action-btn">🆕 নতুন 0</span></div>
+</div>
+<div class="cap">Add or remove buttons later — flex-wrap keeps everything on screen automatically.</div>
+
+<h2>3 · Admin — edit modal shows the exact time the client placed the order</h2>
+<div class="modal" style="max-width:400px;margin:0 auto;background:#fff;color:#1a1a2e;border-radius:16px;padding:14px">
+  <div style="font-size:16px;font-weight:800">অর্ডার সম্পাদনা করুন</div>
+  <div style="margin:6px 0 10px;font-size:12px;font-weight:700;color:#880e4f;background:#fce4ec;border:1px solid #f8bbd0;border-radius:9px;padding:7px 11px">🕐 অর্ডার করা হয়েছে: 17th Sep 26, 10.04.37 AM</div>
+  <div style="font-size:12px;color:#555">…modal fields as usual…</div>
+</div>
+<div class="cap">Real timestamp from the order's createdAt (client device time).</div>
+
+<style>
+.cwrap{max-width:400px;margin:0 auto}
+.csplash{position:relative;height:600px;background:#fbf4e8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+.clogo{width:200px;filter:drop-shadow(0 16px 30px rgba(120,80,30,.28))}
+.cchip{background:#fff;color:#7a4a2b;font-size:14px;font-weight:700;padding:8px 18px;border-radius:99px}
+.cform{position:relative;padding:16px;background:#f3f3f8;border-radius:14px;overflow:hidden}
+.cform .inner{position:relative;z-index:2}
+.cform .ph{position:absolute;inset:0;background-size:cover;background-position:center}
+.cform .ph::after{content:'';position:absolute;inset:0;background:linear-gradient(rgba(247,244,246,.88),rgba(247,244,246,.93))}
+.cform h4{color:#1a1a2e;margin-bottom:8px}
+.cform .box{background:#fff;border-radius:12px;padding:10px;margin-bottom:8px;color:#1a1a2e;font-size:12px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.ocard{position:relative;border-radius:18px;overflow:hidden;box-shadow:0 10px 26px rgba(0,0,0,.18);background:#fbf4e8;max-width:400px;margin:0 auto}
+.ocard .ph{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.30}
+.ocard .ph::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(251,244,232,.2),rgba(251,244,232,.05) 40%,rgba(251,244,232,.3))}
+.ocard .lg{position:relative;z-index:2;width:130px;display:block;margin:18px auto 8px;filter:drop-shadow(0 6px 16px rgba(0,0,0,.4))}
+.ocard .in{position:relative;z-index:3;background:rgba(255,255,255,.9);margin:0 10px 10px;border-radius:12px;padding:10px 12px;color:#1a1a2e;font-size:12px;text-align:left}
+.ocard .in b{font-size:13px}
+.ocard .row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed #e8e8f0}
+</style>
+<script>
+const names=['../customer-app/client-bg-1.jpg','../customer-app/client-bg-2.jpg','../customer-app/client-bg-3.jpg','../customer-app/client-bg-4.jpg','../customer-app/client-bg-5.jpg','../customer-app/client-bg-6.jpg'];
+let h='<h2>4 · Client app — 6 photos × 3 positions (own random photo per open)</h2>';
+for(let i=0;i<6;i++){
+  h+='<div style="font-size:13px;color:#ffd9a0;margin:18px 0 8px;text-align:center">Photo '+(i+1)+' of 6</div>'
+  +'<div class="cwrap"><div class="csplash"><div class="splash-bg" style="background-image:url(\''+names[i]+'\')"></div><img class="clogo" src="../customer-app/logo.png"><div class="cchip">🎂 নিতুর বেকারি</div></div></div>'
+  +'<div class="cap">↑ Client loading screen</div>'
+  +'<div class="cwrap"><div class="cform"><div class="ph" style="background-image:url(\''+names[i]+'\')"></div><div class="inner"><h4>আপনার অর্ডার দিন · অর্ডার নম্বর: NB-26091701</h4><div class="box">👤 নাম · ফোন</div><div class="box">🎂 কেক · ওজন · ফ্লেভার</div><div class="box">🚚 ডেলিভারি তারিখ ও ঠিকানা</div><div class="box">💳 পেমেন্ট</div></div></div></div>'
+  +'<div class="cap">↑ Client order form — photo stays light behind white fields</div>'
+  +'<div class="ocard"><div class="ph" style="background-image:url(\''+names[i]+'\')"></div><img class="lg" src="../customer-app/logo.png"><div class="in"><b>✅ আপনার অর্ডার জমা হয়েছে</b><div class="row"><span>অর্ডার নম্বর</span><b>NB-26091701</b></div><div class="row"><span>কেক</span><span>১ পাউন্ড ব্ল্যাক ফরেস্ট</span></div><div class="row"><span>ডেলিভারি</span><span>২০ Sep 26, 4 PM</span></div><div class="row"><span>মোট</span><b>৳1,350</b></div><div class="row"><span>বকেয়া</span><span>৳700</span></div></div></div>'
+  +'<div class="cap">↑ Order card the client screenshots — photo → strong logo → info on glass</div>';
+}
+document.getElementById('client-area').outerHTML=h+'</body>';
+</script>
