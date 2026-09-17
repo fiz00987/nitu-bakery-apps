@@ -412,8 +412,11 @@ window.App = (() => {
   const CACHE_DB    = 'nitu-admin-cache';
   const CACHE_STORE = 'snapshots';
   const CACHE_KEY   = 'orders';
-  const CACHE_MAX_ORDERS = 80;
-  const CACHE_MAX_BYTES  = 6 * 1024 * 1024;   // keeps parse time sane
+  const CACHE_MAX_ORDERS = 1000;
+  const CACHE_MAX_BYTES  = 48 * 1024 * 1024;  // IndexedDB easily holds this; parse
+                                              // happens once per open, off the
+                                              // snapshot path. Order count cap
+                                              // (1000) is the real limiter.
 
   const idbOpen = () => new Promise((resolve, reject) => {
     if (!window.indexedDB) { reject(new Error('indexedDB unavailable')); return; }
