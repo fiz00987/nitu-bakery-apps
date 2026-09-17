@@ -195,7 +195,15 @@ button { cursor: pointer; }
   width: auto;
   flex-shrink: 0;
   filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));
+  margin-top: 10px;   /* pushed down to open room for the date/time line */
 }
+/* Live date/time under the brand name (added with the photo topbar) */
+.topbar-brand-text .tb-clock{
+  margin-top:2px;font-size:10px;font-weight:600;color:rgba(255,255,255,.88);
+  letter-spacing:.3px;white-space:nowrap;font-variant-numeric:tabular-nums;
+  text-shadow:0 1px 2px rgba(0,0,0,.35);
+}
+.tb-clock .tb-time{font-size:10.5px;font-weight:700}
 .topbar-brand-text {
   display: flex;
   flex-direction: column;
@@ -2274,6 +2282,7 @@ html.t-cafe.dark{--bg:#121212;--surface:#1a1a1a;--surface2:#232323;--border:#2e2
       <div class="topbar-brand-text">
         <h1 data-i18n="brand">অর্ডার ম্যানেজার</h1>
         <p id="last-sync-text" data-i18n="connecting">ক্লাউডে সংযুক্ত হচ্ছে...</p>
+        <div class="tb-clock" id="tb-clock"><span class="tb-time" id="tb-time">--</span> · <span id="tb-date">--</span></div>
       </div>
     </div>
     <div class="topbar-right">

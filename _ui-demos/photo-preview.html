@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nitu Admin — Photo Preview (local, not deployed)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hind Siliguri','Poppins',system-ui,sans-serif;background:#241a12;color:#fff;padding:26px 18px 60px}
+h1{font-size:20px;margin-bottom:6px}
+.sub{color:#d8c3a8;font-size:13px;margin-bottom:26px}
+h2{font-size:15px;margin:34px 0 12px;color:#ffd9a0}
+/* ── Real splash replica ── */
+.shot{border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.4);max-width:420px;margin:0 auto 18px;position:relative}
+.splash{position:relative;height:640px;background:#fbf4e8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+.splash-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.30;pointer-events:none}
+.splash-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(251,244,232,.25),rgba(251,244,232,.05) 45%,rgba(251,244,232,.35))}
+.splash>*:not(.splash-bg){position:relative;z-index:1}
+.splash-logo{width:min(320px,80vw);filter:drop-shadow(0 16px 30px rgba(120,80,30,.28))}
+.splash-chip{background:#fff;color:#7a4a2b;font-size:14px;font-weight:700;padding:8px 18px;border-radius:99px;box-shadow:0 8px 22px rgba(120,80,30,.16)}
+.splash-moto{color:#a3803f;font-weight:600;font-size:13px;letter-spacing:3.5px;text-transform:uppercase}
+.splash-loader{width:190px;height:4px;border-radius:99px;background:rgba(122,74,43,.12);overflow:hidden}
+.splash-loader i{display:block;height:100%;width:45%;border-radius:99px;background:linear-gradient(90deg,#c96a2e,#e2a23b,#2f8f77)}
+.cap{text-align:center;font-size:12px;color:#cbb69b;margin-bottom:22px}
+/* ── Real topbar replica ── */
+.topbar{position:relative;overflow:hidden;background:linear-gradient(135deg,#880e4f 0%,#c2185b 45%,#e91e8c 100%);padding:14px 16px 12px;max-width:420px;margin:0 auto 6px;border-radius:14px}
+.topbar::before{content:'';position:absolute;inset:0;background:var(--tb-bg,none) center/cover no-repeat;opacity:.88}
+.topbar::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(9,63,56,.55),rgba(0,0,0,.48))}
+.topbar>*{position:relative;z-index:1}
+.row1{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand img{height:46px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35))}
+.brand h3{font-size:14px;font-weight:600}
+.brand p{font-size:10px;color:rgba(255,255,255,.65)}
+.icons{display:flex;gap:6px}
+.ico-btn{background:rgba(0,0,0,.26);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);border:1px solid rgba(255,255,255,.38);border-radius:50%;width:33px;height:33px;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45)}
+.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.action-btn{display:flex;align-items:center;justify-content:center;padding:9px 4px;font-size:10.5px;font-weight:600;border-radius:9px;border:1px solid rgba(255,255,255,.38);background:rgba(0,0,0,.26);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45)}
+</style>
+</head>
+<body>
+<h1>🎂 Nitu Admin — Photo Preview</h1>
+<div class="sub">Local preview only — nothing is deployed yet. This mirrors the real CSS used by the app.</div>
+
+<h2>1 · Loading screen with your login.jpg (faded, splash on top)</h2>
+<div class="shot">
+  <div class="splash">
+    <div class="splash-bg" style="background-image:url('../admin-app/splash-bg.jpg')"></div>
+    <img class="splash-logo" src="../admin-app/logo-splash.png" alt="logo">
+    <div class="splash-chip">🎂 নিতুবাবুর্চীর পোর্টফোলিও</div>
+    <div class="splash-moto">THE CAKE IS A CANVAS</div>
+    <div class="splash-loader"><i></i></div>
+  </div>
+</div>
+<div class="cap">↑ Exactly how the welcome screen will look — logo, chip, motto, sprinkles all unchanged.</div>
+
+<h2>2 · Order Manager topbar with each of your 6 photos (random one per login)</h2>
+<div id="topbars"></div>
+<div class="cap">Buttons are frosted glass: transparent so the photo shows through, but text stays readable on any image.</div>
+
+<script>
+const names = {1:'1.jpg',2:'2.jpg',3:'3.jpg',4:'4.jpg',5:'5.jpg',6:'6.jpg'};
+const holder = document.getElementById('topbars');
+for (let n = 1; n <= 6; n++) {
+  holder.insertAdjacentHTML('beforeend', `
+  <div class="topbar" style="--tb-bg:url('../admin-app/bg-${n}.jpg')">
+    <div class="row1">
+      <div class="brand">
+        <img src="../admin-app/logo-white.png" alt="">
+        <div><h3>অর্ডার ম্যানেজার</h3><p>demo@nitu.com</p><div style="margin-top:2px;font-size:10px;font-weight:600;color:rgba(255,255,255,.88);text-shadow:0 1px 2px rgba(0,0,0,.35)"><b style="font-size:10.5px">10.04.37 AM</b> · 17th Sep 26</div></div>
+      </div>
+      <div class="icons"><span class="ico-btn">📨</span><span class="ico-btn">🌐</span><span class="ico-btn">🌙</span><span class="ico-btn">🚪</span></div>
+    </div>
+    <div class="actions">
+      <span class="action-btn">⬆ ব্যাকআপ</span><span class="action-btn">⬇ রিস্টোর</span><span class="action-btn">⇅ তারিখ</span>
+      <span class="action-btn">📅 ক্যালেন্ডার</span><span class="action-btn">📝 নোট</span><span class="action-btn">🆕 আজকের নতুন</span>
+    </div>
+  </div>
+  <div class="cap">Photo ${n} of 6</div>`);
+}
+</script>
+</body>
+</html>

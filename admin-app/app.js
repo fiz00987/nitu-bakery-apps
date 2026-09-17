@@ -510,6 +510,29 @@ window.App = (() => {
     img.src = pick;
   };
 
+  // ─── Topbar clock (12.00.20 AM · 17th Sep 26) ────────────────
+  const ORDINAL = d => {
+    if (d % 100 >= 11 && d % 100 <= 13) return d + 'th';
+    const sfx = { 1: 'st', 2: 'nd', 3: 'rd' }[d % 10];
+    return d + (sfx || 'th');
+  };
+  const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const tickTopbarClock = () => {
+    const timeEl = document.getElementById('tb-time');
+    const dateEl = document.getElementById('tb-date');
+    if (!timeEl || !dateEl) return;
+    const now = new Date();
+    let h = now.getHours();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12; if (h === 0) h = 12;
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    timeEl.textContent = `${h}.${mm}.${ss} ${ampm}`;
+    dateEl.textContent = `${ORDINAL(now.getDate())} ${MONTHS_SHORT[now.getMonth()]} ${String(now.getFullYear()).slice(-2)}`;
+  };
+  tickTopbarClock();
+  setInterval(tickTopbarClock, 1000);
+
   // ─── Firebase listeners ──────────────────────────────────────
   // Auth state listener - MUST be set up before database listeners
   auth.onAuthStateChanged(user => {
