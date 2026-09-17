@@ -1711,12 +1711,15 @@ window.App = (() => {
     const searchTerm = document.getElementById('search-input').value.trim();
     const activeOrders = orders.filter(o => isActiveOrder(o) && !isLogicallyComplete(o));
     const filteredActive = getFiltered(activeOrders);
-    const doneOrders = orders.filter(o => o.status === 'delivered');
-    const filteredDone = getFiltered(doneOrders);
+    const archivedOrders = orders.filter(isArchivedOrder);
+    const filteredArchived = getFiltered(archivedOrders);
+    const deliveredOrders = orders.filter(o => o.status === 'delivered');
+    const filteredDone = filteredArchived;
 
-    document.getElementById('tc-orders').textContent = filteredActive.length + (searchTerm ? '/' : '');
-    document.getElementById('tc-done').textContent = filteredDone.length + (searchTerm ? '/' : '');
-    document.getElementById('tc-cdb').textContent = doneOrders.length;
+    const setTc = (id, n) => { const _e = document.getElementById(id); if (_e) _e.textContent = n; };
+    setTc('tc-orders', filteredActive.length + (searchTerm ? '/' : ''));
+    setTc('tc-done', filteredDone.length + (searchTerm ? '/' : ''));
+    setTc('tc-cdb', deliveredOrders.length);
 
     // Render active tab content
     if (activeTab === 'orders')  renderPlan();
@@ -3478,7 +3481,8 @@ window.App = (() => {
   });
 
   // ─── Init skeleton + language ────────────────────────────────
-  document.getElementById('view-plan').innerHTML =
+  const _initSkeleton = document.getElementById('view-orders');
+  if (_initSkeleton) _initSkeleton.innerHTML =
     `<div class="skeleton-wrap">${renderSkeletons(4)}</div>`;
   applyI18n();
 
