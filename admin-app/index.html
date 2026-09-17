@@ -1983,7 +1983,7 @@ select:focus {
 </style>
 <script>
 /* Theme system — visual only, no order logic touched */
-var ADMIN_THEMES=['t-gold','t-ivory','t-sage','t-rose','t-cocoa','t-matcha','t-ube','t-mango'];
+var ADMIN_THEMES=['t-gold','t-ivory','t-sage','t-rose','t-cocoa','t-matcha','t-ube','t-mango','t-crust','t-pastel','t-farm','t-cafe'];
 function readThemeState(){try{var s=JSON.parse(localStorage.getItem('nitu-admin-theme-v2')||'null');if(s)return s;}catch(e){}try{if(localStorage.getItem('nitu-admin-theme')==='dark')return{dark:true}}catch(e){}return{}}
 function saveThemeState(s){try{localStorage.setItem('nitu-admin-theme-v2',JSON.stringify(s))}catch(e){}}
 function applyAdminTheme(){
@@ -2004,7 +2004,7 @@ try{(function(){var s=JSON.parse(localStorage.getItem('nitu-admin-theme-v2')||'n
 </script>
 <style>
 /* ─── DARK MODE + THEME SYSTEM (visual only) ─── */
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark){
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark){
   --text:#e6edf3;--text2:#aebbc7;--text3:#6f8090;--border:#263541;--divider:rgba(255,255,255,.08);
   --surface:#152230;--surface2:#1b2a3a;--bg:#0d1620;
   --pink-mid:#35b295;
@@ -2012,20 +2012,25 @@ try{(function(){var s=JSON.parse(localStorage.getItem('nitu-admin-theme-v2')||'n
   --green-light:#12301a;--amber-light:#33260f;--red-light:#331818;--blue-light:#12253c;--purple-light:#2a1a38;
   --shadow-sm:0 1px 4px rgba(0,0,0,.40);--shadow-md:0 4px 18px rgba(0,0,0,.50);--shadow-lg:0 8px 32px rgba(0,0,0,.60);
 }
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) body::before{background:rgba(10,17,24,.90)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) body::before{background:rgba(10,17,24,.90)}
 /* Pin the few hardcoded white backgrounds (theme-aware via variables) */
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .search-input,
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .notes-input,
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .field input,
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .field select,
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .field textarea{background:var(--surface2)}
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .btn-edit{background:var(--surface2)}
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .btn-del{background:rgba(226,105,95,.10);border-color:rgba(226,105,95,.35)}
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .btn-wa{background:rgba(95,189,130,.10);border-color:rgba(95,189,130,.35);color:#81d68f}
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .btn-note{color:var(--pink-mid);border-color:var(--pink-soft)}
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .pc-rate{color:var(--pink-mid)}
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) #alert-banner,
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) #today-banner{background:var(--surface)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) .search-input,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) .notes-input,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) .field input,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) .field select,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) .field textarea{background:var(--surface2)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) .btn-edit{background:var(--surface2)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) .btn-del{background:rgba(226,105,95,.10);border-color:rgba(226,105,95,.35)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) .btn-wa{background:rgba(95,189,130,.10);border-color:rgba(95,189,130,.35);color:#81d68f}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) .btn-note{color:var(--pink-mid);border-color:var(--pink-soft)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) .pc-rate{color:var(--pink-mid)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) #alert-banner,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) #today-banner{background:var(--surface)}
+/* Dark mode: banner titles + name lists forced to light fonts for visibility */
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) #today-banner .tb-title{color:#ffffff}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) #today-banner .tb-list{color:#e6edf3}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) #alert-banner{background:#2a1518;border-color:#e26a5f;color:#ffd7d2}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) #alert-banner .ab-close{color:#ffd7d2}
 /* ── Theme palettes ── Noir Gold */
 html.t-gold{--bg:#f6f1e7;--surface:#fffcf5;--surface2:#f3ecdd;--border:#e6dcc6;--divider:rgba(60,45,20,.08);--text:#2a2317;--text2:#6f6350;--text3:#a2947a;--pink:#a5813e;--pink-dark:#7c5f2b;--pink-mid:#c09a52;--pink-light:#f2e8d2;--pink-soft:#e3d3ac;--pink-glow:rgba(165,129,62,.22);--shadow-sm:0 1px 4px rgba(60,45,20,.07);--shadow-md:0 4px 18px rgba(60,45,20,.10);--shadow-lg:0 8px 32px rgba(60,45,20,.16);--shadow-pink:0 4px 20px rgba(165,129,62,.35)}
 html.t-gold.dark{--bg:#0d0b08;--surface:#161310;--surface2:#1e1a13;--border:#2c251a;--divider:rgba(255,255,255,.07);--text:#f0e8d8;--text2:#b3a68c;--text3:#7d715c;--pink:#d4af6a;--pink-dark:#8a6a30;--pink-mid:#c9a24f;--pink-light:rgba(212,175,106,.12);--pink-soft:rgba(212,175,106,.28);--pink-glow:rgba(212,175,106,.25);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(212,175,106,.30)}
@@ -2050,6 +2055,18 @@ html.t-ube.dark{--bg:#120e18;--surface:#1a1424;--surface2:#231b31;--border:#3325
 /* ── Mango Sticky Rice (mango yellow + coconut white) */
 html.t-mango{--bg:#fff8ec;--surface:#fffdf7;--surface2:#fdf0d5;--border:#f3e0b5;--divider:rgba(140,90,10,.09);--text:#2e220e;--text2:#6e5c39;--text3:#a3906a;--pink:#d98a06;--pink-dark:#a36504;--pink-mid:#eba51e;--pink-light:#fdf3da;--pink-soft:#f8e2ae;--pink-glow:rgba(217,138,6,.26);--shadow-sm:0 1px 4px rgba(140,90,10,.08);--shadow-md:0 4px 18px rgba(140,90,10,.12);--shadow-lg:0 8px 32px rgba(140,90,10,.18);--shadow-pink:0 4px 20px rgba(217,138,6,.38)}
 html.t-mango.dark{--bg:#141004;--surface:#1e1808;--surface2:#2a2110;--border:#3d3016;--divider:rgba(255,255,255,.07);--text:#f7ecd2;--text2:#c8b183;--text3:#8d7a55;--pink:#f5b81e;--pink-dark:#a36504;--pink-mid:#d99a10;--pink-light:rgba(245,184,30,.12);--pink-soft:rgba(245,184,30,.28);--pink-glow:rgba(245,184,30,.28);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(245,184,30,.30)}
+/* ── Artisan Crust (toasted crust browns, wheat, oven glow) */
+html.t-crust{--bg:#fdf6ec;--surface:#fffefa;--surface2:#f5ead6;--border:#e7d5b8;--divider:rgba(90,55,20,.09);--text:#3d2a1a;--text2:#7a5f45;--text3:#a68a69;--pink:#d9792b;--pink-dark:#9c4e15;--pink-mid:#e89b5a;--pink-light:#fceedd;--pink-soft:#f5d9b8;--pink-glow:rgba(217,121,43,.25);--shadow-sm:0 1px 4px rgba(90,55,20,.08);--shadow-md:0 4px 18px rgba(90,55,20,.12);--shadow-lg:0 8px 32px rgba(90,55,20,.18);--shadow-pink:0 4px 20px rgba(217,121,43,.36)}
+html.t-crust.dark{--bg:#1a120b;--surface:#241a10;--surface2:#2e2215;--border:#453322;--divider:rgba(255,255,255,.07);--text:#f5ead6;--text2:#c9b291;--text3:#8f7a5e;--pink:#e89b5a;--pink-dark:#9c4e15;--pink-mid:#d9792b;--pink-light:rgba(232,155,90,.12);--pink-soft:rgba(232,155,90,.28);--pink-glow:rgba(232,155,90,.28);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(232,155,90,.30)}
+/* ── Pastel Patisserie (macaron pink, mint, lilac pastels) */
+html.t-pastel{--bg:#fff9fb;--surface:#ffffff;--surface2:#fff0f5;--border:#f3dde6;--divider:rgba(150,80,110,.08);--text:#4a3440;--text2:#8a6e7e;--text3:#b89aa9;--pink:#e0528c;--pink-dark:#b23a6c;--pink-mid:#ef7ba9;--pink-light:#fde7f0;--pink-soft:#f9c9dc;--pink-glow:rgba(224,82,140,.24);--shadow-sm:0 1px 4px rgba(150,80,110,.07);--shadow-md:0 4px 18px rgba(150,80,110,.10);--shadow-lg:0 8px 32px rgba(150,80,110,.15);--shadow-pink:0 4px 20px rgba(224,82,140,.32)}
+html.t-pastel.dark{--bg:#1e151b;--surface:#271d24;--surface2:#322631;--border:#4a3a46;--divider:rgba(255,255,255,.07);--text:#ffeaf3;--text2:#c9a9bb;--text3:#8e7384;--pink:#f78fb8;--pink-dark:#b23a6c;--pink-mid:#e0528c;--pink-light:rgba(247,143,184,.12);--pink-soft:rgba(247,143,184,.28);--pink-glow:rgba(247,143,184,.26);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(247,143,184,.28)}
+/* ── Rustic Farmhouse (barn red, cream, wood tones) */
+html.t-farm{--bg:#faf6ef;--surface:#ffffff;--surface2:#f1e8d5;--border:#ddcdae;--divider:rgba(90,65,35,.09);--text:#2e2620;--text2:#6d6257;--text3:#9a8d7e;--pink:#b33a2b;--pink-dark:#87271d;--pink-mid:#d05a45;--pink-light:#f9e8e1;--pink-soft:#efc9bc;--pink-glow:rgba(179,58,43,.22);--shadow-sm:0 1px 4px rgba(90,65,35,.08);--shadow-md:0 4px 18px rgba(90,65,35,.12);--shadow-lg:0 8px 32px rgba(90,65,35,.18);--shadow-pink:0 4px 20px rgba(179,58,43,.32)}
+html.t-farm.dark{--bg:#1a1511;--surface:#221c16;--surface2:#2c241c;--border:#443727;--divider:rgba(255,255,255,.07);--text:#f3ead9;--text2:#c2b49e;--text3:#897a65;--pink:#d86a54;--pink-dark:#87271d;--pink-mid:#b33a2b;--pink-light:rgba(216,106,84,.12);--pink-soft:rgba(216,106,84,.28);--pink-glow:rgba(216,106,84,.26);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(216,106,84,.28)}
+/* ── Minimalist Cafe (clean whites, charcoal, caramel accent) */
+html.t-cafe{--bg:#fafaf9;--surface:#ffffff;--surface2:#f3f3f1;--border:#e7e5e0;--divider:rgba(0,0,0,.07);--text:#1c1c1e;--text2:#6b6b6e;--text3:#a8a8ab;--pink:#b67a2e;--pink-dark:#8a5a1d;--pink-mid:#c99a4a;--pink-light:#f9f1e2;--pink-soft:#eddcbc;--pink-glow:rgba(182,122,46,.22);--shadow-sm:0 1px 4px rgba(0,0,0,.06);--shadow-md:0 4px 18px rgba(0,0,0,.09);--shadow-lg:0 8px 32px rgba(0,0,0,.13);--shadow-pink:0 4px 20px rgba(182,122,46,.32)}
+html.t-cafe.dark{--bg:#121212;--surface:#1a1a1a;--surface2:#232323;--border:#2e2e2e;--divider:rgba(255,255,255,.07);--text:#f5f5f4;--text2:#a8a8ab;--text3:#6b6b6e;--pink:#d2a24e;--pink-dark:#8a5a1d;--pink-mid:#b67a2e;--pink-light:rgba(210,162,78,.12);--pink-soft:rgba(210,162,78,.28);--pink-glow:rgba(210,162,78,.26);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(210,162,78,.28)}
 /* Compact icon buttons in the topbar (language · mode · theme · logout) */
 .ico-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);border-radius:50%;width:33px;height:33px;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;cursor:pointer;color:#fff;flex-shrink:0;transition:background var(--dur-fast),transform var(--dur-fast)}
 .ico-btn:hover{background:rgba(255,255,255,.25)}
@@ -2088,7 +2105,7 @@ html.t-mango.dark{--bg:#141004;--surface:#1e1808;--surface2:#2a2110;--border:#3d
 <body>
 
 <div class="theme-panel" id="themePanel">
-  <div class="tp-title">🎨 থিম বাছাই — ৯টি থিম, সাথে সাথেই বদলাবে</div>
+  <div class="tp-title">🎨 থিম বাছাই — ১৩টি থিম, সাথে সাথেই বদলাবে</div>
   <div class="tp-grid">
     <button type="button" class="tp-opt" data-t="" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#0f5a50"></i><i style="background:#f3f3f8"></i></span>Original</button>
     <button type="button" class="tp-opt" data-t="t-gold" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#d4af6a"></i><i style="background:#0d0b08"></i></span>Noir Gold</button>
@@ -2099,6 +2116,10 @@ html.t-mango.dark{--bg:#141004;--surface:#1e1808;--surface2:#2a2110;--border:#3d
     <button type="button" class="tp-opt" data-t="t-matcha" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#5a8a3c"></i><i style="background:#f4f6ec"></i></span>Matcha Cream</button>
     <button type="button" class="tp-opt" data-t="t-ube" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#7c4fb0"></i><i style="background:#f7f3fb"></i></span>Ube Taro</button>
     <button type="button" class="tp-opt" data-t="t-mango" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#d98a06"></i><i style="background:#fff8ec"></i></span>Mango Rice</button>
+    <button type="button" class="tp-opt" data-t="t-crust" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#d9792b"></i><i style="background:#fdf6ec"></i></span>Artisan Crust</button>
+    <button type="button" class="tp-opt" data-t="t-pastel" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#e0528c"></i><i style="background:#fff9fb"></i></span>Patisserie</button>
+    <button type="button" class="tp-opt" data-t="t-farm" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#b33a2b"></i><i style="background:#faf6ef"></i></span>Farmhouse</button>
+    <button type="button" class="tp-opt" data-t="t-cafe" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#b67a2e"></i><i style="background:#fafaf9"></i></span>Mini Cafe</button>
   </div>
   <div class="tp-modes">
     <button type="button" class="tp-mode" data-dark="0" onclick="setPanelMode(false)">☀️ Light</button>
