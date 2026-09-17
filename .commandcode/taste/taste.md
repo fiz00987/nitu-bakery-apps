@@ -1,0 +1,7 @@
+- Works on a bakery admin app (Nitu Bakery) dealing with orders, clients, and receivers. Confidence: 0.9
+- App uses Bengali/Bangla for user-facing messages and toasts. Confidence: 0.9
+- Uses vanilla JavaScript with inline event handlers (onchange, getElementById) rather than a framework. Confidence: 0.85
+- App has order management with separate customer and receiver phone number fields, with a checkbox to copy customer phone to receiver. Confidence: 0.8
+- Customer-facing app uses selection-triggered contextual popups (onchange → showTextPopup) to inform users about specific options; user wants this pattern applied broadly across flavour/option selections. Confidence: 0.75
+- Wants informational popups shown to customers BEFORE they select an option (preview/guardrail pattern), not after. Confidence: 0.7
+- Prefers higher image quality over strict file size limits — willing to allow up to ~100KB for reference/detail images (increased from ~50KB) to preserve more visual detail. Confidence: 0.75

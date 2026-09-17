@@ -97,5 +97,7 @@ for(let i=0;i<6;i++){
   +'<div class="ocard"><div class="ph" style="background-image:url(\''+names[i]+'\')"></div><img class="lg" src="../customer-app/logo.png"><div class="in"><b>✅ আপনার অর্ডার জমা হয়েছে</b><div class="row"><span>অর্ডার নম্বর</span><b>NB-26091701</b></div><div class="row"><span>কেক</span><span>১ পাউন্ড ব্ল্যাক ফরেস্ট</span></div><div class="row"><span>ডেলিভারি</span><span>২০ Sep 26, 4 PM</span></div><div class="row"><span>মোট</span><b>৳1,350</b></div><div class="row"><span>বকেয়া</span><span>৳700</span></div></div></div>'
   +'<div class="cap">↑ Order card the client screenshots — photo → strong logo → info on glass</div>';
 }
-document.getElementById('client-area').outerHTML=h+'</body>';
+document.body.insertAdjacentHTML('beforeend', h);
 </script>
+</body>
+</html>
