@@ -844,13 +844,30 @@ button { cursor: pointer; }
   gap: 6px;
   flex-wrap: wrap;
 }
+.card-order-id-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 3px;
+}
 .card-order-id {
   font-size: 10.5px;
   font-weight: 700;
   color: var(--pink, #0f5a50);
   letter-spacing: .4px;
-  margin-bottom: 3px;
 }
+.id-copy-btn {
+  border: 1px solid var(--border);
+  background: var(--surface2, #f7f7fb);
+  border-radius: 6px;
+  font-size: 10px;
+  padding: 1px 6px;
+  cursor: pointer;
+  color: var(--text2);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.id-copy-btn:active { background: var(--pink-soft, #bcd9d2); color: var(--pink-dark, #093f38); }
 .name-copy-btn {
   border: 1px solid var(--border);
   background: var(--surface2, #f7f7fb);
@@ -1959,7 +1976,7 @@ select:focus {
 </style>
 <script>
 /* Theme system — visual only, no order logic touched */
-var ADMIN_THEMES=['t-gold','t-ivory','t-sage','t-rose'];
+var ADMIN_THEMES=['t-gold','t-ivory','t-sage','t-rose','t-cocoa','t-matcha','t-ube','t-mango'];
 function readThemeState(){try{var s=JSON.parse(localStorage.getItem('nitu-admin-theme-v2')||'null');if(s)return s;}catch(e){}try{if(localStorage.getItem('nitu-admin-theme')==='dark')return{dark:true}}catch(e){}return{}}
 function saveThemeState(s){try{localStorage.setItem('nitu-admin-theme-v2',JSON.stringify(s))}catch(e){}}
 function applyAdminTheme(){
@@ -1980,7 +1997,7 @@ try{(function(){var s=JSON.parse(localStorage.getItem('nitu-admin-theme-v2')||'n
 </script>
 <style>
 /* ─── DARK MODE + THEME SYSTEM (visual only) ─── */
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark){
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark){
   --text:#e6edf3;--text2:#aebbc7;--text3:#6f8090;--border:#263541;--divider:rgba(255,255,255,.08);
   --surface:#152230;--surface2:#1b2a3a;--bg:#0d1620;
   --pink-mid:#35b295;
@@ -1988,20 +2005,20 @@ try{(function(){var s=JSON.parse(localStorage.getItem('nitu-admin-theme-v2')||'n
   --green-light:#12301a;--amber-light:#33260f;--red-light:#331818;--blue-light:#12253c;--purple-light:#2a1a38;
   --shadow-sm:0 1px 4px rgba(0,0,0,.40);--shadow-md:0 4px 18px rgba(0,0,0,.50);--shadow-lg:0 8px 32px rgba(0,0,0,.60);
 }
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) body::before{background:rgba(10,17,24,.90)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) body::before{background:rgba(10,17,24,.90)}
 /* Pin the few hardcoded white backgrounds (theme-aware via variables) */
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .search-input,
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .notes-input,
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .field input,
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .field select,
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .field textarea{background:var(--surface2)}
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .btn-edit{background:var(--surface2)}
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .btn-del{background:rgba(226,105,95,.10);border-color:rgba(226,105,95,.35)}
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .btn-wa{background:rgba(95,189,130,.10);border-color:rgba(95,189,130,.35);color:#81d68f}
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .btn-note{color:var(--pink-mid);border-color:var(--pink-soft)}
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) .pc-rate{color:var(--pink-mid)}
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) #alert-banner,
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark) #today-banner{background:var(--surface)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .search-input,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .notes-input,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .field input,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .field select,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .field textarea{background:var(--surface2)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .btn-edit{background:var(--surface2)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .btn-del{background:rgba(226,105,95,.10);border-color:rgba(226,105,95,.35)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .btn-wa{background:rgba(95,189,130,.10);border-color:rgba(95,189,130,.35);color:#81d68f}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .btn-note{color:var(--pink-mid);border-color:var(--pink-soft)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) .pc-rate{color:var(--pink-mid)}
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) #alert-banner,
+:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark) #today-banner{background:var(--surface)}
 /* ── Theme palettes ── Noir Gold */
 html.t-gold{--bg:#f6f1e7;--surface:#fffcf5;--surface2:#f3ecdd;--border:#e6dcc6;--divider:rgba(60,45,20,.08);--text:#2a2317;--text2:#6f6350;--text3:#a2947a;--pink:#a5813e;--pink-dark:#7c5f2b;--pink-mid:#c09a52;--pink-light:#f2e8d2;--pink-soft:#e3d3ac;--pink-glow:rgba(165,129,62,.22);--shadow-sm:0 1px 4px rgba(60,45,20,.07);--shadow-md:0 4px 18px rgba(60,45,20,.10);--shadow-lg:0 8px 32px rgba(60,45,20,.16);--shadow-pink:0 4px 20px rgba(165,129,62,.35)}
 html.t-gold.dark{--bg:#0d0b08;--surface:#161310;--surface2:#1e1a13;--border:#2c251a;--divider:rgba(255,255,255,.07);--text:#f0e8d8;--text2:#b3a68c;--text3:#7d715c;--pink:#d4af6a;--pink-dark:#8a6a30;--pink-mid:#c9a24f;--pink-light:rgba(212,175,106,.12);--pink-soft:rgba(212,175,106,.28);--pink-glow:rgba(212,175,106,.25);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(212,175,106,.30)}
@@ -2014,6 +2031,18 @@ html.t-sage.dark{--bg:#0e1411;--surface:#161f1a;--surface2:#1b2620;--border:#263
 /* ── Rose Porcelain */
 html.t-rose{--bg:#fbf7f6;--surface:#ffffff;--surface2:#f6eef0;--border:#efe4e2;--divider:rgba(80,40,50,.07);--text:#2b2124;--text2:#6d5a60;--text3:#a58f95;--pink:#bd6076;--pink-dark:#96485c;--pink-mid:#d07f93;--pink-light:#f9edf0;--pink-soft:#f0d6dc;--pink-glow:rgba(189,96,118,.22);--shadow-sm:0 1px 4px rgba(80,40,50,.06);--shadow-md:0 4px 18px rgba(80,40,50,.09);--shadow-lg:0 8px 32px rgba(80,40,50,.14);--shadow-pink:0 4px 20px rgba(189,96,118,.32)}
 html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#32242b;--divider:rgba(255,255,255,.07);--text:#f4eaee;--text2:#bda4ad;--text3:#8a7079;--pink:#e08ca0;--pink-dark:#96485c;--pink-mid:#d07f93;--pink-light:rgba(224,140,160,.12);--pink-soft:rgba(224,140,160,.28);--pink-glow:rgba(224,140,160,.25);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(224,140,160,.28)}
+/* ── Midnight Cocoa (deep chocolate + glowing amber) */
+html.t-cocoa{--bg:#f7f1e8;--surface:#fffaf1;--surface2:#f3e7d3;--border:#e7d6b8;--divider:rgba(80,50,20,.09);--text:#2c1f12;--text2:#6e5a41;--text3:#a08a68;--pink:#b0701f;--pink-dark:#7d4e12;--pink-mid:#cf8f35;--pink-light:#f9ecd4;--pink-soft:#eed9ae;--pink-glow:rgba(176,112,31,.25);--shadow-sm:0 1px 4px rgba(80,50,20,.08);--shadow-md:0 4px 18px rgba(80,50,20,.12);--shadow-lg:0 8px 32px rgba(80,50,20,.18);--shadow-pink:0 4px 20px rgba(176,112,31,.38)}
+html.t-cocoa.dark{--bg:#120c07;--surface:#1c130b;--surface2:#271b0f;--border:#3a2a16;--divider:rgba(255,255,255,.07);--text:#f5e8d3;--text2:#c4ab84;--text3:#8a7356;--pink:#f0a832;--pink-dark:#9c6414;--pink-mid:#d68f26;--pink-light:rgba(240,168,50,.12);--pink-soft:rgba(240,168,50,.28);--pink-glow:rgba(240,168,50,.28);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(240,168,50,.30)}
+/* ── Matcha Cream (pistachio green + cream) */
+html.t-matcha{--bg:#f4f6ec;--surface:#fefffa;--surface2:#e9efe0;--border:#dbe4cf;--divider:rgba(40,70,40,.08);--text:#1d2618;--text2:#4e5f45;--text3:#8b9983;--pink:#5a8a3c;--pink-dark:#40652a;--pink-mid:#74a854;--pink-light:#eef4e4;--pink-soft:#d5e5c3;--pink-glow:rgba(90,138,60,.24);--shadow-sm:0 1px 4px rgba(40,70,40,.07);--shadow-md:0 4px 18px rgba(40,70,40,.10);--shadow-lg:0 8px 32px rgba(40,70,40,.15);--shadow-pink:0 4px 20px rgba(90,138,60,.34)}
+html.t-matcha.dark{--bg:#0d130b;--surface:#141c11;--surface2:#1b2617;--border:#263420;--divider:rgba(255,255,255,.07);--text:#e9f1e2;--text2:#aebfa4;--text3:#75846d;--pink:#93cc6f;--pink-dark:#40652a;--pink-mid:#74a854;--pink-light:rgba(147,204,111,.12);--pink-soft:rgba(147,204,111,.28);--pink-glow:rgba(147,204,111,.26);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(147,204,111,.28)}
+/* ── Ube Taro (purple yam + lavender milk) */
+html.t-ube{--bg:#f7f3fb;--surface:#ffffff;--surface2:#efe7f7;--border:#e2d5ef;--divider:rgba(80,50,120,.08);--text:#241a30;--text2:#5d4e70;--text3:#9787ab;--pink:#7c4fb0;--pink-dark:#5b3686;--pink-mid:#9a71c9;--pink-light:#f0e8f9;--pink-soft:#dccdf0;--pink-glow:rgba(124,79,176,.24);--shadow-sm:0 1px 4px rgba(80,50,120,.07);--shadow-md:0 4px 18px rgba(80,50,120,.10);--shadow-lg:0 8px 32px rgba(80,50,120,.15);--shadow-pink:0 4px 20px rgba(124,79,176,.34)}
+html.t-ube.dark{--bg:#120e18;--surface:#1a1424;--surface2:#231b31;--border:#332544;--divider:rgba(255,255,255,.07);--text:#efe7f8;--text2:#b6a5cc;--text3:#7f6f95;--pink:#b691e6;--pink-dark:#5b3686;--pink-mid:#9a71c9;--pink-light:rgba(182,145,230,.12);--pink-soft:rgba(182,145,230,.28);--pink-glow:rgba(182,145,230,.26);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(182,145,230,.28)}
+/* ── Mango Sticky Rice (mango yellow + coconut white) */
+html.t-mango{--bg:#fff8ec;--surface:#fffdf7;--surface2:#fdf0d5;--border:#f3e0b5;--divider:rgba(140,90,10,.09);--text:#2e220e;--text2:#6e5c39;--text3:#a3906a;--pink:#d98a06;--pink-dark:#a36504;--pink-mid:#eba51e;--pink-light:#fdf3da;--pink-soft:#f8e2ae;--pink-glow:rgba(217,138,6,.26);--shadow-sm:0 1px 4px rgba(140,90,10,.08);--shadow-md:0 4px 18px rgba(140,90,10,.12);--shadow-lg:0 8px 32px rgba(140,90,10,.18);--shadow-pink:0 4px 20px rgba(217,138,6,.38)}
+html.t-mango.dark{--bg:#141004;--surface:#1e1808;--surface2:#2a2110;--border:#3d3016;--divider:rgba(255,255,255,.07);--text:#f7ecd2;--text2:#c8b183;--text3:#8d7a55;--pink:#f5b81e;--pink-dark:#a36504;--pink-mid:#d99a10;--pink-light:rgba(245,184,30,.12);--pink-soft:rgba(245,184,30,.28);--pink-glow:rgba(245,184,30,.28);--shadow-sm:0 1px 4px rgba(0,0,0,.45);--shadow-md:0 4px 18px rgba(0,0,0,.55);--shadow-lg:0 8px 32px rgba(0,0,0,.65);--shadow-pink:0 4px 20px rgba(245,184,30,.30)}
 /* Compact icon buttons in the topbar (language · mode · theme · logout) */
 .ico-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);border-radius:50%;width:33px;height:33px;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;cursor:pointer;color:#fff;flex-shrink:0;transition:background var(--dur-fast),transform var(--dur-fast)}
 .ico-btn:hover{background:rgba(255,255,255,.25)}
@@ -2035,10 +2064,10 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
   .topbar-brand img{height:40px}
   .topbar-brand p{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 }
-.theme-panel{position:fixed;top:calc(var(--topbar-h) + 8px);right:14px;z-index:4001;width:240px;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:14px;display:none}
+.theme-panel{position:fixed;top:calc(var(--topbar-h) + 8px);right:14px;z-index:4001;width:min(430px,calc(100vw - 28px));max-height:min(70vh,560px);overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:14px;display:none}
 .theme-panel.open{display:block}
 .tp-title{font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px}
-.tp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .tp-opt{border:1.5px solid var(--border);background:var(--surface2);border-radius:12px;padding:10px 6px;font-family:inherit;font-size:10.5px;font-weight:800;color:var(--text);cursor:pointer;line-height:1.3}
 .tp-opt.active{border-color:var(--pink);box-shadow:0 0 0 2px var(--pink-glow)}
 .tp-sw{display:flex;gap:4px;justify-content:center;margin-bottom:6px}
@@ -2052,13 +2081,17 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
 <body>
 
 <div class="theme-panel" id="themePanel">
-  <div class="tp-title">🎨 থিম বাছাই — সাথে সাথেই পরিবর্তন হবে</div>
+  <div class="tp-title">🎨 থিম বাছাই — ৯টি থিম, সাথে সাথেই বদলাবে</div>
   <div class="tp-grid">
     <button type="button" class="tp-opt" data-t="" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#0f5a50"></i><i style="background:#f3f3f8"></i></span>Original</button>
     <button type="button" class="tp-opt" data-t="t-gold" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#d4af6a"></i><i style="background:#0d0b08"></i></span>Noir Gold</button>
     <button type="button" class="tp-opt" data-t="t-ivory" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#b0553a"></i><i style="background:#faf9f7"></i></span>Ivory Editorial</button>
     <button type="button" class="tp-opt" data-t="t-sage" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#3e6b54"></i><i style="background:#f4f7f5"></i></span>Nordic Sage</button>
     <button type="button" class="tp-opt" data-t="t-rose" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#bd6076"></i><i style="background:#fbf7f6"></i></span>Rose Porcelain</button>
+    <button type="button" class="tp-opt" data-t="t-cocoa" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#b0701f"></i><i style="background:#120c07"></i></span>Midnight Cocoa</button>
+    <button type="button" class="tp-opt" data-t="t-matcha" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#5a8a3c"></i><i style="background:#f4f6ec"></i></span>Matcha Cream</button>
+    <button type="button" class="tp-opt" data-t="t-ube" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#7c4fb0"></i><i style="background:#f7f3fb"></i></span>Ube Taro</button>
+    <button type="button" class="tp-opt" data-t="t-mango" onclick="pickTheme(this)"><span class="tp-sw"><i style="background:#d98a06"></i><i style="background:#fff8ec"></i></span>Mango Rice</button>
   </div>
   <div class="tp-modes">
     <button type="button" class="tp-mode" data-dark="0" onclick="setPanelMode(false)">☀️ Light</button>

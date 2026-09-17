@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Themes Preview</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:sans-serif;background:#111;color:#fff;padding:22px 14px 60px}
+h1{text-align:center;font-size:20px;margin-bottom:4px}
+p.sub{text-align:center;opacity:.7;font-size:13px;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;max-width:1100px;margin:0 auto}
+.shot{border-radius:16px;overflow:hidden;border:2px solid rgba(255,255,255,.15);background:#fff}
+.shot h2{font-size:14px;padding:10px 12px;background:rgba(0,0,0,.8);color:#fff;display:flex;justify-content:space-between;align-items:center}
+.shot h2 button{border:none;border-radius:8px;padding:5px 12px;font-weight:800;cursor:pointer;font-size:12px}
+.mock{padding:12px}
+.mock .topbar{border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.mock .brand{font-weight:800;font-size:14px}
+.mock .tabs{display:flex;gap:6px;margin-bottom:10px}
+.mock .tabs span{font-size:11px;font-weight:700;padding:6px 10px;border-radius:99px}
+.mock .card{border-radius:10px;padding:10px 12px;margin-bottom:8px;border:1px solid}
+.mock .card b{font-size:13px;display:block}
+.mock .card small{font-size:11px;opacity:.75}
+.mock .chips{display:flex;gap:5px;margin-top:7px}
+.mock .chips em{font-style:normal;font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px}
+</style>
+</head>
+<body>
+<h1>Admin App Themes Preview</h1>
+<p class="sub">Same mock card in every theme, Light + Dark. Click Use to apply.</p>
+<div class="grid" id="grid"></div>
+<script>
+var THEMES=[
+{id:'',name:'Original Teal',bg:'#f3f3f8',surface:'#ffffff',surface2:'#f7f7fb',border:'#e8e8f0',text:'#1a1a2e',text2:'#555577',pink:'#0f5a50',pinkLight:'#e2f1ec',darkBg:'#0d1620',darkSurface:'#152230'},
+{id:'t-gold',name:'Noir Gold',bg:'#f6f1e7',surface:'#fffcf5',surface2:'#f3ecdd',border:'#e6dcc6',text:'#2a2317',text2:'#6f6350',pink:'#a5813e',pinkLight:'#f2e8d2',darkBg:'#0d0b08',darkSurface:'#161310'},
+{id:'t-ivory',name:'Ivory Editorial',bg:'#faf9f7',surface:'#ffffff',surface2:'#f1efeb',border:'#e8e5df',text:'#1b1916',text2:'#5c574f',pink:'#b0553a',pinkLight:'#f8ebe5',darkBg:'#131110',darkSurface:'#1c1917'},
+{id:'t-sage',name:'Nordic Sage',bg:'#f4f7f5',surface:'#ffffff',surface2:'#ecf2ee',border:'#e3eae5',text:'#131a16',text2:'#4d5c54',pink:'#3e6b54',pinkLight:'#e7f1eb',darkBg:'#0e1411',darkSurface:'#161f1a'},
+{id:'t-rose',name:'Rose Porcelain',bg:'#fbf7f6',surface:'#ffffff',surface2:'#f6eef0',border:'#efe4e2',text:'#2b2124',text2:'#6d5a60',pink:'#bd6076',pinkLight:'#f9edf0',darkBg:'#161013',darkSurface:'#1f171b'},
+{id:'t-cocoa',name:'Midnight Cocoa',bg:'#f7f1e8',surface:'#fffaf1',surface2:'#f3e7d3',border:'#e7d6b8',text:'#2c1f12',text2:'#6e5a41',pink:'#b0701f',pinkLight:'#f9ecd4',darkBg:'#120c07',darkSurface:'#1c130b'},
+{id:'t-matcha',name:'Matcha Cream',bg:'#f4f6ec',surface:'#fefffa',surface2:'#e9efe0',border:'#dbe4cf',text:'#1d2618',text2:'#4e5f45',pink:'#5a8a3c',pinkLight:'#eef4e4',darkBg:'#0d130b',darkSurface:'#141c11'},
+{id:'t-ube',name:'Ube Taro',bg:'#f7f3fb',surface:'#ffffff',surface2:'#efe7f7',border:'#e2d5ef',text:'#241a30',text2:'#5d4e70',pink:'#7c4fb0',pinkLight:'#f0e8f9',darkBg:'#120e18',darkSurface:'#1a1424'},
+{id:'t-mango',name:'Mango Sticky Rice',bg:'#fff8ec',surface:'#fffdf7',surface2:'#fdf0d5',border:'#f3e0b5',text:'#2e220e',text2:'#6e5c39',pink:'#d98a06',pinkLight:'#fdf3da',darkBg:'#141004',darkSurface:'#1e1808'}
+];
+function mock(t,dark){
+var bg=dark?t.darkBg:t.bg,sf=dark?t.darkSurface:t.surface,s2=dark?t.darkSurface:t.surface2;
+var tx=dark?'#e6edf3':t.text,t2=dark?'#aebbc7':t.text2,bd=dark?'#263541':t.border;
+return '<div class="mock" style="background:'+bg+';color:'+tx+'">'
++'<div class="topbar" style="background:'+t.pink+';color:#fff"><span class="brand">Nitu Bakery</span><span>📨 🌙 🎨</span></div>'
++'<div class="tabs"><span style="background:'+t.pink+';color:#fff">Orders 5</span><span style="background:'+s2+';color:'+t2+';border:1px solid '+bd+'">Done 42</span><span style="background:'+s2+';color:'+t2+';border:1px solid '+bd+'">Database</span></div>'
++'<div class="card" style="background:'+sf+';border-color:'+bd+'"><b>NB-1042, Sharmin 📋</b><small>1 pound, chocolate, 4pm</small><div class="chips"><em style="background:'+t.pinkLight+';color:'+t.pink+'">Paid</em><em style="background:'+s2+';color:'+t2+';border:1px solid '+bd+'">Delivery due</em></div></div>'
++'<div class="card" style="background:'+sf+';border-color:'+bd+';opacity:.8"><b>NB-1041, Rahim 📋</b><small>2 pound, vanilla, 6pm</small><div class="chips"><em style="background:#ffebee;color:#c62828">Due 500</em></div></div>'
++'</div>';
+}
+document.getElementById('grid').innerHTML=THEMES.map(function(t){
+return '<div class="shot"><h2>'+t.name+' Light <button onclick="useTheme(\''+t.id+'\',false)">Use</button></h2>'+mock(t,false)+'</div>'
++'<div class="shot"><h2>'+t.name+' Dark <button onclick="useTheme(\''+t.id+'\',true)">Use</button></h2>'+mock(t,true)+'</div>';
+}).join('');
+function useTheme(id,dark){
+try{localStorage.setItem('nitu-admin-theme-v2',JSON.stringify({theme:id,dark:dark}));}catch(e){}
+location.href='./index.html';
+}
+</script>
+</body>
+</html>

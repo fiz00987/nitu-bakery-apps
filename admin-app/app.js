@@ -1101,7 +1101,7 @@ window.App = (() => {
   <div class="card-head" onclick="App.toggleCard('${fk}')" role="button" tabindex="0" aria-expanded="false">
     <div class="card-stripe ${colClass(o)}"></div>
     <div class="card-head-body">
-      ${o.orderId ? `<div class="card-order-id" onclick="event.stopPropagation(); App.copyOrderId('${fk}')" title="অর্ডার আইডি কপি করুন" style="cursor:pointer">🆔 ${esc(o.orderId)} 📋</div>` : ''}
+      ${o.orderId ? `<div class="card-order-id-row"><span class="card-order-id">🆔 ${esc(o.orderId)}</span><button class="id-copy-btn" type="button" onclick="event.stopPropagation();App.copyOrderId('${fk}')" title="অর্ডার আইডি কপি করুন">📋</button></div>` : ''}
       <div class="card-name"><span class="card-name-text">${esc(o.name)}</span>${tallyBadge}${customerBadge}<button class="name-copy-btn" type="button" onclick="event.stopPropagation();App.copyCardName(this)" title="নাম কপি করুন">📋 কপি</button></div>
       <div class="card-meta">${esc(weightText(o))}${weightText(o) && o.flavour ? ' · ' : ''}${esc(flavourLabel(o))}${o.time ? ' · ' + esc(o.time) : ''}${(o.cakes && o.cakes.length > 1) ? ' · <b>' + o.cakes.length + 'টি কেক</b>' : ''}</div>
       ${cdChip}
