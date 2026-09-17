@@ -13,7 +13,8 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
 <style>
 :root {
   --pink:#c2185b; --pink-dark:#880e4f; --pink-mid:#e91e8c;
@@ -329,7 +330,7 @@ html.t-gold .order-number-badge{color:#a5813e}
         <label data-bn="ফ্লেভার *" data-en="Flavour *">ফ্লেভার *</label>
         <button type="button" title="ফ্লেভার নির্দেশিকা / Flavour guide" onclick="showFlavourPopup()" style="background:none;border:none;font-size:13px;line-height:1;cursor:pointer;padding:0 2px;color:var(--pink)">❗</button>
       </div>
-      <select id="f-flavour" onfocus="showFlavourNotice()"><option value="">নির্বাচন করুন</option></select>
+      <select id="f-flavour" onfocus="showFlavourNotice()" onchange="onFlavourChange(this.value)"><option value="">নির্বাচন করুন</option></select>
       <div class="note-box">সব ফ্লেভার সব সময় পাওয়া নাও যেতে পারে। কিছু ফ্লেভারের জন্য নির্দিষ্ট ওজন প্রয়োজন। বিস্তারিত জানতে আমাদের Facebook পেজে যোগাযোগ করুন।</div>
     </div>
     <div class="field">
@@ -554,11 +555,11 @@ html.t-gold .order-number-badge{color:#a5813e}
   </div>
 </div>
 
-<!-- Firebase + Utils -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="./firebase-config.js"></script>
-<script src="./utils.js"></script>
+<!-- Firebase + Utils (deferred for faster initial paint) -->
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script defer src="./firebase-config.js"></script>
+<script defer src="./utils.js"></script>
 
 <script>
 // The customer app never serves a stale app shell: its worker fetches each page
@@ -571,6 +572,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
-<script src="./app.js"></script>
+<script defer src="./app.js"></script>
 </body>
 </html>

@@ -13,7 +13,8 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
 <style>
 /* =============================================
    ROOT DESIGN TOKENS
@@ -844,25 +845,38 @@ button { cursor: pointer; }
   gap: 6px;
   flex-wrap: wrap;
 }
+.card-order-id-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 3px 0 1px;
+}
 .card-order-id {
   font-size: 10.5px;
   font-weight: 700;
   color: var(--pink, #0f5a50);
   letter-spacing: .4px;
-  margin-bottom: 3px;
 }
-.name-copy-btn {
+.name-copy-btn,
+.id-copy-btn {
   border: 1px solid var(--border);
   background: var(--surface2, #f7f7fb);
   border-radius: 6px;
   font-size: 11px;
-  padding: 2px 7px;
+  padding: 4px 9px;
+  min-width: 32px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   color: var(--text2);
   font-weight: 600;
   line-height: 1.4;
+  flex-shrink: 0;
 }
-.name-copy-btn:active { background: var(--pink-soft, #bcd9d2); color: var(--pink-dark, #093f38); }
+.name-copy-btn:active,
+.id-copy-btn:active { background: var(--pink-soft, #bcd9d2); color: var(--pink-dark, #093f38); }
 .card-meta {
   font-size: 12px;
   color: var(--text2);
@@ -918,7 +932,18 @@ button { cursor: pointer; }
 .countdown.later   { background: var(--blue-light); color: var(--blue); }
 .countdown.overdue { background: var(--red); color: #fff; }
 
-/* Chevron */
+/* Chevron — big isolated tap target so expand never misclicks copy */
+.card-chevron-wrap {
+  flex-shrink: 0;
+  width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2px 0 8px 8px;
+  margin: -6px -6px -6px 0;
+  cursor: pointer;
+}
 .card-chevron {
   font-size: 20px;
   color: var(--text3);
@@ -926,6 +951,14 @@ button { cursor: pointer; }
   transition: transform var(--dur-base) var(--ease-smooth);
   flex-shrink: 0;
   line-height: 1;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--surface2, #f7f7fb);
+  border: 1px solid var(--border);
 }
 .card.expanded .card-chevron { transform: rotate(180deg); }
 
@@ -2266,21 +2299,17 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
 
 <!-- TABS -->
 <nav class="tabs" role="tablist" aria-label="ভিউ নির্বাচন">
-  <button class="tab active" id="tab-plan" role="tab" aria-selected="true"  aria-controls="view-plan"    onclick="App.switchTab('plan')">📅 <span data-i18n="tabPlan">প্ল্যান</span> <span class="tab-count" id="tc-plan">0</span></button>
-  <button class="tab"        id="tab-all"  role="tab" aria-selected="false" aria-controls="view-all"     onclick="App.switchTab('all')">📦 <span data-i18n="tabAll">অর্ডার</span> <span class="tab-count" id="tc-all">0</span></button>
-  <button class="tab"        id="tab-done" role="tab" aria-selected="false" aria-controls="view-done"    onclick="App.switchTab('done')">✅ <span data-i18n="tabDone">সম্পন্ন</span> <span class="tab-count" id="tc-done">0</span></button>
-  <button class="tab"        id="tab-cdb"  role="tab" aria-selected="false" aria-controls="view-cdb"     onclick="App.switchTab('cdb')">🗂️ <span data-i18n="tabCdb">ডেটাবেজ</span> <span class="tab-count" id="tc-cdb">0</span></button>
-  <button class="tab"        id="tab-rev"  role="tab" aria-selected="false" aria-controls="view-revenue" onclick="App.switchTab('revenue')">💰 <span data-i18n="tabRev">আয়</span></button>
-  <button class="tab"        id="tab-quotes"  role="tab" aria-selected="false" aria-controls="view-quotes" onclick="App.switchTab('quotes')">📨 কোটেশন <span class="tab-count" id="tc-quotes">0</span></button>
+  <button class="tab active" id="tab-orders" role="tab" aria-selected="true"  aria-controls="view-orders" onclick="App.switchTab('orders')">📅 <span data-i18n="tabOrders">অর্ডার</span> <span class="tab-count" id="tc-orders">0</span></button>
+  <button class="tab"        id="tab-done"   role="tab" aria-selected="false" aria-controls="view-done"   onclick="App.switchTab('done')">✅ <span data-i18n="tabDone">সম্পন্ন</span> <span class="tab-count" id="tc-done">0</span></button>
+  <button class="tab"        id="tab-cdb"    role="tab" aria-selected="false" aria-controls="view-cdb"    onclick="App.switchTab('cdb')">🗂️ <span data-i18n="tabCdb">ডেটাবেজ</span> <span class="tab-count" id="tc-cdb">0</span></button>
+  <button class="tab"        id="tab-quotes" role="tab" aria-selected="false" aria-controls="view-quotes" onclick="App.switchTab('quotes')">📨 কোটেশন <span class="tab-count" id="tc-quotes">0</span></button>
 </nav>
 
 <!-- VIEWS -->
 <main>
-  <div id="view-plan"    role="tabpanel" aria-labelledby="tab-plan" class="section"><div class="skeleton-wrap" id="sk-plan"></div></div>
-  <div id="view-all"     role="tabpanel" aria-labelledby="tab-all"  class="section hidden"></div>
-  <div id="view-done"    role="tabpanel" aria-labelledby="tab-done" class="section hidden"></div>
-  <div id="view-cdb"     role="tabpanel" aria-labelledby="tab-cdb"  class="section hidden"></div>
-  <div id="view-revenue" role="tabpanel" aria-labelledby="tab-rev"  class="revenue-section hidden"></div>
+  <div id="view-orders" role="tabpanel" aria-labelledby="tab-orders" class="section"><div class="skeleton-wrap" id="sk-plan"></div></div>
+  <div id="view-done"   role="tabpanel" aria-labelledby="tab-done"   class="section hidden"></div>
+  <div id="view-cdb"    role="tabpanel" aria-labelledby="tab-cdb"    class="section hidden"></div>
   <div id="view-quotes" role="tabpanel" aria-labelledby="tab-quotes" class="section hidden"></div>
 </main>
 
@@ -2526,11 +2555,11 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
 <!-- TOAST -->
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
+<!-- Firebase (defer non-critical Firebase libs) -->
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 
 <script>
 /* =============================================================
@@ -2592,8 +2621,8 @@ function isIosDevice() {
 }
 </script>
 
-<script src="./app.js?v=2026-09-16-quote1"></script>
+<script defer src="./app.js?v=2026-09-16-quote1"></script>
 
 <!-- PUSH NOTIFICATION SYSTEM (Firebase Cloud Messaging / Web Push) -->
-<script src="./notifications.js?v=2026-09-16-quote1"></script></body>
+<script defer src="./notifications.js?v=2026-09-16-quote1"></script></body>
 </html>

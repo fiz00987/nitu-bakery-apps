@@ -36,7 +36,7 @@ window.App = (() => {
   let orders        = [];
   let currentUser   = null;
   let editingId     = null;
-  let activeTab     = 'plan';
+   let activeTab     = 'orders';
   let isConnected   = false;
   let confirmCb     = null;
   let currentPhoto  = '';
@@ -74,7 +74,7 @@ window.App = (() => {
       monthEarn: 'আয় (মোট বিক্রি)',
       monthEarnNote: '💡 ডেলিভারি চার্জ ও bKash চার্জ বাদে কেকের মোট বিক্রি। ডেলিভারি চার্জ পুরোটা ডেলিভারি এজেন্ট পান।',
       chartMonthlyOrders: '📊 মাসিক অর্ডার — শেষ ৫ মাস',
-      tabPlan: 'প্ল্যান', tabAll: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'আয়', tabCdb: 'ডেটাবেজ',
+      tabOrders: 'অর্ডার', tabDone: 'সম্পন্ন', tabCdb: 'ডেটাবেজ',
       sort_date: 'তারিখ', sort_name: 'নাম', sort_due: 'বকেয়া',
       secPayment: '💳 পেমেন্ট', fTotal: 'মোট মূল্য (৳)', fPaid: 'পরিশোধিত (৳)',
       live: 'লাইভ', offline: 'সংযোগ নেই', saving: 'সেভ হচ্ছে...', conn: 'সংযোগ...',
@@ -98,7 +98,7 @@ window.App = (() => {
       monthEarn: 'Earn (Total Sale)',
       monthEarnNote: '💡 Total cake sale excluding delivery & bKash charges. The delivery fee goes fully to the delivery agent.',
       chartMonthlyOrders: '📊 Orders per Month — Last 5',
-      tabPlan: 'Plan', tabAll: 'Orders', tabDone: 'Done', tabRev: 'Revenue', tabCdb: 'Database',
+      tabOrders: 'Orders', tabDone: 'Done', tabCdb: 'Database',
       sort_date: 'Date', sort_name: 'Name', sort_due: 'Due',
       secPayment: '💳 Payment', fTotal: 'Total Price (৳)', fPaid: 'Paid (৳)',
       live: 'Live', offline: 'Offline', saving: 'Saving...', conn: 'Connecting...',
@@ -1022,13 +1022,13 @@ window.App = (() => {
   <div class="card-head" onclick="App.toggleCard('${fk}')" role="button" tabindex="0" aria-expanded="false">
     <div class="card-stripe ${colClass(o)}"></div>
     <div class="card-head-body">
-      ${o.orderId ? `<div class="card-order-id" onclick="event.stopPropagation(); App.copyOrderId('${fk}')" title="অর্ডার আইডি কপি করুন" style="cursor:pointer">🆔 ${esc(o.orderId)} 📋</div>` : ''}
-      <div class="card-name"><span class="card-name-text">${esc(o.name)}</span>${tallyBadge}${customerBadge}<button class="name-copy-btn" type="button" onclick="event.stopPropagation();App.copyCardName(this)" title="নাম কপি করুন">📋 কপি</button></div>
+      <div class="card-name"><span class="card-name-text">${esc(o.name)}</span><button class="name-copy-btn" type="button" onclick="event.stopPropagation();App.copyCardName(this)" title="নাম কপি করুন">📋</button>${tallyBadge}${customerBadge}</div>
+      ${o.orderId ? `<div class="card-order-id-row"><span class="card-order-id">🆔 ${esc(o.orderId)}</span><button class="id-copy-btn" type="button" onclick="event.stopPropagation();App.copyOrderId('${fk}')" title="অর্ডার আইডি কপি করুন">📋</button></div>` : ''}
       <div class="card-meta">${esc(weightText(o))}${weightText(o) && o.flavour ? ' · ' : ''}${esc(flavourLabel(o))}${o.time ? ' · ' + esc(o.time) : ''}${(o.cakes && o.cakes.length > 1) ? ' · <b>' + o.cakes.length + 'টি কেক</b>' : ''}</div>
       ${cdChip}
       <div class="card-chips">${statusChip(o)}${dueChip}${surpriseChip}${deliveryChip}</div>
     </div>
-    <div class="card-chevron" aria-hidden="true">⌄</div>
+    <div class="card-chevron-wrap" aria-hidden="true"><div class="card-chevron">⌄</div></div>
   </div>
 
   ${payProgressBar(o)}
@@ -1165,18 +1165,11 @@ window.App = (() => {
       <p>+ বাটন চাপুন নতুন অর্ডার যোগ করতে।</p>
     </div>`;
 
-    document.getElementById('view-plan').innerHTML = html;
-    document.getElementById('tc-plan').textContent = pool.length + (document.getElementById('search-input').value.trim() ? '/' : '');
+    document.getElementById('view-orders').innerHTML = html;
+    document.getElementById('tc-orders').textContent = pool.length + (document.getElementById('search-input').value.trim() ? '/' : '');
   };
 
-  const renderAll = () => {
-    const pool = getFiltered(orders.filter(o => !isLogicallyComplete(o)));
-    const el = document.getElementById('view-all');
-    el.innerHTML = pool.length
-      ? pool.map(renderCard).join('')
-      : `<div class="empty"><div class="empty-icon">📦</div><h3>কোনো মিল পাওয়া যায়নি</h3><p>ভিন্ন সার্চ বা ফিল্টার চেষ্টা করুন।</p></div>`;
-    document.getElementById('tc-all').textContent = pool.length;
-  };
+  // renderAll removed — merged into Orders tab
 
   // ─── Completed Order Database (grid view) ─────────────────────
   // Shows every delivered order as a small card: the delivered cake
@@ -1713,20 +1706,23 @@ window.App = (() => {
     updateSummary();
     syncWidgetFeed();
     renderCalendar();
-    if (activeTab === 'plan') {
-      renderPlan();
-    } else {
-      // Perf: don't rebuild the hidden plan list on every snapshot —
-      // only refresh its tab badge. switchTab() re-renders on return.
-      const pool = getFiltered(orders.filter(o => isActiveOrder(o) && !isLogicallyComplete(o)));
-      document.getElementById('tc-plan').textContent = pool.length + (document.getElementById('search-input').value.trim() ? '/' : '');
-    }
-    // Keep the database tab badge fresh even before the tab is opened
-    document.getElementById('tc-cdb').textContent = orders.filter(o => o.status === 'delivered').length;
-    if (activeTab === 'all')     renderAll();
+
+    // Update ALL tab badges immediately (no click needed)
+    const searchTerm = document.getElementById('search-input').value.trim();
+    const activeOrders = orders.filter(o => isActiveOrder(o) && !isLogicallyComplete(o));
+    const filteredActive = getFiltered(activeOrders);
+    const doneOrders = orders.filter(o => o.status === 'delivered');
+    const filteredDone = getFiltered(doneOrders);
+
+    document.getElementById('tc-orders').textContent = filteredActive.length + (searchTerm ? '/' : '');
+    document.getElementById('tc-done').textContent = filteredDone.length + (searchTerm ? '/' : '');
+    document.getElementById('tc-cdb').textContent = doneOrders.length;
+
+    // Render active tab content
+    if (activeTab === 'orders')  renderPlan();
     if (activeTab === 'done')    renderDone();
     if (activeTab === 'cdb')     renderCdb();
-    if (activeTab === 'revenue') renderRevenue();
+    if (activeTab === 'quotes')  renderQuotes();
   };
 
   const QUOTE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -1875,21 +1871,20 @@ window.App = (() => {
   // ─── Tab switcher ─────────────────────────────────────────────
   const switchTab = t => {
     activeTab = t;
-    ['plan','all','done','cdb','revenue','quotes'].forEach(n => {
-      document.getElementById(`view-${n}`).classList.toggle('hidden', n !== t);
-      const btn = document.getElementById(`tab-${n === 'revenue' ? 'rev' : n}`);
+    ['orders','done','cdb','quotes'].forEach(n => {
+      const view = document.getElementById(`view-${n}`);
+      if (view) view.classList.toggle('hidden', n !== t);
+      const btn = document.getElementById(`tab-${n}`);
       if (!btn) return;
       const isActive = n === t;
       btn.classList.toggle('active', isActive);
       btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
-    // Lazy render on switch
-    if (t === 'plan')    renderPlan();
-    if (t === 'all')     renderAll();
+    // Render on switch
+    if (t === 'orders')  renderPlan();
     if (t === 'done')    renderDone();
     if (t === 'cdb')     renderCdb();
-    if (t === 'revenue') renderRevenue();
-    if (t === 'quotes') renderQuotes();
+    if (t === 'quotes')  renderQuotes();
   };
 
   // ─── Toggle card expand ──────────────────────────────────────
@@ -3607,9 +3602,9 @@ window.App = (() => {
       }
       fx.appendChild(orbit);
     }
-    // Fade out after ~4.5s so the welcome animation plays fully and lingers
+    // Fade out after ~2.5s — enough for branding, faster app ready
     if (!splash.classList.contains('gone')) {
-      setTimeout(() => splash.classList.add('gone'), 4500);
+      setTimeout(() => splash.classList.add('gone'), 2500);
     }
   })();
 

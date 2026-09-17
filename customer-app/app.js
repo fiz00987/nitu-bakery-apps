@@ -55,9 +55,9 @@ let flavourNoticeShown = false; // "select the exact flavour" notice — once pe
       efx.appendChild(s);
     }
   }
-  // Fade out after ~4.5s so the welcome animation plays fully and lingers
+  // Fade out after ~2.5s — enough for branding, faster app ready
   if (!splash.classList.contains('gone')) {
-    setTimeout(() => splash.classList.add('gone'), 4500);
+    setTimeout(() => splash.classList.add('gone'), 2500);
   }
 })();
 
@@ -463,11 +463,11 @@ function compressImage(file) {
       const img = new Image();
       img.onload = function() {
         const canvas = document.createElement('canvas');
-        const MAX = 800; let w = img.width, h = img.height;
+        const MAX = 1200; let w = img.width, h = img.height;
         if (w > MAX) { h = h * MAX / w; w = MAX; }
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
       };
       img.onerror = reject;
       img.src = ev.target.result;
@@ -505,7 +505,7 @@ function removePhoto(i) {
 }
 
 // ─── Payment screenshot (mandatory proof-of-payment) ───────────
-// Same compressor as reference photos (≤ ~80KB JPEG data URL).
+// Same compressor as reference photos (≤ ~100KB JPEG data URL).
 let payShot = '';
 
 async function handlePayShot(e) {
@@ -575,7 +575,7 @@ async function showTextPopup(fileName, title) {
 }
 
 // Prefetch the guide texts in the background so even the FIRST click is instant
-['base price.txt', 'flavours.txt', 'mini cake.txt', 'medium cake.txt'].forEach(f => {
+['base price.txt', 'flavours.txt', 'mini cake.txt', 'medium cake.txt', 'mudcake.txt'].forEach(f => {
   fetch(`./${encodeURIComponent(f)}`)
     .then(r => r.ok ? r.text() : '')
     .then(t => { if (t && !textPopupCache[f]) textPopupCache[f] = t; })
@@ -592,6 +592,13 @@ function showDeliveryPopup() {
 function showFlavourPopup() {
   // Always available: fires on flavour change AND via the ❗ info button
   showTextPopup('flavours.txt', 'ফ্লেভার নির্দেশিকা');
+}
+
+// Show flavour-specific notices when a flavour is selected
+function onFlavourChange(value) {
+  if (value === 'chocolate-mud') {
+    showTextPopup('mudcake.txt', 'চকলেট মাডকেক তথ্য');
+  }
 }
 
 // ─── "Select the exact flavour" notice ──────────────────────

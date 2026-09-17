@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>কোটেশন কনফার্ম — নিতুবাবুর্চীর পোর্টফোলিও</title>
+<style>
+  :root{--brand:#e09642;--brand2:#d6783c;--green:#2f8f77;--red:#c62828;--ink:#2b2118;--mut:#8a7a6a;--bg:#f6f1ea;--card:#fff;--line:#eadfd2}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI','Nirmala UI','SolaimanLipi',Roboto,Arial,sans-serif}
+  body{background:var(--bg);color:var(--ink);min-height:100vh;padding:14px 12px 40px}
+  .wrap{max-width:520px;margin:0 auto}
+  .hidden{display:none!important}
+  .center{text-align:center}
+  .head{text-align:center;padding:14px 0 6px}
+  .head .logo{font-size:38px;line-height:1}
+  .head h1{font-size:19px;color:var(--brand2);margin-top:4px}
+  .head p{font-size:12.5px;color:var(--mut);margin-top:2px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px;box-shadow:0 2px 10px rgba(90,60,20,.05)}
+  .card h2{font-size:14.5px;color:var(--brand2);margin-bottom:10px}
+  .qline{display:flex;align-items:flex-start;gap:8px;font-size:14px;font-weight:600;padding:7px 0;border-bottom:1px dashed var(--line)}
+  .qline .ic{flex:none}
+  .qline .mut{font-weight:500;color:var(--mut);font-size:12.5px;display:block;margin-top:1px}
+  .locktag{display:inline-block;background:#fff6e8;border:1px solid #eccf9d;color:#8a6116;font-size:11.5px;font-weight:700;border-radius:20px;padding:3px 10px;margin-bottom:8px}
+  .pricerow{display:flex;justify-content:space-between;font-size:14px;padding:6px 2px;color:var(--ink)}
+  .pricerow.total{border-top:2px solid var(--brand);margin-top:6px;padding-top:10px;font-size:16.5px;font-weight:800;color:var(--brand2)}
+  .qnote{background:#f2fbf7;border:1px solid #bfe3d4;border-radius:10px;padding:10px 12px;font-size:13px;margin-top:10px;white-space:pre-wrap}
+  .banner{border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;margin-top:12px}
+  .banner.warn{background:#fff8e1;border:1.5px solid #f0c14b;color:#7a5b00}
+  .field{margin-top:12px}
+  .field label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}
+  .field label .req{color:var(--red)}
+  .field input,.field textarea,.field select{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:15px;background:#fffdf9;color:var(--ink);outline:none}
+  .field input:focus,.field textarea:focus{border-color:var(--brand)}
+  .field textarea{resize:vertical;min-height:64px}
+  .hint{font-size:11.5px;color:var(--mut);margin-top:4px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .checkline{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-top:10px;cursor:pointer}
+  .checkline input{width:18px;height:18px;accent-color:var(--green)}
+  .pm{border:1.5px solid var(--line);border-radius:11px;padding:11px 12px;margin-top:8px;cursor:pointer;background:#fffdf9}
+  .pm.sel{border-color:var(--green);background:#f0faf6}
+  .pm .pm-top{display:flex;justify-content:space-between;align-items:center;font-size:14.5px;font-weight:700}
+  .pm .pm-num{font-size:13.5px;color:var(--mut);margin-top:3px}
+  .pm .pm-num b{color:var(--ink);letter-spacing:.4px}
+  .cpy{flex:none;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:11.5px;font-weight:700;padding:4px 9px;cursor:pointer;color:var(--green)}
+  .paycalc{background:#f4f9ff;border:1px solid #c9ddf5;border-radius:11px;padding:12px;margin-top:12px}
+  .paycalc .pricerow{padding:3px 2px;font-size:13.5px}
+  .paycalc .pricerow.total{border-top:1.5px dashed #b7cde8;font-size:15px;color:#1a4d8f}
+  .paycalc .pricerow.due{color:var(--red);font-weight:700}
+  .shotbox{border:1.5px dashed var(--line);border-radius:11px;padding:14px;text-align:center;font-size:13px;font-weight:600;color:var(--mut);cursor:pointer;background:#fffdf9}
+  .shotbox img{max-width:100%;border-radius:8px;margin-top:8px}
+  .btn{display:block;width:100%;border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:800;cursor:pointer;margin-top:18px}
+  .btn-go{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;box-shadow:0 4px 14px rgba(214,120,60,.35)}
+  .btn-go:disabled{opacity:.55;cursor:wait}
+  .big-state{text-align:center;padding:60px 20px}
+  .big-state .em{font-size:52px}
+  .big-state h2{font-size:17px;margin:12px 0 6px;color:var(--brand2)}
+  .big-state p{font-size:13.5px;color:var(--mut);line-height:1.8;white-space:pre-wrap}
+  .oid{font-size:20px;font-weight:800;letter-spacing:1px;background:#fff6e8;border:1.5px dashed #eccf9d;border-radius:10px;padding:10px 18px;display:inline-block;margin:10px 0}
+  .spin{width:42px;height:42px;border:4px solid var(--line);border-top-color:var(--brand);border-radius:50%;margin:0 auto;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- loading -->
+  <div class="big-state" id="loading">
+    <div class="spin"></div>
+    <h2>কোটেশন লোড হচ্ছে...</h2>
+  </div>
+  <!-- error -->
+  <div class="big-state hidden" id="error-screen">
+    <div class="em">😢</div>
+    <h2>কোটেশন খোলা যায়নি</h2>
+    <p id="err-msg"></p>
+  </div>
+  <!-- success -->
+  <div class="big-state hidden" id="success-screen">
+    <div class="em">🎉</div>
+    <h2>অর্ডার সফলভাবে জমা হয়েছে!</h2>
+    <div class="oid" id="success-oid"></div>
+    <p id="success-detail"></p>
+    <p>আমরা আপনার অর্ডার দেখে খুব দ্রুত WhatsApp-এ কনফার্ম করব 💛</p>
+  </div>
+  <!-- main -->
+  <div id="main" class="hidden">
+    <div class="head">
+      <div class="logo">🎂</div>
+      <h1>নিতুবাবুর্চীর পোর্টফোলিও</h1>
+      <p>আপনার জন্য তৈরি করা বিশেষ কোটেশন</p>
+    </div>
+    <div class="card">
+      <h2>📋 আপনার কোটেশন</h2>
+      <span class="locktag">🔒 কেক ও দাম এডমিন নিশ্চিত করেছেন</span>
+      <div id="quote-lines"></div>
+      <div style="margin-top:10px">
+        <div class="pricerow"><span>কেকের মূল্য</span><b id="pr-cake"></b></div>
+        <div class="pricerow"><span>ডেলিভারি চার্জ</span><b id="pr-del"></b></div>
+        <div class="pricerow total"><span>মোট</span><b id="pr-total"></b></div>
+      </div>
+      <div class="banner warn" id="expiry-banner" style="display:none"></div>
+      <div class="qnote" id="q-note" style="display:none"></div>
+    </div>
+    <div class="card">
+      <h2>👤 আপনার তথ্য</h2>
+      <div class="row2">
+        <div class="field"><label>আপনার নাম <span class="req">*</span></label><input id="f-name" placeholder="যেমন: রিনা বেগম"></div>
+        <div class="field"><label>ফোন নম্বর <span class="req">*</span></label><input id="f-phone" type="tel" inputmode="numeric" placeholder="01XXXXXXXXX"></div>
+      </div>
+      <div class="field"><label>বিকল্প ফোন নম্বর (অপশনাল)</label><input id="f-alt-phone" type="tel" inputmode="numeric" placeholder="01XXXXXXXXX"></div>
+      <label class="checkline"><input type="checkbox" id="f-surprise"> 🤫 সারপ্রাইজ ডেলিভারি</label>
+    </div>
+    <div class="card" id="delivery-section">
+      <h2>🚚 ডেলিভারির তথ্য</h2>
+      <div class="field"><label>সম্পূর্ণ ঠিকানা <span class="req">*</span></label>
+        <textarea id="f-address" placeholder="বাসা/রোড/এলাকা — বিস্তারিত লিখুন"></textarea></div>
+      <div class="row2">
+        <div class="field"><label>তারিখ <span class="req">*</span></label><input id="f-date" type="date"></div>
+        <div class="field"><label>সময় <span class="req">*</span></label><input id="f-time" placeholder="যেমন: বিকাল 4টা"></div>
+      </div>
+      <label class="checkline"><input type="checkbox" id="rc-same" checked onchange="document.getElementById('rc-extra').style.display=this.checked?'none':'block'"> 👤 আমি নিজেই রিসিভার</label>
+      <div id="rc-extra" style="display:none">
+        <div class="row2">
+          <div class="field"><label>রিসিভারের নাম <span class="req">*</span></label><input id="f-receiver" placeholder="রিসিভারের নাম"></div>
+          <div class="field"><label>রিসিভারের ফোন <span class="req">*</span></label><input id="f-rc-phone" type="tel" inputmode="numeric" placeholder="01XXXXXXXXX"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>✏️ কেকে লেখা (অপশনাল)</h2>
+      <div class="field" style="margin-top:2px">
+        <textarea id="f-writing" placeholder="কেকে কী লেখা হবে? না থাকলে খালি রাখুন"></textarea>
+      </div>
+    </div>
+    <div class="card">
+      <h2>💳 পেমেন্ট</h2>
+      <div id="pm-box"></div>
+      <div class="field"><label>অগ্রিম পরিমাণ (৳) <span class="req">*</span></label>
+        <input id="f-advance" type="number" inputmode="numeric" min="1" oninput="this.dataset.auto='0';recalcPay()">
+        <div class="hint">ফুল পেমেন্ট করতে চাইলে মোটের সমান রাখুন — পরিমাণ কম-বেশি করতে পারবেন</div></div>
+      <div class="paycalc">
+        <div class="pricerow"><span>কেক + ডেলিভারি</span><b id="pc-sub"></b></div>
+        <div class="pricerow"><span>আপনার অগ্রিম</span><b id="pc-adv"></b></div>
+        <div class="pricerow"><span>পেমেন্ট চার্জ</span><b id="pc-chg"></b></div>
+        <div class="pricerow total"><span>এখন পাঠাবেন</span><b id="pc-now"></b></div>
+        <div class="pricerow due" id="pc-due-row"><span>ডেলিভারির সময় বাকি</span><b id="pc-due"></b></div>
+      </div>
+      <div class="field"><label>TrxID / রেফারেন্স নম্বর <span class="req">*</span></label>
+        <input id="f-trx" placeholder="পেমেন্টের TrxID লিখুন"></div>
+      <div class="field"><label>পেমেন্টের স্ক্রিনশট <span class="req">*</span></label>
+        <input type="file" id="f-payshot" accept="image/*" style="display:none" onchange="handleShot(event)">
+        <div class="shotbox" id="shot-box" onclick="document.getElementById('f-payshot').click()">📸 পেমেন্টের স্ক্রিনশট আপলোড করুন<br><span class="hint">bKash / Nagad / ব্যাংক কনফার্মেশন পেজের ছবি</span></div></div>
+      <div class="field"><label>অতিরিক্ত নোট (অপশনাল)</label><textarea id="f-notes" placeholder="বিশেষ কোনো নির্দেশনা থাকলে লিখুন"></textarea></div>
+      <button class="btn btn-go" id="submit-btn" onclick="submitOrder()">✅ অর্ডার জমা দিন</button>
+    </div>
+  </div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="./firebase-config.js"></script>
+<script src="./quote.js"></script>
+</body>
+</html>
