@@ -1,0 +1,72 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>cache-check</title></head>
+<body><pre id="out">running</pre>
+<script>
+const CACHE_DB    = 'nitu-admin-cache';
+  const CACHE_STORE = 'snapshots';
+  const CACHE_KEY   = 'orders';
+  const CACHE_MAX_ORDERS = 80;
+  const CACHE_MAX_BYTES  = 6 * 1024 * 1024;   // keeps parse time sane
+
+const idbOpen = () => new Promise((resolve, reject) => {
+    if (!window.indexedDB) { reject(new Error('indexedDB unavailable')); return; }
+    const req = indexedDB.open(CACHE_DB, 1);
+    req.onupgradeneeded = () => {
+      const idb = req.result;
+      if (!idb.objectStoreNames.contains(CACHE_STORE)) idb.createObjectStore(CACHE_STORE);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
+  });
+  const idbSet = (key, val) => idbOpen().then(idb => new Promise((resolve, reject) => {
+    const tx = idb.transaction(CACHE_STORE, 'readwrite');
+    tx.objectStore(CACHE_STORE).put(val, key);
+    tx.oncomplete = () => { idb.close(); resolve(); };
+    tx.onerror    = () => { idb.close(); reject(tx.error); };
+  }));
+  const idbGet = key => idbOpen().then(idb => new Promise((resolve, reject) => {
+    const tx = idb.transaction(CACHE_STORE, 'readonly');
+    const rq = tx.objectStore(CACHE_STORE).get(key);
+    rq.onsuccess = () => { idb.close(); resolve(rq.result); };
+    rq.onerror   = () => { idb.close(); reject(rq.error); };
+  }));
+
+var orders = [];
+const buildCachePayload = fp => {
+    const pool = orders.slice(-CACHE_MAX_ORDERS).slice().reverse();
+    const kept = [];
+    let bytes = 0;
+    for (let i = 0; i < pool.length; i++) {
+      const json = JSON.stringify(pool[i]);
+      if (kept.length && bytes + json.length > CACHE_MAX_BYTES) break;
+      bytes += json.length;
+      kept.push(pool[i]);
+    }
+    return { fp, savedAt: Date.now(), orders: kept };
+  };
+
+var log = [];
+function say(s){ log.push(s); document.getElementById('out').textContent = log.join('\n'); }
+(async function(){
+  try {
+    await idbSet(CACHE_KEY, { fp: 't1', savedAt: Date.now(), orders: [{ firebaseKey: 'a', name: 'Test', photo: 'data:image/png;base64,AAAA' }] });
+    say('WRITE: ok');
+    var got = await idbGet(CACHE_KEY);
+    say('READ: ' + (got && got.orders ? got.orders.length : 'null') + ' order(s), name=' + (got && got.orders[0] && got.orders[0].name));
+    say('PHOTO PRESERVED: ' + !!(got && got.orders[0] && got.orders[0].photo));
+    // caps: 100 orders, each ~1KB -> must keep <= CACHE_MAX_ORDERS
+    orders = [];
+    for (var i = 0; i < 100; i++) orders.push({ firebaseKey: 'k' + i, pad: new Array(1024).join('x') });
+    var p = buildCachePayload('fp2');
+    say('CAP-COUNT: kept ' + p.orders.length + ' (max ' + CACHE_MAX_ORDERS + ')');
+    say('NEWEST-FIRST: ' + p.orders[0].firebaseKey + ' .. ' + p.orders[p.orders.length-1].firebaseKey);
+    // byte cap: 40 orders x ~400KB -> must stop before CACHE_MAX_BYTES
+    orders = [];
+    for (var j = 0; j < 40; j++) orders.push({ firebaseKey: 'b' + j, pad: new Array(400 * 1024).join('y') });
+    var p2 = buildCachePayload('fp3');
+    var bytes = JSON.stringify(p2).length;
+    say('CAP-BYTES: kept ' + p2.orders.length + ' orders, ' + Math.round(bytes/1024/1024*10)/10 + ' MB (cap ' + (CACHE_MAX_BYTES/1024/1024) + ' MB)');
+    say('DONE');
+  } catch (e) { say('ERROR: ' + (e && e.message)); }
+  try { await fetch('/__result', { method: 'POST', body: log.join('\n') }); } catch (e) {}
+})();
+</script></body></html>

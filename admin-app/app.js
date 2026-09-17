@@ -492,6 +492,24 @@ window.App = (() => {
     }).catch(e => console.warn('[cache] read failed (harmless):', e && e.message));
   };
 
+  // ─── Topbar photo (different every login) ─────────────────────
+  // Six bakery photos ship with the app; on each sign-in one is picked at
+  // random and painted behind the Order Manager bar. The dark veil + glass
+  // buttons live in CSS (.topbar.tb-photo) — this only chooses the image.
+  const TOPBAR_BGS = ['./bg-1.jpg', './bg-2.jpg', './bg-3.jpg', './bg-4.jpg', './bg-5.jpg', './bg-6.jpg'];
+  const applyTopbarPhoto = () => {
+    const tb = document.querySelector('.topbar');
+    if (!tb) return;
+    const pick = TOPBAR_BGS[Math.floor(Math.random() * TOPBAR_BGS.length)];
+    // Warm the image while the login transition plays, then paint it.
+    const img = new Image();
+    img.onload = () => {
+      tb.style.setProperty('--tb-bg', `url('${pick}')`);
+      tb.classList.add('tb-photo');
+    };
+    img.src = pick;
+  };
+
   // ─── Firebase listeners ──────────────────────────────────────
   // Auth state listener - MUST be set up before database listeners
   auth.onAuthStateChanged(user => {
@@ -500,6 +518,8 @@ window.App = (() => {
       // User is signed in - show main app
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('last-sync-text').textContent = user.email;
+      // A different topbar photo on every login (random from the 6 baked in)
+      applyTopbarPhoto();
       // Start listening to orders
       // FAST FIRST PAINT: paint instantly from the last cached snapshot (if any),
       // then let the live listener below replace it with fresh data. Also show

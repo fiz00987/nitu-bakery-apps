@@ -13,9 +13,17 @@
 <!-- Splash/login logo: 320px optimised copy (~140KB) instead of the 1.6MB original,
      preloaded with high priority so the welcome screen appears immediately. -->
 <link rel="preload" as="image" href="logo-splash.png" fetchpriority="high">
+<link rel="preload" as="image" href="splash-bg.jpg">
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Firebase speed: warm up the TLS/DNS connections to the auth + realtime DB
+     endpoints (asia-southeast1) while the page is still parsing. This shaves
+     seconds off "Connecting to cloud..." without any caching. -->
+<link rel="preconnect" href="https://nitusbakingplanv2-default-rtdb.asia-southeast1.firebasedatabase.app" crossorigin>
+<link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://www.googleapis.com" crossorigin>
+<link rel="dns-prefetch" href="https://firebaselogging-pa.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* =============================================
@@ -145,6 +153,30 @@ button { cursor: pointer; }
   z-index: 100;
   box-shadow: 0 2px 16px rgba(9,63,56,0.3);
 }
+
+/* ── Topbar photo mode: a random bakery photo behind the Order Manager bar.
+   Chosen once per login (different every login). The photo paints over the
+   brand gradient, a dark veil keeps white text readable, and the buttons
+   become frosted glass — see-through but clearly visible. ── */
+.topbar.tb-photo{overflow:hidden}
+.topbar.tb-photo::before{content:'';position:absolute;inset:0;background:var(--tb-bg,none) center/cover no-repeat;opacity:.88;pointer-events:none}
+.topbar.tb-photo::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(9,63,56,.55),rgba(0,0,0,.48));pointer-events:none}
+.topbar.tb-photo>*{position:relative;z-index:1}
+.topbar.tb-photo .action-btn,
+.topbar.tb-photo .ico-btn,
+.topbar.tb-photo .notif-bell-btn,
+.topbar.tb-photo .cal-btn,
+.topbar.tb-photo .note-btn{
+  background:rgba(0,0,0,.26);
+  -webkit-backdrop-filter:blur(7px);
+  backdrop-filter:blur(7px);
+  border-color:rgba(255,255,255,.38);
+  text-shadow:0 1px 2px rgba(0,0,0,.45);
+}
+.topbar.tb-photo .action-btn:hover,
+.topbar.tb-photo .ico-btn:hover,
+.topbar.tb-photo .notif-bell-btn:hover{background:rgba(0,0,0,.4)}
+.topbar.tb-photo .status-pill{background:rgba(0,0,0,.26);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px)}
 
 .topbar-row1 {
   display: flex;
@@ -1299,6 +1331,9 @@ button { cursor: pointer; }
    ============================================= */
 /* SPLASH (welcome, ~2.5s) */
 .splash-screen{position:fixed;inset:0;z-index:5000;background:#fbf4e8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .6s ease,visibility .6s}
+/* Splash photo layer — sits UNDER the fx/logo/chip, slightly faded */
+.splash-bg{position:absolute;inset:0;background:url('splash-bg.jpg') center/cover no-repeat;opacity:.30;pointer-events:none}
+.splash-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(251,244,232,.25),rgba(251,244,232,.05) 45%,rgba(251,244,232,.35))}
 .splash-screen.gone{opacity:0;visibility:hidden;pointer-events:none}
 .splash-fx{position:absolute;inset:0;pointer-events:none}
 .splash-blob{position:absolute;border-radius:50%;filter:blur(70px)}
@@ -2189,6 +2224,7 @@ html.t-cafe.dark{--bg:#121212;--surface:#1a1a1a;--surface2:#232323;--border:#2e2
 
 <!-- SPLASH (welcome) -->
 <div class="splash-screen" id="splash-screen">
+  <div class="splash-bg"></div>
   <div class="splash-fx" id="splash-fx">
     <div class="splash-blob sb1"></div><div class="splash-blob sb2"></div><div class="splash-blob sb3"></div>
   </div>
