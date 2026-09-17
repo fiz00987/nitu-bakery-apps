@@ -2281,8 +2281,7 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
 
 <!-- TABS -->
 <nav class="tabs" role="tablist" aria-label="ভিউ নির্বাচন">
-  <button class="tab active" id="tab-plan" role="tab" aria-selected="true"  aria-controls="view-plan"    onclick="App.switchTab('plan')">📅 <span data-i18n="tabPlan">প্ল্যান</span> <span class="tab-count" id="tc-plan">0</span></button>
-  <button class="tab"        id="tab-all"  role="tab" aria-selected="false" aria-controls="view-all"     onclick="App.switchTab('all')">📦 <span data-i18n="tabAll">অর্ডার</span> <span class="tab-count" id="tc-all">0</span></button>
+  <button class="tab active" id="tab-plan" role="tab" aria-selected="true"  aria-controls="view-plan"    onclick="App.switchTab('plan')">📅 <span data-i18n="tabPlan">অর্ডার</span> <span class="tab-count" id="tc-plan">0</span></button>
   <button class="tab"        id="tab-done" role="tab" aria-selected="false" aria-controls="view-done"    onclick="App.switchTab('done')">✅ <span data-i18n="tabDone">সম্পন্ন</span> <span class="tab-count" id="tc-done">0</span></button>
   <button class="tab"        id="tab-cdb"  role="tab" aria-selected="false" aria-controls="view-cdb"     onclick="App.switchTab('cdb')">🗂️ <span data-i18n="tabCdb">ডেটাবেজ</span> <span class="tab-count" id="tc-cdb">0</span></button>
   <button class="tab"        id="tab-rev"  role="tab" aria-selected="false" aria-controls="view-revenue" onclick="App.switchTab('revenue')">💰 <span data-i18n="tabRev">আয়</span></button>
@@ -2291,7 +2290,6 @@ html.t-rose.dark{--bg:#161013;--surface:#1f171b;--surface2:#291e24;--border:#322
 <!-- VIEWS -->
 <main>
   <div id="view-plan"    role="tabpanel" aria-labelledby="tab-plan" class="section"><div class="skeleton-wrap" id="sk-plan"></div></div>
-  <div id="view-all"     role="tabpanel" aria-labelledby="tab-all"  class="section hidden"></div>
   <div id="view-done"    role="tabpanel" aria-labelledby="tab-done" class="section hidden"></div>
   <div id="view-cdb"     role="tabpanel" aria-labelledby="tab-cdb"  class="section hidden"></div>
   <div id="view-revenue" role="tabpanel" aria-labelledby="tab-rev"  class="revenue-section hidden"></div>
@@ -2613,7 +2611,7 @@ function isIosDevice() {
 }
 </script>
 
-<script src="./app.js?v=2026-09-16-fix2"></script>
+<script src="./app.js?v=2026-09-18-tabs"></script>
 
 <!-- PUSH NOTIFICATION SYSTEM (Firebase Cloud Messaging / Web Push) — deferred so
      it never competes with the first orders download on slow networks. -->

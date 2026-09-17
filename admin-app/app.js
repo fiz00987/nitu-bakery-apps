@@ -80,7 +80,7 @@ window.App = (() => {
       monthEarn: 'আয় (মোট বিক্রি)',
       monthEarnNote: '💡 ডেলিভারি চার্জ ও bKash চার্জ বাদে কেকের মোট বিক্রি। ডেলিভারি চার্জ পুরোটা ডেলিভারি এজেন্ট পান।',
       chartMonthlyOrders: '📊 মাসিক অর্ডার — শেষ ৫ মাস',
-      tabPlan: 'প্ল্যান', tabAll: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'আয়', tabCdb: 'ডেটাবেজ',
+      tabPlan: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'আয়', tabCdb: 'ডেটাবেজ',
       sort_date: 'তারিখ', sort_name: 'নাম', sort_due: 'বকেয়া',
       secPayment: '💳 পেমেন্ট', fTotal: 'মোট মূল্য (৳)', fPaid: 'পরিশোধিত (৳)',
       live: 'লাইভ', offline: 'সংযোগ নেই', saving: 'সেভ হচ্ছে...', conn: 'সংযোগ...',
@@ -104,7 +104,7 @@ window.App = (() => {
       monthEarn: 'Earn (Total Sale)',
       monthEarnNote: '💡 Total cake sale excluding delivery & bKash charges. The delivery fee goes fully to the delivery agent.',
       chartMonthlyOrders: '📊 Orders per Month — Last 5',
-      tabPlan: 'Plan', tabAll: 'Orders', tabDone: 'Done', tabRev: 'Revenue', tabCdb: 'Database',
+      tabPlan: 'Orders', tabDone: 'Done', tabRev: 'Revenue', tabCdb: 'Database',
       sort_date: 'Date', sort_name: 'Name', sort_due: 'Due',
       secPayment: '💳 Payment', fTotal: 'Total Price (৳)', fPaid: 'Paid (৳)',
       live: 'Live', offline: 'Offline', saving: 'Saving...', conn: 'Connecting...',
@@ -1237,14 +1237,7 @@ window.App = (() => {
     document.getElementById('tc-plan').textContent = pool.length + (document.getElementById('search-input').value.trim() ? '/' : '');
   };
 
-  const renderAll = () => {
-    const pool = getFiltered(orders.filter(o => !isLogicallyComplete(o)));
-    const el = document.getElementById('view-all');
-    el.innerHTML = pool.length
-      ? pool.map(renderCard).join('')
-      : `<div class="empty"><div class="empty-icon">📦</div><h3>কোনো মিল পাওয়া যায়নি</h3><p>ভিন্ন সার্চ বা ফিল্টার চেষ্টা করুন।</p></div>`;
-    document.getElementById('tc-all').textContent = pool.length;
-  };
+  const renderAll = () => switchTab('plan');
 
   // ─── Completed Order Database (grid view) ─────────────────────
   // Shows every delivered order as a small card: the delivered cake
@@ -1778,23 +1771,31 @@ window.App = (() => {
   };
 
   const render = () => {
-    updateSummary();
-    syncWidgetFeed();
-    renderCalendar();
-    if (activeTab === 'plan') {
-      renderPlan();
-    } else {
-      // Perf: don't rebuild the hidden plan list on every snapshot —
-      // only refresh its tab badge. switchTab() re-renders on return.
-      const pool = getFiltered(orders.filter(o => isActiveOrder(o) && !isLogicallyComplete(o)));
-      document.getElementById('tc-plan').textContent = pool.length + (document.getElementById('search-input').value.trim() ? '/' : '');
-    }
-    // Keep the database tab badge fresh even before the tab is opened
-    document.getElementById('tc-cdb').textContent = orders.filter(o => o.status === 'delivered').length;
-    if (activeTab === 'all')     renderAll();
-    if (activeTab === 'done')    renderDone();
-    if (activeTab === 'cdb')     renderCdb();
-    if (activeTab === 'revenue') renderRevenue();
+    // ── Tab badges FIRST: always fresh on entry, no click needed ──
+    // Orders = plan/fate pool · Done = archived · Database = delivered.
+    try {
+      const searchEl = document.getElementById('search-input');
+      const searchTerm = searchEl ? (searchEl.value || '').trim() : '';
+      const ordersCount = getFiltered(orders.filter(o => isActiveOrder(o) && !isLogicallyComplete(o))).length;
+      const doneCount = getFiltered(orders.filter(isArchivedOrder)).length;
+      const cdbCount = orders.filter(o => o.status === 'delivered').length;
+      const setTc = (id, n) => { const _e = document.getElementById(id); if (_e) _e.textContent = n; };
+      setTc('tc-plan', ordersCount + (searchTerm ? '/' : ''));
+      setTc('tc-done', doneCount);
+      setTc('tc-cdb', cdbCount);
+    } catch (e) { console.error('[badges] failed:', e); }
+
+    try { updateSummary(); } catch (e) { console.error('[summary] failed:', e); }
+    try { syncWidgetFeed(); } catch (e) {}
+    try { renderCalendar(); } catch (e) { console.error('[calendar] failed:', e); }
+
+    // Render active tab content (each guarded so one view can't kill the rest)
+    try { if (activeTab === 'plan')    renderPlan(); } catch (e) { console.error('[orders] failed:', e); }
+    try { if (activeTab === 'all')     switchTab('plan'); } catch (e) {}
+    try { if (activeTab === 'done')    renderDone(); } catch (e) { console.error('[done] failed:', e); }
+    try { if (activeTab === 'cdb')     renderCdb(); } catch (e) { console.error('[cdb] failed:', e); }
+    try { if (activeTab === 'revenue') renderRevenue(); } catch (e) { console.error('[revenue] failed:', e); }
+    try { if (activeTab === 'quotes')  renderQuotes(); } catch (e) { console.error('[quotes] failed:', e); }
   };
 
   const QUOTE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -1941,9 +1942,11 @@ window.App = (() => {
   };
 
   // ─── Tab switcher ─────────────────────────────────────────────
+  // 'all' is merged into 'plan' — old links/keys redirect automatically.
   const switchTab = t => {
+    if (t === 'all') t = 'plan';
     activeTab = t;
-    ['plan','all','done','cdb','revenue'].forEach(n => {
+    ['plan','done','cdb','revenue','quotes'].forEach(n => {
       document.getElementById(`view-${n}`).classList.toggle('hidden', n !== t);
       const btn = document.getElementById(`tab-${n === 'revenue' ? 'rev' : n}`);
       if (!btn) return;
@@ -1953,10 +1956,10 @@ window.App = (() => {
     });
     // Lazy render on switch
     if (t === 'plan')    renderPlan();
-    if (t === 'all')     renderAll();
     if (t === 'done')    renderDone();
     if (t === 'cdb')     renderCdb();
     if (t === 'revenue') renderRevenue();
+    if (t === 'quotes')  renderQuotes();
   };
 
   // ─── Toggle card expand ──────────────────────────────────────
@@ -3548,10 +3551,9 @@ window.App = (() => {
       if (document.getElementById('daily-popup-overlay').classList.contains('open')) { closeDailyPopup(); return; }
     }
     if (e.key === '1') switchTab('plan');
-    if (e.key === '2') switchTab('all');
-    if (e.key === '3') switchTab('done');
-    if (e.key === '4') switchTab('cdb');
-    if (e.key === '5') switchTab('revenue');
+    if (e.key === '2') switchTab('done');
+    if (e.key === '3') switchTab('cdb');
+    if (e.key === '4') switchTab('revenue');
   });
 
   // ─── Init skeleton + language ────────────────────────────────
