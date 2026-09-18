@@ -3449,6 +3449,17 @@ window.App = (() => {
   // ─── Save order ──────────────────────────────────────────────
   let savingOrder = false; // in-flight guard: rapid double-taps must not create duplicate orders
   const saveOrder = () => {
+    // Retry-after-timeout: a save is still in flight (slow net) but the
+    // watchdog already freed the button. The Firebase write is queued and
+    // WILL complete on its own — just re-arm the button state and wait for
+    // it instead of firing a second push() that would duplicate the order.
+    if (savingOrder === 'timeout') {
+      savingOrder = true;
+      const rb = document.getElementById('btn-save');
+      if (rb) { rb.disabled = true; rb.textContent = '⏳ সেভ হচ্ছে...'; }
+      setSyncStatus('syncing', 'ক্লাউডে সেভ হচ্ছে...');
+      return;
+    }
     if (savingOrder) return;
     // A pending 1s "open charge dialog" timer must never fire after the modal
     // is gone (it used to pop the dialog over the dashboard after saving).
@@ -3600,20 +3611,38 @@ window.App = (() => {
     // Delivery charge is OPTIONAL now: blank = not-paid yet (agent collects later).
 
     setSyncStatus('syncing', 'ক্লাউডে সেভ হচ্ছে...');
+    // NOTE: `saveWatchdog` is declared BEFORE `failSave` uses it (TDZ safe).
+    let saveWatchdog = null;
     const failSave = err => {
+      clearTimeout(saveWatchdog);
       savingOrder = false;                       // allow a retry
       const btn = document.getElementById('btn-save');
-      if (btn) btn.disabled = false;
+      if (btn) { btn.disabled = false; btn.textContent = '☁️ সেভ করুন'; }
       console.error('Order save failed:', err);
       setSyncStatus('error', '❌ সংরক্ষণ ব্যর্থ — ইন্টারনেট চেক করুন');
       showToast(lang === 'bn' ? '❌ সংরক্ষণ ব্যর্থ! ইন্টারনেট দেখে আবার সেভ করুন।' : '❌ Save failed! Check internet and save again.');
     };
+    // ── Slow-network safety: Firebase saves can sit in "syncing" for a long
+    // time on a flaky connection (the old code had NO timeout, so the button
+    // stayed disabled indefinitely and tapping Save again did nothing because
+    // `savingOrder` was still true). 25s watchdog: on timeout we keep the
+    // write queued (Firebase retries it automatically) but immediately free
+    // the button so the user can retry — and collapse the retry into the
+    // same in-flight write instead of creating a duplicate order.
     savingOrder = true;
     const saveBtn = document.getElementById('btn-save');
-    if (saveBtn) saveBtn.disabled = true;        // block double submission while writing
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ সেভ হচ্ছে...'; }  // block double submission while writing
     if (editingId) {
+      saveWatchdog = setTimeout(() => {
+        if (!savingOrder) return;
+        setSyncStatus('syncing', '🐢 নেট ধীর — আবার চাপ দিলে একই সেভ চলবে, ডাবল অর্ডার হবে না');
+        showToast('🐢 নেট ধীর মনে হচ্ছে — সেভ চেষ্টা চলছে, আবার সেভ চাপুন');
+        savingOrder = 'timeout';   // next tap re-arms the button without duplicating
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '☁️ সেভ করুন'; }
+      }, 25000);
       ordersRef.child(editingId).update(o)
         .then(() => {
+          clearTimeout(saveWatchdog);
           setSyncStatus('ok');
           showToast('✅ অর্ডার আপডেট হয়েছে!');
           currentPhoto = '';
@@ -3624,8 +3653,16 @@ window.App = (() => {
         .catch(failSave);
     } else {
       o.createdAt = Date.now();
+      saveWatchdog = setTimeout(() => {
+        if (!savingOrder) return;
+        setSyncStatus('syncing', '🐢 নেট ধীর — আবার চাপ দিলে একই সেভ চলবে, ডাবল অর্ডার হবে না');
+        showToast('🐢 নেট ধীর মনে হচ্ছে — সেভ চেষ্টা চলছে, আবার সেভ চাপুন');
+        savingOrder = 'timeout';   // next tap re-arms the button without duplicating
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '☁️ সেভ করুন'; }
+      }, 25000);
       ordersRef.push(o)
         .then(() => {
+          clearTimeout(saveWatchdog);
           setSyncStatus('ok');
           showToast('✅ নতুন অর্ডার সেভ হয়েছে!');
           currentPhoto = '';
