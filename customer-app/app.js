@@ -781,6 +781,7 @@ function onCakeKindChange() {
   }
   updateWeightHint();
   syncFullOnlyPayment();   // mini => 50% locked off too
+  if (kind === 'mini') setAdvanceType('full');   // mini auto-selects 100% (50% greyed out)
   recalcPrice();
   updateProgress();
   if (kind === 'mini') showMiniCakeInfo();   // size / weight / price guide
@@ -940,15 +941,24 @@ function getDeliveryCharge() {
 function recalcPrice(manualEdit) {
   const methodId = document.getElementById('f-payment-method').value;
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
+  const delivery = getDeliveryCharge();
+  // Delivery is required for delivery orders (it joins the total payment).
+  // Blank delivery charge = form incomplete until the customer fills it in.
+  if (document.getElementById('f-fulfilment').value !== 'pickup' && !(delivery > 0)) {
+    document.getElementById('calc-box').classList.remove('show');
+    document.getElementById('due-field').classList.remove('show');
+    return;
+  }
   const advInput = document.getElementById('f-advance');
   const typedSend = parseFloat(advInput.value) || 0;
 
   // 50% lock can come and go as surprise / cake-kind / fulfilment change,
   // so re-check it on every recalculation (not just on option taps).
-  const fullOnly = syncFullOnlyPayment();
+  // (Lock state only — the math below always uses the cake+delivery total.)
+  syncFullOnlyPayment();
 
-  // The payment preview depends ONLY on the cake price — not on the weight
-  // field — so the auto-count works as soon as the customer types a price,
+  // The payment preview needs a cake price AND (for delivery orders) a
+  // delivery charge — so the auto-count works as soon as both are typed,
   // even if the details section above is still empty.
   if (cakePrice <= 0) {
     document.getElementById('calc-box').classList.remove('show');
@@ -958,21 +968,16 @@ function recalcPrice(manualEdit) {
   }
 
   const rate = getGatewayRate();
-  const delivery = getDeliveryCharge();
   const paymentMethod = getPaymentMethod(methodId);
-  const total = cakePrice;
+  // Total payment = cake price + delivery charge, always. (No separate note.)
+  const total = Math.round(cakePrice) + Math.round(delivery);
 
   let base, charge, sendAmount, isAuto = false;
   if (advanceType && !manualEdit) {
-    // AUTO: full-only payments use 100% cake price + delivery charge;
-    // normal orders use the chosen % of the cake price. The last-auto math
-    // remembers which base it used so a price edit can't leave a stale box.
+    // AUTO: base = chosen % of the TOTAL (cake + delivery); send = base + gateway charge
+    // (charge rounded up, e.g. 50% of 1100 via bKash -> 550 + 11 = 561)
     isAuto = true;
-    if (fullOnly || advanceType === 'full') {
-      base = getFullBase();                     // cake 100% + delivery
-    } else {
-      base = advanceType === '50' ? Math.round(cakePrice / 2) : Math.round(cakePrice);
-    }
+    base = advanceType === '50' ? Math.round(total / 2) : Math.round(total);
     charge = rate > 0 ? Math.ceil(base * rate) : 0;
     sendAmount = base + charge;
     lastAutoBase = base;
@@ -1013,10 +1018,10 @@ function recalcPrice(manualEdit) {
   if (fnTxt) { footnote.textContent = fnTxt; footnote.classList.add('show'); }
   else { footnote.classList.remove('show'); }
 
-  // Top calc box (cake price / delivery / total)
-  document.getElementById('calc-base').textContent = '৳' + Math.round(total);
+  // Top calc box (cake price / delivery / total — delivery folded into total)
+  document.getElementById('calc-base').textContent = '৳' + Math.round(cakePrice);
   const isPickupCalc = document.getElementById('f-fulfilment').value === 'pickup';
-  document.getElementById('calc-delivery').textContent = isPickupCalc ? 'প্রযোজ্য নয় (পিকআপ)' : '৳' + Math.round(delivery) + ' (আলাদা)';
+  document.getElementById('calc-delivery').textContent = isPickupCalc ? 'প্রযোজ্য নয় (পিকআপ)' : '৳' + Math.round(delivery);
   document.getElementById('calc-total').textContent = '৳' + Math.round(total);
   document.getElementById('calc-box').classList.add('show');
 
@@ -1027,10 +1032,8 @@ function recalcPrice(manualEdit) {
     const dueHint = document.getElementById('due-hint');
     if (due > 0) {
       dueHint.textContent = lang === 'en'
-        ? `৳${Math.round(due)} left to pay later` + (delivery > 0 ? ` · delivery charge ৳${Math.round(delivery)} is separate` : '')
-        : `বাকি ৳${Math.round(due)} পরে দিতে হবে` + (delivery > 0 ? ` · ডেলিভারি চার্জ ৳${Math.round(delivery)} আলাদা` : '');
-    } else if (delivery > 0) {
-      dueHint.textContent = lang === 'en' ? `Delivery charge ৳${Math.round(delivery)} is paid separately` : `ডেলিভারি চার্জ ৳${Math.round(delivery)} আলাদা`;
+        ? `৳${Math.round(due)} left to pay later`
+        : `বাকি ৳${Math.round(due)} পরে দিতে হবে`;
     } else {
       dueHint.textContent = '';
     }
@@ -1239,7 +1242,8 @@ function validate() {
     }
   }
   if (document.getElementById('f-fulfilment').value === 'delivery' && !document.getElementById('f-address').value.trim()) { showToast('ঠিকানা দিন'); document.getElementById('f-address').focus(); return false; }
-  // Delivery charge is OPTIONAL — blank means not-paid yet (admin/agent collects later).
+  // Delivery charge is REQUIRED — it always joins the total payment.
+  if (document.getElementById('f-fulfilment').value === 'delivery' && !(getDeliveryCharge() > 0)) { showToast('ডেলিভারি চার্জ দিন'); document.getElementById('f-delivery-charge').focus(); return false; }
   if (!validateBangladeshPhone(document.getElementById('f-receiver-phone').value.trim())) {
     showToast('সঠিক রিসিভার ফোন দিন'); return false;
   }
@@ -1279,8 +1283,9 @@ function getOrderTotal() {
   const wt = resolveWeight();
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
   if (!wt || cakePrice <= 0) return 0;
-  // Full-only orders (surprise / mini / delivery) must cover cake + delivery.
-  return isFullOnlyPayment() ? getFullBase() : cakePrice;
+  // Total payment = cake price + delivery charge, always (no separate note).
+  const delivery = getDeliveryCharge();
+  return Math.round(cakePrice) + Math.round(delivery);
 }
 
 // Submit
@@ -1317,14 +1322,13 @@ async function submitOrder() {
     advance = split.base;
     charge = split.charge;
   }
-  const subtotal = cakePrice;
-  const total = cakePrice;
+  const subtotal = Math.round(cakePrice) + Math.round(delivery);
+  const total = subtotal;
   const advanceTotal = Math.round(sendAmount);
   const dueAmount = Math.max(0, subtotal - advance);
-  // Full-only orders (surprise / mini / delivery) pay cake 100% + delivery
-  // upfront, so the delivery charge counts as settled with the cake.
-  const fullOnlyOrder = isFullOnlyPayment();
-  const deliverySettled = fullOnlyOrder && delivery > 0 && advance >= (Math.round(cakePrice) + Math.round(delivery));
+  // Delivery is always collected online as part of the total, so any delivery
+  // amount covered by the advance counts as settled with the cake.
+  const deliverySettled = delivery > 0 && advance >= (Math.round(cakePrice) + Math.round(delivery));
 
   const order = {
     orderId: currentOrderId || generateOrderId(),
@@ -1360,8 +1364,7 @@ async function submitOrder() {
     cakePrice: cakePrice,
     deliveryCharge: delivery,
     deliveryAmount: delivery,
-    // Blank/0 delivery charge on a delivery order = NOT PAID (admin/agent collects later).
-    // Full-only orders already include the delivery charge in the paid amount.
+    // Delivery is always part of the total and collected online — never separate.
     deliveryPaid: document.getElementById('f-fulfilment').value === 'pickup' ? 'na' : (deliverySettled ? 'paid' : 'unpaid'),
     paymentCharges: charge,
     subtotal: subtotal,
@@ -1388,7 +1391,9 @@ async function submitOrder() {
     order.weight = order.weightLabel = String(qc.weightLabel || qc.weight || order.weight || '').trim();
     order.flavour = String(qc.flavour || order.flavour).trim();
     order.flavourName = String(qc.flavourName || order.flavourName).trim();
-    order.cakePrice = order.basePrice = order.subtotal = order.total = quoteTotalOf(quoteData);
+    order.cakePrice = order.basePrice = quoteTotalOf(quoteData);
+    // Delivery is always part of the total — quote total = cake + delivery.
+    order.subtotal = order.total = quoteTotalOf(quoteData) + ((quoteData.fulfilment === 'pickup') ? 0 : (Number(quoteData.deliveryCharge) || 0));
     if (quoteData.fulfilment === 'pickup') { order.fulfilment = 'pickup'; order.deliveryCharge = 0; }
     else { order.fulfilment = 'delivery'; order.deliveryCharge = Number(quoteData.deliveryCharge) || 0; }
     order.quoteToken = quoteToken;
@@ -1530,7 +1535,7 @@ function showSuccess(order) {
     <div class="row"><span>ঠিকানা</span><span>${esc(order.deliveryAddress)}</span></div>
     <div class="row"><span>মোট (আনুমানিক)</span><span>৳${Math.round(order.total)}</span></div>
     <div class="row"><span>প্রদান</span><span style="color:var(--green)">৳${Math.round(order.advanceTotal)}</span></div>
-    ${order.dueAmount > 0 ? `<div class="due-alert">⚠️ বাকি: ৳${Math.round(order.dueAmount)}${order.deliveryCharge > 0 ? `<br>🚚 ডেলিভারি চার্জ (আলাদা): ৳${Math.round(order.deliveryCharge)}` : ''}</div>` : '<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ পূর্ণ পেমেন্ট সম্পন্ন</div>'}
+    ${order.dueAmount > 0 ? `<div class="due-alert">⚠️ বাকি: ৳${Math.round(order.dueAmount)}</div>` : '<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ পূর্ণ পেমেন্ট সম্পন্ন</div>'}
   `;
 
   // Manual flow: no auto-download, no auto-close popup. The customer takes a
