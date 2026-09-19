@@ -1298,7 +1298,19 @@ function autoDeliveryCharge() {
   const fulfil = document.getElementById('f-fulfilment').value;
   if (fulfil === 'pickup') return;                                // pickup: stays disabled/blank
   const addr = document.getElementById('f-address').value.trim();
-  if (!addr) return;                                              // no address yet → nothing to estimate
+  if (!addr) {
+    // Address cleared → drop the auto estimate so a stale charge can't be
+    // submitted (only when the box is still the app's own locked estimate).
+    if (input.readOnly) {
+      input.value = '';
+      input.readOnly = false;
+      input.classList.remove('locked-field');
+      const n = document.getElementById('dc-note'); if (n) { n.style.display = 'none'; n.innerHTML = ''; }
+      const b = document.getElementById('dc-edit-btn'); if (b) b.style.display = 'none';
+      recalcPrice();
+    }
+    return;
+  }
   const zone = detectDcZone();
   const charge = (zone ? zone.base : DC_DEFAULT_BASE) + dcWeightExtra();
   const weightTxt = String(document.getElementById('f-weight').value || '').trim() || 'কেক';
@@ -1976,6 +1988,11 @@ function resetForm() {
   if (tb) tb.checked = false;
   const tbBox = document.getElementById('terms-box');
   if (tbBox) tbBox.classList.remove('error');
+  // Delivery-charge estimate state back to blank/unlocked for the new order
+  const rdci = document.getElementById('f-delivery-charge');
+  if (rdci) { rdci.readOnly = false; rdci.disabled = false; rdci.classList.remove('locked-field'); }
+  const rdn = document.getElementById('dc-note'); if (rdn) { rdn.style.display = 'none'; rdn.innerHTML = ''; }
+  const rde = document.getElementById('dc-edit-btn'); if (rde) rde.style.display = 'none';
   currentPhotos = []; renderPhotos(); payShot = ''; renderPayShot(); advanceType = ''; lastAutoSend = 0; lastAutoBase = 0; isSurprise = false; cakeWritingNoticeShown = false;
   advanceMethod = '';
   flavourNoticeShown = false; // show the "exact flavour" notice again on a new order
