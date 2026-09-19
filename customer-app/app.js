@@ -1889,6 +1889,22 @@ function showSuccess(order) {
   document.getElementById('form-screen').classList.remove('active');
   document.getElementById('success-screen').classList.add('active');
   const summary = document.getElementById('order-summary');
+  // Payment breakdown the way the customer reads it:
+  //  কেকের মূল্য · ডেলিভারি চার্জ (approx if auto, else the confirmed figure)
+  //  অগ্রিম / প্রদান (with channel: বিকাশ/নগদ/ব্যাংক) · বাকি (DC excluded).
+  const dcAmt = Math.round(Number(order.deliveryAmount != null ? order.deliveryAmount : order.deliveryCharge) || 0);
+  const isPickup = (order.fulfilment === 'pickup' || order.deliveryPaid === 'na');
+  const fee = Math.round(Number(order.paymentCharges != null ? order.paymentCharges : order.bkashCharge) || 0);
+  const sentTotal = Math.round(Number(order.advanceTotal != null ? order.advanceTotal : order.advance) || 0);
+  const advCake = Math.max(0, sentTotal - fee);
+  const dcCovered = (order.deliveryPaid === 'paid' && !isPickup) ? dcAmt : 0;
+  const advTowardCake = Math.max(0, advCake - dcCovered);
+  const cakePrice = Math.round(Number(order.cakePrice != null ? order.cakePrice : order.basePrice) || (order.total - dcAmt) || order.total || 0);
+  const cakeDue = Math.max(0, cakePrice - advTowardCake);
+  const methodName = order.paymentMethodName || order.advanceMethodName || '';
+  const dcTxt = isPickup
+    ? 'প্রযোজ্য নয় (সেল্ফ পিকআপ)'
+    : (order.dcAuto ? `৳${dcAmt}/- (approx)` : `৳${dcAmt}/-`);
   summary.innerHTML = `
     <div class="row"><span>অর্ডার আইডি</span><span>${esc(order.orderId)}</span></div>
     <div class="row"><span>নাম</span><span>${esc(order.customerName)}</span></div>
@@ -1897,9 +1913,10 @@ function showSuccess(order) {
     ${order.writing ? `<div class="row"><span>কেকের লেখা</span><span>${esc(order.writing)}</span></div>` : ''}
     <div class="row"><span>তারিখ</span><span>${esc(fmtDate(order.deliveryDate))} · ${esc(order.timeSlotLabel)}</span></div>
     <div class="row"><span>ঠিকানা</span><span>${esc(order.deliveryAddress)}</span></div>
-    <div class="row"><span>মোট (আনুমানিক)</span><span>৳${Math.round(order.total)}</span></div>
-    <div class="row"><span>প্রদান</span><span style="color:var(--green)">৳${Math.round(order.advanceTotal)}</span></div>
-    ${order.dueAmount > 0 ? `<div class="due-alert">⚠️ বাকি: ৳${Math.round(order.dueAmount)}</div>` : '<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ পূর্ণ পেমেন্ট সম্পন্ন</div>'}
+    <div class="row"><span>কেকের মূল্য</span><span>৳${cakePrice}</span></div>
+    <div class="row"><span>ডেলিভারি চার্জ</span><span>${dcTxt}</span></div>
+    <div class="row"><span>অগ্রিম / প্রদান</span><span style="color:var(--green)">৳${advTowardCake}${methodName ? ` (${esc(methodName)})` : ''}</span></div>
+    ${cakeDue > 0 ? `<div class="due-alert">⚠️ বাকি: ৳${cakeDue} (ডেলিভারি চার্জ ছাড়া)</div>` : '<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ পূর্ণ পেমেন্ট সম্পন্ন</div>'}
   `;
 
   // Manual flow: no auto-download, no auto-close popup. The customer takes a
