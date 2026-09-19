@@ -624,6 +624,12 @@ function proceedToForm(phone) {
   localStorage.setItem('nitu-cust-phone', phone);
   document.getElementById('entry-screen').classList.add('hidden');
   document.getElementById('form-screen').classList.add('active');
+  // Fresh form: delivery charge unlocked & blank — the estimate fills it once
+  // the address is typed (autoDeliveryCharge).
+  const dci = document.getElementById('f-delivery-charge');
+  if (dci) { dci.value = ''; dci.readOnly = false; dci.disabled = false; dci.classList.remove('locked-field'); }
+  const dn = document.getElementById('dc-note'); if (dn) { dn.style.display = 'none'; dn.innerHTML = ''; }
+  const de = document.getElementById('dc-edit-btn'); if (de) de.style.display = 'none';
   currentOrderId = generateOrderId();
   document.getElementById('form-order-id').textContent = currentOrderId;
   setMinDate();
@@ -1197,6 +1203,56 @@ function resolveWeight() {
   return { value: raw.toLowerCase(), label: raw, price: 0 };
 }
 
+// ─── Delivery-charge zone memory ─────────────────────────────
+// Prices learned from SRS Express quotes (WhatsApp) + this bakery's own
+// order history (34 orders with real DC). Zones match by KEYWORD in the
+// typed address (Bengali or English). Admin can override any price by
+// writing dcConfig/<key> = { base, kw } in the Realtime Database.
+const DC_ZONES = [
+  { key: 'oxygen',      name: 'অক্সিজেন মোড়',        base: 160, kw: ['oxygen', 'অক্সিজেন', 'roufabad', 'শাহ আমানত', 'shah amanat'] },
+  { key: 'katalganj',   name: 'কাটালগঞ্জ',            base: 170, kw: ['katalganj', 'কাটালগঞ্জ', 'shulokbahar', 'শুলকবাহার'] },
+  { key: 'mehedibag',   name: 'মেহেদিবাগ',            base: 180, kw: ['mehedibag', 'মেহেদিবাগ'] },
+  { key: 'chandgaon',   name: 'চান্দগাঁও',            base: 250, kw: ['chandgaon', 'চান্দগাঁও', 'চাঁদগাঁও'] },
+  { key: 'muradpur',    name: 'মুরাদপুর',             base: 180, kw: ['muradpur', 'মুরাদপুর', '2no gate', '২নং গেট'] },
+  { key: 'gec',         name: 'জিইসি মোড়',           base: 200, kw: ['gec', 'জিইসি'] },
+  { key: 'chawkbazar',  name: 'চকবাজার / চাঁদনীপুরা', base: 200, kw: ['chawkbazar', 'চকবাজার', 'chandanpura', 'চাঁদনীপুরা', 'dewan bazar', 'দেওয়ান বাজার', 'wasa', 'ওয়াসা', 'green village', 'গ্রিন ভিলেজ', 'rahmatganj', 'রহমতগঞ্জ'] },
+  { key: 'rahattarpul', name: 'রাহাত্তারপুল',         base: 200, kw: ['rahattarpul', 'রাহাত্তারপুল', 'sholakbahar', 'শোলকবাহার'] },
+  { key: 'bahaddarhat', name: 'বহদ্দারহাট',           base: 190, kw: ['bahaddarhat', 'বহদ্দারহাট'] },
+  { key: 'panchlaish',  name: 'পাচলাইশ / পাহাড়তলী',   base: 230, kw: ['panchlaish', 'পাচলাইশ', 'পাঞ্চলাইশ', 'pahartali', 'পাহাড়তলী', 'akborshah', 'আকবরশাহ', 'medical'] },
+  { key: 'nasirabad',   name: 'নাসিরাবাদ',            base: 210, kw: ['nasirabad', 'নাসিরাবাদ', 'ispahani'] },
+  { key: 'khulshi',     name: 'খুলশী',                base: 240, kw: ['khulshi', 'খুলশী'] },
+  { key: 'halishahar',  name: 'হালিশহর',              base: 320, kw: ['halishahar', 'হালিশহর'] },
+  { key: 'bandar',      name: 'বান্দর / মেরিটাইম',     base: 400, kw: ['bandar', 'বান্দর', 'maritime', 'মেরিটাইম', 'solgola', 'সিমেন্ট'] },
+  { key: 'agrbad',      name: 'আগ্রাবাদ',             base: 280, kw: ['agrabad', 'আগ্রাবাদ', 'mujib road', 'মুজিব রোড', 'double mooring'] },
+  { key: 'hathazari',   name: 'হাটহাজারী / শহরের বাইরে', base: 400, kw: ['hathazari', 'হাটহাজারী', 'nandir', 'নন্দির হাট', 'amanbazar', 'আমানবাজার'] },
+  { key: 'cu',          name: 'চট্টগ্রাম বিশ্ববিদ্যালয়', base: 550, kw: ['university', 'বিশ্ববিদ্যালয়'] },
+  { key: 'patenga',     name: 'পতেঙ্গা',              base: 550, kw: ['patenga', 'পতেঙ্গা'] }
+];
+const DC_DEFAULT_BASE = 250;   // area not recognised — admin confirms the exact charge
+let dcZoneOverrides = {};      // reserved: dcConfig from Firebase merged in later
+
+// Weight → band extra (SRS: 1/1.5 pound পর্যন্ত একই চার্জ; এরপর বাড়ে)
+function dcWeightExtra() {
+  const kind = (typeof getCakeKind === 'function') ? getCakeKind() : 'normal';
+  if (kind === 'mini') return 0;
+  const p = parseWeightText(document.getElementById('f-weight').value);
+  if (!p) return 0;
+  const lb = p.isKg ? p.num * 2.2 : p.num;
+  if (lb <= 1.6) return 0;
+  if (lb <= 2.6) return 20;
+  if (lb <= 3.6) return 80;
+  return 80 + Math.ceil(lb - 3.6) * 40;
+}
+
+function detectDcZone() {
+  const addr = String(document.getElementById('f-address').value || '').toLowerCase();
+  if (!addr.trim()) return null;
+  for (const z of DC_ZONES) {
+    if ((z.kw || []).some(k => addr.includes(String(k).toLowerCase()))) return z;
+  }
+  return null;
+}
+
 function parseWeightText(raw) {
   const text = String(raw || '').trim().toLowerCase().replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
   const m = text.match(/([\d]+(?:\.\d+)?)\s*(kg|কেজি|kilos?|kilograms?|pounds?|lbs|lb|পাউন্ড)?/);
@@ -1212,6 +1268,66 @@ function updateWeightHint() {
   const p = parseWeightText(document.getElementById('f-weight').value);
   if (!p) { el.textContent = ''; return; }
   el.textContent = p.isKg ? `${p.num} KG = ${(p.num * 2.20462).toFixed(1)} pound` : `${p.num} pound = ${(p.num / 2.20462).toFixed(2)} KG`;
+}
+
+// Admin can correct any zone price without code changes: write
+// dcConfig/<key> = { base, kw, name } in the Realtime Database and it is
+// merged over the built-in DC_ZONES on next app load.
+function loadDcConfig() {
+  try {
+    db.ref('dcConfig').once('value').then(snap => {
+      const cfg = snap.val();
+      if (!cfg) return;
+      Object.entries(cfg).forEach(([key, v]) => {
+        if (!v || typeof v !== 'object') return;
+        const z = DC_ZONES.find(z => z.key === key);
+        if (z) { if (v.base > 0) z.base = Math.round(v.base); if (Array.isArray(v.kw)) z.kw = z.kw.concat(v.kw); }
+        else if (Array.isArray(v.kw) && v.base > 0) DC_ZONES.push({ key, name: v.name || key, base: Math.round(v.base), kw: v.kw });
+      });
+      if (typeof autoDeliveryCharge === 'function') autoDeliveryCharge(); // re-estimate with fresh prices
+    }).catch(() => {});
+  } catch (e) {}
+}
+
+// Auto-fill the delivery charge from area + weight, then lock the box.
+// The note tells the customer: এটা আনুমানিক — এজেন্সি সঠিক চার্জ কনফার্ম করবে।
+function autoDeliveryCharge() {
+  const input = document.getElementById('f-delivery-charge');
+  if (!input) return;
+  if (typeof quoteToken !== 'undefined' && quoteToken) return;   // quote DC is locked by admin
+  const fulfil = document.getElementById('f-fulfilment').value;
+  if (fulfil === 'pickup') return;                                // pickup: stays disabled/blank
+  const addr = document.getElementById('f-address').value.trim();
+  if (!addr) return;                                              // no address yet → nothing to estimate
+  const zone = detectDcZone();
+  const charge = (zone ? zone.base : DC_DEFAULT_BASE) + dcWeightExtra();
+  const weightTxt = String(document.getElementById('f-weight').value || '').trim() || 'কেক';
+  const note = document.getElementById('dc-note');
+  const areaTxt = zone ? zone.name : 'অজানা এলাকা (এডমিন নিশ্চিত করবে)';
+  input.value = charge;
+  input.readOnly = true;
+  input.classList.add('locked-field');
+  if (note) note.style.display = 'block';
+  const eb = document.getElementById('dc-edit-btn');
+  if (eb) eb.style.display = '';
+  if (note) note.innerHTML = `📍 এলাকা: <strong>${areaTxt}</strong> · ${esc(weightTxt)} → <strong>আনুমানিক ৳${charge}</strong><br>` +
+    `এটি এই এলাকার আগের অর্ডার থেকে অটো হিসাব করা আনুমানিক চার্জ। ডেলিভারি এজেন্সি সঠিক চার্জ কনফার্ম করবে। ` +
+    `<strong>এজেন্সি থেকে সঠিক পরিমাণ জানা না পেলে পরিবর্তন করবেন না।</strong>`;
+  recalcPrice();
+}
+
+// "I have the exact charge from the agency" → unlock the box for manual edit
+function unlockDeliveryCharge() {
+  const input = document.getElementById('f-delivery-charge');
+  if (!input) return;
+  input.readOnly = false;
+  input.classList.remove('locked-field');
+  const eb = document.getElementById('dc-edit-btn');
+  if (eb) eb.style.display = 'none';
+  const note = document.getElementById('dc-note');
+  if (note) note.innerHTML = `⚠️ <strong>সাবধান:</strong> ডেলিভারি এজেন্সি কনফার্ম করা <strong>সঠিক চার্জ ছাড়া এই ঘর পরিবর্তন করবেন না</strong> — নাহলে রাইডারের কাছে টাকা কম-বেশি হয়ে যেতে পারে। সঠিক চার্জ পেলে সেটাই লিখুন।`;
+  showToast(lang === 'en' ? 'Unlocked — enter the agency-confirmed charge' : 'আনলক হয়েছে — এজেন্সির কনফার্ম করা চার্জ লিখুন');
+  input.focus();
 }
 
 // ─── Mini / Medium cake quick-select ─────────────────────────
@@ -1307,8 +1423,11 @@ function onFulfilmentChange() {
   const dci = document.getElementById('f-delivery-charge');
   if (pickup) {
     if (dci) { dci.value = ''; dci.disabled = true; dci.placeholder = 'প্রযোজ্য নয় — সেল্ফ পিকআপ'; }
+    const pn = document.getElementById('dc-note'); if (pn) { pn.style.display = 'none'; }
+    const pe = document.getElementById('dc-edit-btn'); if (pe) pe.style.display = 'none';
   } else {
-    if (dci && !quoteToken) { dci.disabled = false; dci.placeholder = 'এজেন্টের বলা চার্জ লিখুন'; }
+    if (dci && !quoteToken) { dci.disabled = false; dci.placeholder = 'ঠিকানা লিখলে আনুমানিক চার্জ অটো হিসাব হবে'; }
+    autoDeliveryCharge();
   }
   document.getElementById('f-address').required = !pickup;
   if (pickup) document.getElementById('f-address').value = 'Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram';
@@ -1400,7 +1519,13 @@ function validate() {
   }
   if (document.getElementById('f-fulfilment').value === 'delivery' && !document.getElementById('f-address').value.trim()) { showToast('ঠিকানা দিন'); document.getElementById('f-address').focus(); return false; }
   // Delivery charge is REQUIRED — it always joins the total payment.
-  if (document.getElementById('f-fulfilment').value === 'delivery' && !(getDeliveryCharge() > 0)) { showToast('ডেলিভারি চার্জ দিন'); document.getElementById('f-delivery-charge').focus(); return false; }
+  if (document.getElementById('f-fulfilment').value === 'delivery' && !(getDeliveryCharge() > 0)) {
+    showToast(lang === 'en'
+      ? 'Enter the delivery charge — type the full address and it auto-calculates'
+      : 'ডেলিভারি চার্জ দিন — সম্পূর্ণ ঠিকানা লিখলে আনুমানিক চার্জ অটো হিসাব হয়ে যাবে');
+    document.getElementById('f-delivery-charge').focus();
+    return false;
+  }
   if (!validateBangladeshPhone(document.getElementById('f-receiver-phone').value.trim())) {
     showToast('সঠিক রিসিভার ফোন দিন'); return false;
   }
@@ -1522,6 +1647,10 @@ async function submitOrder() {
     cakePrice: cakePrice,
     deliveryCharge: delivery,
     deliveryAmount: delivery,
+    // Mark orders whose delivery charge was the app's own area estimate, so
+    // admin sees the "অটো হিসাব (আনুমানিক)" warning on the card.
+    dcAuto: (() => { const el = document.getElementById('f-delivery-charge'); return el ? el.readOnly === true : false; })(),
+    dcAutoNote: (() => { const el = document.getElementById('f-delivery-charge'); return (el && el.readOnly) ? `আনুমানিক (এলাকা অটো-হিসাব) — এজেন্সি কনফার্ম করবে` : null; })(),
     // Delivery is always part of the total and collected online — never separate.
     deliveryPaid: document.getElementById('f-fulfilment').value === 'pickup' ? 'na' : (deliverySettled ? 'paid' : 'unpaid'),
     paymentCharges: charge,
@@ -1904,6 +2033,7 @@ function setMinDate() {
 // Init
 (function init() {
   populateDropdowns();
+  loadDcConfig();
   setLang(lang);
   const savedPhone = localStorage.getItem('nitu-cust-phone');
   if (savedPhone) document.getElementById('entry-phone').value = savedPhone;

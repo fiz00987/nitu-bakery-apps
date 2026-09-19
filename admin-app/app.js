@@ -1243,8 +1243,9 @@ window.App = (() => {
       ${drow('📍', 'ঠিকানা', o.address)}
       ${o.surprise === 'yes' ? drow('🎁', 'সারপ্রাইজ', 'হ্যাঁ — গোপন রাখুন!') : ''}
       ${o.deliveryPaid && o.deliveryPaid !== 'na'
-        ? drow('🚚', 'ডেলিভারি চার্জ', (o.deliveryPaid === 'paid' ? 'পরিশোধিত' : 'বাকি') + (o.deliveryAmount ? ` — ৳${fmtMoney(o.deliveryAmount)}` : ''))
+        ? drow('🚚', 'ডেলিভারি চার্জ', (o.deliveryPaid === 'paid' ? 'পরিশোধিত' : 'বাকি') + (o.deliveryAmount ? ` — ৳${fmtMoney(o.deliveryAmount)}` : '') + (o.dcAuto ? ' <span style="color:var(--amber)">⚠️ অটো হিসাব (আনুমানিক) — এই এলাকার আগের অর্ডার থেকে; এজেন্সির সঠিক চার্জ পেলে এডিট করুন</span>' : ''))
         : ''}
+      ${o.dcAuto && o.dcAutoNote ? `<div class="pay-note" style="color:var(--amber)">⚠️ ${esc(o.dcAutoNote)}</div>` : ''}
     </div>
 
     <div class="detail-section">

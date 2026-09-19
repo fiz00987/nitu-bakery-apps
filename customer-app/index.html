@@ -365,7 +365,7 @@ html.t-gold .order-number-badge{color:#a5813e}
         <label data-bn="ওজন * (পাউন্ড বা KG)" data-en="Weight * (pound or KG)">ওজন * (পাউন্ড বা KG)</label>
         <button type="button" title="বেস মূল্য নির্দেশিকা / Base price guide" onclick="showTextPopup('base price.txt', 'বেস মূল্য নির্দেশিকা')" style="background:none;border:none;font-size:13px;line-height:1;cursor:pointer;padding:0 2px;color:var(--pink)">❗</button>
       </div>
-      <input type="text" id="f-weight" placeholder="যেমন: 2 pound, 2.5 pound, 1 KG" data-bn-placeholder="যেমন: 2 pound, 2.5 pound, 1 KG" data-en-placeholder="Example: 2 pound, 2.5 pound, 1 KG" autocomplete="off" oninput="updateWeightHint();recalcPrice()">
+      <input type="text" id="f-weight" placeholder="যেমন: 2 pound, 2.5 pound, 1 KG" data-bn-placeholder="যেমন: 2 pound, 2.5 pound, 1 KG" data-en-placeholder="Example: 2 pound, 2.5 pound, 1 KG" autocomplete="off" oninput="updateWeightHint();recalcPrice();autoDeliveryCharge()">
       <select id="f-cake-kind" onchange="onCakeKindChange()" style="margin-top:8px">
         <option value="normal" data-bn="সাধারণ কেক" data-en="Normal cake">সাধারণ কেক</option>
         <option value="mini" data-bn="মিনি কেক" data-en="Mini cake">মিনি কেক</option>
@@ -418,7 +418,7 @@ html.t-gold .order-number-badge{color:#a5813e}
     </div>
     <div class="field">
       <label data-bn="ডেলিভারি ঠিকানা *" data-en="Delivery Address *">ডেলিভারি ঠিকানা *</label>
-      <textarea id="f-address" placeholder="পূর্ণ ঠিকানা লিখুন"></textarea>
+      <textarea id="f-address" placeholder="পূর্ণ ঠিকানা লিখুন" oninput="autoDeliveryCharge()"></textarea>
     </div>
     <div class="row2">
       <div class="field">
@@ -446,7 +446,9 @@ html.t-gold .order-number-badge{color:#a5813e}
     </div>
     <div class="field delivery-charge-field" id="delivery-charge-field">
       <label>ডেলিভারি চার্জ *</label>
-      <input type="number" id="f-delivery-charge" min="0" step="1" placeholder="ডেলিভারি চার্জ লিখুন" oninput="recalcPrice()">
+      <input type="number" id="f-delivery-charge" min="0" step="1" placeholder="ঠিকানা লিখলে আনুমানিক চার্জ অটো হিসাব হবে" oninput="recalcPrice()">
+      <div class="note-box" id="dc-note" style="display:none"></div>
+      <button type="button" class="otp-resend" id="dc-edit-btn" onclick="unlockDeliveryCharge()" style="display:none;margin-top:4px">✏️ এজেন্সির সঠিক চার্জ আছে? পরিবর্তন করুন</button>
     </div>
 </div>
     <div class="field">

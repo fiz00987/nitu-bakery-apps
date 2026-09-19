@@ -13,3 +13,16 @@ if (!firebase.apps.length) {
 }
 
 const db = firebase.database();
+
+// Silent anonymous sign-in — every visitor gets an auth.uid so the
+// database security rules ("auth != null") pass for real customers,
+// while outsiders with just the URL are locked out.
+// NOTE: enable "Anonymous" in Firebase Console → Authentication →
+// Sign-in method, then deploy the rules (database.rules.json).
+(function ensureCustomerAuth() {
+  try {
+    firebase.auth().onAuthStateChanged(user => {
+      if (!user) firebase.auth().signInAnonymously().catch(err => console.warn('anon auth failed', err && err.code));
+    });
+  } catch (e) { console.warn(e); }
+})();
