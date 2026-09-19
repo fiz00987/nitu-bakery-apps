@@ -2,8 +2,19 @@
   "rules": {
     ".read": "auth != null",
     ".write": "auth != null",
+
+    "widgetFeed": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+
     "dcConfig": {
-      ".read": true
+      ".read": true,
+      ".write": "auth != null"
+    },
+
+    "orders": {
+      ".indexOn": ["customerPhone", "orderId", "status", "date"]
     }
   }
 }

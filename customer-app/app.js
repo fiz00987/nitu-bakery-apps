@@ -1699,6 +1699,16 @@ async function submitOrder() {
   }
 
   showLoading(true);
+  // The database requires a signed-in (anonymous) user — make sure the token
+  // exists before writing so the order can never be silently rejected.
+  const okAuth = window.ensureAuthReady ? await window.ensureAuthReady() : true;
+  if (!okAuth) {
+    showLoading(false);
+    showToast(lang === 'en'
+      ? 'Connection check failed — please reopen the page (or turn off the in-app browser).'
+      : 'সংযোগ যাচাই করা যায়নি — পেজটা আবার খুলুন (হলে Facebook/Messenger-এর ভেতরের ব্রাউজার বন্ধ করে Chrome-এ খুলুন)।');
+    return;
+  }
   db.ref('orders').push(order).then(snap => {
     showLoading(false);
     if (order.quoteToken) {
@@ -2050,7 +2060,9 @@ function setMinDate() {
 // Init
 (function init() {
   populateDropdowns();
-  loadDcConfig();
+  // Load the admin's zone-price overrides once auth is ready so the read
+  // passes the security rules (falls back to built-in prices otherwise).
+  if (window.ensureAuthReady) { window.ensureAuthReady().then(loadDcConfig); } else { loadDcConfig(); }
   setLang(lang);
   const savedPhone = localStorage.getItem('nitu-cust-phone');
   if (savedPhone) document.getElementById('entry-phone').value = savedPhone;
