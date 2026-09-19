@@ -160,10 +160,8 @@ function setLang(l) {
     document.querySelector('#f-payment-method option[value=""]').textContent = 'Select payment method';
     document.querySelector('#f-fulfilment option[value="delivery"]').textContent = 'Delivery';
     document.querySelector('#f-fulfilment option[value="pickup"]').textContent = 'Self pickup';
-    document.querySelector('#f-surprise option[value="no"]').textContent = 'No';
+  document.querySelector('#f-surprise option[value="no"]').textContent = 'No';
     document.querySelector('#f-surprise option[value="yes"]').textContent = 'Yes - surprise';
-    document.querySelector('#f-cake-kind option[value="normal"]').textContent = 'Normal cake';
-    document.querySelector('#f-cake-kind option[value="mini"]').textContent = 'Mini cake';
     FLAVOURS.forEach(f => { const option = document.querySelector(`#f-flavour option[value="${f.value}"]`); if (option) option.textContent = f.labelEn; });
     PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.nameEn; });
   } else {
@@ -171,8 +169,6 @@ function setLang(l) {
     document.getElementById('f-weight').placeholder = 'যেমন: 2 pound, 2.5 pound, 1 KG';
     document.getElementById('f-timeslot').placeholder = 'যেমন: 3.00';
     document.getElementById('f-writing').placeholder = 'যেমন: তোমার হাসিই আমাদের ঘরের আলো';
-    document.querySelector('#f-cake-kind option[value="normal"]').textContent = 'সাধারণ কেক';
-    document.querySelector('#f-cake-kind option[value="mini"]').textContent = 'মিনি কেক';
     FLAVOURS.forEach(f => { const option = document.querySelector(`#f-flavour option[value="${f.value}"]`); if (option) option.textContent = f.label; });
     PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.name; });
   }
@@ -208,7 +204,6 @@ function lockEl(id) {
 function applyQuoteLockVisual() {
   if (!quoteData) return;
   lockEl('f-weight');
-  lockEl('f-cake-kind');   // cake kind follows the quoted spec — mini stays mini
   lockEl('f-flavour');
   lockEl('f-cake-price');
   lockEl('f-delivery-charge');
@@ -941,47 +936,107 @@ function getCakeWritingError(text) {
     : '';
 }
 
-// ─── Cake kind (normal / mini) ───────────────────────────────
-// Dropdown: 1st option normal cake, 2nd option mini cake. Mini hides the
-// free pound/KG input (a mini has no such weight) and behaves like the old
-// "mini preset"; normal shows the input for the customer's desired weight.
-// Mini ALWAYS counts as full payment too (same rule as surprise + delivery).
-let cakeKind = 'normal';   // 'normal' | 'mini'
+// ─── Cake weight (single free input) ──────────────────────────
+// Mini is automatic, not a visible option. Below 300 gram the order becomes
+// a mini cake: the mini info popup opens, and OK locks 50% so the customer
+// pays 100% + delivery charge. A bare number (1/2/3/4/5) asks the unit
+// (pound / KG / gram) explicitly.
+let cakeKind = 'normal';   // 'normal' | 'mini' (auto only)
+let miniNoticeShown = false;
+let miniPending = false;
 
 const MINI_FILL_BN = '\u09ae\u09bf\u09a8\u09bf \u0995\u09c7\u0995';
 const MINI_FILL_EN = 'Mini cake';
 
 function getCakeKind() {
-  const el = document.getElementById('f-cake-kind');
-  cakeKind = (el && el.value === 'mini') ? 'mini' : 'normal';
   return cakeKind;
 }
 
-function onCakeKindChange() {
-  const kind = getCakeKind();
+function setCakeKind(kind, opts) {
+  opts = opts || {};
+  cakeKind = (kind === 'mini') ? 'mini' : 'normal';
   const wEl = document.getElementById('f-weight');
   const hintEl = document.getElementById('weight-hint');
-  if (kind === 'mini') {
-    // Mini cake: no pound/KG to type — the pound/KG input disappears and the
-    // size name is stored as the weight (same as the old mini quick-select).
+  if (cakeKind === 'mini') {
+    // Mini cake: no pound/KG to type — the input is locked to the size name.
     wEl.value = lang === 'en' ? MINI_FILL_EN : MINI_FILL_BN;
     wEl.disabled = true;
     wEl.style.display = 'none';
     wEl.classList.add('locked-field');
     if (hintEl) hintEl.textContent = '';
+  } else if (!opts.keepValue) {
+    // Back to a normal cake: free the input again.
+    wEl.value = opts.value != null ? opts.value : '';
+    wEl.disabled = false;
+    wEl.style.display = '';
+    wEl.classList.remove('locked-field');
   } else {
-    // Normal cake: show the free input for the desired pound / KG.
-    wEl.value = '';
     wEl.disabled = false;
     wEl.style.display = '';
     wEl.classList.remove('locked-field');
   }
   updateWeightHint();
   syncFullOnlyPayment();   // mini => 50% locked off too
-  if (kind === 'mini') setAdvanceType('full');   // mini auto-selects 100% (50% greyed out)
+  if (cakeKind === 'mini') setAdvanceType('full');   // mini auto-selects 100% (50% greyed out)
   recalcPrice();
   updateProgress();
-  if (kind === 'mini') showMiniCakeInfo();   // size / weight / price guide
+}
+
+// ─── 300-gram mini-cake rule ────────────────────────────────
+// Any weight at or below 300 g converts to a mini cake: the mini info popup
+// shows first, and OK applies the lock (50% off, 100% + delivery).
+function weightInGrams(parsed) {
+  if (!parsed) return null;
+  if (parsed.isGram) return parsed.num;
+  if (parsed.isKg) return parsed.num * 1000;
+  return parsed.num * 453.592;   // pounds → grams
+}
+
+function maybeConvertToMini() {
+  const wEl = document.getElementById('f-weight');
+  if (!wEl) return false;
+  const raw = String(wEl.value || '').trim();
+  if (!raw || isPresetWeight(raw) || cakeKind === 'mini') return cakeKind === 'mini';
+  const p = parseWeightText(raw);
+  if (!p) return false;
+  const grams = weightInGrams(p);
+  if (grams == null || grams > 300) return false;   // above 300 g → stays a normal cake
+  // At/below 300 g → mini cake: show the info popup, OK applies the lock.
+  miniPending = true;
+  miniNoticeShown = false;
+  showMiniCakeInfo();
+  return true;
+}
+
+// Mini info popup with an explicit OK gate (instead of a passive popup):
+// OK converts the weight to the mini size name and locks 50% off.
+function showMiniCakeInfo() {
+  const p = WEIGHT_PRESETS.mini;
+  showTextPopup(p.file, lang === 'en' ? p.titleEn : p.title);
+  miniNoticeShown = true;
+  // Append an OK button to the currently open popup (re-render safe: only one).
+  const pop = document.querySelector('#text-popup .popup');
+  if (pop && !pop.querySelector('#mini-ok-btn')) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'mini-ok-btn';
+    btn.className = 'btn-primary';
+    btn.style.margin = '0 18px 18px';
+    btn.textContent = lang === 'en' ? 'OK — Mini cake' : 'ঠিক আছে — মিনি কেক';
+    btn.onclick = confirmMiniCake;
+    pop.appendChild(btn);
+  }
+}
+
+function confirmMiniCake() {
+  const pop = document.getElementById('text-popup');
+  if (pop) pop.classList.remove('show');
+  miniPending = false;
+  miniNoticeShown = true;
+  setCakeKind('mini');            // locks the input + 100% + delivery flow
+  showToast(lang === 'en'
+    ? 'Mini cake — 100% payment with delivery charge'
+    : 'মিনি কেক — ডেলিভারি চার্জসহ ১০০% পেমেন্ট');
 }
 
 // A payment that is ALWAYS full: surprise cakes and mini cakes. For these the
@@ -1309,18 +1364,29 @@ function dcIsAutoEstimate() {
 
 function parseWeightText(raw) {
   const text = String(raw || '').trim().toLowerCase().replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
-  const m = text.match(/([\d]+(?:\.\d+)?)\s*(kg|কেজি|kilos?|kilograms?|pounds?|lbs|lb|পাউন্ড)?/);
+  const m = text.match(/([\d]+(?:\.\d+)?)\s*(grams?|gm|gms|গ্রাম|kg|কেজি|kilos?|kilograms?|pounds?|lbs|lb|পাউন্ড)?/);
   if (!m) return null;
   const num = parseFloat(m[1]);
-  if (!num || num <= 0 || num > 200) return null;
-  const isKg = /kg|কেজি|kilo/.test(m[2] || '');
-  return { num, isKg };
+  if (!num || num <= 0) return null;
+  const unitRaw = m[2] || '';
+  const isKg = /kg|কেজি|kilo/.test(unitRaw);
+  const isGram = !isKg && /^(grams?|gms?|gm|গ্রাম)$/.test(unitRaw.trim());
+  if (!isKg && !isGram && num > 200) return null;      // pounds capped at 200
+  if (isKg && num > 100) return null;                  // KG capped at 100
+  if (isGram && num > 100000) return null;             // grams capped at 100 KG
+  return { num, isKg, isGram };
 }
 
 function updateWeightHint() {
   const el = document.getElementById('weight-hint');
   const p = parseWeightText(document.getElementById('f-weight').value);
   if (!p) { el.textContent = ''; return; }
+  if (p.isGram) {
+    el.textContent = lang === 'en'
+      ? `${p.num} gram = ${(p.num / 1000).toFixed(2)} KG`
+      : `${p.num} গ্রাম = ${(p.num / 1000).toFixed(2)} KG`;
+    return;
+  }
   el.textContent = p.isKg ? `${p.num} KG = ${(p.num * 2.20462).toFixed(1)} pound` : `${p.num} pound = ${(p.num / 2.20462).toFixed(2)} KG`;
 }
 
@@ -1431,16 +1497,22 @@ function setWeightPreset(kind, btn) {
 }
 
 document.getElementById('f-weight').addEventListener('change', function() {
-  // Bare numbers (e.g. "1") get the POUND/KG unit popup on blur instead
+  if (cakeKind === 'mini') return;   // locked mini name — no unit to check
+  // A ≤300 g weight becomes a mini cake first (popup → OK converts).
+  if (maybeConvertToMini()) return;
+  // Bare numbers (e.g. "1") get the POUND/KG/GRAM unit popup on blur instead
   if (!isBareNumberWeight(this.value) && parseWeightText(this.value)) showTextPopup('base price.txt', 'বেস মূল্য নির্দেশিকা');
 });
 
 document.getElementById('f-weight').addEventListener('blur', function() {
+  if (cakeKind === 'mini') return;
+  // A ≤300 g weight becomes a mini cake first (popup → OK converts).
+  if (maybeConvertToMini()) return;
   // Leaving the field with a bare number (e.g. "1" or "2.5") → ask the unit
-  maybeAskWeightUnit();
+  if (isBareNumberWeight((this.value || '').trim())) maybeAskWeightUnit();
 });
 
-// ─── Weight-unit popup (POUND / KG) for bare numbers like "1" ──
+// ─── Weight-unit popup (POUND / KG / GRAM) for bare numbers like "1" ──
 let weightUnitPending = false;
 
 function isBareNumberWeight(raw) {
@@ -1450,15 +1522,15 @@ function isBareNumberWeight(raw) {
 
 function maybeAskWeightUnit() {
   const el = document.getElementById('f-weight');
-  if (!el) return;
+  if (!el || cakeKind === 'mini') return;
   const raw = (el.value || '').trim();
   if (!raw || isPresetWeight(raw) || !isBareNumberWeight(raw)) return;
   if (weightUnitPending) return; // popup already open
   weightUnitPending = true;
   const norm = raw.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
   document.getElementById('weight-unit-msg').textContent = lang === 'en'
-    ? 'You typed ' + norm + ' — is that ' + norm + ' POUND or ' + norm + ' KG?'
-    : 'আপনি ' + norm + ' লিখেছেন — এটি কি ' + norm + ' পাউন্ড, নাকি ' + norm + ' KG?';
+    ? 'You typed ' + norm + ' — is that ' + norm + ' POUND, ' + norm + ' KG, or ' + norm + ' GRAM?'
+    : 'আপনি ' + norm + ' লিখেছেন — এটি কি ' + norm + ' পাউন্ড, ' + norm + ' KG, নাকি ' + norm + ' গ্রাম?';
   document.getElementById('weight-unit-popup').classList.add('show');
 }
 
@@ -1466,12 +1538,10 @@ function chooseWeightUnit(unit) {
   const el = document.getElementById('f-weight');
   const norm = (el.value || '').trim().replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
   const m = norm.match(/^(\d+(?:\.\d+)?)$/);
-  if (m) el.value = unit === 'kg' ? m[1] + ' KG' : m[1] + ' pound';
-  weightUnitPending = false;
-  document.getElementById('weight-unit-popup').classList.remove('show');
-  updateWeightHint();
-  recalcPrice();
-  updateProgress();
+  if (m) el.value = unit === 'kg' ? m[1] + ' KG' : unit === 'gram' ? m[1] + ' gram' : m[1] + ' pound';
+  closeWeightUnitPopup();
+  // A gram choice at/below 300 g converts to a mini cake immediately.
+  if (!maybeConvertToMini()) { updateWeightHint(); recalcPrice(); updateProgress(); }
 }
 
 function closeWeightUnitPopup(event) {
@@ -1571,8 +1641,10 @@ function validate() {
     return false;
   }
   if (!resolveWeight()) { showToast('সঠিক ওজন লিখুন (যেমন: 2 pound বা 1 KG)'); return false; }
-  // Normal cake: the typed weight must be a real amount (e.g. "2 pound", "1 KG").
-  // Bare numbers get converted by the POUND/KG popup; size names stay allowed.
+  // A ≤300 g weight is a mini cake: show the popup first — OK converts + locks 50%.
+  if (cakeKind !== 'mini' && maybeConvertToMini()) return false;
+  // The typed weight must be a real amount (e.g. "2 pound", "1 KG", "250 gram").
+  // Bare numbers get converted by the POUND/KG/GRAM popup; size names stay allowed.
   if (getCakeKind() === 'normal') {
     const wRaw = document.getElementById('f-weight').value.trim();
     if (wRaw && !isPresetWeight(wRaw) && !parseWeightText(wRaw)) {
@@ -2087,9 +2159,9 @@ function resetForm() {
   document.getElementById('payment-info').classList.remove('show');
   document.querySelectorAll('.advance-opt').forEach(el => { el.classList.remove('active', 'adv-locked'); el.style.opacity = ''; el.style.pointerEvents = ''; });
   // Cake kind back to "normal" + weight box unlocked & cleared
-  const ck = document.getElementById('f-cake-kind');
-  if (ck) { ck.selectedIndex = 0; ck.style.display = ''; }
   cakeKind = 'normal';
+  miniNoticeShown = false;
+  miniPending = false;
   const wEl = document.getElementById('f-weight');
   if (wEl) { wEl.disabled = false; wEl.style.display = ''; wEl.classList.remove('locked-field'); }
   syncFullOnlyPayment();   // fresh form → 50% available again

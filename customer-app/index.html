@@ -158,8 +158,6 @@ button{cursor:pointer}
 .advance-opt.adv-locked{background:#ececec;border-color:#d8d8d8;color:#9a9a9a;cursor:not-allowed;position:relative}
 .advance-opt.adv-locked::after{content:'🔒';position:absolute;top:2px;right:5px;font-size:10px}
 /* Mini cake: the pound/KG input is hidden; the mini info popup explains it */
-#f-cake-kind{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-size:14px;font-weight:600;color:var(--text);width:100%}
-#f-cake-kind:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-glow)}
 .advance-opt{flex:1;padding:10px;border:2px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-size:13px;font-weight:600;cursor:pointer;color:var(--text2)}
 .advance-opt.active{border-color:var(--pink);background:var(--pink-light);color:var(--pink)}
 /* "How did you pay?" gateway chooser (auto-popup after advance pick) */
@@ -367,10 +365,6 @@ html.t-gold .order-number-badge{color:#a5813e}
         <button type="button" title="বেস মূল্য নির্দেশিকা / Base price guide" onclick="showTextPopup('base price.txt', 'বেস মূল্য নির্দেশিকা')" style="background:none;border:none;font-size:13px;line-height:1;cursor:pointer;padding:0 2px;color:var(--pink)">❗</button>
       </div>
       <input type="text" id="f-weight" placeholder="যেমন: 2 pound, 2.5 pound, 1 KG" data-bn-placeholder="যেমন: 2 pound, 2.5 pound, 1 KG" data-en-placeholder="Example: 2 pound, 2.5 pound, 1 KG" autocomplete="off" oninput="updateWeightHint();recalcPrice();autoDeliveryCharge()">
-      <select id="f-cake-kind" onchange="onCakeKindChange()" style="margin-top:8px">
-        <option value="normal" data-bn="সাধারণ কেক" data-en="Normal cake">সাধারণ কেক</option>
-        <option value="mini" data-bn="মিনি কেক" data-en="Mini cake">মিনি কেক</option>
-      </select>
       <div class="hint-box" id="weight-hint"></div>
     </div>
     <div class="field">
@@ -541,6 +535,7 @@ html.t-gold .order-number-badge{color:#a5813e}
     <div style="display:flex;gap:10px;padding:0 18px 18px">
       <button type="button" class="btn-primary" style="flex:1" onclick="chooseWeightUnit('pound')">POUND</button>
       <button type="button" class="btn-primary" style="flex:1" onclick="chooseWeightUnit('kg')">KG</button>
+      <button type="button" class="btn-primary" style="flex:1" onclick="chooseWeightUnit('gram')">GRAM</button>
     </div>
   </div>
 </div>
