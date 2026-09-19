@@ -1239,7 +1239,7 @@ window.App = (() => {
     <div class="card-head-body">
       ${o.orderId ? `<div class="card-order-id-row"><span class="card-order-id">🆔 ${esc(o.orderId)}</span><button class="id-copy-btn" type="button" onclick="event.stopPropagation();App.copyOrderId('${fk}')" title="অর্ডার আইডি কপি করুন">📋</button></div>` : ''}
       <div class="card-name"><span class="card-name-text">${esc(o.name)}</span>${tallyBadge}${customerBadge}<button class="name-copy-btn" type="button" onclick="event.stopPropagation();App.copyCardName(this)" title="নাম কপি করুন">📋 কপি</button></div>
-      <div class="card-meta">${esc(weightText(o))}${weightText(o) && o.flavour ? ' · ' : ''}${esc(flavourLabel(o))}${o.time ? ' · ' + esc(o.time) : ''}${(o.cakes && o.cakes.length > 1) ? ' · <b>' + o.cakes.length + 'টি কেক</b>' : ''}</div>
+      <div class="card-meta">${(o.cakes && o.cakes.length > 1) ? o.cakes.map(c => esc([c.weightLabel || c.weight, c.flavourName || c.flavour].filter(Boolean).join(' '))).join(' + ') + ' · <b>' + o.cakes.length + 'টি কেক</b>' : (esc(weightText(o)) + (weightText(o) && o.flavour ? ' · ' : '') + esc(flavourLabel(o)))}${o.time ? ' · ' + esc(o.time) : ''}</div>
       ${cdChip}
       <div class="card-chips">${statusChip(o)}${dueChip}${surpriseChip}${deliveryChip}</div>
     </div>
@@ -1340,6 +1340,7 @@ window.App = (() => {
       ${waLink ? `<button class="card-btn btn-wa" onclick="event.stopPropagation(); window.open('${waLink}','_blank')">💬 WhatsApp</button>` : ''}
       ${waPhone ? `<button class="card-btn btn-call" onclick="event.stopPropagation(); window.open('tel:${waPhone}')">${tr('call')}</button>` : ''}
       <button class="card-btn btn-edit"  onclick="event.stopPropagation(); App.openModal('${fk}')">✏️ এডিট</button>
+      ${(o.cakes && o.cakes.length > 1) ? `<button class="card-btn btn-note" onclick="event.stopPropagation(); App.splitOrder('${fk}')" title="একটি অর্ডারের ${o.cakes.length}টি কেক আলাদা আলাদা অর্ডারে ভাগ করুন">✂️ আলাদা</button>` : ''}
       <button class="card-btn btn-del"   onclick="event.stopPropagation(); App.confirmDelete('${fk}')">🗑️ মুছুন</button>
     </div>
   </div>
@@ -2610,6 +2611,129 @@ window.App = (() => {
       if (ok) { ordersRef.child(key).remove(); showToast('অর্ডার মুছে ফেলা হয়েছে।'); }
     });
   };
+
+  // ─── Split a multi-cake order into separate per-cake orders ─────────
+  // Customer "multi-cake" orders are ONE record with a cakes[] array, so the
+  // collapsed card only surfaces cake 1 (the top-level weight/flavour) and the
+  // rest hide until Edit. This splits the record into N standalone orders —
+  // one per cake, each carrying its own delivery date/receiver/charge — so
+  // every cake appears as its own order, grouped date-wise in the Plan view.
+  //
+  // Money: the combined cake price is distributed across the new orders. If a
+  // cake carries its own price we use it; otherwise we ask the admin once per
+  // cake. The paid advance is assigned to cake 1 up to its price, any excess
+  // rolls to the next cake, so the totals always add up to the original.
+  const splitOrder = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) { showToast('⚠️ অর্ডার পাওয়া যায়নি'); return; }
+    const cakes = Array.isArray(o.cakes) ? o.cakes.filter(Boolean) : [];
+    if (cakes.length < 2) { showToast('⚠️ এটি এক-কেকের অর্ডার — ভাগ করার দরকার নেই'); return; }
+
+    // Work out each cake's price. Prefer a per-cake price already stored;
+    // otherwise collect from the admin (one prompt per cake), defaulting to an
+    // even split of the combined cake total.
+    const combined = cakePriceOf(o);
+    const evenShare = Math.round(combined / cakes.length);
+    const prices = [];
+    for (let i = 0; i < cakes.length; i++) {
+      const c = cakes[i];
+      let p = Math.round(Number(c.cakePrice != null ? c.cakePrice : (c.price != null ? c.price : c.total)) || 0);
+      if (!(p > 0)) {
+        const label = [c.weightLabel || c.weight, c.flavourName || c.flavour].filter(Boolean).join(' ') || ('কেক ' + (i + 1));
+        const ans = window.prompt(
+          `কেক ${i + 1}/${cakes.length} (${label}) — এর দাম কত?\n(মোট কেকের মূল্য ৳${fmtMoney(combined)}; সমান ভাগে ৳${fmtMoney(evenShare)})`,
+          String(evenShare));
+        if (ans === null) { showToast('❌ ভাগ বাতিল হয়েছে'); return; }   // cancelled
+        p = Math.round(parseFloat(ans) || 0);
+      }
+      if (!(p > 0)) { showToast('⚠️ প্রতিটি কেকের দাম ০-এর বেশি হতে হবে'); return; }
+      prices.push(p);
+    }
+
+    const name = o.name || o.customerName || '';
+    showConfirm(
+      `${cakes.length}টি আলাদা অর্ডার বানাবেন?`,
+      `${name} — এই এক অর্ডারের ${cakes.length}টি কেক আলাদা আলাদা অর্ডার হয়ে যাবে (প্রতিটি নিজের তারিখে দেখাবে)। মূল অর্ডারটি সরে যাবে।`,
+      false,
+      ok => { if (ok) performSplit(o, cakes, prices); }
+    );
+  };
+
+  const performSplit = (o, cakes, prices) => {
+    const totalCake = prices.reduce((s, p) => s + p, 0);
+    // Distribute the paid advance: fill cake 1 first, overflow to the rest.
+    let advanceLeft = advanceOf(o);
+    const groupId = o.splitGroupId || (o.orderId || '') || ('SG' + Date.now().toString(36));
+    const now = Date.now();
+
+    const updates = {};
+    cakes.forEach((c, i) => {
+      const cakePrice = prices[i];
+      const adv = Math.min(cakePrice, Math.max(0, advanceLeft));
+      advanceLeft -= adv;
+      const dc = Math.round(Number(c.deliveryAmount != null ? c.deliveryAmount : c.deliveryCharge) || 0);
+      const date = (c.date || c.deliveryDate || o.date || '');
+      const timeVal = (c.timeSlotLabel || c.timeSlot || o.timeSlotLabel || o.timeSlot || o.time || '');
+      const photos = Array.isArray(c.photos) && c.photos.length ? c.photos.filter(Boolean)
+        : (c.photo ? [c.photo] : (Array.isArray(o.photos) && o.photos.length ? o.photos.filter(Boolean) : (o.photo ? [o.photo] : [])));
+      const rec = Object.assign({}, o, {
+        orderId: (o.orderId ? o.orderId + '-' + (i + 1) : ''),
+        splitGroupId: groupId,
+        splitOf: `${i + 1}/${cakes.length}`,
+        multiCake: false,
+        cakeCount: 1,
+        weight: c.weight || c.weightLabel || '',
+        weightLabel: c.weightLabel || c.weight || '',
+        flavour: c.flavour || c.flavourName || '',
+        flavourName: c.flavourName || c.flavour || '',
+        writing: c.writing || c.cakeWriting || '',
+        cakeWriting: c.writing || c.cakeWriting || '',
+        photo: photos[0] || '',
+        photos: photos,
+        photoNote: c.photoNote || o.photoNote || '',
+        date: date,
+        deliveryDate: date,
+        time: timeVal,
+        timeSlot: c.timeSlot || o.timeSlot || timeVal,
+        timeSlotLabel: timeVal,
+        receiver: c.receiver || o.receiver || '',
+        receiverPhone: c.receiverPhone || o.receiverPhone || '',
+        address: c.address || c.deliveryAddress || o.address || '',
+        deliveryAddress: c.address || c.deliveryAddress || o.deliveryAddress || o.address || '',
+        total: cakePrice,
+        basePrice: cakePrice,
+        cakePrice: cakePrice,
+        subtotal: cakePrice,
+        deliveryAmount: dc,
+        deliveryCharge: dc,
+        advance: adv,
+        advanceTotal: adv,
+        paid: adv,
+        dueAmount: Math.max(0, cakePrice - adv),
+        updatedAt: now,
+        createdAt: (o.createdAt || now)
+      });
+      delete rec.firebaseKey;
+      delete rec.cakes;                  // single-cake order — no nested array
+      const newKey = ordersRef.push().key;
+      updates['orders/' + newKey] = rec;
+    });
+    // Remove the original combined record in the same atomic write.
+    updates['orders/' + o.firebaseKey] = null;
+
+    setSyncStatus('syncing', 'আলাদা অর্ডার বানানো হচ্ছে...');
+    db.ref().update(updates)
+      .then(() => {
+        setSyncStatus('ok');
+        showToast(`✅ ${cakes.length}টি আলাদা অর্ডার তৈরি হয়েছে (মোট ৳${fmtMoney(totalCake)})`);
+      })
+      .catch(err => {
+        console.error('Split failed:', err);
+        setSyncStatus('error', '❌ ভাগ করা যায়নি');
+        showToast('❌ ভাগ করা যায়নি — ইন্টারনেট চেক করে আবার চেষ্টা করুন');
+      });
+  };
+
 
   // ─── Modal ───────────────────────────────────────────────────
   const populateForm = o => {
@@ -4282,7 +4406,8 @@ window.App = (() => {
     openQuoteLink,
     copyQuoteLink,
     deleteQuote,
-    renderQuotes
+    renderQuotes,
+    splitOrder
   };
 
 })();
