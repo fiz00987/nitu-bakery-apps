@@ -141,7 +141,34 @@ window.App = (() => {
   // that charge is NOT payment for the cake, so we subtract it.
   const bkashCharge   = o => Math.max(0, Number(o.bkashCharge) || 0);
   const effectivePaid = o => Math.max(0, (Number(o.paid) || 0) - bkashCharge(o));
-  const dueAmt        = o => Math.max(0, (o.total || 0) - effectivePaid(o));
+
+  // ─── Cake-only money (DC is NEVER part of these numbers) ──────
+  // DC has its own row on the card, so advance/due/progress only ever
+  // count cake money.
+  const dcAmtOf = o => Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
+  const isPickupOrder = o => (o.fulfilment === 'pickup' || o.deliveryPaid === 'na');
+  // Cake price: cakePrice when DC is folded into total, else the total itself.
+  const cakePriceOf = o => {
+    const dc = dcAmtOf(o);
+    const cp = Math.round(Number(o.cakePrice) || 0);
+    const total = Math.round(Number(o.total) || 0);
+    if (cp > 0 && dc > 0 && cp + dc === total) return cp;
+    return total;
+  };
+  // Advance toward the cake: customer orders keep it in `advance`; manual
+  // orders in `paid`. If only the DC-folded total is available, strip DC.
+  const advanceOf = o => {
+    const a = Math.round(Number(o.advance) || 0);
+    if (a > 0) return a;
+    const eff = effectivePaid(o);
+    const dc = dcAmtOf(o);
+    const cp = Math.round(Number(o.cakePrice) || 0);
+    const total = Math.round(Number(o.total) || 0);
+    const dcFolded = cp > 0 && dc > 0 && cp + dc === total;
+    return dcFolded ? Math.max(0, eff - dc) : eff;
+  };
+  // Due = cake price − cake advance. DC excluded, always.
+  const dueAmt = o => Math.max(0, cakePriceOf(o) - advanceOf(o));
 
   const normalizeCustomerOrder = o => {
     if (o.customerName && !o.name) o.name = o.customerName;
@@ -950,8 +977,8 @@ window.App = (() => {
     return `${weightText(o)} ${flavourLabel(o)}`.trim() || 'কেক';
   };
   const confirmCakeMoneyLine = o => {
-    const total = Math.round(Number(o.total) || 0);
-    const paid  = Math.round(effectivePaid(o));
+    const total = cakePriceOf(o);          // cake price only (DC separate)
+    const paid  = advanceOf(o);
     const due   = Math.max(0, Math.round(dueAmt(o)));
     const f = n => `৳${fmtMoney(n)}`;
     if (due <= 0) return `${f(total)} (সম্পূর্ণ পরিশোধিত ✅)`;
@@ -1012,8 +1039,8 @@ window.App = (() => {
       L.push(`🎂 কেক: ${[weightText(o), flavourLabel(o)].filter(Boolean).join(' — ') || '—'}`);
       if (o.writing) L.push(`✍️ লেখা: ${o.writing}`);
     }
-    L.push(`💰 কেকের মোট: ৳${fmtMoney(Number(o.total) || 0)}`);
-    L.push(`💳 পরিশোধিত: ৳${fmtMoney(effectivePaid(o))}`);
+    L.push(`💰 কেকের মূল্য: ৳${fmtMoney(cakePriceOf(o))}`);
+    L.push(`💳 অগ্রিম: ৳${fmtMoney(advanceOf(o))}`);
     const dk = dueAmt(o);
     if (dk > 0) L.push(`🔴 কেকের বকেয়া: ৳${fmtMoney(dk)}`);
     // Delivery charge — ALWAYS show paid/unpaid with the amount
@@ -1141,8 +1168,8 @@ window.App = (() => {
 
   // ─── Payment progress bar ────────────────────────────────────
   const payProgressBar = o => {
-    const total = o.total || 0;
-    const paid  = effectivePaid(o);
+    const total = cakePriceOf(o);          // cake money only — DC has its own row
+    const paid  = advanceOf(o);
     if (total <= 0) return '';
     const pct = Math.min(100, Math.round((paid / total) * 100));
     const fillClass = pct >= 100 ? '' : pct > 0 ? 'partial' : 'zero';
@@ -1179,8 +1206,8 @@ window.App = (() => {
     const fk         = o.firebaseKey;
 
     const dueChip      = d > 0
-      ? `<span class="chip chip-red">বকেয়া ৳${fmtMoney(d)}</span>`
-      : `<span class="chip chip-green">পরিশোধিত ✅</span>`;
+      ? `<span class="chip chip-red">কেকের বকেয়া ৳${fmtMoney(d)}</span>`
+      : `<span class="chip chip-green">কেক পরিশোধিত ✅</span>`;
     const surpriseChip = o.surprise === 'yes' ? `<span class="chip chip-purple">🎁 সারপ্রাইজ</span>` : '';
     const tallyBadge   = o.source === 'tally'  ? `<span class="chip chip-tally">Tally</span>` : '';
     const customerBadge = o.source === 'customer' ? `<span class="chip chip-customer">অনলাইন অর্ডার</span>` : '';
@@ -1250,14 +1277,12 @@ window.App = (() => {
     <div class="detail-section">
       <div class="detail-title">💳 পেমেন্ট</div>
       ${(() => {
-        // Customer orders store the advance in `o.advance` (what went toward
-        // the cake, DC excluded). Admin manual orders use `paid` (the total
-        // sent). Read whichever is available — never mix DC into this number.
-        const dcAmt = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
-        const dcInTotal = o.cakePrice > 0 && dcAmt > 0 && Math.round(Number(o.cakePrice) + dcAmt) === Math.round(Number(o.total));
-        const cakeTotal = dcInTotal ? Math.max(0, (Number(o.total) || 0) - dcAmt) : (Number(o.total) || 0);
-        const advance = (o.advance != null && Number(o.advance) > 0) ? Math.round(Number(o.advance)) : effectivePaid(o);
-        const cakeDue = Math.max(0, cakeTotal - advance);
+        // Shared cake-only maths (same helpers the chips/progress bar use):
+        // cake price, advance toward the cake, due. DC is never mixed in.
+        const cakeTotal = cakePriceOf(o);
+        const advance   = advanceOf(o);
+        const cakeDue   = dueAmt(o);
+        const dcAmt     = dcAmtOf(o);
         const dcNote = (o.fulfilment === 'pickup' || o.deliveryPaid === 'na')
           ? '🚚 ডেলিভারি চার্জ: প্রযোজ্য নয় (সেল্ফ পিকআপ)'
           : dcAmt > 0
