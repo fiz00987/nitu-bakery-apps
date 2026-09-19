@@ -7,6 +7,23 @@ let advanceType = '';
 let isSurprise = false;
 let currentSecurityQ = null;
 let pendingPhone = '';
+// ─── OTP login state (customer app only) ─────────────────────────
+// Data stays keyed by phone number: customers/<phone> holds profile +
+// points-ready fields; orders keep customerPhone as today. When Firebase
+// Phone Auth is enabled (needs Blaze for real SMS), the verified E.164
+// number (+880...) maps to the same phone key, so nothing migrates.
+let otpMode = 'security'; // 'security' (active today) | 'otp' (after Blaze)
+let otpConfirmation = null;
+let otpRecaptcha = null;
+let otpCooldownUntil = 0;
+let otpTimerTick = null;
+function phoneKeyOf(phone) { return String(phone || '').replace(/[\s\-]/g, ''); }
+function toE164BD(phone) {
+  const d = phoneKeyOf(phone);
+  if (/^01[3-9]\d{8}$/.test(d)) return '+880' + d.slice(1);
+  if (/^\+8801[3-9]\d{8}$/.test(String(phone || '').trim())) return String(phone).trim();
+  return null;
+}
 let currentOrderId = '';
 let previousOrderHistory = [];
 let previousOrderCursor = 0;
@@ -273,6 +290,70 @@ async function validateQuoteLock() {
   return { ok: true };
 }
 
+// ─── Customer profile keyed by PHONE (points-ready) ────────────
+// customers/<01XXXXXXXXX> = { phone, name, lastLoginAt, createdAt,
+//   pointsBalance, totalEarned, totalRedeemed }. Orders are NOT moved:
+// they keep customerPhone and are queried the same way as today.
+async function upsertCustomerProfile(phone) {
+  const key = phoneKeyOf(phone);
+  if (!key) return;
+  try {
+    const ref = db.ref('customers/' + key);
+    const snap = await ref.once('value');
+    const now = Date.now();
+    if (snap.exists()) {
+      const cur = snap.val() || {};
+      const patch = { phone: key, lastLoginAt: now };
+      if (!cur.createdAt) patch.createdAt = now;
+      if (cur.pointsBalance == null) patch.pointsBalance = 0;
+      if (cur.totalEarned == null) patch.totalEarned = 0;
+      if (cur.totalRedeemed == null) patch.totalRedeemed = 0;
+      await ref.update(patch);
+    } else {
+      await ref.set({
+        phone: key, name: (localStorage.getItem('nitu-cust-name') || ''),
+        createdAt: now, lastLoginAt: now,
+        pointsBalance: 0, totalEarned: 0, totalRedeemed: 0
+      });
+    }
+  } catch (e) { console.error('customer profile upsert failed', e); }
+}
+
+// ─── OTP via Firebase Phone Auth (needs Blaze for real SMS) ───
+// Console checklist: Blaze billing → Auth → enable Phone provider →
+// authorized domain nitusbakingplanv2-customer.web.app → optional test
+// numbers. Then call enableOtpLogin() and entry switches to OTP.
+function enableOtpLogin() {
+  otpMode = 'otp';
+  currentSecurityQ = null;
+  document.getElementById('security-box').classList.remove('show');
+  const btn = document.getElementById('entry-btn');
+  btn.textContent = lang === 'en' ? '📱 Send OTP' : '📱 OTP পাঠান';
+  btn.onclick = sendOtp;
+}
+function otpErrorText(code) {
+  const en = lang === 'en';
+  if (code === 'auth/quota-exceeded') return en ? 'SMS limit reached — try again later.' : 'SMS সীমা শেষ — পরে আবার চেষ্টা করুন।';
+  if (code === 'auth/too-many-requests') return en ? 'Too many tries — wait 1 hour.' : 'অনেকবার চেষ্টা হয়েছে — ১ ঘণ্টা পর চেষ্টা করুন।';
+  if (code === 'auth/invalid-verification-code' || code === 'auth/code-expired') return en ? 'Wrong or expired code — resend it.' : 'ভুল বা মেয়াদোত্তীর্ণ কোড — আবার পাঠান।';
+  if (code === 'auth/billing-not-enabled' || code === 'auth/operation-not-allowed') return en ? 'OTP is not enabled yet (needs Blaze + Phone provider).' : 'OTP এখনো চালু হয়নি (Blaze + Phone provider লাগবে)।';
+  return en ? 'Could not send OTP. Check internet and try again.' : 'OTP পাঠানো যায়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।';
+}
+function startOtpCooldown(sec) {
+  otpCooldownUntil = Date.now() + sec * 1000;
+  const resend = document.getElementById('otp-resend');
+  const timer = document.getElementById('otp-timer');
+  if (otpTimerTick) clearInterval(otpTimerTick);
+  const paint = () => {
+    const left = Math.max(0, Math.ceil((otpCooldownUntil - Date.now()) / 1000));
+    if (resend) resend.disabled = left > 0;
+    if (timer) timer.textContent = left > 0 ? (lang === 'en' ? ('Resend code in ' + left + 's') : (left + ' সেকেন্ড পর আবার পাঠান')) : '';
+    if (left <= 0 && otpTimerTick) { clearInterval(otpTimerTick); otpTimerTick = null; }
+  };
+  paint();
+  otpTimerTick = setInterval(paint, 1000);
+}
+
 // Entry handler
 async function handleEntry() {
   const phone = document.getElementById('entry-phone').value.trim();
@@ -313,6 +394,68 @@ function askSecurityQuestion() {
   document.getElementById('entry-btn').onclick = verifySecurity;
 }
 
+async function sendOtp() {
+  const phone = document.getElementById('entry-phone').value.trim();
+  const err = document.getElementById('entry-error');
+  err.classList.remove('show');
+  if (!validateBangladeshPhone(phone)) {
+    err.textContent = lang === 'en' ? 'Enter a valid Bangladeshi number (e.g. 01712345678)' : 'সঠিক বাংলাদেশি ফোন নম্বর দিন (যেমন: 01712345678)';
+    err.classList.add('show');
+    return;
+  }
+  const e164 = toE164BD(phone);
+  if (!e164 || !window.firebase || !firebase.auth) { err.textContent = otpErrorText('auth/operation-not-allowed'); err.classList.add('show'); return; }
+  if (Date.now() < otpCooldownUntil) return;
+  const btn = document.getElementById('entry-btn');
+  btn.disabled = true;
+  btn.textContent = lang === 'en' ? 'Sending…' : 'পাঠানো হচ্ছে…';
+  try {
+    if (!otpRecaptcha) otpRecaptcha = new firebase.auth.RecaptchaVerifier('entry-btn', { size: 'invisible' });
+    otpConfirmation = await firebase.auth().signInWithPhoneNumber(e164, otpRecaptcha);
+    pendingPhone = phoneKeyOf(phone);
+    document.getElementById('otp-box').classList.add('show');
+    document.getElementById('entry-otp').value = '';
+    document.getElementById('entry-otp').focus();
+    btn.textContent = lang === 'en' ? 'Verify code' : 'কোড যাচাই করুন';
+    btn.onclick = verifyOtp;
+    startOtpCooldown(60);
+    showToast(lang === 'en' ? 'OTP sent — wait up to 1 minute' : 'OTP পাঠানো হয়েছে — ১ মিনিট পর্যন্ত অপেক্ষা করুন');
+  } catch (e) {
+    console.error('sendOtp failed', e);
+    err.textContent = otpErrorText(e && e.code);
+    err.classList.add('show');
+    try { if (otpRecaptcha) { otpRecaptcha.clear(); otpRecaptcha = null; } } catch (_) {}
+  } finally { btn.disabled = false; }
+}
+async function verifyOtp() {
+  const code = (document.getElementById('entry-otp').value || '').trim();
+  const err = document.getElementById('entry-error');
+  err.classList.remove('show');
+  if (!/^\d{6}$/.test(code)) { err.textContent = lang === 'en' ? 'Enter the 6-digit code' : '৬ সংখ্যার কোড দিন'; err.classList.add('show'); return; }
+  if (!otpConfirmation) { err.textContent = otpErrorText('auth/code-expired'); err.classList.add('show'); return; }
+  const btn = document.getElementById('entry-btn');
+  btn.disabled = true;
+  try {
+    const cred = await otpConfirmation.confirm(code);
+    const verifiedE164 = (cred && cred.user && cred.user.phoneNumber) || toE164BD(pendingPhone);
+    const local = verifiedE164 && verifiedE164.indexOf('+880') === 0 ? '0' + verifiedE164.slice(4) : pendingPhone;
+    document.getElementById('otp-box').classList.remove('show');
+    await loadPreviousOrders(local);
+    await upsertCustomerProfile(local);
+    proceedToForm(local);
+  } catch (e) {
+    console.error('verifyOtp failed', e);
+    err.textContent = otpErrorText(e && e.code);
+    err.classList.add('show');
+  } finally { btn.disabled = false; }
+}
+async function resendOtp() {
+  if (Date.now() < otpCooldownUntil) return;
+  try { if (otpRecaptcha) { otpRecaptcha.clear(); otpRecaptcha = null; } } catch (_) {}
+  otpConfirmation = null;
+  await sendOtp();
+}
+
 async function verifySecurity() {
   const ans = Number(normalizeDigits(document.getElementById('entry-security').value));
   const expected = Number(currentSecurityQ ? currentSecurityQ.a : NaN);
@@ -327,6 +470,7 @@ async function verifySecurity() {
   }
   err.classList.remove('show');
   await loadPreviousOrders(pendingPhone);
+  await upsertCustomerProfile(pendingPhone);
   proceedToForm(pendingPhone);
 }
 

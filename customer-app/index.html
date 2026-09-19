@@ -106,6 +106,14 @@ button{cursor:pointer}
 .security-box.show{display:block}
 .security-box label{font-size:12px;font-weight:600;color:var(--blue);margin-bottom:6px;display:block}
 .security-box input{margin-top:4px}
+.otp-box{background:var(--green-light);border:1px solid #a5d6a7;border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;text-align:left;display:none}
+.otp-box.show{display:block}
+.otp-box label{font-size:12px;font-weight:600;color:var(--green);margin-bottom:6px;display:block}
+.otp-row{display:flex;gap:8px}
+.otp-row input{flex:1;text-align:center;font-size:18px;font-weight:700;letter-spacing:4px}
+.otp-timer{font-size:12px;color:var(--text2);margin-top:6px;text-align:center}
+.otp-resend{background:none;border:none;color:var(--pink);font-weight:700;font-size:12.5px;cursor:pointer;padding:4px 8px}
+.otp-resend:disabled{opacity:.45;cursor:not-allowed}
 .previous-orders{background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-top:14px;text-align:left;display:none;max-height:200px;overflow-y:auto}
 .previous-orders.show{display:block}
 .previous-orders-title{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px}
@@ -314,6 +322,16 @@ html.t-gold .order-number-badge{color:#a5813e}
     <div class="previous-orders" id="previous-orders">
       <div class="previous-orders-title" id="prev-title"></div>
       <div id="prev-list"></div>
+    </div>
+    <!-- Real OTP (Firebase Phone Auth). Hidden until Blaze is enabled + Phone provider is on.
+         Until then the security-question flow below stays the active login. -->
+    <div class="otp-box" id="otp-box">
+      <label id="otp-label" data-bn="📱 OTP কোড (6 সংখ্যা)" data-en="📱 OTP code (6 digits)">📱 OTP কোড (6 সংখ্যা)</label>
+      <div class="otp-row">
+        <input type="text" inputmode="numeric" id="entry-otp" placeholder="••••••" maxlength="6" autocomplete="one-time-code">
+      </div>
+      <div class="otp-timer" id="otp-timer"></div>
+      <div style="text-align:center"><button type="button" class="otp-resend" id="otp-resend" onclick="resendOtp()">পুনরায় পাঠান</button></div>
     </div>
     <button class="btn-primary" id="entry-btn" onclick="handleEntry()">অর্ডার শুরু করুন</button>
   </div>
@@ -595,6 +613,7 @@ html.t-gold .order-number-badge{color:#a5813e}
 <!-- Firebase + Utils -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="./firebase-config.js"></script>
 <script src="./utils.js"></script>
 
