@@ -1135,19 +1135,23 @@ window.App = (() => {
     L.push('');
     L.push('');
 
-    // Payment summary — the delivery charge line always states the amount and
-    // whether the agent has been paid or it is still due.
-    const methodName = (o.paymentMethodName || o.paymentChargesLabel || o.paymentMethod || '').toLowerCase();
-    const dcAmt = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
-    L.push(`Total- ${Math.round(Number(o.total) || 0)}+ Delivery charge`);
+    // Payment summary — cake money only (DC has its own line and is marked
+    // approx until the delivery agency confirms it).
+    const methodMapNp = { bkash: 'বিকাশ', nagad: 'নগদ', bank: 'ব্যাংক' };
+    const mIdNp = String(o.advanceMethod || o.paymentMethod || '').trim().toLowerCase();
+    const methodNameNp = o.paymentMethodName || o.paymentChargesLabel ||
+      (methodMapNp[mIdNp] || o.advanceMethod || o.paymentMethod || '');
+    const dcAmtNp = dcAmtOf(o);
+    const dcLineNp = isPickupOrder(o)
+      ? 'প্রযোজ্য নয় (সেল্ফ পিকআপ)'
+      : (o.dcAuto ? `DC- ${dcAmtNp}/- (approx)` : `${dcAmtNp}/-`);
+    L.push(`কেকের মূল্য- ${cakePriceOf(o)}/-`);
     L.push('');
-    L.push(`Paid- ${Math.round(Number(o.paid) || 0)}/- with ${methodName} charge`);
+    L.push(`ডেলিভারি চার্জ- ${dcLineNp}`);
     L.push('');
-    if (o.deliveryPaid === 'unpaid') {
-      L.push(`due : Delivery charge ( ${dcAmt || '—'}/- ) 🔴 বাকি`);
-    } else {
-      L.push(`Delivery charge: Paid ✅ ( ${dcAmt}/- )`);
-    }
+    L.push(`অগ্রিম / প্রদান- ${advanceOf(o)}/-${methodNameNp ? ` (${methodNameNp})` : ''}`);
+    L.push('');
+    if (dueAmt(o) > 0) L.push(`বকেয়া- ${dueAmt(o)}/- (ডেলিভারি চার্জ ছাড়া)`);
 
     return L.join('\n');
   };
@@ -3623,6 +3627,28 @@ window.App = (() => {
       createdAt:      (existing && existing.createdAt) || Date.now(),
       updatedAt:      Date.now()
     };
+
+    // ─ Approx → confirmed ───────────────────────────────────────
+    // If the order carried an auto-calculated (approx) delivery charge and the
+    // admin has now edited any money field, the figure is admin-confirmed —
+    // drop the (approx) label so the card stops flagging it.
+    const prevDc = existing ? Math.round(Number(existing.deliveryAmount != null ? existing.deliveryAmount : existing.deliveryCharge) || 0) : 0;
+    const prevTotal = existing ? Math.round(Number(existing.total) || 0) : 0;
+    const prevPaid = existing ? Math.round(Number(existing.paid) || 0) : 0;
+    const moneyChanged = existing && (
+      prevDc !== Math.round(Number(o.deliveryAmount) || 0) ||
+      prevTotal !== Math.round(Number(o.total) || 0) ||
+      prevPaid !== Math.round(Number(o.paid) || 0)
+    );
+    const wasApprox = existing && (existing.dcAuto === true || !!existing.dcAutoNote);
+    if (!wasApprox || moneyChanged) {
+      o.dcAuto = false;          // admin-verified (or brand-new) order → certain
+      o.dcAutoNote = null;
+    } else {
+      // untouched approx order: keep the flag so the card still warns
+      o.dcAuto = true;
+      o.dcAutoNote = existing.dcAutoNote || 'আনুমানিক (এলাকা অটো-হিসাব) — এজেন্সি কনফার্ম করবে';
+    }
 
     // Keep the customer-app payment fields in sync. Customer-submitted orders
     // store the money in advance/advanceTotal/dueAmount, and the customer's
