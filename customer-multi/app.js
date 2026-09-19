@@ -680,8 +680,9 @@ function onPaymentChange() {
   const method = getPaymentMethod(methodId);
   if (method && method.number) {
     const copyField = (label, value) => `<div>${label}: <strong>${value}</strong> <button type="button" class="copy-button" onclick="copyValue('${value}')">কপি</button></div>`;
-    const bank = methodId === 'bank' ? `${copyField('ব্যাংক', 'IFIC Bank')} ${copyField('শাখা', 'Hathazari sub-branch')} ${copyField('রাউটিং', '120 153 224')} ${copyField('SWIFT', 'IFICBDDH')} ${copyField('অ্যাকাউন্টধারী', 'Sabrina Akter Bhuiyan')} ${copyField('যোগাযোগ', '01521400475')}` : '';
-    info.innerHTML = `📱 <strong>${method.name}</strong>${copyField(methodId === 'bank' ? 'অ্যাকাউন্ট নম্বর' : 'নম্বর', method.number)}${methodId !== 'bank' ? copyField('নাম', method.regName || '') : ''}${bank}<br><small>${methodId === 'bkash' ? 'বিকাশ Send Money করুন। আপনার অগ্রিমের উপর ১.৮২% চার্জ যোগ হবে।' : methodId === 'nagad' ? 'নগদ Send Money করুন। আপনার অগ্রিমের উপর ১.৪৯% চার্জ যোগ হবে।' : 'পেমেন্টের বিস্তারিত যাচাই করা হবে।'}</small>`;
+    const plainField = (label, value) => `<div>${label}: <strong>${value}</strong></div>`;
+    const bank = methodId === 'bank' ? `${copyField('ব্যাংক', 'IFIC Bank')} ${copyField('শাখা', 'Hathazari')} ${copyField('রাউটিং', '120 153 224')} ${copyField('SWIFT', 'IFICBDDH')} ${copyField('অ্যাকাউন্টধারী', 'Sabrina Akter Bhuiyan')} ${copyField('যোগাযোগ', '01521400475')}` : '';
+    info.innerHTML = `📱 <strong>${method.name}</strong>${plainField(methodId === 'bank' ? 'অ্যাকাউন্ট নম্বর' : 'নম্বর', method.number)}${methodId !== 'bank' ? plainField('নাম', method.regName || '') : ''}${bank}<br><small>${methodId === 'bkash' ? 'বিকাশ Send Money করুন। আপনার অগ্রিমের উপর ১.৮২% চার্জ যোগ হবে।' : methodId === 'nagad' ? 'নগদ Send Money করুন। আপনার অগ্রিমের উপর ১.৪৯% চার্জ যোগ হবে।' : 'পেমেন্টের বিস্তারিত যাচাই করা হবে।'}</small>`;
     info.classList.add('show');
   } else {
     info.classList.remove('show');
