@@ -82,7 +82,7 @@ window.App = (() => {
       chartMonthlyOrders: '📊 মাসিক অর্ডার — শেষ ৫ মাস',
       tabPlan: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'আয়', tabCdb: 'ডেটাবেজ',
       sort_date: 'তারিখ', sort_name: 'নাম', sort_due: 'বকেয়া',
-      secPayment: '💳 পেমেন্ট', fTotal: 'মোট মূল্য (৳)', fPaid: 'পরিশোধিত (৳)',
+      secPayment: '💳 পেমেন্ট', fTotal: 'কেকের মূল্য (৳)', fPaid: 'অগ্রিম / প্রদান (৳)',
       live: 'লাইভ', offline: 'সংযোগ নেই', saving: 'সেভ হচ্ছে...', conn: 'সংযোগ...',
       cakePayment: 'কেকের পেমেন্ট', bkashDeducted: 'bKash চার্জ বাদ',
       payFullOpt: '✅ ফুল পেমেন্ট — bKash চার্জ + ডেলিভারি চার্জ সহ',
@@ -106,7 +106,7 @@ window.App = (() => {
       chartMonthlyOrders: '📊 Orders per Month — Last 5',
       tabPlan: 'Orders', tabDone: 'Done', tabRev: 'Revenue', tabCdb: 'Database',
       sort_date: 'Date', sort_name: 'Name', sort_due: 'Due',
-      secPayment: '💳 Payment', fTotal: 'Total Price (৳)', fPaid: 'Paid (৳)',
+      secPayment: '💳 Payment', fTotal: 'Cake Price (৳)', fPaid: 'Advance / Paid (৳)',
       live: 'Live', offline: 'Offline', saving: 'Saving...', conn: 'Connecting...',
       cakePayment: 'Cake Payment', bkashDeducted: 'bKash charge deducted',
       payFullOpt: '✅ Full Payment — incl. bKash charge + delivery',
@@ -2681,11 +2681,12 @@ window.App = (() => {
     g('f-surprise').value       = o.surprise  || 'no';
     g('f-delivery-paid').value  = o.deliveryPaid    || 'unpaid';
     g('f-delivery-amount').value = o.deliveryAmount || '';
-    g('f-total').value          = o.total     || '';
-    // f-paid shows the TOTAL SENT (charge-inclusive). The due field subtracts
-    // the stored charge to recover the advance toward the cake.
-    g('f-paid').value           = (Number(o.paid) || Number(o.advance) || 0) || '';
-    g('f-charge-deduct').value  = (o.paymentCharges != null ? o.paymentCharges : o.bkashCharge) || '';
+    // Cake money only — DC lives in its own field above, never folded here.
+    g('f-total').value          = cakePriceOf(o) || '';
+    // f-paid shows the ADVANCE toward the cake (charge-free), same number
+    // the card shows. No charge deduction needed — advance is already clean.
+    g('f-paid').value           = advanceOf(o) || '';
+    g('f-charge-deduct').value  = '';   // advance is cake-only; nothing to deduct
     pcChannel = (o.paymentChargesLabel ? String(o.paymentChargesLabel) : '');
     pcLastApplied = parseFloat(g('f-paid').value) || 0;
     updateDueField();
@@ -3556,11 +3557,12 @@ window.App = (() => {
     const cakePrice      = parseFloat(g('f-total').value) || 0;
     const deliveryAmt    = parseFloat(g('f-delivery-amount').value) || 0;
     const fulfilmentVal  = g('f-fulfilment').value;
-    // f-paid holds the TOTAL SENT (advance + gateway charge, e.g. 509).
-    // The advance toward the cake is what remains after removing the charge.
+    // f-paid holds the ADVANCE toward the cake (cake money only, no DC and no
+    // gateway charge — the card shows the same figure). 50% / 100% of the cake
+    // price is what the customer actually sends for the cake.
     const paidNum        = parseFloat(g('f-paid').value) || 0;
-    const chargeToDeduct = parseFloat(g('f-charge-deduct').value) || 0;
-    const advanceNum     = Math.max(0, paidNum - chargeToDeduct);
+    const chargeToDeduct = 0;                     // nothing to deduct — advance is clean
+    const advanceNum     = Math.max(0, paidNum);
     // Channel chosen in the popup (kept in pcChannel as a readable label like
     // "বিকাশ", also restored when re-editing an order).
     const chargeLabel    = pcChannel;
@@ -3616,8 +3618,8 @@ window.App = (() => {
       weightPrice:    0,
       subtotal:       cakePrice,
       paid:           paidNum,
-      bkashCharge:    chargeToDeduct,
-      paymentCharges: chargeToDeduct,
+      bkashCharge:    existing ? (Number(existing.bkashCharge) || 0) : 0,
+      paymentCharges: existing ? (Number(existing.paymentCharges != null ? existing.paymentCharges : existing.bkashCharge) || 0) : 0,
       paymentChargesLabel: chargeLabel,
       trx:            g('f-trx').value.trim(),
       notes:          g('f-notes').value.trim(),
@@ -3652,15 +3654,11 @@ window.App = (() => {
 
     // Keep the customer-app payment fields in sync. Customer-submitted orders
     // store the money in advance/advanceTotal/dueAmount, and the customer's
-    // "Previous Orders" screen reads those fields. Without this sync, editing
-    // the payment here updated `paid`/`total` but the customer kept seeing the
-    // stale submitted due forever. Here `paid` (f-paid) is the TOTAL SENT
-    // (charge-inclusive): advance toward the cake = paid − charge,
-    // advanceTotal = total sent, and due = total − advance.
-    const chargeNum = chargeToDeduct;
+    // "Previous Orders" screen reads those fields. `advance` is the CAKE money
+    // only (what the card shows); `paid` mirrors the total sent incl. gateway
+    // charge so the old finance views stay consistent.
     o.advance        = advanceNum;
-    o.advanceTotal   = paidNum;
-    o.paymentCharges = chargeNum;
+    o.advanceTotal   = advanceNum;
     o.dueAmount      = Math.max(0, cakePrice - advanceNum);
 
     // Delivered = the client has paid EVERYTHING — cake total AND delivery
@@ -3668,9 +3666,9 @@ window.App = (() => {
     // modal, force every money field to fully-paid so a delivered order can
     // never carry a due (from now and forever).
     if (o.status === 'delivered') {
-      o.paid         = cakePrice + chargeToDeduct;
       o.advance      = cakePrice;
-      o.advanceTotal = o.paid;
+      o.advanceTotal = cakePrice;
+      o.paid         = cakePrice;
       o.dueAmount    = 0;
       if (fulfilmentVal === 'delivery') o.deliveryPaid = 'paid';
     }
