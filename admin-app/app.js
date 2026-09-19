@@ -1250,11 +1250,28 @@ window.App = (() => {
 
     <div class="detail-section">
       <div class="detail-title">💳 পেমেন্ট</div>
-      <div class="pay-box">
+      ${(() => {
+        // New orders (since 18 Sep) fold DC into total. For those, the paid &
+        // due cells show CAKE money only — delivery charge is its own line.
+        // Older orders (total = cake only) keep the previous display.
+        const dcAmt = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
+        const dcInTotal = o.cakePrice > 0 && dcAmt > 0 && Math.round(Number(o.cakePrice) + dcAmt) === Math.round(Number(o.total));
+        const dcCovered = dcInTotal && (o.deliveryPaid === 'paid' || effectivePaid(o) >= (Number(o.total) || 0)) ? dcAmt : 0;
+        const cakePaid  = Math.max(0, effectivePaid(o) - dcCovered);
+        const cakeTotal = dcInTotal ? Math.max(0, (Number(o.total) || 0) - dcAmt) : (Number(o.total) || 0);
+        const cakeDue   = dcInTotal ? Math.max(0, cakeTotal - cakePaid) : d;
+        const dcNote = (o.fulfilment === 'pickup' || o.deliveryPaid === 'na')
+          ? '🚚 ডেলিভারি চার্জ: প্রযোজ্য নয় (সেল্ফ পিকআপ)'
+          : dcAmt > 0
+            ? `🚚 ডেলিভারি চার্জ: ৳${fmtMoney(dcAmt)}${o.dcAuto ? ' (আনুমানিক — ডেলিভারি এজেন্সি সঠিক চার্জ কনফার্ম করবে)' : ''} — ${o.deliveryPaid === 'paid' ? 'পরিশোধিত ✅' : 'বাকি ⏳'}`
+            : '🚚 ডেলিভারি চার্জ: আনুমানিক — ডেলিভারি এজেন্সি সঠিক চার্জ কনফার্ম করবে';
+        return `<div class="pay-box">
         <div class="pay-cell"><div class="pay-lbl">${lang==='bn'?'মোট':'Total'}</div><div class="pay-val">৳${fmtMoney(o.total)}</div></div>
-        <div class="pay-cell"><div class="pay-lbl">${tr('cakePayment')}</div><div class="pay-val green">৳${fmtMoney(effectivePaid(o))}</div></div>
-        <div class="pay-cell"><div class="pay-lbl">${tr('due')}</div><div class="pay-val ${d > 0 ? 'red' : 'green'}">৳${fmtMoney(d)}</div></div>
+        <div class="pay-cell"><div class="pay-lbl">${tr('cakePayment')}</div><div class="pay-val green">৳${fmtMoney(cakePaid)}</div></div>
+        <div class="pay-cell"><div class="pay-lbl">${tr('due')}</div><div class="pay-val ${cakeDue > 0 ? 'red' : 'green'}">৳${fmtMoney(cakeDue)}</div></div>
       </div>
+      <div class="pay-note">${dcNote}</div>`;
+      })()}
       ${bkashCharge(o) > 0 ? `<div class="pay-note">💰 ${tr('bkashDeducted')}: ৳${fmtMoney(o.paid)} − ৳${fmtMoney(bkashCharge(o))}${o.paymentChargesLabel ? ` (${esc(o.paymentChargesLabel)})` : ''} = ৳${fmtMoney(effectivePaid(o))}</div>` : ''}
       ${o.paynote ? `<div class="pay-note">💳 ${esc(o.paynote)}</div>` : ''}
       ${o.source === 'customer' && o.advance ? `<div class="pay-note">📱 কাস্টমার অগ্রিম: ৳${fmtMoney(o.advance)}${o.advanceCharge > 0 ? ` (+চার্জ ৳${fmtMoney(o.advanceCharge)})` : ''} = ৳${fmtMoney(o.advanceTotal)}${o.trx ? ` | ট্রানজেকশন: ${esc(o.trx)}` : ''}</div>` : ''}

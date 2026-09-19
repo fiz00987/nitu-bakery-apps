@@ -7,6 +7,9 @@ let advanceType = '';
 let isSurprise = false;
 let currentSecurityQ = null;
 let pendingPhone = '';
+// ─── Captcha state (customer app entry) ──────────────────────
+let captchaPassed = false;
+let currentCaptcha = null;
 // ─── OTP login state (customer app only) ─────────────────────────
 // Data stays keyed by phone number: customers/<phone> holds profile +
 // points-ready fields; orders keep customerPhone as today. When Firebase
@@ -354,6 +357,101 @@ function startOtpCooldown(sec) {
   otpTimerTick = setInterval(paint, 1000);
 }
 
+// ─── Visual captcha (replaces the math "security question") ─────
+// Two friendly gates: (a) "কোন ছবিটা কেক?" — pick the cake; (b) type the
+// characters shown. Both rotate, no "bot prevention" text is shown.
+const CAP_EMOJI_SETS = [
+  { target: '🎂', label: 'কেক',   wrong: ['🍕','🚗','🌸','⚽'] },
+  { target: '🍰', label: 'কেক',   wrong: ['📱','🧸','🎧','🪑'] },
+  { target: '🎂', label: 'কেক',   wrong: ['🌶️','🪙','🧦','🌵'] },
+  { target: '🍰', label: 'কেক',   wrong: ['🔨','🪑','📺','🧤'] }
+];
+const CAPTCHA_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I/1/O/0 confusion
+
+function renderCaptcha() {
+  const wrap = document.getElementById('captcha-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const pick = Math.random() < 0.5 ? 'emoji' : 'text';
+  if (pick === 'emoji') {
+    const set = CAP_EMOJI_SETS[Math.floor(Math.random() * CAP_EMOJI_SETS.length)];
+    const wrong = set.wrong.slice().sort(() => Math.random() - 0.5);
+    const tiles = [set.target, ...wrong.slice(0, 3)].sort(() => Math.random() - 0.5);
+    currentCaptcha = { kind: 'emoji', target: set.target, label: set.label };
+    wrap.innerHTML = `<div style="text-align:center;font-size:13px;color:var(--text2);margin-bottom:8px">👉 <strong>${set.label}</strong> ছবিটা চাপুন</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${tiles.map((t, i) =>
+        `<button type="button" class="cap-emoji" data-v="${t}" onclick="checkEmojiCaptcha(this)" style="font-size:26px;padding:12px 4px;border:2px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer">${t}</button>`
+      ).join('')}</div>
+      <div class="cap-feedback" id="cap-feedback"></div>`;
+  } else {
+    let code = '';
+    for (let i = 0; i < 4; i++) code += CAPTCHA_LETTERS[Math.floor(Math.random() * CAPTCHA_LETTERS.length)];
+    currentCaptcha = { kind: 'text', code };
+    drawTextCaptcha(code);
+    wrap.innerHTML = `<div style="text-align:center;font-size:13px;color:var(--text2);margin-bottom:8px">👉 নিচের অক্ষরগুলো লিখুন</div>
+      <canvas id="cap-canvas" width="240" height="64" style="display:block;margin:0 auto;border-radius:12px"></canvas>
+      <input type="text" id="captcha-input" inputmode="text" autocomplete="off" placeholder="যেমন: K7PQ" style="width:100%;margin-top:8px;padding:12px;text-align:center;font-size:18px;letter-spacing:6px;font-weight:700">
+      <div class="cap-feedback" id="cap-feedback"></div>`;
+  }
+}
+
+function drawTextCaptcha(code) {
+  const c = document.getElementById('cap-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const w = c.width, h = c.height;
+  ctx.fillStyle = '#fbf4e8'; ctx.fillRect(0, 0, w, h);
+  // noise lines + dots
+  for (let i = 0; i < 6; i++) {
+    ctx.strokeStyle = 'rgba(194,24,91,' + (0.06 + Math.random() * 0.12) + ')';
+    ctx.lineWidth = 1 + Math.random();
+    ctx.beginPath();
+    ctx.moveTo(Math.random() * w, Math.random() * h);
+    ctx.lineTo(Math.random() * w, Math.random() * h);
+    ctx.stroke();
+  }
+  for (let i = 0; i < 40; i++) {
+    ctx.fillStyle = 'rgba(136,14,79,' + (0.05 + Math.random() * 0.15) + ')';
+    ctx.beginPath(); ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 2, 0, 7); ctx.fill();
+  }
+  // characters: rotated + color + slight y jitter
+  code.split('').forEach((ch, i) => {
+    const fs = 26 + Math.floor(Math.random() * 8);
+    ctx.font = '700 ' + fs + 'px Poppins, sans-serif';
+    ctx.fillStyle = ['#880e4f', '#c2185b', '#2f8f77', '#a86a00'][i % 4];
+    ctx.save();
+    ctx.translate(30 + i * 48, 36 + (Math.random() * 8 - 4));
+    ctx.rotate((Math.random() * 0.5 - 0.25));
+    ctx.fillText(ch, 0, 0);
+    ctx.restore();
+  });
+}
+
+function checkEmojiCaptcha(btn) {
+  const fb = document.getElementById('cap-feedback');
+  if (btn.dataset.v === currentCaptcha.target) {
+    if (fb) { fb.style.color = 'var(--green)'; fb.textContent = '✅ ঠিক আছে!'; }
+    captchaPassed = true;
+    setTimeout(proceedAfterCaptcha, 350);
+  } else {
+    if (fb) { fb.style.color = 'var(--red)'; fb.textContent = '❌ ভুল হয়েছে — আবার চেষ্টা করুন'; }
+    setTimeout(renderCaptcha, 500);   // new puzzle, harder to script
+  }
+}
+function checkTextCaptcha() {
+  const val = String(document.getElementById('captcha-input').value || '').trim().toUpperCase();
+  const fb = document.getElementById('cap-feedback');
+  if (val === currentCaptcha.code) {
+    if (fb) { fb.style.color = 'var(--green)'; fb.textContent = '✅ ঠিক আছে!'; }
+    captchaPassed = true;
+    setTimeout(proceedAfterCaptcha, 350);
+  } else {
+    if (fb) { fb.style.color = 'var(--red)'; fb.textContent = '❌ ভুল হয়েছে — আবার চেষ্টা করুন'; }
+    document.getElementById('captcha-input').value = '';
+    setTimeout(renderCaptcha, 400);
+  }
+}
+
 // Entry handler
 async function handleEntry() {
   const phone = document.getElementById('entry-phone').value.trim();
@@ -366,9 +464,9 @@ async function handleEntry() {
     return;
   }
 
-  pendingPhone = phone;
-  if (!currentSecurityQ) { askSecurityQuestion(); return; }
-  await verifySecurity();
+    pendingPhone = phone;
+  if (!captchaPassed) { askSecurityQuestion(); return; }
+  await proceedAfterCaptcha();
 }
 
 async function checkReturningCustomer(phone) {
@@ -384,14 +482,24 @@ function normalizeDigits(str) {
 }
 
 function askSecurityQuestion() {
-  currentSecurityQ = getSecurityQuestion();
-  const label = document.getElementById('security-label');
-  // Bind the answer to the displayed question so display & check can never mismatch
-  label.dataset.answer = String(currentSecurityQ.a);
-  label.textContent = (lang === 'en' ? 'Security question (anti-bot): ' : 'নিরাপত্তা প্রশ্ন (বট প্রতিরোধ): ') + currentSecurityQ.q;
+  // Now a friendly visual captcha instead of a math question — no
+  // "bot prevention" wording is shown to the customer.
+  captchaPassed = false;
+  currentCaptcha = null;
+  renderCaptcha();
   document.getElementById('security-box').classList.add('show');
-  document.getElementById('entry-btn').textContent = '✓ যাচাই করুন';
+  const label = document.getElementById('security-label');
+  label.textContent = lang === 'en' ? 'One quick check before we start:' : 'শুরু করার আগে একটা ছোট্ট কাজ:';
+  document.getElementById('entry-btn').textContent = lang === 'en' ? '✓ Continue' : '✓ চালিয়ে যান';
   document.getElementById('entry-btn').onclick = verifySecurity;
+}
+
+// After a correct captcha → straight into the order form.
+async function proceedAfterCaptcha() {
+  document.getElementById('security-box').classList.remove('show');
+  await loadPreviousOrders(pendingPhone);
+  await upsertCustomerProfile(pendingPhone);
+  proceedToForm(pendingPhone);
 }
 
 async function sendOtp() {
@@ -457,21 +565,24 @@ async function resendOtp() {
 }
 
 async function verifySecurity() {
-  const ans = Number(normalizeDigits(document.getElementById('entry-security').value));
-  const expected = Number(currentSecurityQ ? currentSecurityQ.a : NaN);
+  // Captcha gate. Emoji variant passes by tapping the cake tile; the text
+  // variant passes via the button (this handler) by checking the typed code.
+  if (captchaPassed) { await proceedAfterCaptcha(); return; }
   const err = document.getElementById('entry-error');
-  if (!Number.isFinite(expected) || isNaN(ans) || ans !== expected) {
-    err.textContent = 'ভুল উত্তর';
+  err.classList.remove('show');
+  if (currentCaptcha && currentCaptcha.kind === 'emoji') {
+    err.textContent = lang === 'en' ? 'Please tap the cake picture first.' : 'আগে কেকের ছবিটা চাপুন।';
     err.classList.add('show');
-    // New question
-    askSecurityQuestion();
-    document.getElementById('entry-security').value = '';
     return;
   }
-  err.classList.remove('show');
-  await loadPreviousOrders(pendingPhone);
-  await upsertCustomerProfile(pendingPhone);
-  proceedToForm(pendingPhone);
+  if (currentCaptcha && currentCaptcha.kind === 'text') {
+    // Text captcha: Enter key or the Continue button both land here — verify
+    // the typed characters against the rendered code.
+    const val = String((document.getElementById('captcha-input') || {}).value || '').trim().toUpperCase();
+    if (!val) { err.textContent = lang === 'en' ? 'Type the characters shown above.' : 'উপরের অক্ষরগুলো লিখুন।'; err.classList.add('show'); return; }
+    checkTextCaptcha();
+    return;
+  }
 }
 
 async function trackOrder() {
@@ -1253,6 +1364,14 @@ function detectDcZone() {
   return null;
 }
 
+// True when the delivery-charge box still holds the app's own locked estimate
+// (the customer has NOT taken ownership by editing/unlocking it).
+let dcManuallySet = false;   // set when the customer unlocks / edits the box
+function dcIsAutoEstimate() {
+  const el = document.getElementById('f-delivery-charge');
+  return !!el && el.readOnly === true && !dcManuallySet;
+}
+
 function parseWeightText(raw) {
   const text = String(raw || '').trim().toLowerCase().replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
   const m = text.match(/([\d]+(?:\.\d+)?)\s*(kg|কেজি|kilos?|kilograms?|pounds?|lbs|lb|পাউন্ড)?/);
@@ -1334,6 +1453,7 @@ function unlockDeliveryCharge() {
   if (!input) return;
   input.readOnly = false;
   input.classList.remove('locked-field');
+  dcManuallySet = true;   // customer took ownership → no "অটো হিসাব" note on the order
   const eb = document.getElementById('dc-edit-btn');
   if (eb) eb.style.display = 'none';
   const note = document.getElementById('dc-note');
@@ -1661,8 +1781,8 @@ async function submitOrder() {
     deliveryAmount: delivery,
     // Mark orders whose delivery charge was the app's own area estimate, so
     // admin sees the "অটো হিসাব (আনুমানিক)" warning on the card.
-    dcAuto: (() => { const el = document.getElementById('f-delivery-charge'); return el ? el.readOnly === true : false; })(),
-    dcAutoNote: (() => { const el = document.getElementById('f-delivery-charge'); return (el && el.readOnly) ? `আনুমানিক (এলাকা অটো-হিসাব) — এজেন্সি কনফার্ম করবে` : null; })(),
+    dcAuto: dcIsAutoEstimate(),
+    dcAutoNote: dcIsAutoEstimate() ? `আনুমানিক (এলাকা অটো-হিসাব) — এজেন্সি কনফার্ম করবে` : null,
     // Delivery is always part of the total and collected online — never separate.
     deliveryPaid: document.getElementById('f-fulfilment').value === 'pickup' ? 'na' : (deliverySettled ? 'paid' : 'unpaid'),
     paymentCharges: charge,
@@ -2001,6 +2121,7 @@ function resetForm() {
   // Delivery-charge estimate state back to blank/unlocked for the new order
   const rdci = document.getElementById('f-delivery-charge');
   if (rdci) { rdci.readOnly = false; rdci.disabled = false; rdci.classList.remove('locked-field'); }
+  dcManuallySet = false;
   const rdn = document.getElementById('dc-note'); if (rdn) { rdn.style.display = 'none'; rdn.innerHTML = ''; }
   const rde = document.getElementById('dc-edit-btn'); if (rde) rde.style.display = 'none';
   currentPhotos = []; renderPhotos(); payShot = ''; renderPayShot(); advanceType = ''; lastAutoSend = 0; lastAutoBase = 0; isSurprise = false; cakeWritingNoticeShown = false;
