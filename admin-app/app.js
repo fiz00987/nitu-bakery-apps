@@ -1249,11 +1249,23 @@ window.App = (() => {
 
     <div class="detail-section">
       <div class="detail-title">💳 পেমেন্ট</div>
-      <div class="pay-box">
-        <div class="pay-cell"><div class="pay-lbl">${lang==='bn'?'মোট':'Total'}</div><div class="pay-val">৳${fmtMoney(o.total)}</div></div>
-        <div class="pay-cell"><div class="pay-lbl">${tr('cakePayment')}</div><div class="pay-val green">৳${fmtMoney(effectivePaid(o))}</div></div>
-        <div class="pay-cell"><div class="pay-lbl">${tr('due')}</div><div class="pay-val ${d > 0 ? 'red' : 'green'}">৳${fmtMoney(d)}</div></div>
-      </div>
+      ${(() => {
+        // Total ALWAYS includes DC. Paid splits into cake part + DC part
+        // so it reads like: মোট ৳1260 (DC সহ) · পরিশোধিত ৳1090+DC ৳170=৳1260/- · বাকি ৳0/-
+        const total = Math.round(Number(o.total) || 0);
+        const paidEff = Math.round(effectivePaid(o));
+        const dcAmt = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
+        const dcCovered = dcAmt > 0 && (o.deliveryPaid === 'paid' || paidEff >= total) ? dcAmt : 0;
+        const cakePart = Math.max(0, paidEff - dcCovered);
+        const paidLine = dcAmt > 0
+          ? `৳${fmtMoney(cakePart)}+DC ৳${fmtMoney(dcCovered)}=৳${fmtMoney(paidEff)}/-`
+          : `৳${fmtMoney(paidEff)}/-`;
+        return `<div class="pay-box">
+        <div class="pay-cell"><div class="pay-lbl">${lang==='bn'?'মোট (DC সহ)':'Total (incl. DC)'}</div><div class="pay-val">৳${fmtMoney(total)}</div></div>
+        <div class="pay-cell"><div class="pay-lbl">${lang==='bn'?'পরিশোধিত':'Paid'}</div><div class="pay-val green" style="font-size:15px">${paidLine}</div></div>
+        <div class="pay-cell"><div class="pay-lbl">${tr('due')}</div><div class="pay-val ${d > 0 ? 'red' : 'green'}">৳${fmtMoney(d)}/-</div></div>
+      </div>`;
+      })()}
       ${bkashCharge(o) > 0 ? `<div class="pay-note">💰 ${tr('bkashDeducted')}: ৳${fmtMoney(o.paid)} − ৳${fmtMoney(bkashCharge(o))}${o.paymentChargesLabel ? ` (${esc(o.paymentChargesLabel)})` : ''} = ৳${fmtMoney(effectivePaid(o))}</div>` : ''}
       ${o.paynote ? `<div class="pay-note">💳 ${esc(o.paynote)}</div>` : ''}
       ${o.source === 'customer' && o.advance ? `<div class="pay-note">📱 কাস্টমার অগ্রিম: ৳${fmtMoney(o.advance)}${o.advanceCharge > 0 ? ` (+চার্জ ৳${fmtMoney(o.advanceCharge)})` : ''} = ৳${fmtMoney(o.advanceTotal)}${o.trx ? ` | ট্রানজেকশন: ${esc(o.trx)}` : ''}</div>` : ''}
