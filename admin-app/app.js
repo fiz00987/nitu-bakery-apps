@@ -49,6 +49,7 @@ window.App = (() => {
   let currentPhotos = [];           // multi-photo (mirrors customer app)
   let adminExtraPhotos = {};        // { cakeIndex: [photos] } for cakes 2-5
   let adminCakeCount = 1;           // cakes in the modal order (1-5)
+  let savedScrollY  = 0;            // list scroll pos to restore after the modal closes
   let currentDelPhoto = '';         // completed-cake photo (≤50KB data URL)
   let notepadText   = '';
   let notepadPages  = [{ text: '', photos: [], createdAt: Date.now() }];
@@ -2837,6 +2838,9 @@ window.App = (() => {
 
   const openModal = key => {
     editingId    = key;
+    // Remember the list scroll position so closeModal can put the user right
+    // back where they were (the body scroll-lock below resets it to the top).
+    savedScrollY = window.scrollY || window.pageYOffset || 0;
     // Safety: never inherit a stuck in-flight save / disabled button from a
     // previous session of the modal (e.g. a save that never resolved).
     savingOrder = false;
@@ -2904,6 +2908,22 @@ window.App = (() => {
     document.getElementById('modal-overlay').classList.remove('open');
     document.body.style.overflow = '';
     document.getElementById('f-photo-file').value = '';
+    // Put the user back exactly where they were in the list. The scroll-lock
+    // (`overflow:hidden` while the modal was open) resets the page to the top,
+    // and re-render rebuilds the cards — so restore instantly (no smooth
+    // animation) after the DOM has settled.
+    const y = savedScrollY;
+    const restore = () => {
+      const root = document.documentElement;
+      const prev = root.style.scrollBehavior;
+      root.style.scrollBehavior = 'auto';   // jump instantly, don't animate
+      window.scrollTo(0, y);
+      root.style.scrollBehavior = prev;
+    };
+    requestAnimationFrame(() => requestAnimationFrame(restore));
+    // A Firebase 'value' re-render fires right after a save and rebuilds the
+    // cards — re-assert the position once more after that settles.
+    setTimeout(restore, 350);
   };
 
   const closeModalBg = e => {
