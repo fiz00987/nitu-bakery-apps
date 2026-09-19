@@ -1304,16 +1304,10 @@ function onFulfilmentChange() {
   const dcf = document.getElementById('delivery-charge-field');
   if (dcf) dcf.style.display = 'block';
   const dci = document.getElementById('f-delivery-charge');
-  const agentNote = document.getElementById('dc-agent-note');
-  const pickupNote = document.getElementById('dc-pickup-note');
   if (pickup) {
     if (dci) { dci.value = ''; dci.disabled = true; dci.placeholder = 'প্রযোজ্য নয় — সেল্ফ পিকআপ'; }
-    if (agentNote) agentNote.style.display = 'none';
-    if (pickupNote) pickupNote.style.display = 'block';
   } else {
     if (dci && !quoteToken) { dci.disabled = false; dci.placeholder = 'এজেন্টের বলা চার্জ লিখুন'; }
-    if (agentNote) agentNote.style.display = 'block';
-    if (pickupNote) pickupNote.style.display = 'none';
   }
   document.getElementById('f-address').required = !pickup;
   if (pickup) document.getElementById('f-address').value = 'Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram';

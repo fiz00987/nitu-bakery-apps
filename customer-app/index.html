@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Baloo+Da+2:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
   --pink:#c2185b; --pink-dark:#880e4f; --pink-mid:#e91e8c;
@@ -30,7 +30,10 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{scroll-behavior:smooth}
-body{font-family:'Hind Siliguri','Poppins',-apple-system,sans-serif;background:linear-gradient(rgba(247,244,246,.91),rgba(247,244,246,.96)),url('https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=75') center/cover fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+/* Bengali numerals (০-৯) render in Baloo Da 2 — open, rounded, easy to read.
+   Everything else stays in Hind Siliguri / Poppins. */
+@font-face{font-family:'BN-Digits';font-style:normal;font-display:swap;font-weight:400 700;src:url('https://fonts.gstatic.com/s/balooda2/v26/2-c39J9j0IaUMQZwAJyJaOX1UUnf3GLnYjALsTNe.ttf') format('truetype');unicode-range:U+09E6-09EF}
+body{font-family:'Hind Siliguri','BN-Digits','Poppins',-apple-system,sans-serif;background:linear-gradient(rgba(247,244,246,.91),rgba(247,244,246,.96)),url('https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=75') center/cover fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
 body:lang(en),body:lang(en) input,body:lang(en) select,body:lang(en) textarea,body:lang(en) button{font-family:'Poppins',-apple-system,sans-serif}
 input,select,textarea,button{font-family:inherit;font-size:inherit}
 button{cursor:pointer}
@@ -442,10 +445,8 @@ html.t-gold .order-number-badge{color:#a5813e}
       <div class="pickup-box" id="pickup-box">সেলফ পিকআপ ঠিকানা: Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram.<br><a href="https://maps.app.goo.gl/vAk44BoEWRbppBuz8" target="_blank" rel="noopener">Google Maps-এ ঠিকানা খুলুন</a></div>
     </div>
     <div class="field delivery-charge-field" id="delivery-charge-field">
-      <label>ডেলিভারি চার্জ * (মোট পেমেন্টের সাথে যোগ হবে)</label>
+      <label>ডেলিভারি চার্জ *</label>
       <input type="number" id="f-delivery-charge" min="0" step="1" placeholder="ডেলিভারি চার্জ লিখুন" oninput="recalcPrice()">
-      <div class="note-box" id="dc-agent-note">এই চার্জটি মোট পেমেন্টের সাথেই যোগ হবে — কেক ৳1000 + ডেলিভারি ৳100 হলে মোট ৳1100।</div>
-      <div class="note-box" id="dc-pickup-note" style="display:none">🚫 ডেলিভারি চার্জ প্রযোজ্য নয় — আপনি নিজেই ফ্রি পিকআপ পয়েন্ট থেকে কেক সংগ্রহ করবেন।</div>
     </div>
 </div>
     <div class="field">
