@@ -1108,19 +1108,17 @@ window.App = (() => {
     L.push('');
     L.push('');
 
-    // Payment summary — the delivery charge line always states the amount and
-    // whether the agent has been paid or it is still due.
-    const methodName = (o.paymentMethodName || o.paymentChargesLabel || o.paymentMethod || '').toLowerCase();
-    const dcAmt = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
-    L.push(`Total- ${Math.round(Number(o.total) || 0)}+ Delivery charge`);
+// Payment summary — cake price, DC (approx vs confirmed), advance with
+    // channel, and cake-only due. Uses the same folded-total/excluded-DC
+    // maths as the payment box so the notepad text always matches the card.
+    const c = payCellsOf(o);
+    L.push(`কেকের মূল্য- ${c.cakePrice}/-`);
     L.push('');
-    L.push(`Paid- ${Math.round(Number(o.paid) || 0)}/- with ${methodName} charge`);
+    L.push(`ডেলিভারি চার্জ- ${c.dcAmt ? (c.dcConfirmed ? `${c.dcAmt}/-` : `DC- ${c.dcAmt}/- (approx) — ডেলিভারি এজেন্সি সঠিক চার্জ কনফার্ম করবে`) : `DC- 0/- (approx) — ডেলিভারি এজেন্সি সঠিক চার্জ কনফার্ম করবে`}`);
     L.push('');
-    if (o.deliveryPaid === 'unpaid') {
-      L.push(`due : Delivery charge ( ${dcAmt || '—'}/- ) 🔴 বাকি`);
-    } else {
-      L.push(`Delivery charge: Paid ✅ ( ${dcAmt}/- )`);
-    }
+    L.push(`অগ্রিম / প্রদান- ${c.advCake}/-${c.methodName ? ` (${c.methodName})` : ''}`);
+    L.push('');
+    if (c.cakeDue > 0) L.push(`বকেয়া- ${c.cakeDue}/- (ডেলিভারি চার্জ ছাড়া)`);
 
     return L.join('\n');
   };
@@ -1251,26 +1249,29 @@ window.App = (() => {
     <div class="detail-section">
       <div class="detail-title">💳 পেমেন্ট</div>
       ${(() => {
-        // New orders (since 18 Sep) fold DC into total. For those, the paid &
-        // due cells show CAKE money only — delivery charge is its own line.
-        // Older orders (total = cake only) keep the previous display.
-        const dcAmt = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
-        const dcInTotal = o.cakePrice > 0 && dcAmt > 0 && Math.round(Number(o.cakePrice) + dcAmt) === Math.round(Number(o.total));
-        const dcCovered = dcInTotal && (o.deliveryPaid === 'paid' || effectivePaid(o) >= (Number(o.total) || 0)) ? dcAmt : 0;
-        const cakePaid  = Math.max(0, effectivePaid(o) - dcCovered);
-        const cakeTotal = dcInTotal ? Math.max(0, (Number(o.total) || 0) - dcAmt) : (Number(o.total) || 0);
-        const cakeDue   = dcInTotal ? Math.max(0, cakeTotal - cakePaid) : d;
-        const dcNote = (o.fulfilment === 'pickup' || o.deliveryPaid === 'na')
-          ? '🚚 ডেলিভারি চার্জ: প্রযোজ্য নয় (সেল্ফ পিকআপ)'
-          : dcAmt > 0
-            ? `🚚 ডেলিভারি চার্জ: ৳${fmtMoney(dcAmt)}${o.dcAuto ? ' (আনুমানিক — ডেলিভারি এজেন্সি সঠিক চার্জ কনফার্ম করবে)' : ''} — ${o.deliveryPaid === 'paid' ? 'পরিশোধিত ✅' : 'বাকি ⏳'}`
-            : '🚚 ডেলিভারি চার্জ: আনুমানিক — ডেলিভারি এজেন্সি সঠিক চার্জ কনফার্ম করবে';
-        return `<div class="pay-box">
-        <div class="pay-cell"><div class="pay-lbl">${lang==='bn'?'মোট':'Total'}</div><div class="pay-val">৳${fmtMoney(o.total)}</div></div>
-        <div class="pay-cell"><div class="pay-lbl">${tr('cakePayment')}</div><div class="pay-val green">৳${fmtMoney(cakePaid)}</div></div>
-        <div class="pay-cell"><div class="pay-lbl">${tr('due')}</div><div class="pay-val ${cakeDue > 0 ? 'red' : 'green'}">৳${fmtMoney(cakeDue)}</div></div>
-      </div>
-      <div class="pay-note">${dcNote}</div>`;
+        // Shared 4-cell maths used by the card above AND the copy text below:
+        // কেকের মূল্য · ডেলিভারি চার্জ (approx/confirmed) · অগ্রিম(channel) · বকেয়া.
+        const __pc = {
+          dcAmt: Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0)
+        };
+        __pc.isPickup = (o.fulfilment === 'pickup' || o.deliveryPaid === 'na');
+        __pc.dcInTotal = o.cakePrice > 0 && __pc.dcAmt > 0 && Math.round(Number(o.cakePrice) + __pc.dcAmt) === Math.round(Number(o.total));
+        __pc.cakePrice = __pc.dcInTotal ? Math.round(Number(o.cakePrice)) : Math.round(Number(o.total) || 0);
+        __pc.dcCov = (__pc.dcInTotal && !__pc.isPickup && o.deliveryPaid === 'paid') ? __pc.dcAmt : 0;
+        __pc.advCake = Math.max(0, effectivePaid(o) - __pc.dcCov);
+        __pc.cakeDue = Math.max(0, __pc.cakePrice - __pc.advCake);
+        const __mm = { bkash: 'বিকাশ', nagad: 'নগদ', bank: 'ব্যাংক' };
+        const __mr = String(o.advanceMethod || o.paymentMethod || '').trim().toLowerCase();
+        __pc.methodName = o.paymentMethodName || o.paymentChargesLabel || (__mm[__mr] || o.advanceMethod || o.paymentMethod || '');
+        __pc.dcConfirmed = !!o.dcConfirmedByAgency ||
+          (!o.dcAuto && !__pc.dcInTotal) ||
+          (!o.dcAuto && o.deliveryPaid === 'paid' && !!o.advanceMethod);
+        return `<div class="pay-box" style="grid-template-columns:repeat(2,1fr)">
+        <div class="pay-cell"><div class="pay-lbl">${lang==='bn'?'কেকের মূল্য':'Price of the cake'}</div><div class="pay-val">৳${fmtMoney(__pc.cakePrice)}</div></div>
+        <div class="pay-cell"><div class="pay-lbl">${tr('delCharge')}</div><div class="pay-val" style="font-size:15px">${__pc.isPickup ? 'প্রযোজ্য নয় (সেল্ফ পিকআপ)' : (__pc.dcConfirmed ? `৳${fmtMoney(__pc.dcAmt)}` : `DC- ৳${fmtMoney(__pc.dcAmt)} (approx)`)}</div></div>
+        <div class="pay-cell"><div class="pay-lbl">${lang==='bn'?'অগ্রিম / প্রদান':'Paid'}</div><div class="pay-val green" style="font-size:15px">৳${fmtMoney(__pc.advCake)}${__pc.methodName ? ` (${esc(__pc.methodName)})` : ''}</div></div>
+        <div class="pay-cell"><div class="pay-lbl">${tr('due')}</div><div class="pay-val ${__pc.cakeDue > 0 ? 'red' : 'green'}">৳${fmtMoney(__pc.cakeDue)}</div></div>
+      </div>`;
       })()}
       ${bkashCharge(o) > 0 ? `<div class="pay-note">💰 ${tr('bkashDeducted')}: ৳${fmtMoney(o.paid)} − ৳${fmtMoney(bkashCharge(o))}${o.paymentChargesLabel ? ` (${esc(o.paymentChargesLabel)})` : ''} = ৳${fmtMoney(effectivePaid(o))}</div>` : ''}
       ${o.paynote ? `<div class="pay-note">💳 ${esc(o.paynote)}</div>` : ''}
