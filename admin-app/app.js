@@ -60,6 +60,7 @@ window.App = (() => {
   let offDays       = {};           // 'YYYY-MM-DD' → { reason, ... }
   let offdayCbDate  = null;         // date currently open in the off-day dialog
   let healedDelivered = {};         // delivered orders already money-healed this session
+  let healedAdvance50 = {};         // 50%-advance orders already stripped of folded-in gateway charge
   let sortMode      = 'date';       // 'date' | 'name' | 'due'
   let quotes        = [];           // quotes/<TOKEN> live list
   let quotesReady   = false;
@@ -654,6 +655,48 @@ window.App = (() => {
             deliveryPaid: 'paid',
             updatedAt:    Date.now()
           }).catch(err => console.error('[delivered-heal] failed:', err));
+        });
+        // ── 50%-advance charge-strip healer ─────────────────────
+        // The old edit modal folded the bKash/Nagad gateway charge INTO the
+        // advance (800 became 814). For orders that were paid exactly half the
+        // cake price as advance, strip that folded-in charge so the advance
+        // shows the exact amount the client said. Runs once per order.
+        orders.forEach(o => {
+          if (!o.firebaseKey) return;
+          if (o.status === 'delivered' || o.status === 'cancelled') return;
+          const cake = cakePriceOf(o);
+          const adv  = advanceOf(o);
+          if (!(cake > 0 && adv > 0)) return;
+          const half = cake / 2;
+          let chg = bkashCharge(o);
+          let base;
+          if (chg > 0) {
+            // Broken pattern: advance = 50% + charge folded in (e.g. 800 → 814).
+            // A clean customer order has advance = 50% exactly, so require the
+            // advance to match half+charge (tight tolerance), NOT half alone.
+            if (Math.abs(adv - (half + chg)) > Math.max(2, cake * 0.005)) return;
+            base = Math.round((adv - chg) * 100) / 100;   // strip the charge
+          } else {
+            // Charge never stored (only the channel label was) — detect the
+            // folded-in pattern: advance ≈ half + a plausible gateway charge.
+            if (!o.paymentChargesLabel) return;
+            const implied = adv - half;
+            if (implied < cake * 0.005 || implied > cake * 0.03) return;
+            chg  = Math.round(implied * 100) / 100;
+            base = half;
+          }
+          if (healedAdvance50[o.firebaseKey]) return;
+          healedAdvance50[o.firebaseKey] = true;
+          console.log('[advance-50-heal] stripping folded-in charge:', o.orderId || o.name, adv, '→', base);
+          ordersRef.child(o.firebaseKey).update({
+            advance:      base,
+            advanceTotal: base,
+            paid:         base,
+            bkashCharge:    chg,
+            paymentCharges: chg,
+            dueAmount:    Math.max(0, cake - base),
+            updatedAt:    Date.now()
+          }).catch(err => console.error('[advance-50-heal] failed:', err));
         });
 
         sortOrders();
@@ -1300,7 +1343,7 @@ window.App = (() => {
       </div>
       <div class="pay-note">${dcNote}</div>`;
       })()}
-      ${bkashCharge(o) > 0 ? `<div class="pay-note">💰 ${tr('bkashDeducted')}: ৳${fmtMoney(o.paid)} − ৳${fmtMoney(bkashCharge(o))}${o.paymentChargesLabel ? ` (${esc(o.paymentChargesLabel)})` : ''} = ৳${fmtMoney(effectivePaid(o))}</div>` : ''}
+      ${bkashCharge(o) > 0 ? `<div class="pay-note">💰 ${tr('bkashDeducted')}: অ্যাডভান্স ৳${fmtMoney(o.paid)} — ${o.paymentChargesLabel ? esc(o.paymentChargesLabel) : 'গেটওয়ে'} চার্জ ৳${fmtMoney(bkashCharge(o))} আলাদা</div>` : ''}
       ${o.paynote ? `<div class="pay-note">💳 ${esc(o.paynote)}</div>` : ''}
       ${o.source === 'customer' && o.advance ? `<div class="pay-note">📱 কাস্টমার অগ্রিম: ৳${fmtMoney(o.advance)}${o.advanceCharge > 0 ? ` (+চার্জ ৳${fmtMoney(o.advanceCharge)})` : ''} = ৳${fmtMoney(o.advanceTotal)}${o.trx ? ` | ট্রানজেকশন: ${esc(o.trx)}` : ''}</div>` : ''}
       ${o.source === 'customer' && o.advance
@@ -3573,19 +3616,19 @@ window.App = (() => {
     }
     const chosen = pcSelected;           // captured before closePayCharge resets it
     const charge = pcChargeFor(chosen);
-    // Total sent = advance + gateway charge → shown in পরিশোধিত (e.g. 500 → 509)
-    const totalSent = pcOpenForAdvance + charge;
-    document.getElementById('f-paid').value = totalSent ? String(Math.ceil(totalSent * 100) / 100) : '';
+    // Keep f-paid as the EXACT amount the client said (e.g. 800) — do NOT add
+    // the gateway charge on top. The charge is tracked separately (and shown in
+    // the card details), never folded into the advance.
     document.getElementById('f-charge-deduct').value = charge ? String(Math.ceil(charge * 100) / 100) : '';
     pcChannel = chosen;                  // remember for save + re-edit label
-    pcLastApplied = Math.ceil(totalSent * 100) / 100;
+    pcLastApplied = Math.ceil(pcOpenForAdvance * 100) / 100;
     const total = parseFloat(document.getElementById('f-total').value) || 0;
     const due = Math.max(0, total - pcOpenForAdvance);
     updateDueField();
     closePayCharge();
     showToast(lang === 'bn'
-      ? `✅ ${PC_NAMES[chosen]} চার্জ ৳${fmtMoney(charge)} — মোট পাঠাবে ৳${fmtMoney(totalSent)}, বাকি ৳${fmtMoney(due)}`
-      : `✅ ${chosen} charge ৳${fmtMoney(charge)} — total sent ৳${fmtMoney(totalSent)}, due ৳${fmtMoney(due)}`);
+      ? `✅ অ্যাডভান্স ৳${fmtMoney(pcOpenForAdvance)} (${PC_NAMES[chosen]} চার্জ ৳${fmtMoney(charge)} আলাদা) — বাকি ৳${fmtMoney(due)}`
+      : `✅ Advance ৳${fmtMoney(pcOpenForAdvance)} (${chosen} charge ৳${fmtMoney(charge)} separate) — due ৳${fmtMoney(due)}`);
   };
 
   // Live due update while typing. The popup opens only when the admin has
@@ -3710,6 +3753,9 @@ window.App = (() => {
     // Channel chosen in the popup (kept in pcChannel as a readable label like
     // "বিকাশ", also restored when re-editing an order).
     const chargeLabel    = pcChannel;
+    // The gateway charge computed in the popup — kept SEPARATE from the
+    // advance so the details line can still show it without inflating f-paid.
+    const chargeNum      = Math.max(0, parseFloat(g('f-charge-deduct').value) || 0);
 
     // Multi-cake: collect every cake; the top-level delivery charge becomes
     // the SUM of all cakes' charges (each cake may deliver elsewhere).
@@ -3762,8 +3808,8 @@ window.App = (() => {
       weightPrice:    0,
       subtotal:       cakePrice,
       paid:           paidNum,
-      bkashCharge:    existing ? (Number(existing.bkashCharge) || 0) : 0,
-      paymentCharges: existing ? (Number(existing.paymentCharges != null ? existing.paymentCharges : existing.bkashCharge) || 0) : 0,
+      bkashCharge:    chargeNum > 0 ? chargeNum : (existing ? (Number(existing.bkashCharge) || 0) : 0),
+      paymentCharges: chargeNum > 0 ? chargeNum : (existing ? (Number(existing.paymentCharges != null ? existing.paymentCharges : existing.bkashCharge) || 0) : 0),
       paymentChargesLabel: chargeLabel,
       trx:            g('f-trx').value.trim(),
       notes:          g('f-notes').value.trim(),
