@@ -1250,14 +1250,14 @@ window.App = (() => {
     <div class="detail-section">
       <div class="detail-title">💳 পেমেন্ট</div>
       ${(() => {
-        // Nothing counts with DC — advance is the raw paid amount, due is
-        // cake price minus advance. DC sits in its own row above and is
-        // never mixed into these numbers.
+        // Customer orders store the advance in `o.advance` (what went toward
+        // the cake, DC excluded). Admin manual orders use `paid` (the total
+        // sent). Read whichever is available — never mix DC into this number.
         const dcAmt = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
         const dcInTotal = o.cakePrice > 0 && dcAmt > 0 && Math.round(Number(o.cakePrice) + dcAmt) === Math.round(Number(o.total));
         const cakeTotal = dcInTotal ? Math.max(0, (Number(o.total) || 0) - dcAmt) : (Number(o.total) || 0);
-        const advance   = effectivePaid(o);
-        const cakeDue   = Math.max(0, cakeTotal - advance);
+        const advance = (o.advance != null && Number(o.advance) > 0) ? Math.round(Number(o.advance)) : effectivePaid(o);
+        const cakeDue = Math.max(0, cakeTotal - advance);
         const dcNote = (o.fulfilment === 'pickup' || o.deliveryPaid === 'na')
           ? '🚚 ডেলিভারি চার্জ: প্রযোজ্য নয় (সেল্ফ পিকআপ)'
           : dcAmt > 0
