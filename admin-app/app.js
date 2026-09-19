@@ -1265,7 +1265,7 @@ window.App = (() => {
             ? `🚚 ডেলিভারি চার্জ: ৳${fmtMoney(dcAmt)}${o.dcAuto ? ' (আনুমানিক — ডেলিভারি এজেন্সি সঠিক চার্জ কনফার্ম করবে)' : ''} — ${o.deliveryPaid === 'paid' ? 'পরিশোধিত ✅' : 'বাকি ⏳'}`
             : '🚚 ডেলিভারি চার্জ: আনুমানিক — ডেলিভারি এজেন্সি সঠিক চার্জ কনফার্ম করবে';
         return `<div class="pay-box">
-        <div class="pay-cell"><div class="pay-lbl">${lang==='bn'?'মোট':'Total'}</div><div class="pay-val">৳${fmtMoney(o.total)}</div></div>
+        <div class="pay-cell"><div class="pay-lbl">${lang==='bn'?'কেকের মূল্য':'Cake price'}</div><div class="pay-val">৳${fmtMoney(cakeTotal)}</div></div>
         <div class="pay-cell"><div class="pay-lbl">${tr('cakePayment')}</div><div class="pay-val green">৳${fmtMoney(cakePaid)}</div></div>
         <div class="pay-cell"><div class="pay-lbl">${tr('due')}</div><div class="pay-val ${cakeDue > 0 ? 'red' : 'green'}">৳${fmtMoney(cakeDue)}</div></div>
       </div>
