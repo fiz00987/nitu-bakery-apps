@@ -172,6 +172,9 @@ input.due-input:focus{outline:none;border-color:#dcdcdc;box-shadow:none}
 .copy-number{border:0;background:none;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer;padding:0}
 .pickup-box{background:var(--blue-light);border:1px solid #90caf9;border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--blue);line-height:1.5;margin-top:8px;display:none}
 .pickup-box.show{display:block}
+.terms-box{display:flex;gap:10px;align-items:flex-start;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin:14px 0 4px;font-size:13px;line-height:1.6;color:var(--text2);cursor:pointer}
+.terms-box input{width:18px;height:18px;margin-top:2px;flex-shrink:0;accent-color:var(--pink);cursor:pointer}
+.terms-box.error{border-color:var(--red);background:var(--red-light)}
 .popup-overlay{position:fixed;inset:0;background:rgba(20,10,18,.5);z-index:2500;display:none;align-items:center;justify-content:center;padding:18px;overscroll-behavior:contain}
 .popup-overlay.show{display:flex}
 .popup{background:var(--surface);border-radius:var(--radius);width:100%;max-width:520px;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,.22);overscroll-behavior:contain}
@@ -366,6 +369,7 @@ html.t-gold .order-number-badge{color:#a5813e}
     <div class="field">
       <label data-bn="ছবির নোট (ঐচ্ছিক)" data-en="Photo Note (Optional)">ছবির নোট (ঐচ্ছিক)</label>
       <textarea id="f-photo-note" placeholder="যেমন: কেকের কালার থিমটা রেড থেকে পিংক করতে চাচ্ছি"></textarea>
+      <div class="note-box" data-bn="⚠️ ডিজাইন সবসময় ১০০% সেইম হবেনা, কিছুটা বেশকম হয়ে থাকতে পারে।" data-en="⚠️ The design may not always be 100% identical — there can be slight variations.">⚠️ ডিজাইন সবসময় ১০০% সেইম হবেনা, কিছুটা বেশকম হয়ে থাকতে পারে।</div>
     </div>
     <div class="field">
       <div style="display:flex;align-items:center;gap:5px">
@@ -495,7 +499,9 @@ html.t-gold .order-number-badge{color:#a5813e}
     </div>
   </div>
 
-  <button class="btn-primary" onclick="submitOrder()" id="submit-btn">✅ অর্ডার জমা দিন</button>
+  <label class="terms-box" id="terms-box"><input type="checkbox" id="f-terms" onchange="onTermsChange()"><span data-bn="আমি “নিতুবাবুর্চীর পোর্টফোলিও”-এর নিয়ম ও শর্তাবলীর সাথে সম্মত আছি *" data-en="I agree with the terms & conditions of “Nitu Baburchir Portfolio” *">আমি “নিতুবাবুর্চীর পোর্টফোলিও”-এর নিয়ম ও শর্তাবলীর সাথে সম্মত আছি *</span></label>
+
+  <button class="btn-primary" onclick="submitOrder()" id="submit-btn" data-bn="✅ Place Order" data-en="✅ Place Order">✅ Place Order</button>
 </div>
 
 <div class="popup-overlay" id="text-popup" onclick="closeTextPopup(event)">

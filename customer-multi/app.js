@@ -237,6 +237,7 @@ function cakeColumnHtml(i) {
     + '<div class="photo-grid" id="photo-grid' + single + '"></div>'
     + '<label style="font-size:11px;color:var(--text3);margin-top:6px">' + p('ছবির নোট (ঐচ্ছিক)', 'Photo Note (Optional)') + '</label>'
     + '<textarea id="f-photo-note' + single + '" rows="2"></textarea>'
+    + '<div class="note-box">' + p('⚠️ ডিজাইন সবসময় ১০০% সেইম হবেনা, কিছুটা বেশকম হয়ে থাকতে পারে।', '⚠️ The design may not always be 100% identical — there can be slight variations.') + '</div>'
     + '</div>'
     + '</div>';
 }
@@ -1173,6 +1174,24 @@ document.querySelectorAll('#form-screen input, #form-screen select, #form-screen
   el.addEventListener('change', updateProgress);
 });
 
+// ─── Terms & conditions gate ───
+function onTermsChange() {
+  const cb = document.getElementById('f-terms');
+  if (cb && cb.checked) document.getElementById('terms-box').classList.remove('error');
+}
+function checkTerms() {
+  const cb = document.getElementById('f-terms');
+  if (!cb || !cb.checked) {
+    document.getElementById('terms-box').classList.add('error');
+    showToast(lang === 'en'
+      ? 'Please agree to the terms & conditions of “Nitu Baburchir Portfolio”'
+      : 'অনুগ্রহ করে “নিতুবাবুর্চীর পোর্টফোলিও”-এর নিয়ম ও শর্তাবলীতে সম্মত হোন');
+    document.getElementById('terms-box').scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return false;
+  }
+  return true;
+}
+
 // Validate
 function validate() {
   const req = [
@@ -1250,6 +1269,7 @@ function getOrderTotal() {
 
 // Submit
 async function submitOrder() {
+  if (!checkTerms()) return;
   if (!validate()) return;
 
   const phone = localStorage.getItem('nitu-cust-phone') || '';
@@ -1728,6 +1748,8 @@ function resetForm() {
   const rsc2 = document.getElementById('receiver-same-cust-2'); if (rsc2) rsc2.checked = false;
   const rph1 = document.getElementById('f-receiver-phone'); if (rph1) rph1.readOnly = false;
   const rph2 = document.getElementById('f-receiver-phone-2'); if (rph2) rph2.readOnly = false;
+  const tb = document.getElementById('f-terms'); if (tb) tb.checked = false;
+  const tbBox = document.getElementById('terms-box'); if (tbBox) tbBox.classList.remove('error');
   document.getElementById('mode-single').classList.add('active');
   document.getElementById('mode-multiple').classList.remove('active');
   const picker = document.getElementById('cake-count-picker');

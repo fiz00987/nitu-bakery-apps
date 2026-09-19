@@ -1207,6 +1207,24 @@ document.querySelectorAll('#form-screen input, #form-screen select, #form-screen
   el.addEventListener('change', updateProgress);
 });
 
+// ─── Terms & conditions gate ───
+function onTermsChange() {
+  const cb = document.getElementById('f-terms');
+  if (cb && cb.checked) document.getElementById('terms-box').classList.remove('error');
+}
+function checkTerms() {
+  const cb = document.getElementById('f-terms');
+  if (!cb || !cb.checked) {
+    document.getElementById('terms-box').classList.add('error');
+    showToast(lang === 'en'
+      ? 'Please agree to the terms & conditions of “Nitu Baburchir Portfolio”'
+      : 'অনুগ্রহ করে “নিতুবাবুর্চীর পোর্টফোলিও”-এর নিয়ম ও শর্তাবলীতে সম্মত হোন');
+    document.getElementById('terms-box').scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return false;
+  }
+  return true;
+}
+
 // Validate
 function validate() {
   const req = [
@@ -1290,6 +1308,7 @@ function getOrderTotal() {
 
 // Submit
 async function submitOrder() {
+  if (!checkTerms()) return;
   if (!validate()) return;
   if (quoteToken && quoteData) {
     showLoading(true);
@@ -1685,6 +1704,10 @@ function resetForm() {
   document.getElementById('entry-security').value = '';
   document.querySelectorAll('#form-screen input:not(#entry-phone), #form-screen textarea').forEach(el => el.value = '');
   document.querySelectorAll('#form-screen select').forEach(el => el.selectedIndex = 0);
+  const tb = document.getElementById('f-terms');
+  if (tb) tb.checked = false;
+  const tbBox = document.getElementById('terms-box');
+  if (tbBox) tbBox.classList.remove('error');
   currentPhotos = []; renderPhotos(); payShot = ''; renderPayShot(); advanceType = ''; lastAutoSend = 0; lastAutoBase = 0; isSurprise = false; cakeWritingNoticeShown = false;
   advanceMethod = '';
   flavourNoticeShown = false; // show the "exact flavour" notice again on a new order
