@@ -772,14 +772,28 @@ function onPaymentChange() {
 }
 
 // Number / account details shown right below the buttons.
+// bKash/Nagad: copy button beside the NUMBER only. Bank: copy beside ALL info.
 function showPaymentInfo(methodId) {
   const info = document.getElementById('payment-info');
+  if (!info) return;
   const method = getPaymentMethod(methodId);
   if (method && method.number) {
-    const copyField = (label, value) => `<div>${label}: <strong>${value}</strong> <button type="button" class="copy-button" onclick="copyValue('${value}')">কপি</button></div>`;
-    const plainField = (label, value) => `<div>${label}: <strong>${value}</strong></div>`;
-    const bank = methodId === 'bank' ? `${copyField('ব্যাংক', 'IFIC Bank')} ${copyField('শাখা', 'Hathazari')} ${copyField('রাউটিং', '120 153 224')} ${copyField('SWIFT', 'IFICBDDH')} ${copyField('অ্যাকাউন্টধারী', 'Sabrina Akter Bhuiyan')} ${copyField('যোগাযোগ', '01521400475')}` : '';
-    info.innerHTML = `📱 <strong>${method.name}</strong>${plainField(methodId === 'bank' ? 'অ্যাকাউন্ট নম্বর' : 'নম্বর', method.number)}${methodId !== 'bank' ? plainField('নাম', method.regName || '') : ''}${bank}<br><small>${methodId === 'bkash' ? 'বিকাশ Send Money করুন। আপনার অগ্রিমের উপর ১.৮২% চার্জ যোগ হবে।' : methodId === 'nagad' ? 'নগদ Send Money করুন। আপনার অগ্রিমের উপর ১.৪৯% চার্জ যোগ হবে।' : 'পেমেন্টের বিস্তারিত যাচাই করা হবে।'}</small>`;
+    const copyField = (label, value) => `<div class="pay-line"><span>${label}: <strong>${value}</strong></span> <button type="button" class="copy-button" onclick="copyValue('${value}', this)">কপি</button></div>`;
+    const plainField = (label, value) => `<div class="pay-line"><span>${label}: <strong>${value}</strong></span></div>`;
+    let body = '';
+    if (methodId === 'bank') {
+      body = copyField('অ্যাকাউন্ট নম্বর', method.number)
+        + copyField('ব্যাংক', 'IFIC Bank')
+        + copyField('শাখা', 'Hathazari')
+        + copyField('রাউটিং', '120 153 224')
+        + copyField('SWIFT', 'IFICBDDH')
+        + copyField('অ্যাকাউন্টধারী', 'Sabrina Akter Bhuiyan')
+        + copyField('যোগাযোগ', '01521400475');
+    } else {
+      body = copyField('নম্বর', method.number)
+        + (method.regName ? plainField('নাম', method.regName) : '');
+    }
+    info.innerHTML = `📱 <strong>${method.name}</strong>${body}<br><small>${methodId === 'bkash' ? 'বিকাশ Send Money করুন। আপনার অগ্রিমের উপর ১.৮২% চার্জ যোগ হবে।' : methodId === 'nagad' ? 'নগদ Send Money করুন। আপনার অগ্রিমের উপর ১.৪৯% চার্জ যোগ হবে।' : 'পেমেন্টের বিস্তারিত যাচাই করা হবে।'}</small>`;
     info.classList.add('show');
   } else {
     info.classList.remove('show');
@@ -787,8 +801,36 @@ function showPaymentInfo(methodId) {
   }
 }
 
-function copyValue(value) {
-  navigator.clipboard.writeText(value).then(() => showToast('কপি হয়েছে'));
+function copyValue(value, btn) {
+  const done = () => {
+    showToast('কপি হয়েছে');
+    if (btn) {
+      const old = btn.textContent;
+      btn.textContent = '✓';
+      setTimeout(() => { btn.textContent = old; }, 1200);
+    }
+  };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(value).then(done).catch(() => fallbackCopy(value, done));
+    } else {
+      fallbackCopy(value, done);
+    }
+  } catch (e) { fallbackCopy(value, done); }
+}
+
+function fallbackCopy(value, done) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = value;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    done();
+  } catch (e) { showToast('কপি হয়নি — নম্বরটি লিখে নিন'); }
 }
 
 let popupText = '';
@@ -1111,7 +1153,8 @@ let lastAutoSend = 0;   // most recent auto-calculated send amount
 let lastAutoBase = 0;   // matching base advance (without the charge)
 
 function getGatewayRate() {
-  const m = getPaymentMethod(document.getElementById('f-payment-method').value);
+  const id = advanceMethod || document.getElementById('f-payment-method').value;
+  const m = getPaymentMethod(id);
   return m && m.charges > 0 ? m.charges : 0;
 }
 
@@ -1160,14 +1203,12 @@ function chooseAdvanceMethod(id) {
   // Hidden select stays in sync (charge math + submit read it),
   // details render right below the buttons.
   const sel = document.getElementById('f-payment-method');
-  if (sel && sel.value !== id) {
-    sel.value = id;
-    // Fill its options if empty (options were built for the old dropdown)
+  if (sel) {
     if (!sel.options.length || sel.options.length <= 1) fillPaymentOptions();
     sel.value = id;
   }
   showPaymentInfo(id);
-  if (advanceType) recalcPrice();
+  recalcPrice();   // always — so the gateway charge applies even before 50%/100% is tapped
   updateProgress();
 }
 
@@ -1210,7 +1251,7 @@ function getDeliveryCharge() {
 }
 
 function recalcPrice(manualEdit) {
-  const methodId = document.getElementById('f-payment-method').value;
+  const methodId = advanceMethod || document.getElementById('f-payment-method').value;
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
   const delivery = getDeliveryCharge();
   // Delivery is required for delivery orders (it joins the total payment).
