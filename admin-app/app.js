@@ -1343,7 +1343,8 @@ window.App = (() => {
       </div>
       <div class="pay-note">${dcNote}</div>`;
       })()}
-      ${bkashCharge(o) > 0 ? `<div class="pay-note">💰 ${tr('bkashDeducted')}: অ্যাডভান্স ৳${fmtMoney(o.paid)} — ${o.paymentChargesLabel ? esc(o.paymentChargesLabel) : 'গেটওয়ে'} চার্জ ৳${fmtMoney(bkashCharge(o))} আলাদা</div>` : ''}
+      ${bkashCharge(o) > 0 ? `<div class="pay-note">💰 ${tr('bkashDeducted')}: অ্যাডভান্স ৳${fmtMoney(o.paid)} — ${o.paymentChargesLabel ? esc(o.paymentChargesLabel) : (o.paymentMethodName ? esc(o.paymentMethodName) : 'বিকাশ/নগদ')} চার্জ ৳${fmtMoney(bkashCharge(o))} আলাদা</div>` : ''}
+      ${o.source === 'manual' && advanceOf(o) > 0 && (o.paymentMethodName || o.paymentMethod || o.paymentChargesLabel) ? `<div class="pay-note">💳 অগ্রিম পাওয়া গেছে: ${esc(o.paymentMethodName || ({bkash:'বিকাশ',nagad:'নগদ',bank:'ব্যাংক',cash:'ক্যাশ'})[String(o.paymentMethod||'').toLowerCase()] || o.paymentChargesLabel)}${o.trx ? ` | ট্রানজেকশন: ${esc(o.trx)}` : ''}</div>` : ''}
       ${o.paynote ? `<div class="pay-note">💳 ${esc(o.paynote)}</div>` : ''}
       ${o.source === 'customer' && o.advance ? `<div class="pay-note">📱 কাস্টমার অগ্রিম: ৳${fmtMoney(o.advance)}${o.advanceCharge > 0 ? ` (+চার্জ ৳${fmtMoney(o.advanceCharge)})` : ''} = ৳${fmtMoney(o.advanceTotal)}${o.trx ? ` | ট্রানজেকশন: ${esc(o.trx)}` : ''}</div>` : ''}
       ${o.source === 'customer' && o.advance
