@@ -736,7 +736,8 @@ function removePhoto(i) {
 // ─── Payment screenshot (mandatory proof-of-payment) ───────────
 // Same compressor as reference photos (≤ ~80KB JPEG data URL).
 let payShot = '';
-let payShotVerified = null;   // null = not yet checked · true = looks like a payment receipt · false = suspicious
+let payShotVerified = null;   // null = unchecked · true = looks like a payment receipt · false = suspicious
+let payAmountMatch = null;    // null = unknown · true = OCR'd amount matches advance/total · false = no match
 
 // ─── In-browser OCR check (Tesseract.js, lazy-loaded) ─────────
 // A fake "payment screenshot" (any random photo) won't contain bKash/Nagad
@@ -761,20 +762,52 @@ function loadTesseract() {
   return _tessPromise;
 }
 
-// Runs OCR on the ORIGINAL (uncompressed) file for accuracy. Returns true when
-// the image looks like a payment receipt. Never throws — on any failure we
-// return null (unknown) so the order is allowed but flagged for the admin.
+// Snapshot of the expected payment at upload time — the advance the customer
+// pays (incl. any gateway charge) and the full order total. Used to check the
+// OCR'd screenshot actually shows one of these amounts.
+let payExpectedAmounts = [];
+function captureExpectedAmounts() {
+  const adv = Math.round(parseFloat((document.getElementById('f-advance') || {}).value) || 0);
+  const cake = Math.round(parseFloat((document.getElementById('f-cake-price') || {}).value) || 0);
+  const del = document.getElementById('f-fulfilment') && document.getElementById('f-fulfilment').value === 'pickup'
+    ? 0 : Math.round(parseFloat((document.getElementById('f-delivery-charge') || {}).value) || 0);
+  const total = cake + del;
+  const list = [adv, total, cake].filter(n => n > 0);
+  payExpectedAmounts = [...new Set(list)];   // unique, drop zeros
+}
+
+// Pull every money-looking number out of the OCR text. Handles commas, decimals
+// and Bengali digits (০-৯), returns rounded integers.
+function extractAmounts(text) {
+  const norm = String(text).replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+  const out = [];
+  const re = /(?:৳|tk\.?|bdt|taka)?\s*(\d{1,3}(?:,\d{3})+|\d{2,7})(?:\.\d{1,2})?/g;
+  let m;
+  while ((m = re.exec(norm)) !== null) {
+    const n = Math.round(parseFloat(m[1].replace(/,/g, '')) || 0);
+    if (n >= 10) out.push(n);   // ignore tiny fragments (dates, ids)
+  }
+  return out;
+}
+
+// Runs OCR on the ORIGINAL (uncompressed) file for accuracy. Returns
+// { receipt, amountMatch, found } — never throws (null fields = unknown).
 async function verifyPaymentShot(file) {
   try {
     const Tesseract = await loadTesseract();
     const res = await Tesseract.recognize(file, 'eng');   // eng covers the bKash/Nagad Latin UI
     const text = (res && res.data && res.data.text ? res.data.text : '').toLowerCase();
     const hasKeyword = PAY_KEYWORDS.some(k => text.includes(k.toLowerCase()));
-    const hasAmount  = /(৳|tk|bdt|taka)?\s*\d{2,6}/.test(text);
-    return hasKeyword && hasAmount;
+    const amounts = extractAmounts(text);
+    const hasAmount = amounts.length > 0;
+    // Loose tolerance: OCR misreads digits and receipts may include/exclude the
+    // charge, so accept anything within ~2% (min ৳5) of an expected figure.
+    const amountMatch = payExpectedAmounts.length > 0 && amounts.some(a =>
+      payExpectedAmounts.some(exp => Math.abs(a - exp) <= Math.max(5, exp * 0.02)));
+    return { receipt: hasKeyword && hasAmount, amountMatch: amountMatch, found: amounts };
   } catch (e) {
     console.warn('OCR check failed (harmless, flagged for admin):', e && e.message);
-    return null;
+    return { receipt: null, amountMatch: null, found: [] };
   }
 }
 
@@ -785,17 +818,24 @@ async function handlePayShot(e) {
   if (file.size > 5 * 1024 * 1024) { showToast('ছবি ৫MB এর কম হতে হবে'); return; }
   try { payShot = await compressImage(file); } catch (_) { showToast('ছবি লোড করা যায়নি'); return; }
   payShotVerified = null;                 // reset — new image picked
+  payAmountMatch = null;
+  captureExpectedAmounts();               // snapshot advance/total for the OCR match
   renderPayShot();
   updateProgress();
   // Run the OCR check in the background (no blocking). Only a NEGATIVE result
   // surfaces, as a gentle warning; the order stays allowed but gets flagged.
-  verifyPaymentShot(file).then(ok => {
-    if (payShot === '' ) return;          // customer removed it meanwhile
-    payShotVerified = ok;
-    if (ok === false) {
+  verifyPaymentShot(file).then(r => {
+    if (payShot === '') return;           // customer removed it meanwhile
+    payShotVerified = r.receipt;
+    payAmountMatch = r.amountMatch;
+    if (r.receipt === false) {
       showToast(lang === 'en'
         ? '⚠️ This does not look like a payment screenshot. The bakery will verify it before confirming.'
         : '⚠️ এটি পেমেন্ট স্ক্রিনশট মনে হচ্ছে না। কনফার্মের আগে বেকারি এটি যাচাই করবে।');
+    } else if (r.receipt === true && r.amountMatch === false) {
+      showToast(lang === 'en'
+        ? '⚠️ The amount in the screenshot may not match your payment. The bakery will verify before confirming.'
+        : '⚠️ স্ক্রিনশটের টাকার পরিমাণ আপনার পেমেন্টের সাথে মিলছে না মনে হচ্ছে। বেকারি যাচাই করে কনফার্ম করবে।');
     }
   });
 }
@@ -809,6 +849,7 @@ function renderPayShot() {
 function removePayShot() {
   payShot = '';
   payShotVerified = null;
+  payAmountMatch = null;
   renderPayShot();
 }
 
@@ -1988,6 +2029,7 @@ async function submitOrder() {
     fulfilment: document.getElementById('f-fulfilment').value,
     payShot,
     payShotVerified: payShotVerified === true,   // OCR-confirmed receipt; false/absent = admin should recheck
+    payAmountMatch: payAmountMatch === true,     // OCR'd amount matches advance/total; false/absent = recheck
     notes: document.getElementById('f-notes').value.trim(),
     lang: lang,
     source: 'customer',
