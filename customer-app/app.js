@@ -1096,13 +1096,12 @@ function isFullOnlyPayment() {
   return false;
 }
 
-// Total payment = 100% of the cake price + the delivery charge (if any).
+// Full payment = 100% of the CAKE price (delivery is paid later with the due).
 // This is what a "full payment" must cover; the locked 50% option can't
 // be picked while isFullOnlyPayment().
 function getFullBase() {
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
-  const delivery = getDeliveryCharge();
-  return Math.round(cakePrice) + Math.round(delivery);
+  return Math.round(cakePrice);
 }
 
 // Grey out the 50% option (locked, untappable) whenever only full payment
@@ -1279,13 +1278,16 @@ function recalcPrice(manualEdit) {
   const paymentMethod = getPaymentMethod(methodId);
   // Total payment = cake price + delivery charge, always. (No separate note.)
   const total = Math.round(cakePrice) + Math.round(delivery);
+  // Advance math is CAKE-ONLY: delivery is never part of the advance, it is
+  // paid later with the due. E.g. cake 1000 + DC 120, bKash 50% →
+  // send 500 + 10 charge = 510 now; due 500 + 120 DC = 620 later.
 
   let base, charge, sendAmount, isAuto = false;
   if (advanceType && !manualEdit) {
-    // AUTO: base = chosen % of the TOTAL (cake + delivery); send = base + gateway charge
-    // (charge rounded up, e.g. 50% of 1100 via bKash -> 550 + 11 = 561)
+    // AUTO: base = chosen % of the CAKE price only; send = base + gateway charge
+    // (charge rounded up, e.g. 50% of 1000 via bKash -> 500 + 10 = 510)
     isAuto = true;
-    base = advanceType === '50' ? Math.round(total / 2) : Math.round(total);
+    base = advanceType === '50' ? Math.round(Math.round(cakePrice) / 2) : Math.round(cakePrice);
     charge = rate > 0 ? Math.ceil(base * rate) : 0;
     sendAmount = base + charge;
     lastAutoBase = base;
@@ -1300,7 +1302,8 @@ function recalcPrice(manualEdit) {
     charge = split.charge;
   }
 
-  const due = Math.max(0, total - base);
+  // Due = rest of the cake + the FULL delivery charge (paid later, no gateway charge on it).
+  const due = Math.max(0, Math.round(cakePrice) - base) + Math.round(delivery);
   const methodName = paymentMethod ? paymentMethod.name : '';
 
   // Hint under the grey box showing where the bold figure came from
@@ -1333,15 +1336,20 @@ function recalcPrice(manualEdit) {
   document.getElementById('calc-total').textContent = '৳' + Math.round(total);
   document.getElementById('calc-box').classList.add('show');
 
-  // Due box — the auto-calculated rest, greyed out and read-only
+  // Due box — rest of the cake + full delivery charge, greyed out and read-only
   const dueField = document.getElementById('due-field');
   if (sendAmount > 0) {
     document.getElementById('f-due').value = '৳' + Math.round(due);
     const dueHint = document.getElementById('due-hint');
     if (due > 0) {
+      const cakeRest = Math.max(0, Math.round(cakePrice) - base);
       dueHint.textContent = lang === 'en'
-        ? `৳${Math.round(due)} left to pay later`
-        : `বাকি ৳${Math.round(due)} পরে দিতে হবে`;
+        ? (Math.round(delivery) > 0
+            ? `৳${cakeRest} cake rest + ৳${Math.round(delivery)} delivery = ৳${Math.round(due)} later`
+            : `৳${Math.round(due)} left to pay later`)
+        : (Math.round(delivery) > 0
+            ? `বাকি কেক ৳${cakeRest} + ডেলিভারি ৳${Math.round(delivery)} = ৳${Math.round(due)} পরে`
+            : `বাকি ৳${Math.round(due)} পরে দিতে হবে`);
     } else {
       dueHint.textContent = '';
     }
@@ -1778,17 +1786,15 @@ if (timeError) { showToast(timeError); document.getElementById('f-timeslot').foc
     const total = getOrderTotal();
     if (adv < total) { showToast('সারপ্রাইজের জন্য পূর্ণ পেমেন্ট দিন'); return false; }
   }
-  // Mini cake / delivery orders: 100% of the cake price + the delivery
-  // charge must be covered (the gateway charge sits on top of that).
+  // Full-only (surprise / mini): 100% of the CAKE must be covered now
+  // (gateway charge sits on top; delivery is paid later with the due).
   if (isFullOnlyPayment()) {
     const cake = Math.round(parseFloat(document.getElementById('f-cake-price').value) || 0);
-    const del  = Math.round(getDeliveryCharge());
-    const need = cake + del;
     const send = Math.round(parseFloat(document.getElementById('f-advance').value) || 0);
-    if (send < need) {
+    if (send < cake) {
       showToast((lang === 'en'
-        ? 'Full payment needed: cake ৳' + cake + (del ? ' + delivery ৳' + del : '') + ' = ৳' + need
-        : 'পূর্ণ পেমেন্ট দিতে হবে: কেক ৳' + cake + (del ? ' + ডেলিভারি ৳' + del : '') + ' = ৳' + need));
+        ? 'Full cake price needed now: ৳' + cake + ' (+ delivery later)'
+        : 'এখন পুরো কেকের দাম দিন: ৳' + cake + ' (+ ডেলিভারি পরে)'));
       document.getElementById('f-advance').focus();
       return false;
     }
@@ -1843,10 +1849,10 @@ async function submitOrder() {
   const subtotal = Math.round(cakePrice) + Math.round(delivery);
   const total = subtotal;
   const advanceTotal = Math.round(sendAmount);
-  const dueAmount = Math.max(0, subtotal - advance);
-  // Delivery is always collected online as part of the total, so any delivery
-  // amount covered by the advance counts as settled with the cake.
-  const deliverySettled = delivery > 0 && advance >= (Math.round(cakePrice) + Math.round(delivery));
+  // Cake-only advance: due = rest of the cake + full delivery (paid later together).
+  const dueAmount = Math.max(0, Math.round(cakePrice) - advance) + Math.round(delivery);
+  // Delivery is paid LATER with the due — never settled by the advance.
+  const deliverySettled = false;
 
   const order = {
     orderId: currentOrderId || generateOrderId(),
