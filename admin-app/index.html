@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://www.googleapis.com" crossorigin>
 <link rel="dns-prefetch" href="https://firebaselogging-pa.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Baloo+Da+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Baloo+Da+2:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Serif+Bengali:wght@400;600;700&family=Playfair+Display:wght@500;600;700&family=Mukta:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=Anek+Bangla:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* =============================================
    ROOT DESIGN TOKENS
@@ -2033,6 +2033,7 @@ select:focus {
 <script>
 /* Theme system — visual only, no order logic touched */
 var ADMIN_THEMES=['t-gold','t-ivory','t-sage','t-rose','t-cocoa','t-matcha','t-ube','t-mango','t-crust','t-pastel','t-farm','t-cafe'];
+var ADMIN_FONTS=['f-clean','f-serif','f-soft','f-modern'];
 function readThemeState(){try{var s=JSON.parse(localStorage.getItem('nitu-admin-theme-v2')||'null');if(s)return s;}catch(e){}try{if(localStorage.getItem('nitu-admin-theme')==='dark')return{dark:true}}catch(e){}return{}}
 function saveThemeState(s){try{localStorage.setItem('nitu-admin-theme-v2',JSON.stringify(s))}catch(e){}}
 function applyAdminTheme(){
@@ -2040,6 +2041,10 @@ function applyAdminTheme(){
   ADMIN_THEMES.forEach(function(t){document.documentElement.classList.remove(t)});
   if(s.theme)document.documentElement.classList.add(s.theme);
   document.documentElement.classList.toggle('dark',!!s.dark);
+  // Font theme — class on <html>, works in both Bangla and English modes.
+  ADMIN_FONTS.forEach(function(f){document.documentElement.classList.remove(f)});
+  if(s.font)document.documentElement.classList.add(s.font);
+  document.querySelectorAll('.tf-opt').forEach(function(o){o.classList.toggle('active',(o.dataset.f||'')===(s.font||''))});
   document.querySelectorAll('.tp-opt').forEach(function(o){o.classList.toggle('active',(o.dataset.t||'')===(s.theme||''))});
   document.querySelectorAll('.tp-mode').forEach(function(o){o.classList.toggle('active',(o.dataset.dark==='1')===!!s.dark)});
   var mb=document.getElementById('theme-mode-btn');
@@ -2048,8 +2053,9 @@ function applyAdminTheme(){
 function toggleTheme(){var s=readThemeState();s.dark=!document.documentElement.classList.contains('dark');saveThemeState(s);applyAdminTheme();}
 function pickTheme(el){var s=readThemeState();s.theme=el.dataset.t||'';saveThemeState(s);applyAdminTheme();}
 function setPanelMode(d){var s=readThemeState();s.dark=d;saveThemeState(s);applyAdminTheme();}
+function pickFont(el){var s=readThemeState();s.font=el.dataset.f||'';saveThemeState(s);applyAdminTheme();}
 function openThemePanel(){document.getElementById('themePanel').classList.toggle('open');}
-try{(function(){var s=JSON.parse(localStorage.getItem('nitu-admin-theme-v2')||'null');if(!s&&localStorage.getItem('nitu-admin-theme')==='dark')s={dark:true};if(s){if(s.theme)document.documentElement.classList.add(s.theme);if(s.dark)document.documentElement.classList.add('dark')}})()}catch(e){}
+try{(function(){var s=JSON.parse(localStorage.getItem('nitu-admin-theme-v2')||'null');if(!s&&localStorage.getItem('nitu-admin-theme')==='dark')s={dark:true};if(s){if(s.theme)document.documentElement.classList.add(s.theme);if(s.dark)document.documentElement.classList.add('dark');if(s.font)document.documentElement.classList.add(s.font)}})()}catch(e){}
 </script>
 <style>
 /* ─── DARK MODE + THEME SYSTEM (visual only) ─── */
@@ -2156,6 +2162,30 @@ html.t-cafe.dark{--bg:#121212;--surface:#1a1a1a;--surface2:#232323;--border:#2e2
 .tp-mode{flex:1;padding:9px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--text);font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer}
 .tp-mode.active{border-color:var(--pink);color:var(--pink);background:var(--pink-light)}
 .tp-hint{font-size:9.5px;color:var(--text3);margin-top:9px;line-height:1.5}
+
+/* ─── FONT THEMES (visual only — Bangla body + English pair per style) ─── */
+/* Original (default): Hind Siliguri + Poppins + BN-Digits numerals — unchanged */
+html.f-clean body[data-lang="bn"]{font-family:'Noto Sans Bengali','BN-Digits','Inter',-apple-system,sans-serif}
+html.f-clean body[data-lang="en"],html.f-clean body{font-family:'Inter','Noto Sans Bengali','BN-Digits',-apple-system,sans-serif}
+html.f-serif body[data-lang="bn"]{font-family:'Noto Serif Bengali','BN-Digits','Playfair Display',serif}
+html.f-serif body[data-lang="en"],html.f-serif body{font-family:'Playfair Display','Noto Serif Bengali','BN-Digits',serif}
+html.f-soft body[data-lang="bn"]{font-family:'Mukta','BN-Digits','Nunito',-apple-system,sans-serif}
+html.f-soft body[data-lang="en"],html.f-soft body{font-family:'Nunito','Mukta','BN-Digits',-apple-system,sans-serif}
+html.f-modern body[data-lang="bn"]{font-family:'Anek Bangla','BN-Digits','Outfit',-apple-system,sans-serif}
+html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek Bangla','BN-Digits',-apple-system,sans-serif}
+/* Font picker UI inside the theme panel */
+.tp-font-title{font-size:12px;font-weight:800;color:var(--text);margin:14px 0 8px;border-top:1px solid var(--border);padding-top:12px}
+.tf-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tf-opt{border:1.5px solid var(--border);background:var(--surface2);border-radius:12px;padding:10px 8px;font-size:11px;font-weight:800;color:var(--text);cursor:pointer;line-height:1.35;text-align:left}
+.tf-opt.active{border-color:var(--pink);box-shadow:0 0 0 2px var(--pink-glow)}
+.tf-opt .tf-bn{display:block;font-size:14px;margin-bottom:2px}
+.tf-opt .tf-en{display:block;font-size:10px;font-weight:600;color:var(--text3)}
+/* Previews render in their own fonts so the choice is WYSIWYG */
+#tf-orig .tf-bn{font-family:'Hind Siliguri',sans-serif}#tf-orig .tf-en{font-family:'Poppins',sans-serif}
+#tf-clean .tf-bn{font-family:'Noto Sans Bengali',sans-serif}#tf-clean .tf-en{font-family:'Inter',sans-serif}
+#tf-serif .tf-bn{font-family:'Noto Serif Bengali',serif}#tf-serif .tf-en{font-family:'Playfair Display',serif}
+#tf-soft .tf-bn{font-family:'Mukta',sans-serif}#tf-soft .tf-en{font-family:'Nunito',sans-serif}
+#tf-modern .tf-bn{font-family:'Anek Bangla',sans-serif}#tf-modern .tf-en{font-family:'Outfit',sans-serif}
 </style>
 </head>
 <body>
@@ -2180,6 +2210,14 @@ html.t-cafe.dark{--bg:#121212;--surface:#1a1a1a;--surface2:#232323;--border:#2e2
   <div class="tp-modes">
     <button type="button" class="tp-mode" data-dark="0" onclick="setPanelMode(false)">☀️ Light</button>
     <button type="button" class="tp-mode" data-dark="1" onclick="setPanelMode(true)">🌙 Dark</button>
+  </div>
+  <div class="tp-font-title">🔤 ফন্ট বাছাই — বাংলা + ইংরেজি জোড়া</div>
+  <div class="tf-grid">
+    <button type="button" class="tf-opt" id="tf-orig" data-f="" onclick="pickFont(this)"><span class="tf-bn">কেক অর্ডার ১২৩</span><span class="tf-en">Original — Hind Siliguri + Poppins</span></button>
+    <button type="button" class="tf-opt" id="tf-clean" data-f="f-clean" onclick="pickFont(this)"><span class="tf-bn">কেক অর্ডার ১২৩</span><span class="tf-en">Clean — Noto Sans Bengali + Inter</span></button>
+    <button type="button" class="tf-opt" id="tf-serif" data-f="f-serif" onclick="pickFont(this)"><span class="tf-bn">কেক অর্ডার ১২৩</span><span class="tf-en">Elegant — Noto Serif Bengali + Playfair</span></button>
+    <button type="button" class="tf-opt" id="tf-soft" data-f="f-soft" onclick="pickFont(this)"><span class="tf-bn">কেক অর্ডার ১২৩</span><span class="tf-en">Soft — Mukta + Nunito</span></button>
+    <button type="button" class="tf-opt" id="tf-modern" data-f="f-modern" onclick="pickFont(this)"><span class="tf-bn">কেক অর্ডার ১২৩</span><span class="tf-en">Modern — Anek Bangla + Outfit</span></button>
   </div>
   <div class="tp-hint">যেকোনো থিমে ক্লিক করলেই সাথে সাথে পুরো অ্যাপ বদলে যাবে · কাজ করার সময়ও যখন খুশি বদলাতে পারবেন · পছন্দ মনে রাখা হবে</div>
 </div>
