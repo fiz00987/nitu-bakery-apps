@@ -1147,7 +1147,7 @@ function setAdvanceType(type) {
 // charge, e.g. 50% of ৳1000 via bKash → ৳500 + ৳10 charge = ৳510. It is
 // editable, but tapping it pops a warning: the figure was auto-calculated
 // with the gateway charge — inform the admin before changing it.
-// #f-due (greyed out, read-only) auto-shows the rest (total − base).
+// (Due is cake-rest + delivery, paid later — no auto box shown.)
 let lastAutoSend = 0;   // most recent auto-calculated send amount
 let lastAutoBase = 0;   // matching base advance (without the charge)
 
@@ -1264,13 +1264,10 @@ function recalcPrice(manualEdit) {
   // (Lock state only — the math below always uses the cake+delivery total.)
   syncFullOnlyPayment();
 
-  // The payment preview needs a cake price AND (for delivery orders) a
-  // delivery charge — so the auto-count works as soon as both are typed,
-  // even if the details section above is still empty.
+  // The payment preview needs a cake price — the auto-count works as soon
+  // as it is typed, even if the details section above is still empty.
   if (cakePrice <= 0) {
     document.getElementById('calc-box').classList.remove('show');
-    document.getElementById('due-field').classList.remove('show');
-    document.getElementById('pay-footnote').classList.remove('show');
     return;
   }
 
@@ -1311,23 +1308,11 @@ function recalcPrice(manualEdit) {
   if (advanceType) {
     const pctLabel = advanceType === '50' ? (lang === 'en' ? '50% advance' : '৫০% অগ্রিম') : (lang === 'en' ? 'full payment' : 'পুরো পেমেন্ট');
     const chargePart = charge > 0 ? ` + ${methodName} ${lang === 'en' ? 'charge' : 'চার্জ'} ৳${charge}` : '';
-    hint.textContent = (isAuto ? (lang === 'en' ? 'Auto-calculated: ' : 'অটো হিসাব: ') : (lang === 'en' ? 'Custom amount: ' : 'নিজের হিসাব: '))
+    hint.textContent = (isAuto ? (lang === 'en' ? 'Advance payment calculation: ' : 'অগ্রিম পেমেন্ট হিসাব: ') : (lang === 'en' ? 'Custom amount: ' : 'নিজের হিসাব: '))
       + `${pctLabel} ৳${base}${chargePart} = ${lang === 'en' ? 'send' : 'পাঠাতে হবে'} ৳${sendAmount}`;
   } else {
     hint.textContent = '';
   }
-
-  // Footnote spelling out which gateway charge is added (bKash/Nagad) or free (bank)
-  const footnote = document.getElementById('pay-footnote');
-  const fnTxt = lang === 'en'
-    ? (methodId === 'bkash' ? `Payment is calculated including the bKash charge.` 
-       : methodId === 'nagad' ? `Payment is calculated including the Nagad charge.` 
-       : methodId === 'bank' ? `Bank payment — no charge, it's free.` : '')
-    : (methodId === 'bkash' ? `পেমেন্ট বিকাশ চার্জসহ হিসাব করা হয়েছে।` 
-       : methodId === 'nagad' ? `পেমেন্ট নগদ চার্জসহ হিসাব করা হয়েছে।` 
-       : methodId === 'bank' ? `ব্যাংকে পেমেন্ট — চার্জ নেই, সম্পূর্ণ ফ্রি।` : '');
-  if (fnTxt) { footnote.textContent = fnTxt; footnote.classList.add('show'); }
-  else { footnote.classList.remove('show'); }
 
   // Top calc box (cake price / delivery / total — delivery folded into total)
   document.getElementById('calc-base').textContent = '৳' + Math.round(cakePrice);
@@ -1335,28 +1320,6 @@ function recalcPrice(manualEdit) {
   document.getElementById('calc-delivery').textContent = isPickupCalc ? 'প্রযোজ্য নয় (পিকআপ)' : '৳' + Math.round(delivery);
   document.getElementById('calc-total').textContent = '৳' + Math.round(total);
   document.getElementById('calc-box').classList.add('show');
-
-  // Due box — rest of the cake + full delivery charge, greyed out and read-only
-  const dueField = document.getElementById('due-field');
-  if (sendAmount > 0) {
-    document.getElementById('f-due').value = '৳' + Math.round(due);
-    const dueHint = document.getElementById('due-hint');
-    if (due > 0) {
-      const cakeRest = Math.max(0, Math.round(cakePrice) - base);
-      dueHint.textContent = lang === 'en'
-        ? (Math.round(delivery) > 0
-            ? `৳${cakeRest} cake rest + ৳${Math.round(delivery)} delivery = ৳${Math.round(due)} later`
-            : `৳${Math.round(due)} left to pay later`)
-        : (Math.round(delivery) > 0
-            ? `বাকি কেক ৳${cakeRest} + ডেলিভারি ৳${Math.round(delivery)} = ৳${Math.round(due)} পরে`
-            : `বাকি ৳${Math.round(due)} পরে দিতে হবে`);
-    } else {
-      dueHint.textContent = '';
-    }
-    dueField.classList.add('show');
-  } else {
-    dueField.classList.remove('show');
-  }
 }
 
 function resolveWeight() {
@@ -2256,7 +2219,7 @@ function resetForm() {
   document.querySelectorAll('.adv-method-opt').forEach(el => el.classList.remove('active'));
   updateWritingCount();
   document.getElementById('calc-box').classList.remove('show');
-  document.getElementById('due-field').classList.remove('show');
+  const df = document.getElementById('due-field'); if (df) df.classList.remove('show');
   document.getElementById('surprise-note').classList.remove('show');
   document.getElementById('payment-info').classList.remove('show');
   document.querySelectorAll('.advance-opt').forEach(el => { el.classList.remove('active', 'adv-locked'); el.style.opacity = ''; el.style.pointerEvents = ''; });
