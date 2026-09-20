@@ -141,7 +141,7 @@ window.App = (() => {
   // Effective amount that actually counts toward the cake.
   // If the customer sent money with the bKash cash-out charge included,
   // that charge is NOT payment for the cake, so we subtract it.
-  const bkashCharge   = o => Math.max(0, Number(o.bkashCharge) || 0);
+  const bkashCharge   = o => Math.max(0, Math.round(Number(o.bkashCharge) || 0));
   const effectivePaid = o => Math.max(0, (Number(o.paid) || 0) - bkashCharge(o));
 
   // ─── Cake-only money (DC is NEVER part of these numbers) ──────
@@ -2854,9 +2854,6 @@ window.App = (() => {
     // f-paid shows the ADVANCE toward the cake (charge-free), same number
     // the card shows. No charge deduction needed — advance is already clean.
     g('f-paid').value           = advanceOf(o) || '';
-    g('f-charge-deduct').value  = '';   // advance is cake-only; nothing to deduct
-    pcChannel = (o.paymentChargesLabel ? String(o.paymentChargesLabel) : '');
-    pcLastApplied = parseFloat(g('f-paid').value) || 0;
     updateDueField();
     g('f-trx').value            = o.trx       || '';
     g('f-notes').value          = o.notes     || '';
@@ -2896,7 +2893,6 @@ window.App = (() => {
     currentPhoto = '';
     currentPhotos = [];
     currentDelPhoto = '';
-    pcChannel = '';
     adminCakeCount = 1;
     adminExtraPhotos = {};
     renderAdminExtraCakes();
@@ -2910,7 +2906,6 @@ window.App = (() => {
     if (nwCb) nwCb.checked = false;
     const nwIn = document.getElementById('f-writing');
     if (nwIn) { nwIn.disabled = false; nwIn.style.opacity = '1'; }
-    document.getElementById('f-charge-deduct').value = '';
     const o = key ? orders.find(x => x.firebaseKey === key) : null;
     document.getElementById('modal-title').textContent =
       o ? 'অর্ডার সম্পাদনা করুন' : 'নতুন অর্ডার';
@@ -2938,9 +2933,6 @@ window.App = (() => {
   };
 
   const closeModal = () => {
-    // A pending "open charge dialog" timer must not fire after the form is
-    // closed — it used to pop the dialog over the order list.
-    clearTimeout(advanceDebounce);
     savingOrder = false;
     // CRITICAL: re-enable the save button on every close. saveOrder disables
     // it while writing and only failSave used to re-enable it — so after one
@@ -3534,151 +3526,49 @@ window.App = (() => {
     }
   });
 
-  // ─── Payment-charges popup (advance → single gateway charge) ──
-  // After the admin types the advance (e.g. 500), a popup asks which ONE
-  // channel the money came through (bKash/Nagad/Bank). The chosen channel's
-  // charge is auto-computed as a % of the advance and ADDED on top, so the
-  // customer's total sent = advance + charge, and the due = total − advance.
-  let pcOpenForAdvance = 0;
-  let pcSelected = '';   // 'bkash' | 'nagad' | 'bank' | ''
-  let pcChannel  = '';   // last channel confirmed with ঠিক আছে (kept for save/edit)
-  let pcLastApplied = null; // f-paid value the charge was last computed for (skips popup when unchanged)
+  // ─── Manual-order payment: NO popup, no gateway-charge math ─────
+  // The admin simply types the advance the customer paid (e.g. 500). That
+  // FULL amount counts toward the cake and the due is just cake total −
+  // advance — exactly like the customer app. Any bKash/Nagad charge the
+  // customer paid on top is THEIR cost and is never tracked, deducted, or
+  // added to the due here. The optional TrxID field is enough to know how
+  // the money arrived.
 
-  // Market charge rates (% as a decimal) — mirrors the customer app.
-  const PC_RATE = { bkash: 0.0182, nagad: 0.0149, bank: 0 };
-  const PC_NAMES = { bkash: 'বিকাশ', nagad: 'নগদ', bank: 'ব্যাংক' };
+  // The advance field only refreshes the read-only due box — nothing else.
+  const advanceInput = () => updateDueField();
+  const advanceBlur  = () => updateDueField();
 
-  const pcChargeFor = ch => {
-    const rate = PC_RATE[ch] || 0;
-    return rate > 0 ? pcOpenForAdvance * rate : 0;
-  };
-
-  const renderPcCalc = () => {
-    ['bkash', 'nagad', 'bank'].forEach(ch => {
-      const charge = pcChargeFor(ch);
-      const total = pcOpenForAdvance + charge;
-      document.getElementById('pc-' + ch + '-calc').textContent =
-        charge > 0 ? `৳${fmtMoney(pcOpenForAdvance)} + ৳${fmtMoney(charge)} = ৳${fmtMoney(total)}` : `৳${fmtMoney(total)}`;
-      document.getElementById('pc-' + ch).closest('.pc-row').classList.toggle('selected', pcSelected === ch);
-    });
-    document.getElementById('pc-note').textContent = lang === 'bn'
-      ? (pcSelected
-          ? `অ্যাডভান্স ৳${fmtMoney(pcOpenForAdvance)} + ${PC_NAMES[pcSelected]} চার্জ ৳${fmtMoney(pcChargeFor(pcSelected))} = কাস্টমার পাঠাবে ৳${fmtMoney(pcOpenForAdvance + pcChargeFor(pcSelected))}`
-          : 'আপনি কোন পদ্ধতিতে পেয়েছেন, একটি বাছাই করুন।')
-      : (pcSelected
-          ? `Advance ৳${fmtMoney(pcOpenForAdvance)} + ${pcSelected} charge ৳${fmtMoney(pcChargeFor(pcSelected))} = customer sends ৳${fmtMoney(pcOpenForAdvance + pcChargeFor(pcSelected))}`
-          : 'Select which gateway the money came through.');
-  };
-
-  const openPayCharge = () => {
-    // f-paid holds the TOTAL SENT; the advance toward the cake excludes the
-    // already-applied gateway charge (so reopening never compounds the charge).
-    const sent    = parseFloat(document.getElementById('f-paid').value) || 0;
-    const applied = parseFloat(document.getElementById('f-charge-deduct').value) || 0;
-    const advance = Math.max(0, sent - applied);
-    if (advance <= 0) {
-      showToast(lang === 'bn' ? '⚠️ আগে অ্যাডভান্সের পরিমাণ লিখুন।' : '⚠️ Enter the advance amount first.');
-      return;
-    }
-    pcOpenForAdvance = advance;
-    pcSelected = '';
-    ['bkash', 'nagad', 'bank'].forEach(ch => { document.getElementById('pc-' + ch).checked = false; });
-    renderPcCalc();
-    document.getElementById('pay-charge-overlay').classList.add('open');
-  };
-
-  const closePayCharge = () => {
-    document.getElementById('pay-charge-overlay').classList.remove('open');
-    pcOpenForAdvance = 0;
-    pcSelected = '';
-    // Remember the value the popup was closed for. Without this, a popup the
-    // admin dismissed with "বাতিল" re-opened on the very next blur of f-paid
-    // (e.g. clicking সেভ করুন), intercepting the click and making it seem like
-    // the form "won't save". Same value → no nagging again.
-    pcLastApplied = parseFloat(document.getElementById('f-paid').value) || 0;
-  };
-
-  const closePayChargeBg = e => {
-    if (e.target === document.getElementById('pay-charge-overlay')) closePayCharge();
-  };
-
-  // Single-select: picking one option clears the others (radio group)
-  const pcSelect = ch => {
-    ['bkash', 'nagad', 'bank'].forEach(c => { document.getElementById('pc-' + c).checked = (c === ch); });
-    pcSelected = ch;
-    renderPcCalc();
-  };
-
-  const applyPayCharge = () => {
-    if (!pcSelected) {
-      showToast(lang === 'bn' ? '⚠️ পেমেন্টের পদ্ধতি বাছাই করুন।' : '⚠️ Select the payment gateway.');
-      return;
-    }
-    const chosen = pcSelected;           // captured before closePayCharge resets it
-    const charge = pcChargeFor(chosen);
-    // Keep f-paid as the EXACT amount the client said (e.g. 800) — do NOT add
-    // the gateway charge on top. The charge is tracked separately (and shown in
-    // the card details), never folded into the advance.
-    document.getElementById('f-charge-deduct').value = charge ? String(Math.ceil(charge * 100) / 100) : '';
-    pcChannel = chosen;                  // remember for save + re-edit label
-    pcLastApplied = Math.ceil(pcOpenForAdvance * 100) / 100;
-    const total = parseFloat(document.getElementById('f-total').value) || 0;
-    const due = Math.max(0, total - pcOpenForAdvance);
-    updateDueField();
-    closePayCharge();
-    showToast(lang === 'bn'
-      ? `✅ অ্যাডভান্স ৳${fmtMoney(pcOpenForAdvance)} (${PC_NAMES[chosen]} চার্জ ৳${fmtMoney(charge)} আলাদা) — বাকি ৳${fmtMoney(due)}`
-      : `✅ Advance ৳${fmtMoney(pcOpenForAdvance)} (${chosen} charge ৳${fmtMoney(charge)} separate) — due ৳${fmtMoney(due)}`);
-  };
-
-  // Live due update while typing. The popup opens only when the admin has
-  // FINISHED entering the advance — after a 1s typing pause, or immediately
-  // when the field loses focus — never after the first keystroke. It is also
-  // skipped when the amount is unchanged since the last charge computation.
-  let advanceDebounce = null;
-  const maybeOpenPayCharge = () => {
-    const cur = parseFloat(document.getElementById('f-paid').value) || 0;
-    const popupOpen = document.getElementById('pay-charge-overlay').classList.contains('open');
-    if (cur <= 0 || popupOpen || cur === pcLastApplied) return;
-    openPayCharge();
-  };
-  const advanceInput = () => {
-    updateDueField();
-    clearTimeout(advanceDebounce);
-    advanceDebounce = setTimeout(maybeOpenPayCharge, 1000);
-  };
-  const advanceBlur = e => {
-    clearTimeout(advanceDebounce);
-    // If focus is leaving f-paid because the admin clicked the Save or Cancel
-    // button, let that click land. Opening the charge dialog here (during
-    // mousedown) covers the button before mouseup, so its click event never
-    // fires — the #1 cause of "the form won't save, I have to cancel and retry".
-    const rt = e && e.relatedTarget;
-    if (rt && (rt.id === 'btn-save' || rt.id === 'btn-cancel')) return;
-    maybeOpenPayCharge();
-  };
-
-  // ─── Read-only due field: due = total − (sent − charge), live while typing ───
+  // ─── Read-only due field: due = total − advance, live while typing ───
+  // Whole taka only — no gateway charge is ever folded into the due, exactly
+  // like the customer app. The hint also reminds that the delivery charge is
+  // collected after delivery (never merged into the cake due).
   const updateDueField = () => {
     const total   = parseFloat(document.getElementById('f-total').value) || 0;
-    const sent    = parseFloat(document.getElementById('f-paid').value) || 0;
-    const charge  = parseFloat(document.getElementById('f-charge-deduct').value) || 0;
-    const advance = Math.max(0, sent - charge);
+    const advance = parseFloat(document.getElementById('f-paid').value) || 0;
     const wrap    = document.getElementById('due-field');
     const dueEl   = document.getElementById('f-due');
     if (!wrap || !dueEl) return;
-    if (total > 0 || sent > 0) {
+    if (total > 0 || advance > 0) {
       wrap.style.display = '';
-      dueEl.value = String(Math.max(0, total - advance));
+      dueEl.value = String(Math.round(Math.max(0, total - advance)));
     } else {
       wrap.style.display = 'none';
       dueEl.value = '';
     }
+    const hint = document.getElementById('due-hint');
+    if (hint) {
+      const dcAmt    = parseFloat((document.getElementById('f-delivery-amount') || {}).value) || 0;
+      const dcPaid   = (document.getElementById('f-delivery-paid') || {}).value || 'unpaid';
+      const isPickup = (document.getElementById('f-fulfilment') || {}).value === 'pickup' || dcPaid === 'na';
+      const dcLine = (!isPickup && dcAmt > 0)
+        ? (dcPaid === 'paid'
+            ? ` + ডেলিভারি চার্জ ৳${fmtMoney(dcAmt)} (পরিশোধিত ✅)`
+            : ` + ডেলিভারি চার্জ ৳${fmtMoney(dcAmt)} (ডেলিভারির পর নেওয়া হবে)`)
+        : '';
+      hint.textContent = `অ্যাডভান্সের পর বাকি পরিমাণ — স্বয়ংক্রিয়ভাবে হিসাব হয়${dcLine} — কোনো বিকাশ/নগদ চার্জ কখনো যোগ হয় না`;
+    }
   };
   const totalInput = () => updateDueField();
-
-  // Live recalculation happens inside pcSelect/renderPcCalc (single-select,
-  // no per-channel charge inputs anymore) — nothing to attach here.
   // ─── Save order ──────────────────────────────────────────────
   let savingOrder = false; // in-flight guard: rapid double-taps must not create duplicate orders
   const saveOrder = () => {
@@ -3694,9 +3584,6 @@ window.App = (() => {
       return;
     }
     if (savingOrder) return;
-    // A pending 1s "open charge dialog" timer must never fire after the modal
-    // is gone (it used to pop the dialog over the dashboard after saving).
-    clearTimeout(advanceDebounce);
     const g    = id => document.getElementById(id);
     const name = g('f-name').value.trim();
     const date = g('f-date').value;
@@ -3748,14 +3635,7 @@ window.App = (() => {
     // gateway charge — the card shows the same figure). 50% / 100% of the cake
     // price is what the customer actually sends for the cake.
     const paidNum        = parseFloat(g('f-paid').value) || 0;
-    const chargeToDeduct = 0;                     // nothing to deduct — advance is clean
-    const advanceNum     = Math.max(0, paidNum);
-    // Channel chosen in the popup (kept in pcChannel as a readable label like
-    // "বিকাশ", also restored when re-editing an order).
-    const chargeLabel    = pcChannel;
-    // The gateway charge computed in the popup — kept SEPARATE from the
-    // advance so the details line can still show it without inflating f-paid.
-    const chargeNum      = Math.max(0, parseFloat(g('f-charge-deduct').value) || 0);
+    const advanceNum     = Math.max(0, Math.round(paidNum));
 
     // Multi-cake: collect every cake; the top-level delivery charge becomes
     // the SUM of all cakes' charges (each cake may deliver elsewhere).
@@ -3808,9 +3688,9 @@ window.App = (() => {
       weightPrice:    0,
       subtotal:       cakePrice,
       paid:           paidNum,
-      bkashCharge:    chargeNum > 0 ? chargeNum : (existing ? (Number(existing.bkashCharge) || 0) : 0),
-      paymentCharges: chargeNum > 0 ? chargeNum : (existing ? (Number(existing.paymentCharges != null ? existing.paymentCharges : existing.bkashCharge) || 0) : 0),
-      paymentChargesLabel: chargeLabel,
+      bkashCharge:    0,          // no gateway-charge tracking for manual orders
+      paymentCharges: 0,          // (old values on a legacy order are cleared on save)
+      paymentChargesLabel: '',
       trx:            g('f-trx').value.trim(),
       notes:          g('f-notes').value.trim(),
       status:         g('f-status').value,
@@ -3849,7 +3729,7 @@ window.App = (() => {
     // charge so the old finance views stay consistent.
     o.advance        = advanceNum;
     o.advanceTotal   = advanceNum;
-    o.dueAmount      = Math.max(0, cakePrice - advanceNum);
+    o.dueAmount      = Math.round(Math.max(0, cakePrice - advanceNum));
 
     // Delivered = the client has paid EVERYTHING — cake total AND delivery
     // charge. If an order is saved/edited with status "delivered" from the
@@ -4000,7 +3880,6 @@ window.App = (() => {
     if (e.key === 'Escape') {
       // Close only the top-most overlay instead of everything at once.
       if (document.getElementById('lightbox').classList.contains('open')) { closeLightbox(); return; }
-      if (document.getElementById('pay-charge-overlay').classList.contains('open')) { closePayCharge(); return; }
       if (document.getElementById('notepad-overlay').classList.contains('open')) { closeNotepad(); return; }
       if (document.getElementById('cal-popup-overlay').classList.contains('open')) { closeCalendar(); return; }
       if (document.getElementById('daily-popup-overlay').classList.contains('open')) { closeDailyPopup(); return; }
@@ -4440,11 +4319,6 @@ window.App = (() => {
     openPhotoLightbox,
     setLang,
     toggleLang,
-    openPayCharge,
-    closePayCharge,
-    closePayChargeBg,
-    pcSelect,
-    applyPayCharge,
     advanceInput,
     advanceBlur,
     totalInput,

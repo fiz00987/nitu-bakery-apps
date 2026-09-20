@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://www.googleapis.com" crossorigin>
 <link rel="dns-prefetch" href="https://firebaselogging-pa.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Baloo+Da+2:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* =============================================
    ROOT DESIGN TOKENS
@@ -99,15 +99,18 @@
 html { scroll-behavior: smooth; }
 
 /* Language-aware typography */
+/* Bengali numerals (০-৯) render in Baloo Da 2 — open, rounded, easy to read.
+   Everything else stays in Hind Siliguri / Poppins. (Same fix as customer app.) */
+@font-face{font-family:'BN-Digits';font-style:normal;font-display:swap;font-weight:400 700;src:url('https://fonts.gstatic.com/s/balooda2/v26/2-c39J9j0IaUMQZwAJyJaOX1UUnf3GLnYjALsTNe.ttf') format('truetype');unicode-range:U+09E6-09EF}
 body[data-lang="bn"] {
-  font-family: 'Hind Siliguri', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Hind Siliguri', 'BN-Digits', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 body[data-lang="en"] {
   font-family: 'Poppins', 'Hind Siliguri', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 body {
-  font-family: 'Poppins', 'Hind Siliguri', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Poppins', 'Hind Siliguri', 'BN-Digits', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg);
   background-image: url('https://images.unsplash.com/photo-1517433670267-08bbd4be890f?w=1200&q=60');
   background-size: cover;
@@ -2005,27 +2008,6 @@ select:focus {
   .daily-popup-foot{padding:10px 18px 16px}
   .daily-popup-foot button{width:100%;padding:12px;border:none;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--pink-dark),var(--pink-mid));color:#fff;font-weight:700;font-size:14px;cursor:pointer}
 
-/* Payment-charges popup (advance → gateway charges) */
-.pc-overlay{position:fixed;inset:0;background:rgba(10,8,30,.55);backdrop-filter:blur(3px);z-index:3600;display:none;align-items:center;justify-content:center;padding:18px;overscroll-behavior:contain}
-.pc-overlay.open{display:flex}
-.pc-box{background:var(--surface);border-radius:18px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 16px 50px rgba(0,0,0,.28)}
-.pc-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 10px;border-bottom:1px solid var(--border)}
-.pc-title{font-weight:800;font-size:16px;color:var(--pink)}
-.pc-close{background:none;border:none;font-size:18px;color:var(--text3);cursor:pointer;line-height:1}
-.pc-sub{padding:12px 18px 4px;font-size:12px;color:var(--text3);line-height:1.5}
-.pc-body{padding:10px 18px}
-.pc-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--border)}
-.pc-row:last-child{border-bottom:none}
-.pc-row.selected{background:var(--pink-light);border-radius:8px;padding-left:6px;padding-right:6px}
-.pc-check{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text);flex:1;cursor:pointer}
-.pc-check input{width:18px;height:18px;accent-color:var(--pink)}
-.pc-rate{font-size:11px;color:var(--pink-dark);background:var(--pink-light);padding:2px 7px;border-radius:99px;font-weight:700}
-.pc-calc{font-size:13px;font-weight:800;color:var(--green);white-space:nowrap}
-.pc-note{padding:0 18px 4px;font-size:11px;color:var(--text3);line-height:1.5}
-.pc-foot{display:flex;gap:10px;padding:12px 18px 16px}
-.pc-foot button{flex:1;padding:12px;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer}
-.pc-btn-cancel{background:var(--surface2);color:var(--text2)}
-.pc-btn-ok{background:linear-gradient(135deg,var(--green),var(--green-mid));color:#fff}
 /* Read-only due amount field (auto: total − advance) */
 .due-input{background:var(--surface2)!important;color:var(--text2)!important;font-weight:800!important;cursor:not-allowed}
 .due-input:focus{outline:none;border-color:var(--line)}
@@ -2083,7 +2065,6 @@ try{(function(){var s=JSON.parse(localStorage.getItem('nitu-admin-theme-v2')||'n
 :is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) .btn-del{background:rgba(226,105,95,.10);border-color:rgba(226,105,95,.35)}
 :is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) .btn-wa{background:rgba(95,189,130,.10);border-color:rgba(95,189,130,.35);color:#81d68f}
 :is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) .btn-note{color:var(--pink-mid);border-color:var(--pink-soft)}
-:is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) .pc-rate{color:var(--pink-mid)}
 :is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) #alert-banner,
 :is(html.dark,html.t-gold.dark,html.t-ivory.dark,html.t-sage.dark,html.t-rose.dark,html.t-cocoa.dark,html.t-matcha.dark,html.t-ube.dark,html.t-mango.dark,html.t-crust.dark,html.t-pastel.dark,html.t-farm.dark,html.t-cafe.dark) #today-banner{background:var(--surface)}
 /* Dark mode: banner titles + name lists forced to light fonts for visibility */
@@ -2217,37 +2198,6 @@ html.t-cafe.dark{--bg:#121212;--surface:#1a1a1a;--surface2:#232323;--border:#2e2
     <div class="daily-popup-list" id="daily-popup-list"></div>
     <div class="daily-popup-foot">
       <button onclick="App.closeDailyPopup()">ঠিক আছে 👍</button>
-    </div>
-  </div>
-</div>
-
-<!-- Payment charges popup: pick the gateway(s) the advance came through,
-     enter the actual market charge for each — deducted from the payment. -->
-<div class="pc-overlay" id="pay-charge-overlay" onclick="App.closePayChargeBg(event)" role="dialog" aria-modal="true" aria-label="পেমেন্ট চার্জ">
-  <div class="pc-box">
-    <div class="pc-head">
-      <div class="pc-title">💰 পেমেন্ট চার্জ</div>
-      <button class="pc-close" onclick="App.closePayCharge()" aria-label="বন্ধ করুন">✕</button>
-    </div>
-    <div class="pc-sub">অ্যাডভান্স কীভাবে পেয়েছেন? একটি পদ্ধতি বাছাই করুন — সেই পদ্ধতির চার্জ অ্যাডভান্সের সাথে যোগ হয়ে পূর্ণ পরিমাণ দেখাবে।</div>
-    <div class="pc-body" id="pc-body">
-      <div class="pc-row" data-ch="bkash">
-        <label class="pc-check"><input type="radio" name="pc-channel" id="pc-bkash" onclick="App.pcSelect('bkash')"> 📱 bKash <span class="pc-rate">১.৮২%</span></label>
-        <span class="pc-calc" id="pc-bkash-calc">৳0</span>
-      </div>
-      <div class="pc-row" data-ch="nagad">
-        <label class="pc-check"><input type="radio" name="pc-channel" id="pc-nagad" onclick="App.pcSelect('nagad')"> 📱 Nagad <span class="pc-rate">১.৪৯%</span></label>
-        <span class="pc-calc" id="pc-nagad-calc">৳0</span>
-      </div>
-      <div class="pc-row" data-ch="bank">
-        <label class="pc-check"><input type="radio" name="pc-channel" id="pc-bank" onclick="App.pcSelect('bank')"> 🏦 ব্যাংক (NPSB) <span class="pc-rate">ফ্রি</span></label>
-        <span class="pc-calc" id="pc-bank-calc">৳0</span>
-      </div>
-    </div>
-    <div class="pc-note" id="pc-note">পদ্ধতি বাছাই করুন — চার্জসহ মোট পাঠানোর পরিমাণ নিচে দেখাবে।</div>
-    <div class="pc-foot">
-      <button class="pc-btn-cancel" onclick="App.closePayCharge()">বাতিল</button>
-      <button class="pc-btn-ok" onclick="App.applyPayCharge()">✅ ঠিক আছে</button>
     </div>
   </div>
 </div>
@@ -2606,14 +2556,14 @@ html.t-cafe.dark{--bg:#121212;--surface:#1a1a1a;--surface2:#232323;--border:#2e2
           </div>
           <div class="field">
             <label>🚚 ডেলিভারি চার্জ</label>
-            <select id="f-delivery-paid">
+            <select id="f-delivery-paid" onchange="App.totalInput()">
               <option value="unpaid">🔴 বাকি আছে</option>
               <option value="paid">✅ পরিশোধিত</option>
               <option value="na">— প্রযোজ্য নয়</option>
             </select>
           </div>
         </div>
-        <div class="field"><label>ডেলিভারি চার্জের পরিমাণ (৳)</label><input id="f-delivery-amount" type="number" placeholder="60" min="0"></div>
+        <div class="field"><label>ডেলিভারি চার্জের পরিমাণ (৳)</label><input id="f-delivery-amount" type="number" placeholder="60" min="0" oninput="App.totalInput()"></div>
       </div>
 
       <!-- Payment -->
@@ -2626,12 +2576,9 @@ html.t-cafe.dark{--bg:#121212;--surface:#1a1a1a;--surface2:#232323;--border:#2e2
         </div>
 
         <div class="field">
-          <label data-i18n="fPaid">অগ্রিম / প্রদান (৳)</label>
-          <input id="f-paid" type="number" placeholder="0" min="0" oninput="App.advanceInput()" onblur="App.advanceBlur(event)">
+          <label data-i18n="fPaid">অগ্রিম / প্রদান (৳) — পুরো অংক (দশমিক ছাড়া)</label>
+          <input id="f-paid" type="number" placeholder="0" min="0" step="1" oninput="App.advanceInput()" onblur="App.advanceBlur()">
         </div>
-
-        <input id="f-charge-deduct" type="hidden">
-        <input id="f-bkash-charge" type="hidden">
 
         <div class="field" id="due-field" style="display:none">
           <label>বাকি (Due) (৳)</label>
@@ -2743,7 +2690,7 @@ function isIosDevice() {
 }
 </script>
 
-<script src="./app.js?v=2026-09-18-donecdb"></script>
+<script src="./app.js?v=2026-09-20-paysimple"></script>
 
 <!-- PUSH NOTIFICATION SYSTEM (Firebase Cloud Messaging / Web Push) — deferred so
      it never competes with the first orders download on slow networks. -->

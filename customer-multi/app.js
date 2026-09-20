@@ -503,14 +503,16 @@ function renderPreviousOrder() {
   // Recompute the payment figures fresh from the order instead of trusting the
   // stale advanceTotal/dueAmount saved at submit time. This way any payment
   // amount corrected by the bakery (admin edit) is reflected here immediately.
-  // `paid` counts only money that went toward the cake — cash-out fees
-  // (bKash/Nagad) sent with the transfer are excluded, matching the bakery's
-  // own books (admin subtracts the same charge from `paid`).
+  // `paid` counts only money that went toward the cake. For customer-app
+  // orders the cash-out fee (bKash/Nagad) was sent ON TOP of the advance, so
+  // exclude it; for admin manual orders the charge is kept as a note only and
+  // the advance already counts in full — never subtract it there (the bakery
+  // never adds gateway charges to the due).
   const total = Number(order.total != null ? order.total : order.cakePrice) || 0;
   const sent = Number(order.advanceTotal != null ? order.advanceTotal : (order.advance != null ? order.advance : order.paid)) || 0;
   const fee = Number(order.paymentCharges != null ? order.paymentCharges : order.bkashCharge) || 0;
-  const paid = Math.max(0, sent - fee);
-  const due = Math.max(0, total - paid);
+  const paid = Math.max(0, order.source === 'manual' ? sent : sent - fee);
+  const due = Math.round(Math.max(0, total - paid));
   const cake = [order.weightLabel || order.weight, order.flavourName || order.flavour].filter(Boolean).join(' · ') || '—';
   const writing = order.writing || order.cakeWriting || '';
   const deliveryDate = fmtDate(order.deliveryDate || order.date || '') || 'তারিখ নির্ধারিত হয়নি';
