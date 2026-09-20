@@ -2854,6 +2854,21 @@ window.App = (() => {
     // f-paid shows the ADVANCE toward the cake (charge-free), same number
     // the card shows. No charge deduction needed — advance is already clean.
     g('f-paid').value           = advanceOf(o) || '';
+    // Restore the advance payment-method chooser (label saved on manual orders)
+    advMethod = '';
+    if (o.paymentMethod && ADV_METHODS[o.paymentMethod]) advMethod = o.paymentMethod;
+    else if (o.paymentChargesLabel) {
+      const lbl = String(o.paymentChargesLabel);
+      if (/বিকাশ|bkash/i.test(lbl)) advMethod = 'bkash';
+      else if (/নগদ|nagad/i.test(lbl)) advMethod = 'nagad';
+      else if (/ব্যাংক|bank/i.test(lbl)) advMethod = 'bank';
+      else if (/ক্যাশ|cash/i.test(lbl)) advMethod = 'cash';
+    }
+    document.querySelectorAll('#adv-method-grid .adv-method-opt').forEach(el => el.classList.remove('active'));
+    if (advMethod) {
+      const _am = document.getElementById('adv-opt-' + advMethod);
+      if (_am) _am.classList.add('active');
+    }
     updateDueField();
     g('f-trx').value            = o.trx       || '';
     g('f-notes').value          = o.notes     || '';
@@ -3538,6 +3553,27 @@ window.App = (() => {
   const advanceInput = () => updateDueField();
   const advanceBlur  = () => updateDueField();
 
+  // ─── Advance payment-method chooser (INFO ONLY) ──────────────
+  // Same gateways/rates as the customer app. The footnote shows
+  // "base + charge = what the customer sent" purely as information — the
+  // advance always counts in FULL and no charge ever touches the due.
+  const ADV_METHODS = {
+    cash:  { name: 'ক্যাশ',          rate: 0 },
+    bkash: { name: 'বিকাশ',          rate: 0.0182 },
+    nagad: { name: 'নগদ',            rate: 0.0149 },
+    bank:  { name: 'ব্যাংক (NPSB)',  rate: 0 }
+  };
+  let advMethod = '';   // 'cash' | 'bkash' | 'nagad' | 'bank' | ''
+  const payMethodSelect = id => {
+    advMethod = (advMethod === id) ? '' : id;   // tap again to clear
+    document.querySelectorAll('#adv-method-grid .adv-method-opt').forEach(el => el.classList.remove('active'));
+    if (advMethod) {
+      const el = document.getElementById('adv-opt-' + advMethod);
+      if (el) el.classList.add('active');
+    }
+    updateDueField();
+  };
+
   // ─── Read-only due field: due = total − advance, live while typing ───
   // Whole taka only — no gateway charge is ever folded into the due, exactly
   // like the customer app. The hint also reminds that the delivery charge is
@@ -3554,6 +3590,20 @@ window.App = (() => {
     } else {
       wrap.style.display = 'none';
       dueEl.value = '';
+    }
+    const fn = document.getElementById('pay-footnote');
+    if (fn) {
+      const m = ADV_METHODS[advMethod];
+      if (m && advance > 0) {
+        const chg = m.rate > 0 ? Math.ceil(advance * m.rate) : 0;   // same ceil as customer app
+        fn.textContent = chg > 0
+          ? `📱 ${m.name}: ৳${fmtMoney(advance)} + ${m.name} চার্জ ৳${fmtMoney(chg)} = কাস্টমার পাঠিয়েছে ৳${fmtMoney(advance + chg)} — অ্যাডভান্স হিসেবে ৳${fmtMoney(advance)}-ই ধরা হবে, চার্জ কখনো বাকিতে যোগ হয় না।`
+          : `${m.name}: ৳${fmtMoney(advance)} — কোনো চার্জ নেই, পুরোটাই অ্যাডভান্স হিসেবে ধরা হবে।`;
+        fn.classList.add('show');
+      } else {
+        fn.classList.remove('show');
+        fn.textContent = '';
+      }
     }
     const hint = document.getElementById('due-hint');
     if (hint) {
@@ -3690,7 +3740,9 @@ window.App = (() => {
       paid:           paidNum,
       bkashCharge:    0,          // no gateway-charge tracking for manual orders
       paymentCharges: 0,          // (old values on a legacy order are cleared on save)
-      paymentChargesLabel: '',
+      paymentChargesLabel: advMethod ? ADV_METHODS[advMethod].name : '',   // info only
+      paymentMethod:     advMethod || '',
+      paymentMethodName: advMethod ? ADV_METHODS[advMethod].name : '',
       trx:            g('f-trx').value.trim(),
       notes:          g('f-notes').value.trim(),
       status:         g('f-status').value,
@@ -4322,6 +4374,7 @@ window.App = (() => {
     advanceInput,
     advanceBlur,
     totalInput,
+    payMethodSelect,
     markFullyPaid,
     handleLogin,
     handleLogout,
