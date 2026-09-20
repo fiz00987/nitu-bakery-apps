@@ -653,6 +653,44 @@ function removePhoto(i, idx) {
 // ─── Payment screenshot (mandatory proof-of-payment) ───────────
 // Same compressor as reference photos (≤ ~80KB JPEG data URL).
 let payShot = '';
+let payShotVerified = null;   // null = not yet checked · true = looks like a payment receipt · false = suspicious
+
+// ─── In-browser OCR check (Tesseract.js, lazy-loaded) ─────────
+// A fake "payment screenshot" (any random photo) won't contain bKash/Nagad
+// receipt keywords. We OCR the image and look for those signals + a money
+// amount. This NEVER blocks a genuine-but-blurry receipt (OCR is imperfect) —
+// it only flags the order for the admin to recheck.
+const PAY_KEYWORDS = ['bkash', 'bikash', 'বিকাশ', 'nagad', 'নগদ', 'send money', 'সেন্ড মানি',
+  'transaction', 'trx', 'ট্রানজেকশন', 'successful', 'success', 'সফল', 'পাঠানো', 'received',
+  'cash out', 'ক্যাশ', 'bank', 'ব্যাংক', 'account', 'রেফারেন্স', 'reference', 'amount', 'টাকা'];
+
+let _tessPromise = null;
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  if (_tessPromise) return _tessPromise;
+  _tessPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload = () => resolve(window.Tesseract);
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return _tessPromise;
+}
+
+async function verifyPaymentShot(file) {
+  try {
+    const Tesseract = await loadTesseract();
+    const res = await Tesseract.recognize(file, 'eng');
+    const text = (res && res.data && res.data.text ? res.data.text : '').toLowerCase();
+    const hasKeyword = PAY_KEYWORDS.some(k => text.includes(k.toLowerCase()));
+    const hasAmount  = /(৳|tk|bdt|taka)?\s*\d{2,6}/.test(text);
+    return hasKeyword && hasAmount;
+  } catch (e) {
+    console.warn('OCR check failed (harmless, flagged for admin):', e && e.message);
+    return null;
+  }
+}
 
 async function handlePayShot(e) {
   const file = e.target.files && e.target.files[0];
@@ -660,8 +698,18 @@ async function handlePayShot(e) {
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) { showToast('ছবি ৫MB এর কম হতে হবে'); return; }
   try { payShot = await compressImage(file); } catch (_) { showToast('ছবি লোড করা যায়নি'); return; }
+  payShotVerified = null;
   renderPayShot();
   updateProgress();
+  verifyPaymentShot(file).then(ok => {
+    if (payShot === '') return;
+    payShotVerified = ok;
+    if (ok === false) {
+      showToast(lang === 'en'
+        ? '⚠️ This does not look like a payment screenshot. The bakery will verify it before confirming.'
+        : '⚠️ এটি পেমেন্ট স্ক্রিনশট মনে হচ্ছে না। কনফার্মের আগে বেকারি এটি যাচাই করবে।');
+    }
+  });
 }
 function renderPayShot() {
   document.getElementById('payshot-grid').innerHTML = payShot ? `
@@ -672,6 +720,7 @@ function renderPayShot() {
 }
 function removePayShot() {
   payShot = '';
+  payShotVerified = null;
   renderPayShot();
 }
 
@@ -1482,6 +1531,7 @@ async function submitOrder() {
     dueAmount: dueAmount,
     fulfilment: document.getElementById('f-fulfilment').value,
     payShot,
+    payShotVerified: payShotVerified === true,   // OCR-confirmed receipt; false/absent = admin should recheck
     notes: document.getElementById('f-notes') ? document.getElementById('f-notes').value.trim() : '',
     lang: lang,
     source: 'customer',

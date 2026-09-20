@@ -1363,7 +1363,7 @@ window.App = (() => {
       ${o.source === 'customer' && o.advance ? `<div class="pay-note">📱 কাস্টমার অগ্রিম: ৳${fmtMoney(o.advance)}${o.advanceCharge > 0 ? ` (+চার্জ ৳${fmtMoney(o.advanceCharge)})` : ''} = ৳${fmtMoney(o.advanceTotal)}${o.trx ? ` | ট্রানজেকশন: ${esc(o.trx)}` : ''}</div>` : ''}
       ${o.source === 'customer' && o.advance
         ? (o.payShot
-          ? `<div class="card-photo-wrap" style="margin-top:8px"><div class="pay-note">💳 পেমেন্ট স্ক্রিনশট — ট্যাপ করলে বড় হবে</div><img class="card-photo" src="${o.payShot}" onclick="event.stopPropagation();App.openPayShot('${fk}')" alt="পেমেন্ট স্ক্রিনশট" loading="lazy"></div>`
+          ? `${o.payShotVerified === false ? `<div class="overdue-alert">⚠️ স্ক্রিনশট অটো-চেক পাস করেনি — পেমেন্ট যাচাই করে কনফার্ম করুন</div>` : ''}<div class="card-photo-wrap" style="margin-top:8px"><div class="pay-note">💳 পেমেন্ট স্ক্রিনশট — ট্যাপ করলে বড় হবে</div><img class="card-photo" src="${o.payShot}" onclick="event.stopPropagation();App.openPayShot('${fk}')" alt="পেমেন্ট স্ক্রিনশট" loading="lazy"></div>`
           : `<div class="overdue-alert">⚠️ পেমেন্ট স্ক্রিনশট নেই — পেমেন্ট ছাড়া জমা দেওয়া অর্ডার!</div>`)
         : ''}
     </div>
