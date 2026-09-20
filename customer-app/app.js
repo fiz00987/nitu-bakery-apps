@@ -1403,13 +1403,20 @@ function dcIsAutoEstimate() {
 
 function parseWeightText(raw) {
   const text = String(raw || '').trim().toLowerCase().replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
-  const m = text.match(/([\d]+(?:\.\d+)?)\s*(grams?|gm|gms|গ্রাম|kg|কেজি|kilos?|kilograms?|pounds?|lbs|lb|পাউন্ড)?/);
+  const m = text.match(/([\d]+(?:\.\d+)?)\s*(grams?|gms?|gm|গ্রাম|kilograms?|kilos?|kg|কেজি|pounds?|lbs?|lb|পাউন্ড)?/);
   if (!m) return null;
   const num = parseFloat(m[1]);
   if (!num || num <= 0) return null;
-  const unitRaw = m[2] || '';
+  let unitRaw = (m[2] || '').trim();
+  // Safety fallback: if the regex missed the unit (e.g. extra words around
+  // it), detect it from the full text so "200 gram" can NEVER read as pound.
+  if (!unitRaw) {
+    if (/grams?|gms?\b|gm\b|গ্রাম/.test(text)) unitRaw = 'gram';
+    else if (/kilograms?|kilos?|kg|কেজি/.test(text)) unitRaw = 'kg';
+    else if (/pounds?|lbs?|lb|পাউন্ড/.test(text)) unitRaw = 'pound';
+  }
   const isKg = /kg|কেজি|kilo/.test(unitRaw);
-  const isGram = !isKg && /^(grams?|gms?|gm|গ্রাম)$/.test(unitRaw.trim());
+  const isGram = !isKg && /gram|gms?|gm|গ্রাম/.test(unitRaw);
   if (!isKg && !isGram && num > 200) return null;      // pounds capped at 200
   if (isKg && num > 100) return null;                  // KG capped at 100
   if (isGram && num > 100000) return null;             // grams capped at 100 KG
@@ -1421,15 +1428,10 @@ function updateWeightHint() {
   if (!el) return;
   const raw = document.getElementById('f-weight').value;
   const p = parseWeightText(raw);
-  if (!p) { el.textContent = ''; el.dataset.mode = ''; el.dataset.unit=''; return; }
-  const curUnit = p.isGram ? 'g' : p.isKg ? 'kg' : 'lb';
-  // Unit changed (e.g. pound → gram via unit popup) → back to default mode
-  if (el.dataset.unit && el.dataset.unit !== curUnit) el.dataset.mode = '';
-  el.dataset.unit = curUnit;
-  const mode = el.dataset.mode || 'auto';
+  if (!p) { el.textContent = ''; return; }
+  // ALWAYS show both conversions — nothing irrelevant, no tap needed:
+  // 200 gram = 0.20 KG = 0.44 pound · 2 pound = 0.91 KG = 907 gram · 2 KG = 4.41 pound = 2000 gram
   if (p.isGram) {
-    // Gram always shows BOTH conversions so nothing looks irrelevant:
-    // 300 gram = 0.30 KG = 0.66 pound
     const kg = (p.num / 1000);
     const lb = (p.num / 453.592);
     el.textContent = lang === 'en'
@@ -1438,35 +1440,23 @@ function updateWeightHint() {
     return;
   }
   if (p.isKg) {
-    // KG → pound by default, tap the hint to flip to KG → gram
-    if (mode === 'alt') {
-      el.textContent = lang === 'en'
-        ? `${p.num} KG = ${Math.round(p.num * 1000)} gram`
-        : `${p.num} KG = ${Math.round(p.num * 1000)} গ্রাম`;
-    } else {
-      el.textContent = `${p.num} KG = ${(p.num * 2.20462).toFixed(1)} pound`;
-    }
+    const lb = (p.num * 2.20462);
+    const g = Math.round(p.num * 1000);
+    el.textContent = lang === 'en'
+      ? `${p.num} KG = ${lb.toFixed(2)} pound = ${g} gram`
+      : `${p.num} KG = ${lb.toFixed(2)} পাউন্ড = ${g} গ্রাম`;
     return;
   }
-  // pound → KG by default, tap the hint to flip to pound → gram
-  if (mode === 'alt') {
-    el.textContent = lang === 'en'
-      ? `${p.num} pound = ${Math.round(p.num * 453.592)} gram`
-      : `${p.num} পাউন্ড = ${Math.round(p.num * 453.592)} গ্রাম`;
-  } else {
-    el.textContent = lang === 'en'
-      ? `${p.num} pound = ${(p.num / 2.20462).toFixed(2)} KG`
-      : `${p.num} পাউন্ড = ${(p.num / 2.20462).toFixed(2)} KG`;
-  }
+  const kg = (p.num / 2.20462);
+  const g = Math.round(p.num * 453.592);
+  el.textContent = lang === 'en'
+    ? `${p.num} pound = ${kg.toFixed(2)} KG = ${g} gram`
+    : `${p.num} পাউন্ড = ${kg.toFixed(2)} KG = ${g} গ্রাম`;
 }
 
-// Tap the footnote to switch the conversion mode:
-// pound ⇄ gram, KG ⇄ gram (gram itself always shows both).
+// Kept as no-op (footnote no longer needs tapping — both conversions always show).
 function toggleWeightHintMode() {
-  const el = document.getElementById('weight-hint');
-  if (!el || !el.textContent) return;
-  el.dataset.mode = (el.dataset.mode === 'alt') ? '' : 'alt';
-  updateWeightHint();
+  return;
 }
 
 // Admin can correct any zone price without code changes: write
