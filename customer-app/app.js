@@ -1050,8 +1050,11 @@ function maybeConvertToMini() {
   const grams = weightInGrams(p);
   if (grams == null || grams > 300) return false;   // above 300 g → stays a normal cake
   // At/below 300 g → mini cake: show the info popup, OK applies the lock.
+  // (isFullOnlyPayment() already counts miniPending, so 50% locks instantly.)
   miniPending = true;
   miniNoticeShown = false;
+  syncFullOnlyPayment();
+  recalcPrice();
   showMiniCakeInfo();
   return true;
 }
@@ -1087,12 +1090,14 @@ function confirmMiniCake() {
     : 'মিনি কেক — ডেলিভারি চার্জসহ ১০০% পেমেন্ট');
 }
 
-// A payment that is ALWAYS full: surprise cakes and mini cakes. For these the
-// total counts the 100% cake price PLUS the delivery charge. Everything else
-// (normal cake, not surprise) keeps the normal 50% / 100% choice.
+// A payment that is ALWAYS full: surprise cakes and mini cakes (also while
+// the mini-convert popup is still pending — 50% must lock right away). For
+// these the total counts the 100% cake price PLUS the delivery charge.
+// Everything else (normal cake, not surprise) keeps the normal 50% / 100% choice.
 function isFullOnlyPayment() {
   if (isSurprise) return true;
   if (getCakeKind() === 'mini') return true;
+  if (miniPending) return true;   // ≤300 g detected, OK popup open → lock now
   return false;
 }
 
@@ -1636,7 +1641,21 @@ function onFulfilmentChange() {
     autoDeliveryCharge();
   }
   document.getElementById('f-address').required = !pickup;
-  if (pickup) document.getElementById('f-address').value = 'Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram';
+  const addr = document.getElementById('f-address');
+  if (addr) {
+    if (pickup) {
+      // Self pickup: keep the address BLANK + greyed out (shop address is
+      // already shown in the pickup info box above — never overwrite it).
+      addr.disabled = true;
+      addr.classList.add('locked-field');
+      addr.placeholder = 'প্রযোজ্য নয় — সেলফ পিকআপ';
+      addr.value = '';
+    } else {
+      addr.disabled = false;
+      addr.classList.remove('locked-field');
+      addr.placeholder = 'পূর্ণ ঠিকানা লিখুন';
+    }
+  }
   recalcPrice();
 }
 
@@ -1835,8 +1854,9 @@ async function submitOrder() {
     photoNote: document.getElementById('f-photo-note').value.trim(),
     writing: document.getElementById('f-writing').value.trim(),
     cakeWriting: document.getElementById('f-writing').value.trim(),
-    address: document.getElementById('f-address').value.trim(),
-    deliveryAddress: document.getElementById('f-address').value.trim(),
+    // Self pickup: don't store the pickup-address text — admin sees fulfilment=pickup
+    address: document.getElementById('f-fulfilment').value === 'pickup' ? 'সেলফ পিকআপ' : document.getElementById('f-address').value.trim(),
+    deliveryAddress: document.getElementById('f-fulfilment').value === 'pickup' ? 'সেলফ পিকআপ' : document.getElementById('f-address').value.trim(),
     date: document.getElementById('f-date').value,
     deliveryDate: document.getElementById('f-date').value,
     timeSlot: timeSlot,
