@@ -756,9 +756,23 @@ function removePayShot() {
   renderPayShot();
 }
 
-// Payment change
+// Payment change — the grid (bKash/Nagad/Bank buttons) is the picker;
+// the hidden select is only kept in sync for the charge math + submit.
 function onPaymentChange() {
   const methodId = document.getElementById('f-payment-method').value;
+  showPaymentInfo(methodId);
+  // Keep the button grid in sync if the select was changed programmatically.
+  if (methodId) {
+    advanceMethod = methodId;
+    document.querySelectorAll('.adv-method-opt').forEach(el => el.classList.remove('active'));
+    const gridOpt = document.getElementById('adv-opt-' + methodId);
+    if (gridOpt) gridOpt.classList.add('active');
+  }
+  recalcPrice();
+}
+
+// Number / account details shown right below the buttons.
+function showPaymentInfo(methodId) {
   const info = document.getElementById('payment-info');
   const method = getPaymentMethod(methodId);
   if (method && method.number) {
@@ -769,16 +783,8 @@ function onPaymentChange() {
     info.classList.add('show');
   } else {
     info.classList.remove('show');
+    info.innerHTML = '';
   }
-  // Keep the "How did you pay?" mirror in sync if the select was changed
-  // manually (the select remains the source of truth for the charge).
-  if (advanceMethod && methodId && advanceMethod !== methodId) {
-    advanceMethod = methodId;
-    document.querySelectorAll('.adv-method-opt').forEach(el => el.classList.remove('active'));
-    const gridOpt = document.getElementById('adv-opt-' + methodId);
-    if (gridOpt) gridOpt.classList.add('active');
-  }
-  recalcPrice();
 }
 
 function copyValue(value) {
@@ -1090,12 +1096,8 @@ function setAdvanceType(type) {
   lastAutoSend = 0; lastAutoBase = 0;
   const price = parseFloat(document.getElementById('f-cake-price').value) || 0;
   if (price <= 0) document.getElementById('f-advance').value = '';
-  // Ask HOW the advance is being sent (bKash/Nagad/Bank) before calculating
-  // the charge-inclusive amount. The chooser popup opens right away.
-  if (!advanceMethod) {
-    openAdvanceMethodPopup();
-    return;
-  }
+  // No popup: the gateway is picked from the inline payment section
+  // (method select + bKash/Nagad/Bank grid) — recalc right away.
   recalcPrice(); // auto path fills the grey box with the charge-inclusive amount
 }
 
@@ -1134,35 +1136,52 @@ function onAdvanceClick() {
 }
 
 // ─── "How did you pay?" gateway chooser ──────────────────────
-// Auto-opens as a popup right after an advance option (50%/100%) is tapped,
-// and is mirrored as a field above the amount box so it can be changed.
-// bKash/Nagad add their cash-out % on top of the advance (shown in the
-// amount box); Bank adds nothing. Saved with the order on submit.
+// DISABLED popup: the gateway is picked from the inline payment section
+// (method select + bKash/Nagad/Bank grid above the amount box).
+// Kept as no-ops so old onclick handlers can't open anything.
 function openAdvanceMethodPopup() {
-  document.getElementById('adv-method-popup').classList.add('show');
+  return;
 }
 
 function closeAdvanceMethodPopup(event) {
   const pop = document.getElementById('adv-method-popup');
-  if (event && event.target !== pop) return; // only the overlay itself or the X
-  pop.classList.remove('show');
+  if (pop) pop.classList.remove('show');
 }
 
 function chooseAdvanceMethod(id) {
   const m = getPaymentMethod(id);
   if (!m) return;
   advanceMethod = id;
-  document.getElementById('adv-method-popup').classList.remove('show');
+  const pop = document.getElementById('adv-method-popup');
+  if (pop) pop.classList.remove('show');
   document.querySelectorAll('.adv-method-opt').forEach(el => el.classList.remove('active'));
   const gridOpt = document.getElementById('adv-opt-' + id);
   if (gridOpt) gridOpt.classList.add('active');
-  // Keep the gateway select (number/name shown to the customer) in sync —
-  // its rate is what recalcPrice adds on top of the advance, and submitting
-  // needs the select filled anyway.
+  // Hidden select stays in sync (charge math + submit read it),
+  // details render right below the buttons.
   const sel = document.getElementById('f-payment-method');
-  if (sel.value !== id) { sel.value = id; onPaymentChange(); }
+  if (sel && sel.value !== id) {
+    sel.value = id;
+    // Fill its options if empty (options were built for the old dropdown)
+    if (!sel.options.length || sel.options.length <= 1) fillPaymentOptions();
+    sel.value = id;
+  }
+  showPaymentInfo(id);
   if (advanceType) recalcPrice();
   updateProgress();
+}
+
+// Options for the (now hidden) select — kept so charge math + order save keep working.
+function fillPaymentOptions() {
+  const sel = document.getElementById('f-payment-method');
+  if (!sel) return;
+  if (sel.options.length > 1) return;
+  PAYMENT_METHODS.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.id;
+    o.textContent = lang === 'en' ? p.nameEn : p.name;
+    sel.appendChild(o);
+  });
 }
 
 function showAdvanceWarn() {
@@ -1338,7 +1357,7 @@ function dcWeightExtra() {
   if (kind === 'mini') return 0;
   const p = parseWeightText(document.getElementById('f-weight').value);
   if (!p) return 0;
-  const lb = p.isKg ? p.num * 2.2 : p.num;
+  const lb = p.isGram ? p.num / 453.592 : p.isKg ? p.num * 2.2 : p.num;
   if (lb <= 1.6) return 0;
   if (lb <= 2.6) return 20;
   if (lb <= 3.6) return 80;
@@ -1379,15 +1398,55 @@ function parseWeightText(raw) {
 
 function updateWeightHint() {
   const el = document.getElementById('weight-hint');
-  const p = parseWeightText(document.getElementById('f-weight').value);
-  if (!p) { el.textContent = ''; return; }
+  if (!el) return;
+  const raw = document.getElementById('f-weight').value;
+  const p = parseWeightText(raw);
+  if (!p) { el.textContent = ''; el.dataset.mode = ''; el.dataset.unit=''; return; }
+  const curUnit = p.isGram ? 'g' : p.isKg ? 'kg' : 'lb';
+  // Unit changed (e.g. pound → gram via unit popup) → back to default mode
+  if (el.dataset.unit && el.dataset.unit !== curUnit) el.dataset.mode = '';
+  el.dataset.unit = curUnit;
+  const mode = el.dataset.mode || 'auto';
   if (p.isGram) {
+    // Gram always shows BOTH conversions so nothing looks irrelevant:
+    // 300 gram = 0.30 KG = 0.66 pound
+    const kg = (p.num / 1000);
+    const lb = (p.num / 453.592);
     el.textContent = lang === 'en'
-      ? `${p.num} gram = ${(p.num / 1000).toFixed(2)} KG`
-      : `${p.num} গ্রাম = ${(p.num / 1000).toFixed(2)} KG`;
+      ? `${p.num} gram = ${kg.toFixed(2)} KG = ${lb.toFixed(2)} pound`
+      : `${p.num} গ্রাম = ${kg.toFixed(2)} KG = ${lb.toFixed(2)} পাউন্ড`;
     return;
   }
-  el.textContent = p.isKg ? `${p.num} KG = ${(p.num * 2.20462).toFixed(1)} pound` : `${p.num} pound = ${(p.num / 2.20462).toFixed(2)} KG`;
+  if (p.isKg) {
+    // KG → pound by default, tap the hint to flip to KG → gram
+    if (mode === 'alt') {
+      el.textContent = lang === 'en'
+        ? `${p.num} KG = ${Math.round(p.num * 1000)} gram`
+        : `${p.num} KG = ${Math.round(p.num * 1000)} গ্রাম`;
+    } else {
+      el.textContent = `${p.num} KG = ${(p.num * 2.20462).toFixed(1)} pound`;
+    }
+    return;
+  }
+  // pound → KG by default, tap the hint to flip to pound → gram
+  if (mode === 'alt') {
+    el.textContent = lang === 'en'
+      ? `${p.num} pound = ${Math.round(p.num * 453.592)} gram`
+      : `${p.num} পাউন্ড = ${Math.round(p.num * 453.592)} গ্রাম`;
+  } else {
+    el.textContent = lang === 'en'
+      ? `${p.num} pound = ${(p.num / 2.20462).toFixed(2)} KG`
+      : `${p.num} পাউন্ড = ${(p.num / 2.20462).toFixed(2)} KG`;
+  }
+}
+
+// Tap the footnote to switch the conversion mode:
+// pound ⇄ gram, KG ⇄ gram (gram itself always shows both).
+function toggleWeightHintMode() {
+  const el = document.getElementById('weight-hint');
+  if (!el || !el.textContent) return;
+  el.dataset.mode = (el.dataset.mode === 'alt') ? '' : 'alt';
+  updateWeightHint();
 }
 
 // Admin can correct any zone price without code changes: write
@@ -1670,7 +1729,7 @@ function validate() {
   }
   if (!advanceMethod) {
     showToast(lang === 'en' ? 'Select the payment method (bKash / Nagad / Bank)' : 'আপনি কিভাবে পেমেন্ট করেছেন সেটা নির্বাচন করুন');
-    openAdvanceMethodPopup();
+    document.getElementById('adv-method-grid').scrollIntoView({ block: 'center', behavior: 'smooth' });
     return false;
   }
   const timeError = getTimeError();

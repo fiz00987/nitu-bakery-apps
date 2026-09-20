@@ -365,7 +365,7 @@ html.t-gold .order-number-badge{color:#a5813e}
         <button type="button" title="বেস মূল্য নির্দেশিকা / Base price guide" onclick="showTextPopup('base price.txt', 'বেস মূল্য নির্দেশিকা')" style="background:none;border:none;font-size:13px;line-height:1;cursor:pointer;padding:0 2px;color:var(--pink)">❗</button>
       </div>
       <input type="text" id="f-weight" placeholder="যেমন: 2 pound, 2.5 pound, 1 KG" data-bn-placeholder="যেমন: 2 pound, 2.5 pound, 1 KG" data-en-placeholder="Example: 2 pound, 2.5 pound, 1 KG" autocomplete="off" oninput="updateWeightHint();recalcPrice();autoDeliveryCharge()">
-      <div class="hint-box" id="weight-hint"></div>
+      <div class="hint-box" id="weight-hint" onclick="toggleWeightHintMode()" title="ট্যাপ করলে রূপান্তর বদলাবে / Tap to switch conversion" style="cursor:pointer"></div>
     </div>
     <div class="field">
       <div style="display:flex;align-items:center;gap:5px">
@@ -470,19 +470,17 @@ html.t-gold .order-number-badge{color:#a5813e}
     </div>
     <div class="field">
       <label data-bn="পেমেন্ট পদ্ধতি *" data-en="Payment Method *">পেমেন্ট পদ্ধতি *</label>
-      <select id="f-payment-method" onchange="onPaymentChange()">
+      <!-- Hidden: kept so old saved logic still has a value; the grid below is the real picker -->
+      <select id="f-payment-method" onchange="onPaymentChange()" style="display:none" aria-hidden="true" tabindex="-1">
         <option value="">নির্বাচন করুন</option>
       </select>
-    </div>
-    <div class="payment-info-box" id="payment-info"></div>
-    <div class="field">
-      <label data-bn="আপনি কিভাবে পেমেন্ট করেছেন? *" data-en="Payment method *">আপনি কিভাবে পেমেন্ট করেছেন? *</label>
       <div class="adv-method-grid" id="adv-method-grid">
         <div class="adv-method-opt" id="adv-opt-bkash" onclick="chooseAdvanceMethod('bkash')">বিকাশ<small>চার্জ ১.৮২%</small></div>
         <div class="adv-method-opt" id="adv-opt-nagad" onclick="chooseAdvanceMethod('nagad')">নগদ<small>চার্জ ১.৪৯%</small></div>
         <div class="adv-method-opt" id="adv-opt-bank" onclick="chooseAdvanceMethod('bank')">ব্যাংক<small>চার্জ নেই</small></div>
       </div>
     </div>
+    <div class="payment-info-box" id="payment-info"></div>
     <div class="field">
       <label data-bn="আপনি কত টাকা পাঠাতে চান? *" data-en="How much do you want to send? *">আপনি কত টাকা পাঠাতে চান? *</label>
       <div class="advance-options" id="advance-options">
@@ -569,8 +567,9 @@ html.t-gold .order-number-badge{color:#a5813e}
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
 <div class="toast" id="toast"></div>
 
-<!-- "How did you pay?" popup — auto-opens after an advance option is picked -->
-<div class="popup-overlay" id="adv-method-popup" onclick="closeAdvanceMethodPopup(event)">
+<!-- "How did you pay?" popup — DISABLED (gateway is picked from the inline
+     payment section). Block kept hidden so no popup can ever open. -->
+<div class="popup-overlay" id="adv-method-popup" style="display:none!important" onclick="closeAdvanceMethodPopup(event)">
   <div class="popup" style="max-width:400px" role="dialog" aria-modal="true" aria-labelledby="adv-method-popup-title">
     <div class="popup-header"><h3 id="adv-method-popup-title" style="font-size:16px" data-bn="💰 কীভাবে পরিশোধ করবেন?" data-en="💰 How will you pay?">💰 কীভাবে পরিশোধ করবেন?</h3><button type="button" class="popup-close" onclick="closeAdvanceMethodPopup()">×</button></div>
     <div class="popup-content" style="font-size:13.5px">
