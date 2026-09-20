@@ -37,6 +37,12 @@ window.App = (() => {
   // Calendar off-days: map of 'YYYY-MM-DD' → { reason, by, createdAt }.
   const offDaysRef = db.ref('offDays');
   const quotesRef = db.ref('quotes');
+  // Day booking counters (/dayBooks): written by the ADMIN app from its live
+  // orders snapshot so customers can check a small per-day number instead of
+  // downloading every order. { 'YYYY-MM-DD': { booked: N, limit: M|null } }
+  const dayBooksRef = db.ref('dayBooks');
+  let dayBooks = {};
+  let lastDayBooksFp = '';
 
   // ─── State ───────────────────────────────────────────────────
   let orders        = [];
@@ -773,6 +779,12 @@ window.App = (() => {
         offDays = snap.val() || {};
         renderCalendar();
       }, err => console.error('Off-day listener error:', err)));
+      // Day booking counters (/dayBooks read-only here) — refresh the calendar
+      // whenever another device (or a past admin session) changes a limit.
+      idleRun(() => dayBooksRef.on('value', snap => {
+        dayBooks = snap.val() || {};
+        renderCalendar();
+      }, err => console.error('DayBooks listener error:', err)));
     } else {
       // User is signed out - show login screen
       document.getElementById('login-screen').classList.remove('hidden');
@@ -1698,12 +1710,15 @@ window.App = (() => {
     const isActiveCalendarOrder = o => !['delivered', 'cancelled', 'completed', 'complete']
       .includes(String(o.status || '').toLowerCase());
     const counts = {};
+    const dayBookCounts = {};
     orders.forEach(o => {
       if (!isActiveCalendarOrder(o) || !o.date) return;
       const d = toDate(o.date);
       if (Number.isNaN(d.getTime())) return;
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
       counts[key] = (counts[key] || 0) + 1;
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      dayBookCounts[iso] = (dayBookCounts[iso] || 0) + 1;
     });
 
     const y = calCursor.getFullYear(), m = calCursor.getMonth();
@@ -1719,30 +1734,68 @@ window.App = (() => {
       const isoKey = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const off    = offDays[isoKey];
       const n      = counts[`${y}-${m}-${day}`] || 0;
+      const dayLimit = (dayBooks[isoKey] && typeof dayBooks[isoKey].limit === 'number') ? dayBooks[isoKey].limit : null;
       // Marking system: 1 order = green, 2 = orange, 3 = red,
-      // an off-day shows ✕ and always wins over the order colours.
-      const cls = off ? 'c-off' : n === 0 ? 'c-0' : n === 1 ? 'c-ok' : n === 2 ? 'c-warn' : 'c-bad';
+      // an off-day ✕ or a reached limit 🔒 always wins over the order colours.
+      const limitHit = dayLimit != null && dayLimit >= 0 && n >= dayLimit;
+      const cls = (off || limitHit) ? (off ? 'c-off' : 'c-full') : n === 0 ? 'c-0' : n === 1 ? 'c-ok' : n === 2 ? 'c-warn' : 'c-bad';
       const isToday = (today.getFullYear() === y && today.getMonth() === m && today.getDate() === day);
       const orderLabel = n === 1 ? '১টি অর্ডার' : `${n}টি অর্ডার`;
+      const limitLine = dayLimit != null
+        ? (n >= dayLimit ? ` — সীমা পূর্ণ (${n}/${dayLimit}) 🔒` : ` — সীমা ${n}/${dayLimit}`)
+        : '';
       const title = off
         ? `${isoKey} — বন্ধ${off.reason ? ' (' + off.reason + ')' : ''} — ট্যাপ করে খুলুন`
-        : `${day} তারিখে ${orderLabel} — ট্যাপ করে বন্ধের দিন সেট করুন`;
+        : limitHit
+          ? `${day} তারিখে ${orderLabel}${limitLine} — ট্যাপ করে সীমা বদলান/খুলুন`
+          : `${day} তারিখে ${orderLabel}${limitLine} — ট্যাপ করে সীমা/বন্ধ সেট করুন`;
       html += `<div class="minical-cell ${cls}${isToday ? ' today' : ''}" title="${esc(title)}" aria-label="${esc(title)}"` +
               ` onclick="App.calDayClick('${isoKey}')" role="button" tabindex="0">` +
               (off
                 ? `<span class="mc-x">✕</span>`
-                : `<span class="mc-day">${day}</span>`) +
+                : limitHit
+                  ? `<span class="mc-day">${day} 🔒</span>`
+                  : `<span class="mc-day">${day}</span>${dayLimit != null ? `<span class="mc-limit">${n}/${dayLimit}</span>` : ''}`) +
               `</div>`;
     }
 
     document.getElementById('cal-title').textContent = calLabel();
     document.getElementById('cal-grid').innerHTML = html;
+    syncDayBooks(dayBookCounts);
+  };
+
+  // ─── Day booking counters → /dayBooks (customers read these) ───
+  // The admin app owns the counts (it has every order). Merge the live
+  // booked-counts with the stored limits, write only when something changed,
+  // and prune dates older than 7 days so the node stays tiny.
+  const syncDayBooks = dayBookCounts => {
+    try {
+      const now = new Date();
+      const weekAgo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate() - 7).padStart(2, '0')}`;
+      const merged = {};
+      Object.keys(dayBookCounts).forEach(iso => {
+        if (iso < weekAgo) return;
+        const prev = (dayBooks && dayBooks[iso]) || {};
+        merged[iso] = { booked: dayBookCounts[iso] };
+        if (typeof prev.limit === 'number') merged[iso].limit = prev.limit;
+      });
+      Object.keys(dayBooks || {}).forEach(iso => {
+        if (iso < weekAgo) return;                    // prune old dates
+        if (merged[iso]) return;                      // already has fresh count
+        const prev = dayBooks[iso] || {};
+        if (typeof prev.limit === 'number') merged[iso] = { booked: 0, limit: prev.limit };
+      });
+      const fp = JSON.stringify(merged);
+      if (fp === lastDayBooksFp) return;              // nothing changed — skip write
+      lastDayBooksFp = fp;
+      dayBooksRef.set(merged).catch(err => console.error('[dayBooks] sync failed:', err && err.message));
+    } catch (e) { console.error('[dayBooks] sync failed:', e && e.message); }
   };
 
   // ─── Off-day marking (calendar cells) ────────────────────────
   const calDayClick = isoKey => {
     if (offDays[isoKey]) {
-      // Already an off-day: tap removes it (orders show again)
+      // Already an off-day ✕: tap removes it (orders show again)
       showConfirm(
         `${isoKey} — বন্ধ সরাবেন? ✕→📅`,
         offDays[isoKey].reason ? `কারণ: ${offDays[isoKey].reason}\n\nসরালে এই দিনে আবার অর্ডার নেওয়া যাবে।` : 'সরালে এই দিনে আবার অর্ডার নেওয়া যাবে।',
@@ -1757,12 +1810,54 @@ window.App = (() => {
       );
       return;
     }
-    // Not an off-day yet: open the reason dialog
+    // Not closed yet: open the day-door dialog (full / limited / off / open)
+    openOffdayDialog(isoKey);
+  };
+
+  // ─── Day-door dialog: FULL 🔒 · LIMIT 🔢 · OFF ✕ · OPEN back ──
+  let offdayMode = 'off';   // 'full' | 'limit' | 'off'
+  const openOffdayDialog = isoKey => {
     offdayCbDate = isoKey;
+    const entry = dayBooks[isoKey] || {};
+    const booked = (orders || []).filter(o => {
+      if (!o.date) return false;
+      const d = toDate(o.date);
+      if (Number.isNaN(d.getTime())) return false;
+      const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (k !== isoKey) return false;
+      return !['delivered', 'cancelled', 'completed', 'complete'].includes(String(o.status || '').toLowerCase());
+    }).length;
+    const curLimit = typeof entry.limit === 'number' ? entry.limit : '';
+    const offEntry = offDays[isoKey];
     document.getElementById('offday-date-label').textContent =
-      isoKey + ' — এই দিনে অর্ডার নেওয়া হবে না (ক্যালেন্ডারে ✕ দেখাবে)';
-    document.getElementById('offday-reason').value = '';
+      `${isoKey} — এই দিনে এখন ${booked}টি অর্ডার আছে`;
+    document.getElementById('offday-reason').value = (offEntry && offEntry.reason) || '';
+    document.getElementById('offday-limit').value = curLimit === '' ? '' : String(curLimit);
+    document.getElementById('offday-limit-hint').textContent =
+      `এখন ${booked}টি বুকড — সীমা ${booked}-এর নিচে দিলে দরজা সাথে সাথে বন্ধ 🔒`;
+    offdayMode = 'off';
+    ['offday-mode-full', 'offday-mode-limit', 'offday-mode-off'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.classList.remove('active');
+    });
+    document.getElementById('offday-mode-off').classList.add('active');
+    document.getElementById('offday-limit-wrap').style.display = 'none';
     document.getElementById('offday-overlay').classList.add('open');
+  };
+
+  const offdayPickMode = mode => {
+    offdayMode = mode;
+    ['offday-mode-full', 'offday-mode-limit', 'offday-mode-off'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.classList.toggle('active', id === 'offday-mode-' + mode);
+    });
+    document.getElementById('offday-limit-wrap').style.display = mode === 'limit' ? '' : 'none';
+  };
+
+  const offdayLimitStep = d => {
+    const el = document.getElementById('offday-limit');
+    const cur = parseInt(el.value, 10);
+    el.value = String(Math.max(1, Math.min(10, (Number.isNaN(cur) ? 0 : cur) + d)));
   };
 
   const closeOffday = () => {
@@ -1770,17 +1865,63 @@ window.App = (() => {
     offdayCbDate = null;
   };
 
+  // 🔓 Re-open a FULL/limited day: clears limit (+ the ✕ too, if any),
+  // so the door is fully open again.
+  const saveOffdayDayOpen = () => {
+    if (!offdayCbDate) { closeOffday(); return; }
+    const isoKey = offdayCbDate;
+    setSyncStatus('syncing', 'খোলা হচ্ছে...');
+    Promise.all([
+      dayBooksRef.child(isoKey).child('limit').remove().catch(() => {}),
+      offDaysRef.child(isoKey).remove().catch(() => {})
+    ]).then(() => {
+      setSyncStatus('ok');
+      showToast(`🔓 ${isoKey} — দরজা খোলা, আবার অর্ডার নেওয়া যাবে`);
+    }).catch(() => {
+      setSyncStatus('error', '❌ সংরক্ষণ ব্যর্থ');
+      showToast('❌ খোলা যায়নি — আবার চেষ্টা করুন');
+    });
+    closeOffday();
+  };
+
   const saveOffday = () => {
     if (!offdayCbDate) { closeOffday(); return; }
+    const isoKey = offdayCbDate;
     const reason = document.getElementById('offday-reason').value.trim();
+    const limitRaw = parseInt((document.getElementById('offday-limit') || {}).value, 10);
     setSyncStatus('syncing', 'সেভ হচ্ছে...');
-    offDaysRef.child(offdayCbDate).set({
-      reason:    reason,
-      by:        currentUser ? (currentUser.email || '') : '',
-      createdAt: Date.now()
-    }).then(() => {
+    const jobs = [];
+    if (offdayMode === 'off') {
+      // ❌ Whole day off — writes the legacy /offDays entry (customers + calendar see ✕)
+      jobs.push(offDaysRef.child(isoKey).set({
+        reason:    reason,
+        by:        currentUser ? (currentUser.email || '') : '',
+        createdAt: Date.now()
+      }));
+      jobs.push(dayBooksRef.child(isoKey).child('limit').remove().catch(() => {}));
+      jobs.push(dayBooksRef.child(isoKey).update({ booked: (dayBooks[isoKey] && dayBooks[isoKey].booked) || 0 }).catch(() => {}));
+    } else if (offdayMode === 'full') {
+      // 🔒 Orders off — booked count stays, no new orders (customers see 🔒 full)
+      jobs.push(dayBooksRef.child(isoKey).update({
+        booked: (dayBooks[isoKey] && dayBooks[isoKey].booked) || 0,
+        limit:  0
+      }));
+      jobs.push(offDaysRef.child(isoKey).remove().catch(() => {}));
+    } else {
+      // 🔢 Limited — at most N orders that day
+      const limit = Number.isNaN(limitRaw) ? 0 : Math.max(0, Math.min(10, limitRaw));
+      jobs.push(dayBooksRef.child(isoKey).update({
+        booked: (dayBooks[isoKey] && dayBooks[isoKey].booked) || 0,
+        limit:  limit
+      }));
+      jobs.push(offDaysRef.child(isoKey).remove().catch(() => {}));
+    }
+    Promise.all(jobs).then(() => {
       setSyncStatus('ok');
-      showToast(`✅ ${offdayCbDate} বন্ধ হিসেবে চিহ্নিত হয়েছে ✕`);
+      const label = offdayMode === 'off' ? `✅ ${isoKey} বন্ধ হিসেবে চিহ্নিত হয়েছে ✕`
+        : offdayMode === 'full' ? `🔒 ${isoKey} — আর অর্ডার নেওয়া হবে না`
+        : `🔢 ${isoKey} — সীমা ${parseInt((document.getElementById('offday-limit') || {}).value, 10) || 0}টি`;
+      showToast(label);
     }).catch(() => {
       setSyncStatus('error', '❌ সংরক্ষণ ব্যর্থ');
       showToast('❌ সেভ হয়নি — আবার চেষ্টা করুন');
@@ -4356,6 +4497,10 @@ window.App = (() => {
     calDayClick,
     closeOffday,
     saveOffday,
+    saveOffdayDayOpen,
+    openOffdayDialog,
+    offdayPickMode,
+    offdayLimitStep,
     openNotepad,
     closeNotepad,
     closeNotepadBg,

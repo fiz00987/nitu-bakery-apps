@@ -13,6 +13,25 @@
       ".write": "auth != null"
     },
 
+    "offDays": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+
+    "dayBooks": {
+      ".read": true,
+      ".write": "auth != null",
+      "$day": {
+        ".validate": "newData.hasChildren()",
+        "booked": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "$other": {
+          ".validate": "newData.isNumber() || newData.isString() || newData.isBoolean()"
+        }
+      }
+    },
+
     "orders": {
       ".indexOn": ["customerPhone", "orderId", "status", "date"]
     }

@@ -135,6 +135,14 @@ button{cursor:pointer}
 .calc-row.due{font-weight:700;color:var(--red);background:var(--red-light);padding:6px;border-radius:6px;margin-top:6px}
 .pay-footnote{font-size:11.5px;color:var(--green);background:var(--green-light);border:1px solid #a5d6a7;border-radius:var(--radius-sm);padding:8px 10px;margin-top:8px;line-height:1.5;display:none}
 .pay-footnote.show{display:block}
+/* Closed-day (admin off-day) blocking */
+.offday-banner{display:none;margin:12px 0 0;padding:12px 14px;border-radius:9px;font-size:13.5px;font-weight:600;line-height:1.7;background:#ffebee;border:1.5px solid #e57373;color:#b71c1c}
+.offday-banner.show{display:block}
+.date-closed-warn{display:none;margin-top:6px;padding:8px 10px;border-radius:7px;font-size:12px;font-weight:700;line-height:1.6;background:#ffebee;border:1.5px solid #e57373;color:#b71c1c}
+.date-closed-warn.show{display:block}
+input.date-closed{border-color:#e57373!important;background:#fff5f5!important}
+.date-slots-hint{display:none;margin-top:6px;padding:8px 10px;border-radius:7px;font-size:12px;font-weight:700;line-height:1.6;background:#fff8e1;border:1.5px solid #ffca28;color:#7a5c00}
+.date-slots-hint.show{display:block}
 .advance-options{display:flex;gap:8px;margin-bottom:12px}
 .advance-opt{flex:1;padding:10px;border:2px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-size:13px;font-weight:600;cursor:pointer;color:var(--text2)}
 .advance-opt.active{border-color:var(--pink);background:var(--pink-light);color:var(--pink)}
@@ -327,6 +335,7 @@ html.t-gold .order-number-badge{color:#a5813e}
     <img src="logo.png" alt="নিতুর বেকারি">
     <h2 data-bn="আপনার অর্ডার দিন" data-en="Place Your Order">আপনার অর্ডার দিন</h2>
     <div class="order-number-badge">অর্ডার নম্বর: <span id="form-order-id"></span></div>
+    <div class="offday-banner" id="offday-banner"></div>
     <button type="button" class="previous-orders-btn" onclick="showPreviousOrders()" data-bn="🧾 আপনার পূর্ববর্তী অর্ডার" data-en="🧾 Your Previous Orders">🧾 আপনার পূর্ববর্তী অর্ডার</button>
   </div>
   <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
@@ -411,8 +420,8 @@ html.t-gold .order-number-badge{color:#a5813e}
       <!-- Same date -->
       <label class="same-toggle"><input type="checkbox" id="same-date-check" checked> <span data-bn="উভয় কেক একই তারিখে" data-en="Both cakes on the same date">উভয় কেক একই তারিখে</span></label>
       <div class="row2">
-        <div class="field"><label data-bn="ডেলিভারি তারিখ *" data-en="Delivery Date *">ডেলিভারি তারিখ *</label><input type="date" id="f-date" oninput="updateProgress()"></div>
-        <div id="cake2-date-block" class="field-hidden"><div class="field"><label data-bn="কেক ২ তারিখ *" data-en="Cake 2 date *">কেক ২ তারিখ *</label><input type="date" id="f-date-2" oninput="updateProgress()"></div></div>
+        <div class="field"><label data-bn="ডেলিভারি তারিখ *" data-en="Delivery Date *">ডেলিভারি তারিখ *</label><input type="date" id="f-date" oninput="updateProgress();checkDateClosed()"><div class="date-closed-warn" id="date-closed-warn"></div><div class="date-slots-hint" id="date-slots-hint-1"></div></div>
+        <div id="cake2-date-block" class="field-hidden"><div class="field"><label data-bn="কেক ২ তারিখ *" data-en="Cake 2 date *">কেক ২ তারিখ *</label><input type="date" id="f-date-2" oninput="updateProgress();checkDateClosed(false)"><div class="date-closed-warn" id="date-closed-warn-2"></div><div class="date-slots-hint" id="date-slots-hint-2"></div></div></div>
       </div>
 
       <!-- Same time -->

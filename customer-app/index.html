@@ -259,6 +259,14 @@ input.due-input:focus{outline:none;border-color:#dcdcdc;box-shadow:none}
 .quote-banner.ok{display:block;background:#e8f5e9;border:1.5px solid #66bb6a;color:#1b5e20}
 .quote-banner.err{display:block;background:#ffebee;border:1.5px solid #e57373;color:#b71c1c}
 .locked-field{opacity:.62;background:#f3efe8!important;border-style:dashed!important;cursor:not-allowed}
+/* Closed-day (admin off-day) blocking */
+.offday-banner{display:none;margin:12px 0 0;padding:12px 14px;border-radius:9px;font-size:13px;font-weight:600;line-height:1.7;background:#ffebee;border:1.5px solid #e57373;color:#b71c1c}
+.offday-banner.show{display:block}
+.date-closed-warn{display:none;margin-top:6px;padding:8px 10px;border-radius:7px;font-size:12px;font-weight:700;line-height:1.6;background:#ffebee;border:1.5px solid #e57373;color:#b71c1c}
+.date-closed-warn.show{display:block}
+input.date-closed{border-color:#e57373!important;background:#fff5f5!important}
+.date-slots-hint{display:none;margin-top:6px;padding:8px 10px;border-radius:7px;font-size:12px;font-weight:700;line-height:1.6;background:#fff8e1;border:1.5px solid #ffca28;color:#7a5c00}
+.date-slots-hint.show{display:block}
 </style>
 <script>
 /* Noir Gold light theme — applied automatically, no user control */
@@ -350,6 +358,7 @@ html.t-gold .order-number-badge{color:#a5813e}
     <h2 data-bn="আপনার অর্ডার দিন" data-en="Place Your Order">আপনার অর্ডার দিন</h2>
     <div class="order-number-badge">অর্ডার নম্বর: <span id="form-order-id"></span></div>
     <div class="quote-banner" id="quote-banner"></div>
+    <div class="offday-banner" id="offday-banner"></div>
     <button type="button" class="previous-orders-btn" onclick="showPreviousOrders()" data-bn="🧾 আপনার পূর্ববর্তী অর্ডার" data-en="🧾 Your Previous Orders">🧾 আপনার পূর্ববর্তী অর্ডার</button>
   </div>
   <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
@@ -421,7 +430,9 @@ html.t-gold .order-number-badge{color:#a5813e}
     <div class="row2">
       <div class="field">
         <label data-bn="ডেলিভারির তারিখ *" data-en="Delivery Date *">ডেলিভারির তারিখ *</label>
-        <input type="date" id="f-date">
+        <input type="date" id="f-date" oninput="checkDateClosed()">
+        <div class="date-closed-warn" id="date-closed-warn"></div>
+        <div class="date-slots-hint" id="date-slots-hint"></div>
       </div>
       <div class="field">
         <label data-bn="ডেলিভারির সময় *" data-en="Delivery Time *">ডেলিভারির সময় *</label>
@@ -622,6 +633,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
-<script src="./app.js?v=20260920b"></script>
+<script src="./app.js?v=20260920c"></script>
 </body>
 </html>

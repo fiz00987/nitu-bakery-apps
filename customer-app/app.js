@@ -1724,6 +1724,17 @@ function validate() {
     const el = document.getElementById(id);
     if (!el || !el.value.trim()) { showToast(msg); el.focus(); return false; }
   }
+  // Admin-crossed closed day: never allow submitting for that date (the final
+  // LIVE re-check happens in submitOrder, right before writing, so the last
+  // slot can never be double-booked by two customers at once).
+  const dv = (document.getElementById('f-date') || {}).value || '';
+  const doorNow = dayDoor(dv);
+  if (doorNow === 'off' || (doorNow && doorNow.full)) {
+    showToast(doorMsg(dv, doorNow));
+    checkDateClosed();
+    document.getElementById('f-date').focus();
+    return false;
+  }
   // Payment screenshot is mandatory — the proof of payment
   if (!payShot) {
     showToast('💳 পেমেন্টের স্ক্রিনশট দিন — bKash / Nagad / ব্যাংক কনফার্মেশন পেজের ছবি');
@@ -1799,6 +1810,27 @@ function getOrderTotal() {
 async function submitOrder() {
   if (!checkTerms()) return;
   if (!validate()) return;
+
+  // FINAL live door re-check right before writing: re-read /offDays and
+  // /dayBooks fresh for the delivery date, so the last slot can never be
+  // double-booked by two customers at once. Offline → trust the last state.
+  const dvLive = (document.getElementById('f-date') || {}).value || '';
+  const kLive = offDayKey(dvLive);
+  if (kLive) {
+    const liveOff = await db.ref('offDays').child(kLive).once('value').then(s => s.val()).catch(() => 'unreadable');
+    const liveBook = await db.ref('dayBooks').child(kLive).once('value').then(s => s.val()).catch(() => 'unreadable');
+    if (!(liveOff === 'unreadable' && liveBook === 'unreadable')) {
+      const off = !!liveOff;
+      const lim = liveBook && typeof liveBook.limit === 'number' ? liveBook.limit : null;
+      const booked = liveBook ? Math.max(0, Number(liveBook.booked) || 0) : 0;
+      if (off) { showToast(offDayMsg(dvLive)); checkDateClosed(); return; }
+      if (lim != null && booked >= lim) { showToast(doorMsg(dvLive, { full: true })); checkDateClosed(); return; }
+      if (liveOff) offDays[kLive] = liveOff; else delete offDays[kLive];
+      if (liveBook) dayBooks[kLive] = liveBook; else delete dayBooks[kLive];
+      renderOffdayBanner();
+      checkDateClosed();
+    }
+  }
   if (quoteToken && quoteData) {
     showLoading(true);
     const chk = await validateQuoteLock();
@@ -2292,12 +2324,152 @@ function setMinDate() {
   document.getElementById('f-date').setAttribute('min', today);
 }
 
+// ─── Admin off-days (closed dates) + day booking limits ──────
+// The bakery crosses ✕ closed dates in the admin calendar; they sync here
+// via Firebase (/offDays) so customers can never order on those days.
+// The bakery can also cap a day at N orders (/dayBooks, written by the admin
+// app from its live orders): FULL 🔒 (limit 0) or LIMITED (booked >= limit
+// blocks new orders; "only X slots left" shows otherwise).
+// Only the admin's door settings are synced — everything else is untouched.
+let offDays = {};   // 'YYYY-MM-DD' → { reason, ... }
+let dayBooks = {};  // 'YYYY-MM-DD' → { booked, limit }
+
+function offDayKey(raw) {
+  const m = String(raw || '').match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (!m) return '';
+  return `${m[1]}-${String(+m[2]).padStart(2, '0')}-${String(+m[3]).padStart(2, '0')}`;
+}
+
+function isDateClosed(raw) {
+  const k = offDayKey(raw);
+  return !!(k && offDays[k]);
+}
+
+function dayDoor(raw) {
+  // 'off' | { full: true, left: 0 } | { full: false, left } | null(open)
+  const k = offDayKey(raw);
+  if (!k) return null;
+  if (offDays[k]) return 'off';
+  const b = dayBooks[k];
+  if (!b || typeof b.limit !== 'number') return null;
+  const booked = Math.max(0, Number(b.booked) || 0);
+  const left = Math.max(0, b.limit - booked);
+  return left <= 0 ? { full: true, left: 0, limit: b.limit } : { full: false, left, limit: b.limit };
+}
+
+function offDayMsg(raw) {
+  const k = offDayKey(raw);
+  const reason = (k && offDays[k] && offDays[k].reason) || '';
+  const when = k ? fmtDate(k) : '';
+  return lang === 'en'
+    ? `⛔ Orders are off on ${when}${reason ? ` (${reason})` : ''} — please pick another date.`
+    : `⛔ ${when}${reason ? ` (${reason})` : ''} অর্ডার বন্ধ — অন্য তারিখ বেছে নিন।`;
+}
+
+// Message for a limit-shut day (🔒): full vs reason-based wording.
+function doorMsg(raw, door) {
+  if (door === 'off') return offDayMsg(raw);
+  const when = fmtDate(offDayKey(raw));
+  return lang === 'en'
+    ? `🔒 No more slots on ${when} (fully booked) — please pick another date.`
+    : `🔒 ${when} সম্পূর্ণ বুকড — আর স্লট খালি নেই, অন্য তারিখ বেছে নিন।`;
+}
+
+// Instant block: runs the moment a date is picked. Returns true when the
+// door is shut (off ✕ or limit reached 🔒).
+function checkDateClosed() {
+  const el = document.getElementById('f-date');
+  const warn = document.getElementById('date-closed-warn');
+  const val = el ? el.value : '';
+  const door = dayDoor(val);
+  const blocked = door === 'off' || (door && door.full);
+  const leftInfo = door && door.full === false ? door.left : null;
+  const msg = blocked ? doorMsg(val, door) : '';
+  if (el) el.classList.toggle('date-closed', blocked);
+  if (warn) {
+    warn.textContent = msg;
+    warn.classList.toggle('show', blocked);
+  }
+  // "Only X slots left" hint on the date box when the day is limited but open.
+  const mini = document.getElementById('date-slots-hint');
+  if (mini) {
+    if (!blocked && leftInfo != null && val) {
+      mini.textContent = lang === 'en'
+        ? `🟡 Only ${leftInfo} slot${leftInfo === 1 ? '' : 's'} left for ${fmtDate(val)} — book soon!`
+        : `🟡 ${fmtDate(val)}-এ আর মাত্র ${leftInfo}টি স্লট খালি আছে — তাড়াতাড়ি বুক করুন!`;
+      mini.classList.add('show');
+    } else {
+      mini.classList.remove('show');
+      mini.textContent = '';
+    }
+  }
+  return blocked;
+}
+
+// Closed-days banner under the form header (only future/near dates shown).
+// Shows ✕ off days AND 🔒 fully-booked days; 🔢 limited-but-open days show
+// their remaining slots.
+function renderOffdayBanner() {
+  const box = document.getElementById('offday-banner');
+  if (!box) return;
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const offKeys = Object.keys(offDays).filter(k => k >= today).sort();
+  const fullKeys = Object.keys(dayBooks).filter(k => {
+    if (k < today) return false;
+    if (offDays[k]) return false;   // already listed as off
+    const b = dayBooks[k] || {};
+    return typeof b.limit === 'number' && b.limit >= 0 && (Math.max(0, Number(b.booked) || 0) >= b.limit);
+  }).sort();
+  const openLimited = Object.keys(dayBooks).filter(k => {
+    if (k < today) return false;
+    if (offDays[k]) return false;
+    const b = dayBooks[k] || {};
+    if (typeof b.limit !== 'number' || b.limit < 0) return false;
+    const left = b.limit - Math.max(0, Number(b.booked) || 0);
+    return left > 0;
+  }).sort();
+  const parts = [];
+  if (offKeys.length) parts.push(`${lang === 'en' ? '⛔ Orders off: ' : '⛔ অর্ডার বন্ধ: '}` +
+    offKeys.slice(0, 6).map(k => `${fmtDate(k)}${offDays[k] && offDays[k].reason ? ` (${offDays[k].reason})` : ''}`).join(' · '));
+  if (fullKeys.length) parts.push(`${lang === 'en' ? '🔒 Fully booked: ' : '🔒 সম্পূর্ণ বুকড: '}` +
+    fullKeys.slice(0, 6).map(k => fmtDate(k)).join(' · '));
+  if (openLimited.length) parts.push(`${lang === 'en' ? '🟡 Almost full: ' : '🟡 প্রায় পূর্ণ: '}` +
+    openLimited.slice(0, 6).map(k => {
+      const b = dayBooks[k] || {};
+      const left = b.limit - Math.max(0, Number(b.booked) || 0);
+      return `${fmtDate(k)} (${lang === 'en' ? `only ${left} left` : `আর ${left}টি খালি`})`;
+    }).join(' · '));
+  if (!parts.length) { box.classList.remove('show'); box.textContent = ''; return; }
+  box.textContent = parts.join('   ');
+  box.classList.add('show');
+}
+
+function loadOffDays() {
+  const start = () => {
+    try {
+      db.ref('offDays').on('value', snap => {
+        offDays = snap.val() || {};
+        renderOffdayBanner();
+        checkDateClosed();
+      });
+      db.ref('dayBooks').on('value', snap => {
+        dayBooks = snap.val() || {};
+        renderOffdayBanner();
+        checkDateClosed();
+      });
+    } catch (e) { console.warn('offDays sync failed (harmless):', e && e.message); }
+  };
+  if (window.ensureAuthReady) { window.ensureAuthReady().then(start); } else { start(); }
+}
+
 // Init
 (function init() {
   populateDropdowns();
   // Load the admin's zone-price overrides once auth is ready so the read
   // passes the security rules (falls back to built-in prices otherwise).
   if (window.ensureAuthReady) { window.ensureAuthReady().then(loadDcConfig); } else { loadDcConfig(); }
+  loadOffDays();   // admin-crossed closed dates (syncs live)
   setLang(lang);
   const savedPhone = localStorage.getItem('nitu-cust-phone');
   if (savedPhone) document.getElementById('entry-phone').value = savedPhone;
