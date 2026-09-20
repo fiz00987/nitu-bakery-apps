@@ -1312,10 +1312,12 @@ window.App = (() => {
 
     <div class="detail-section">
       <div class="detail-title">🎂 কেক বিবরণ</div>
+      ${o.notes ? `<div class="pay-note" style="border-left:3px solid var(--pink);background:var(--pink-light)">📝 <strong>${lang==='bn'?'কাস্টমারের অতিরিক্ত নোট:':'Customer note:'}</strong> ${esc(o.notes)}</div>` : ''}
       ${(o.cakes && o.cakes.length > 1)
         ? o.cakes.map(c => drow('🎂', 'কেক ' + bnCake(c.cakeIndex || 0),
             [c.weightLabel || c.weight, c.flavourName || c.flavour].filter(Boolean).join(' — ')
-            + (c.writing ? ` · ✍️ ${c.writing}` : ''))).join('')
+            + (c.writing ? ` · ✍️ ${c.writing}` : '')
+            + (c.photoNote ? ` · 📝 ${c.photoNote}` : ''))).join('')
         : drow('⚖️', 'ওজন ও ফ্লেভার', `${weightText(o)} — ${flavourLabel(o)}`)}
       ${drow('📐', 'সাইজ', o.size)}
       ${o.photoNote ? `<div class="pay-note" style="border-left:3px solid var(--amber);background:var(--amber-light, #fff7e6)">📝 <strong>${lang==='bn'?'ছবির নোট:':'Photo note:'}</strong> ${esc(o.photoNote)}</div>` : ''}
