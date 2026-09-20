@@ -1729,8 +1729,9 @@ function validate() {
     return false;
   }
   if (!resolveWeight()) { showToast('সঠিক ওজন লিখুন (যেমন: 2 pound বা 1 KG)'); return false; }
-  // A ≤300 g weight is a mini cake: show the popup first — OK converts + locks 50%.
-  if (cakeKind !== 'mini' && maybeConvertToMini()) return false;
+  // A ≤300 g weight still un-converted → open the mini popup once; after OK
+  // (cakeKind === 'mini') submission proceeds — never re-open it at submit.
+  if (cakeKind !== 'mini' && !miniPending && maybeConvertToMini()) return false;
   // The typed weight must be a real amount (e.g. "2 pound", "1 KG", "250 gram").
   // Bare numbers get converted by the POUND/KG/GRAM popup; size names stay allowed.
   if (getCakeKind() === 'normal') {
