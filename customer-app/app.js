@@ -1254,13 +1254,9 @@ function recalcPrice(manualEdit) {
   const methodId = advanceMethod || document.getElementById('f-payment-method').value;
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
   const delivery = getDeliveryCharge();
-  // Delivery is required for delivery orders (it joins the total payment).
-  // Blank delivery charge = form incomplete until the customer fills it in.
-  if (document.getElementById('f-fulfilment').value !== 'pickup' && !(delivery > 0)) {
-    document.getElementById('calc-box').classList.remove('show');
-    document.getElementById('due-field').classList.remove('show');
-    return;
-  }
+  // NOTE: no early-return on blank delivery — the grey auto-box must fill
+  // with cake-only math (delivery treated as 0) so tapping 50%/100% never
+  // leaves a blank box. Submit-time validation still requires delivery.
   const advInput = document.getElementById('f-advance');
   const typedSend = parseFloat(advInput.value) || 0;
 
