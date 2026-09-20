@@ -2117,6 +2117,7 @@ function showSuccess(order) {
     ${order.writing ? `<div class="row"><span>কেকের লেখা</span><span>${esc(order.writing)}</span></div>` : ''}
     <div class="row"><span>তারিখ</span><span>${esc(fmtDate(order.deliveryDate))} · ${esc(order.timeSlotLabel)}</span></div>
     <div class="row"><span>ঠিকানা</span><span>${esc(order.deliveryAddress)}</span></div>
+    ${order.notes ? `<div class="row"><span>📝 অতিরিক্ত তথ্য</span><span>${esc(order.notes)}</span></div>` : ''}
     <div class="row"><span>কেকের মূল্য</span><span>৳${cakePrice}</span></div>
     <div class="row"><span>ডেলিভারি চার্জ</span><span>${dcTxt}</span></div>
     <div class="row"><span>অগ্রিম / প্রদান</span><span style="color:var(--green)">৳${advTowardCake}${methodName ? ` (${esc(methodName)})` : ''}</span></div>

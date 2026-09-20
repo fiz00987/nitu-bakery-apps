@@ -1640,6 +1640,7 @@ function showSuccess(order) {
     ${writingRows}
     <div class="row"><span>তারিখ</span><span>${esc(fmtDate(order.deliveryDate))} · ${esc(order.timeSlotLabel)}</span></div>
     <div class="row"><span>ঠিকানা</span><span>${esc(order.deliveryAddress)}${many && order.cakes.some(c => c.cakeIndex > 1 && !c.sameAddressAsCake1) ? ' · কেক ২ আলাদা ঠিকানায়' : ''}</span></div>
+    ${order.notes ? `<div class="row"><span>📝 অতিরিক্ত তথ্য</span><span>${esc(order.notes)}</span></div>` : ''}
     <div class="row"><span>মোট (আনুমানিক)</span><span>৳${Math.round(order.total)}</span></div>
     <div class="row"><span>প্রদান</span><span style="color:var(--green)">৳${Math.round(order.advanceTotal)}</span></div>
     ${order.dueAmount > 0 ? `<div class="due-alert">⚠️ বাকি: ৳${Math.round(order.dueAmount)}${order.deliveryCharge > 0 ? `<br>🚚 ডেলিভারি চার্জ (আলাদা): ৳${Math.round(order.deliveryCharge)}` : ''}</div>` : '<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ পূর্ণ পেমেন্ট সম্পন্ন</div>'}
