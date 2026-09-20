@@ -1724,14 +1724,18 @@ function validate() {
     const el = document.getElementById(id);
     if (!el || !el.value.trim()) { showToast(msg); el.focus(); return false; }
   }
-  // Admin-crossed closed day: never allow submitting for that date (the final
-  // LIVE re-check happens in submitOrder, right before writing, so the last
-  // slot can never be double-booked by two customers at once).
+  // Admin-crossed closed day: the ONLY message the customer ever sees is this
+  // submit-time refusal (the form itself shows no banners, warnings or hints).
+  // The final LIVE re-check happens in submitOrder, so the last slot can
+  // never be double-booked by two customers at once.
   const dv = (document.getElementById('f-date') || {}).value || '';
   const doorNow = dayDoor(dv);
   if (doorNow === 'off' || (doorNow && doorNow.full)) {
-    showToast(doorMsg(dv, doorNow));
-    checkDateClosed();
+    const kNow = offDayKey(dv);
+    const reasonNow = (kNow && offDays[kNow] && offDays[kNow].reason) || '';
+    showToast(lang === 'en'
+      ? `⛔ Sorry — orders can't be taken for ${fmtDate(kNow)}${reasonNow ? ` (${reasonNow})` : ''}. Please choose another date.`
+      : `⛔ দুঃখিত — ${fmtDate(kNow)}${reasonNow ? ` (${reasonNow})` : ''} তারিখে অর্ডার নেওয়া যাবে না। অন্য তারিখ বেছে নিন।`);
     document.getElementById('f-date').focus();
     return false;
   }
@@ -1823,8 +1827,14 @@ async function submitOrder() {
       const off = !!liveOff;
       const lim = liveBook && typeof liveBook.limit === 'number' ? liveBook.limit : null;
       const booked = liveBook ? Math.max(0, Number(liveBook.booked) || 0) : 0;
-      if (off) { showToast(offDayMsg(dvLive)); checkDateClosed(); return; }
-      if (lim != null && booked >= lim) { showToast(doorMsg(dvLive, { full: true })); checkDateClosed(); return; }
+      const reasonLive = (liveOff && liveOff.reason) || '';
+      if (off || (lim != null && booked >= lim)) {
+        showToast(lang === 'en'
+          ? `⛔ Sorry — orders can't be taken for ${fmtDate(kLive)}${reasonLive ? ` (${reasonLive})` : ''}. Please choose another date.`
+          : `⛔ দুঃখিত — ${fmtDate(kLive)}${reasonLive ? ` (${reasonLive})` : ''} তারিখে অর্ডার নেওয়া যাবে না। অন্য তারিখ বেছে নিন।`);
+        checkDateClosed();
+        return;
+      }
       if (liveOff) offDays[kLive] = liveOff; else delete offDays[kLive];
       if (liveBook) dayBooks[kLive] = liveBook; else delete dayBooks[kLive];
       renderOffdayBanner();
@@ -2375,75 +2385,21 @@ function doorMsg(raw, door) {
     : `🔒 ${when} সম্পূর্ণ বুকড — আর স্লট খালি নেই, অন্য তারিখ বেছে নিন।`;
 }
 
-// Instant block: runs the moment a date is picked. Returns true when the
-// door is shut (off ✕ or limit reached 🔒).
+// Instant block: re-checks the (live-synced) door state. Returns true when
+// the door is shut (off ✕ or limit reached 🔒). No visual output here — the
+// only message the customer ever sees is the submit-time refusal toast.
 function checkDateClosed() {
   const el = document.getElementById('f-date');
-  const warn = document.getElementById('date-closed-warn');
   const val = el ? el.value : '';
   const door = dayDoor(val);
-  const blocked = door === 'off' || (door && door.full);
-  const leftInfo = door && door.full === false ? door.left : null;
-  const msg = blocked ? doorMsg(val, door) : '';
-  if (el) el.classList.toggle('date-closed', blocked);
-  if (warn) {
-    warn.textContent = msg;
-    warn.classList.toggle('show', blocked);
-  }
-  // "Only X slots left" hint on the date box when the day is limited but open.
-  const mini = document.getElementById('date-slots-hint');
-  if (mini) {
-    if (!blocked && leftInfo != null && val) {
-      mini.textContent = lang === 'en'
-        ? `🟡 Only ${leftInfo} slot${leftInfo === 1 ? '' : 's'} left for ${fmtDate(val)} — book soon!`
-        : `🟡 ${fmtDate(val)}-এ আর মাত্র ${leftInfo}টি স্লট খালি আছে — তাড়াতাড়ি বুক করুন!`;
-      mini.classList.add('show');
-    } else {
-      mini.classList.remove('show');
-      mini.textContent = '';
-    }
-  }
-  return blocked;
+  return door === 'off' || (door && door.full);
 }
 
-// Closed-days banner under the form header (only future/near dates shown).
-// Shows ✕ off days AND 🔒 fully-booked days; 🔢 limited-but-open days show
-// their remaining slots.
-function renderOffdayBanner() {
-  const box = document.getElementById('offday-banner');
-  if (!box) return;
-  const d = new Date();
-  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const offKeys = Object.keys(offDays).filter(k => k >= today).sort();
-  const fullKeys = Object.keys(dayBooks).filter(k => {
-    if (k < today) return false;
-    if (offDays[k]) return false;   // already listed as off
-    const b = dayBooks[k] || {};
-    return typeof b.limit === 'number' && b.limit >= 0 && (Math.max(0, Number(b.booked) || 0) >= b.limit);
-  }).sort();
-  const openLimited = Object.keys(dayBooks).filter(k => {
-    if (k < today) return false;
-    if (offDays[k]) return false;
-    const b = dayBooks[k] || {};
-    if (typeof b.limit !== 'number' || b.limit < 0) return false;
-    const left = b.limit - Math.max(0, Number(b.booked) || 0);
-    return left > 0;
-  }).sort();
-  const parts = [];
-  if (offKeys.length) parts.push(`${lang === 'en' ? '⛔ Orders off: ' : '⛔ অর্ডার বন্ধ: '}` +
-    offKeys.slice(0, 6).map(k => `${fmtDate(k)}${offDays[k] && offDays[k].reason ? ` (${offDays[k].reason})` : ''}`).join(' · '));
-  if (fullKeys.length) parts.push(`${lang === 'en' ? '🔒 Fully booked: ' : '🔒 সম্পূর্ণ বুকড: '}` +
-    fullKeys.slice(0, 6).map(k => fmtDate(k)).join(' · '));
-  if (openLimited.length) parts.push(`${lang === 'en' ? '🟡 Almost full: ' : '🟡 প্রায় পূর্ণ: '}` +
-    openLimited.slice(0, 6).map(k => {
-      const b = dayBooks[k] || {};
-      const left = b.limit - Math.max(0, Number(b.booked) || 0);
-      return `${fmtDate(k)} (${lang === 'en' ? `only ${left} left` : `আর ${left}টি খালি`})`;
-    }).join(' · '));
-  if (!parts.length) { box.classList.remove('show'); box.textContent = ''; return; }
-  box.textContent = parts.join('   ');
-  box.classList.add('show');
-}
+// Closed-days are intentionally NOT advertised on the form — no banner, no
+// hints. The customer learns a day is shut only at submit time (see
+// validate() + submitOrder()). This function only keeps the synced state
+// fresh; it renders nothing.
+function renderOffdayBanner() {}
 
 function loadOffDays() {
   const start = () => {

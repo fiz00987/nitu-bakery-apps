@@ -1218,9 +1218,11 @@ function validate() {
   const shutLocal = doors.some(d => d === 'off' || (d && d.full));
   if (shutLocal) {
     const v = doors[0] === 'off' || (doors[0] && doors[0].full) ? d1 : d2;
-    const door = doors[0] === 'off' || (doors[0] && doors[0].full) ? doors[0] : doors[1];
-    showToast(doorMsg(v, door));
-    checkDateClosed();
+    const kNow = offDayKey(v);
+    const reasonNow = (kNow && offDays[kNow] && offDays[kNow].reason) || '';
+    showToast(lang === 'en'
+      ? `⛔ Sorry — orders can't be taken for ${fmtDate(kNow)}${reasonNow ? ` (${reasonNow})` : ''}. Please choose another date.`
+      : `⛔ দুঃখিত — ${fmtDate(kNow)}${reasonNow ? ` (${reasonNow})` : ''} তারিখে অর্ডার নেওয়া যাবে না। অন্য তারিখ বেছে নিন।`);
     (document.getElementById(v === d2 ? 'f-date-2' : 'f-date') || {}).focus?.();
     return false;
   }
@@ -1309,8 +1311,21 @@ async function submitOrder() {
     const off = !!liveOff;
     const lim = liveBook && typeof liveBook.limit === 'number' ? liveBook.limit : null;
     const booked = liveBook ? Math.max(0, Number(liveBook.booked) || 0) : 0;
-    if (off) { showToast(offDayMsg(dv)); checkDateClosed(); return; }
-    if (lim != null && booked >= lim) { showToast(doorMsg(dv, { full: true })); checkDateClosed(); return; }
+    if (off) {
+      const reasonLive = (liveOff && liveOff.reason) || '';
+      showToast(lang === 'en'
+        ? `⛔ Sorry — orders can't be taken for ${fmtDate(k)}${reasonLive ? ` (${reasonLive})` : ''}. Please choose another date.`
+        : `⛔ দুঃখিত — ${fmtDate(k)}${reasonLive ? ` (${reasonLive})` : ''} তারিখে অর্ডার নেওয়া যাবে না। অন্য তারিখ বেছে নিন।`);
+      checkDateClosed();
+      return;
+    }
+    if (lim != null && booked >= lim) {
+      showToast(lang === 'en'
+        ? `⛔ Sorry — orders can't be taken for ${fmtDate(k)}. Please choose another date.`
+        : `⛔ দুঃখিত — ${fmtDate(k)} তারিখে অর্ডার নেওয়া যাবে না। অন্য তারিখ বেছে নিন।`);
+      checkDateClosed();
+      return;
+    }
     if (liveOff) offDays[k] = liveOff; else delete offDays[k];
     if (liveBook) dayBooks[k] = liveBook; else delete dayBooks[k];
   }
@@ -1900,73 +1915,26 @@ function doorMsg(raw, door) {
 
 // Instant block on one or both date boxes (cake 1 / cake 2). Returns true
 // when either checked box has its door shut (off ✕ or limit reached 🔒).
+// No visual output here — the only message the customer ever sees is the
+// submit-time refusal toast.
 function checkDateClosed(which) {
   const pairs = [];
-  if (which === undefined || which === true) pairs.push(['f-date', 'date-closed-warn', 'date-slots-hint-1']);
-  if (which === undefined || which === false) pairs.push(['f-date-2', 'date-closed-warn-2', 'date-slots-hint-2']);
+  if (which === undefined || which === true) pairs.push('f-date');
+  if (which === undefined || which === false) pairs.push('f-date-2');
   let anyClosed = false;
-  pairs.forEach(([id, warnId, hintId]) => {
+  pairs.forEach(id => {
     const el = document.getElementById(id);
     if (!el || !el.value) return;
     const door = dayDoor(el.value);
-    const blocked = door === 'off' || (door && door.full);
-    anyClosed = anyClosed || blocked;
-    el.classList.toggle('date-closed', blocked);
-    const warn = document.getElementById(warnId);
-    if (warn) { warn.textContent = blocked ? doorMsg(el.value, door) : ''; warn.classList.toggle('show', blocked); }
-    const mini = hintId ? document.getElementById(hintId) : null;
-    if (mini) {
-      const leftInfo = door && door.full === false ? door.left : null;
-      if (!blocked && leftInfo != null) {
-        mini.textContent = lang === 'en'
-          ? `🟡 Only ${leftInfo} slot${leftInfo === 1 ? '' : 's'} left for ${fmtDate(el.value)} — book soon!`
-          : `🟡 ${fmtDate(el.value)}-এ আর মাত্র ${leftInfo}টি স্লট খালি আছে — তাড়াতাড়ি বুক করুন!`;
-        mini.classList.add('show');
-      } else {
-        mini.classList.remove('show');
-        mini.textContent = '';
-      }
-    }
+    if (door === 'off' || (door && door.full)) anyClosed = true;
   });
   return anyClosed;
 }
 
-// Closed-days banner under the form header (future dates only).
-// Shows ✕ off days AND 🔒 fully-booked days; limited-but-open days show slots.
-function renderOffdayBanner() {
-  const box = document.getElementById('offday-banner');
-  if (!box) return;
-  const d = new Date();
-  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const offKeys = Object.keys(offDays).filter(k => k >= today).sort();
-  const fullKeys = Object.keys(dayBooks).filter(k => {
-    if (k < today) return false;
-    if (offDays[k]) return false;
-    const b = dayBooks[k] || {};
-    return typeof b.limit === 'number' && b.limit >= 0 && (Math.max(0, Number(b.booked) || 0) >= b.limit);
-  }).sort();
-  const openLimited = Object.keys(dayBooks).filter(k => {
-    if (k < today) return false;
-    if (offDays[k]) return false;
-    const b = dayBooks[k] || {};
-    if (typeof b.limit !== 'number' || b.limit < 0) return false;
-    return b.limit - Math.max(0, Number(b.booked) || 0) > 0;
-  }).sort();
-  const parts = [];
-  if (offKeys.length) parts.push(`${lang === 'en' ? '⛔ Orders off: ' : '⛔ অর্ডার বন্ধ: '}` +
-    offKeys.slice(0, 6).map(k => `${fmtDate(k)}${offDays[k] && offDays[k].reason ? ` (${offDays[k].reason})` : ''}`).join(' · '));
-  if (fullKeys.length) parts.push(`${lang === 'en' ? '🔒 Fully booked: ' : '🔒 সম্পূর্ণ বুকড: '}` +
-    fullKeys.slice(0, 6).map(k => fmtDate(k)).join(' · '));
-  if (openLimited.length) parts.push(`${lang === 'en' ? '🟡 Almost full: ' : '🟡 প্রায় পূর্ণ: '}` +
-    openLimited.slice(0, 6).map(k => {
-      const b = dayBooks[k] || {};
-      const left = b.limit - Math.max(0, Number(b.booked) || 0);
-      return `${fmtDate(k)} (${lang === 'en' ? `only ${left} left` : `আর ${left}টি খালি`})`;
-    }).join(' · '));
-  if (!parts.length) { box.classList.remove('show'); box.textContent = ''; return; }
-  box.textContent = parts.join('   ');
-  box.classList.add('show');
-}
+// Closed-days are intentionally NOT advertised on the form — no banner, no
+// hints. The customer learns a day is shut only at submit time. This function
+// only keeps the synced state fresh; it renders nothing.
+function renderOffdayBanner() {}
 
 function loadOffDays() {
   const start = () => {
