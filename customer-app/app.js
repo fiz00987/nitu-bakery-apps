@@ -1827,11 +1827,10 @@ async function submitOrder() {
       const off = !!liveOff;
       const lim = liveBook && typeof liveBook.limit === 'number' ? liveBook.limit : null;
       const booked = liveBook ? Math.max(0, Number(liveBook.booked) || 0) : 0;
-      const reasonLive = (liveOff && liveOff.reason) || '';
       if (off || (lim != null && booked >= lim)) {
         showToast(lang === 'en'
-          ? `⛔ Sorry — orders can't be taken for ${fmtDate(kLive)}${reasonLive ? ` (${reasonLive})` : ''}. Please choose another date.`
-          : `⛔ দুঃখিত — ${fmtDate(kLive)}${reasonLive ? ` (${reasonLive})` : ''} তারিখে অর্ডার নেওয়া যাবে না। অন্য তারিখ বেছে নিন।`);
+          ? `⛔ Sorry — orders can't be taken for ${fmtDate(kLive)}. Please choose another date.`
+          : `⛔ দুঃখিত — ${fmtDate(kLive)} তারিখে অর্ডার নেওয়া যাবে না। অন্য তারিখ বেছে নিন।`);
         checkDateClosed();
         return;
       }
@@ -2370,11 +2369,11 @@ function dayDoor(raw) {
 
 function offDayMsg(raw) {
   const k = offDayKey(raw);
-  const reason = (k && offDays[k] && offDays[k].reason) || '';
   const when = k ? fmtDate(k) : '';
+  // Reason is intentionally hidden from customers — admin-only info.
   return lang === 'en'
-    ? `⛔ Orders are off on ${when}${reason ? ` (${reason})` : ''} — please pick another date.`
-    : `⛔ ${when}${reason ? ` (${reason})` : ''} অর্ডার বন্ধ — অন্য তারিখ বেছে নিন।`;
+    ? `⛔ Orders are off on ${when} — please pick another date.`
+    : `⛔ ${when} অর্ডার বন্ধ — অন্য তারিখ বেছে নিন।`;
 }
 
 // Message for a limit-shut day (🔒): full vs reason-based wording.
