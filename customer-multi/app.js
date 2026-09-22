@@ -444,7 +444,18 @@ async function verifySecurity() {
     return;
   }
   err.classList.remove('show');
-  await loadPreviousOrders(pendingPhone);
+  // The database rules require a signed-in (anonymous) user. Wait for the
+  // silent sign-in FIRST so the reads below can't silently fail — and if it
+  // fails, tell the customer clearly instead of limping on.
+  let authOk = true;
+  try { authOk = window.ensureAuthReady ? !!(await window.ensureAuthReady()) : true; }
+  catch (e) { authOk = false; }
+  if (!authOk) {
+    showToast(lang === 'en'
+      ? '⚠️ Connection problem — open this page in Chrome (not Messenger/Facebook) and try again.'
+      : '⚠️ সংযোগে সমস্যা — Messenger/Facebook নয়, Chrome দিয়ে পেজটি খুলে আবার চেষ্টা করুন।');
+  }
+  try { await loadPreviousOrders(pendingPhone); } catch (e) { console.error(e); }
   proceedToForm(pendingPhone);
 }
 

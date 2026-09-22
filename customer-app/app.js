@@ -438,8 +438,19 @@ function askSecurityQuestion() {
 // After a correct captcha → straight into the order form.
 async function proceedAfterCaptcha() {
   document.getElementById('security-box').classList.remove('show');
-  await loadPreviousOrders(pendingPhone);
-  await upsertCustomerProfile(pendingPhone);
+  // The database rules require a signed-in (anonymous) user. Wait for the
+  // silent sign-in FIRST so the profile/orders reads below can't silently
+  // fail — and if it fails, tell the customer clearly instead of limping on.
+  let authOk = true;
+  try { authOk = window.ensureAuthReady ? !!(await window.ensureAuthReady()) : true; }
+  catch (e) { authOk = false; }
+  if (!authOk) {
+    showToast(lang === 'en'
+      ? '⚠️ Connection problem — open this page in Chrome (not Messenger/Facebook) and try again.'
+      : '⚠️ সংযোগে সমস্যা — Messenger/Facebook নয়, Chrome দিয়ে পেজটি খুলে আবার চেষ্টা করুন।');
+  }
+  try { await loadPreviousOrders(pendingPhone); } catch (e) { console.error(e); }
+  try { await upsertCustomerProfile(pendingPhone); } catch (e) { console.error(e); }
   proceedToForm(pendingPhone);
 }
 
@@ -489,6 +500,11 @@ async function verifyOtp() {
     const verifiedE164 = (cred && cred.user && cred.user.phoneNumber) || toE164BD(pendingPhone);
     const local = verifiedE164 && verifiedE164.indexOf('+880') === 0 ? '0' + verifiedE164.slice(4) : pendingPhone;
     document.getElementById('otp-box').classList.remove('show');
+    let authOk0 = true;
+    try { authOk0 = window.ensureAuthReady ? !!(await window.ensureAuthReady()) : true; } catch (e) { authOk0 = false; }
+    if (!authOk0) showToast(lang === 'en'
+      ? '⚠️ Connection problem — open this page in Chrome and try again.'
+      : '⚠️ সংযোগে সমস্যা — Chrome দিয়ে পেজটি খুলে আবার চেষ্টা করুন।');
     await loadPreviousOrders(local);
     await upsertCustomerProfile(local);
     proceedToForm(local);
