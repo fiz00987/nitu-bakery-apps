@@ -2032,14 +2032,18 @@ select:focus {
 /* Read-only due amount field (auto: total − advance) */
 .due-input{background:var(--surface2)!important;color:var(--text2)!important;font-weight:800!important;cursor:not-allowed}
 .due-input:focus{outline:none;border-color:var(--line)}
-.due-hint{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5}
+.due-hint{font-size:11px;color:var(--red);margin-top:4px;line-height:1.5;font-weight:600}
 /* Advance payment-method chooser + info footnote (mirrors customer app) */
 .adv-method-grid{display:flex;gap:8px}
 .adv-method-opt{flex:1;padding:10px 4px;border:2px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-size:13px;font-weight:700;cursor:pointer;color:var(--text2);background:var(--surface2)}
 .adv-method-opt.active{border-color:var(--pink);background:var(--pink-light);color:var(--pink)}
 .adv-method-opt small{display:block;font-weight:500;font-size:10.5px;margin-top:2px;opacity:.75;color:inherit}
-.pay-footnote{font-size:11.5px;color:var(--green);background:var(--green-light);border:1px solid #a5d6a7;border-radius:var(--radius-sm);padding:8px 10px;margin-top:8px;line-height:1.5;display:none}
+.pay-footnote{font-size:11.5px;color:var(--red);background:var(--red-light);border:1px solid #ef9a9a;border-radius:var(--radius-sm);padding:8px 10px;margin-top:8px;line-height:1.5;display:none;font-weight:600}
 .pay-footnote.show{display:block}
+/* ⚠️ Delivery-charge footnote — red so it stands out first (mirrors customer app).
+   The modal instance is hidden by default and toggled by updateDcFootnote();
+   card/copy instances render inline, always visible. */
+.dc-footnote{font-size:11.5px;color:var(--red);background:var(--red-light);border:1px solid #ef9a9a;border-radius:var(--radius-sm);padding:8px 10px;margin-top:6px;line-height:1.5;font-weight:600}
 
 /* ─── Multi-cake order blocks (manual orders, 1-5 cakes) ─────── */
 .cake-block{background:var(--surface2);border:1px solid var(--line,var(--border));border-radius:10px;padding:12px 12px 4px;margin-top:12px}
@@ -2645,7 +2649,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
             </select>
           </div>
         </div>
-        <div class="field"><label>ডেলিভারি চার্জের পরিমাণ (৳)</label><input id="f-delivery-amount" type="number" placeholder="60" min="0" oninput="App.totalInput()"></div>
+        <div class="field"><label>ডেলিভারি চার্জের পরিমাণ (৳)</label><input id="f-delivery-amount" type="number" placeholder="চার্জ না জানা থাকলে খালি রাখুন" min="0" oninput="App.totalInput()"><div class="dc-footnote" id="dc-footnote" style="display:none"></div></div>
       </div>
 
       <!-- Payment -->
@@ -2679,7 +2683,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
         <div class="field" id="due-field" style="display:none">
           <label>বাকি (Due) (৳)</label>
           <input id="f-due" class="due-input" type="number" placeholder="0" readonly tabindex="-1" onfocus="this.blur()">
-          <div class="due-hint" id="due-hint">অ্যাডভান্সের পর বাকি পরিমাণ — স্বয়ংক্রিয়ভাবে হিসাব হয় (ডেলিভারি চার্জ আলাদা)</div>
+          <div class="due-hint" id="due-hint">⚠️ অ্যাডভান্সের পর বাকি পরিমাণ — স্বয়ংক্রিয়ভাবে হিসাব হয় (ডেলিভারি চার্জ আলাদা)</div>
         </div>
 
         <div class="field"><label>ট্রানজেকশন আইডি / পেমেন্ট নম্বরের শেষ ৩ ডিজিট</label><input id="f-trx" placeholder="যেমন: 8K3N বা 456" type="text"></div>

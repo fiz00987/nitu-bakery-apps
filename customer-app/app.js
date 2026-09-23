@@ -541,9 +541,10 @@ async function trackOrder() {
     const dAmt = Number(order.deliveryAmount != null ? order.deliveryAmount : order.deliveryCharge) || 0;
     const dPaid = String(order.deliveryPaid || '');
     const dPickup = (order.fulfilment || 'delivery') === 'pickup' || dPaid === 'na';
-    const dLine = dPickup ? 'প্রযোজ্য নয় (সেল্ফ পিকআপ)' : (dAmt > 0 ? `৳${Math.round(dAmt)} — ${dPaid === 'paid' ? 'পরিশোধিত ✅' : 'অপরিশোধিত ⏳'}` : `${dPaid === 'paid' ? 'পরিশোধিত ✅' : 'অপরিশোধিত ⏳ (চার্জ ফাঁকা — এজেন্টকে দিতে হবে)'}`);
+    const dLine = dPickup ? 'প্রযোজ্য নয় (সেলফ পিকআপ)' : (dAmt > 0 ? `৳${Math.round(dAmt)}${order.dcAuto ? ` ${dcApproxSuffixText()}` : ''} — ${dPaid === 'paid' ? 'পরিশোধিত ✅' : 'অপরিশোধিত ⏳'}` : `${dPaid === 'paid' ? 'পরিশোধিত ✅' : 'অপরিশোধিত ⏳ (চার্জ ফাঁকা — এজেন্টকে দিতে হবে)'}`);
+    const dFoot = dcIsApproxOrder(order) ? `<br><span style="color:var(--red);font-weight:600">${dcAgencyFootnoteText()}</span>` : '';
     document.getElementById('prev-title').textContent = 'আপনার অর্ডার';
-    document.getElementById('prev-list').innerHTML = `<div class="previous-order"><strong>${esc(order.orderId)}</strong><br>মোট ৳${order.total || 0}<br>ডেলিভারি চার্জ: ${esc(dLine)}<br>ডেলিভারি: ${esc(fmtDate(order.deliveryDate || ''))}</div>`;
+    document.getElementById('prev-list').innerHTML = `<div class="previous-order"><strong>${esc(order.orderId)}</strong><br>মোট ৳${order.total || 0}<br>ডেলিভারি চার্জ: ${esc(dLine)}${dFoot}<br>ডেলিভারি: ${esc(fmtDate(order.deliveryDate || ''))}</div>`;
     document.getElementById('previous-orders').classList.add('show');
   } catch (e) { showToast('অর্ডার খুঁজতে সমস্যা হয়েছে'); console.error(e); }
 }
@@ -563,7 +564,7 @@ async function loadPreviousOrders(phone) {
       <div class="previous-order">
         <div style="font-weight:600">${esc(o.customerName || o.name || '')} · ${esc(o.weightLabel || o.weight || '')} · ${esc(o.flavourName || o.flavour || '')}</div>
         <div style="color:#888;margin-top:2px">📅 ${esc(fmtDate(o.deliveryDate || o.date || ''))} · 💰 ৳${o.total || 0}</div>
-        <div style="color:#888">🚚 ডেলিভারি চার্জ: ${(o.fulfilment || 'delivery') === 'pickup' || o.deliveryPaid === 'na' ? 'প্রযোজ্য নয় (পিকআপ)' : ((()=>{const _a=Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0); return _a>0 ? `৳${_a} — ${o.deliveryPaid === 'paid' ? 'পরিশোধিত ✅' : 'অপরিশোধিত ⏳'}` : `${o.deliveryPaid === 'paid' ? 'পরিশোধিত ✅' : 'অপরিশোধিত ⏳ (চার্জ ফাঁকা)'}`;})())}</div>
+        <div style="color:#888">🚚 ডেলিভারি চার্জ: ${(o.fulfilment || 'delivery') === 'pickup' || o.deliveryPaid === 'na' ? 'প্রযোজ্য নয় (পিকআপ)' : ((()=>{const _a=Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0); return _a>0 ? `৳${_a}${o.dcAuto ? ` ${dcApproxSuffixText()}` : ''} — ${o.deliveryPaid === 'paid' ? 'পরিশোধিত ✅' : 'অপরিশোধিত ⏳'}` : `${o.deliveryPaid === 'paid' ? 'পরিশোধিত ✅' : 'অপরিশোধিত ⏳ (চার্জ ফাঁকা)'}`;})())}${dcIsApproxOrder(o) ? `<br><span style="color:var(--red);font-weight:600">${dcAgencyFootnoteText()}</span>` : ''}</div>
       </div>
     `).join('');
     document.getElementById('previous-orders').classList.add('show');
@@ -611,10 +612,11 @@ function renderPreviousOrder() {
   const dpaid = String(order.deliveryPaid || '');
   const isPickupOrd = (order.fulfilment || 'delivery') === 'pickup' || dpaid === 'na';
   const delLine = isPickupOrd
-    ? (lang === 'en' ? 'Not applicable (self pickup)' : 'প্রযোজ্য নয় (সেল্ফ পিকআপ)')
+    ? (lang === 'en' ? 'Not applicable (self pickup)' : 'প্রযোজ্য নয় (সেলফ পিকআপ)')
     : (delAmt > 0
-      ? `৳${Math.round(delAmt)} — ${dpaid === 'paid' ? (lang === 'en' ? 'Paid ✅' : 'পরিশোধিত ✅') : (lang === 'en' ? 'Not paid ⏳ (pay the delivery agent)' : 'অপরিশোধিত ⏳ (এজেন্টকে দিতে হবে)')}`
+      ? `৳${Math.round(delAmt)}${order.dcAuto ? ` ${dcApproxSuffixText()}` : ''} — ${dpaid === 'paid' ? (lang === 'en' ? 'Paid ✅' : 'পরিশোধিত ✅') : (lang === 'en' ? 'Not paid ⏳ (pay the delivery agent)' : 'অপরিশোধিত ⏳ (এজেন্টকে দিতে হবে)')}`
       : `${dpaid === 'paid' ? (lang === 'en' ? 'Paid ✅' : 'পরিশোধিত ✅') : (lang === 'en' ? 'Not paid ⏳ (charge blank — pay the agent)' : 'অপরিশোধিত ⏳ (চার্জ ফাঁকা — এজেন্টকে দিতে হবে)')}`);
+  const delFoot = dcIsApproxOrder(order) ? `<div class="dc-footnote">${dcAgencyFootnoteText()}</div>` : '';
 
   content.innerHTML = `
     <article class="order-history-card">
@@ -627,6 +629,7 @@ function renderPreviousOrder() {
       <div class="order-history-row"><span>${lang === 'en' ? 'Paid' : 'প্রদান'}</span><span>৳${Math.round(paid)}</span></div>
       <div class="order-history-row"><span>${lang === 'en' ? 'Due' : 'বাকি'}</span><span>৳${Math.round(due)}</span></div>
       <div class="order-history-row"><span>${lang === 'en' ? 'Delivery charge' : 'ডেলিভারি চার্জ'}</span><span>${esc(delLine)}</span></div>
+      ${delFoot}
     </article>`;
   nav.hidden = false;
   document.getElementById('previous-order-position').textContent = lang === 'en'
@@ -1518,6 +1521,22 @@ function dcIsAutoEstimate() {
   const el = document.getElementById('f-delivery-charge');
   return !!el && el.readOnly === true && !dcManuallySet;
 }
+// ── Non-authoritative DC display text (BN/EN, mirrors admin app) ──
+// Auto/blank charges are flagged as approximate + carry the red ⚠️ footnote;
+// a manually-set charge is shown plainly.
+function dcApproxSuffixText() {
+  return lang === 'en' ? '( approximate / auto calculated by distance )' : '( আনুমানিক / দূরত্ব অনুযায়ী অটো হিসাব )';
+}
+function dcAgencyFootnoteText() {
+  return lang === 'en'
+    ? '⚠️ The actual delivery charge will be provided by the delivery agency — leave it blank if you don\'t know it.'
+    : '⚠️ প্রকৃত ডেলিভারি চার্জ ডেলিভারি এজেন্সি প্রদান করবে — চার্জ না জানা থাকলে খালি রাখুন।';
+}
+function dcIsApproxOrder(order) {
+  const amt = Math.round(Number(order.deliveryAmount != null ? order.deliveryAmount : order.deliveryCharge) || 0);
+  const pickup = (order.fulfilment || 'delivery') === 'pickup' || order.deliveryPaid === 'na';
+  return !pickup && (!!order.dcAuto || amt <= 0);
+}
 
 function parseWeightText(raw) {
   const text = String(raw || '').trim().toLowerCase().replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
@@ -1629,9 +1648,9 @@ function autoDeliveryCharge() {
   if (note) note.style.display = 'block';
   const eb = document.getElementById('dc-edit-btn');
   if (eb) eb.style.display = '';
-  if (note) note.innerHTML = `📍 এলাকা: <strong>${areaTxt}</strong> · ${esc(weightTxt)} → <strong>আনুমানিক ৳${charge}</strong><br>` +
-    `এটি এই এলাকার আগের অর্ডার থেকে অটো হিসাব করা আনুমানিক চার্জ। ডেলিভারি এজেন্সি সঠিক চার্জ কনফার্ম করবে। ` +
-    `<strong>এজেন্সি থেকে সঠিক পরিমাণ জানা না পেলে পরিবর্তন করবেন না।</strong>`;
+  if (note) note.innerHTML = lang === 'en'
+    ? `⚠️ 📍 Area: <strong>${areaTxt}</strong> · ${esc(weightTxt)} → approximate <strong>৳${charge}</strong> ( approximate / auto calculated by distance )<br>The actual delivery charge will be provided by the delivery agency. <strong>Don't change this box until the agency confirms the exact charge.</strong>`
+    : `⚠️ 📍 এলাকা: <strong>${areaTxt}</strong> · ${esc(weightTxt)} → আনুমানিক <strong>৳${charge}</strong> ( আনুমানিক / দূরত্ব অনুযায়ী অটো হিসাব )<br>প্রকৃত ডেলিভারি চার্জ ডেলিভারি এজেন্সি প্রদান করবে। <strong>এজেন্সি থেকে সঠিক চার্জ না জানা পর্যন্ত এই ঘর পরিবর্তন করবেন না।</strong>`;
   recalcPrice();
 }
 
@@ -2031,7 +2050,7 @@ async function submitOrder() {
     // Mark orders whose delivery charge was the app's own area estimate, so
     // admin sees the "অটো হিসাব (আনুমানিক)" warning on the card.
     dcAuto: dcIsAutoEstimate(),
-    dcAutoNote: dcIsAutoEstimate() ? `আনুমানিক (এলাকা অটো-হিসাব) — এজেন্সি কনফার্ম করবে` : null,
+    dcAutoNote: dcIsAutoEstimate() ? (lang === 'en' ? 'Approximate (distance auto-calc) — agency will confirm' : 'আনুমানিক (দূরত্ব অনুযায়ী অটো হিসাব) — এজেন্সি কনফার্ম করবে') : null,
     // Delivery is always part of the total and collected online — never separate.
     deliveryPaid: document.getElementById('f-fulfilment').value === 'pickup' ? 'na' : (deliverySettled ? 'paid' : 'unpaid'),
     paymentCharges: charge,
@@ -2218,9 +2237,15 @@ function showSuccess(order) {
   const cakePrice = Math.round(Number(order.cakePrice != null ? order.cakePrice : order.basePrice) || (order.total - dcAmt) || order.total || 0);
   const cakeDue = Math.max(0, cakePrice - advTowardCake);
   const methodName = order.paymentMethodName || order.advanceMethodName || '';
+  const dcApprox = dcIsApproxOrder(order);
   const dcTxt = isPickup
-    ? 'প্রযোজ্য নয় (সেল্ফ পিকআপ)'
-    : (order.dcAuto ? `৳${dcAmt}/- (approx)` : `৳${dcAmt}/-`);
+    ? 'প্রযোজ্য নয় (সেলফ পিকআপ)'
+    : (dcAmt > 0
+      ? `৳${dcAmt}/-${order.dcAuto ? ` ${dcApproxSuffixText()}` : ''}`
+      : (lang === 'en' ? 'Blank — agency will confirm' : 'ফাঁকা — এজেন্সি কনফার্ম করবে'));
+  const dcFootnote = (!isPickup && dcApprox)
+    ? `<div class="dc-footnote">${dcAgencyFootnoteText()}</div>`
+    : '';
   summary.innerHTML = `
     <div class="row"><span>অর্ডার আইডি</span><span>${esc(order.orderId)}</span></div>
     <div class="row"><span>নাম</span><span>${esc(order.customerName)}</span></div>
@@ -2232,11 +2257,12 @@ function showSuccess(order) {
     ${order.notes ? `<div class="row"><span>📝 অতিরিক্ত তথ্য</span><span>${esc(order.notes)}</span></div>` : ''}
     <div class="row"><span>কেকের মূল্য</span><span>৳${cakePrice}</span></div>
     <div class="row"><span>ডেলিভারি চার্জ</span><span>${dcTxt}</span></div>
+    ${dcFootnote}
     <div class="row"><span>অগ্রিম / প্রদান</span><span style="color:var(--green)">৳${advTowardCake}${methodName ? ` (${esc(methodName)})` : ''}</span></div>
     ${cakeDue > 0 ? `<div class="due-alert">⚠️ বাকি: ৳${cakeDue} (ডেলিভারি চার্জ ছাড়া)</div>` : '<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ পূর্ণ পেমেন্ট সম্পন্ন</div>'}
   `;
 
-  // Manual flow: no auto-download, no auto-close popup. The customer takes a
+    // Manual flow: no auto-download, no auto-close popup. The customer takes a
   // screenshot of this summary and sends it to the Facebook page — the admin
   // rechecks everything and confirms the order. Once submitted, closing the
   // tab wipes all cached data automatically (see wipeOnTabClose).

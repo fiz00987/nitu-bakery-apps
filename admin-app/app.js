@@ -155,6 +155,36 @@ window.App = (() => {
   // count cake money.
   const dcAmtOf = o => Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
   const isPickupOrder = o => (o.fulfilment === 'pickup' || o.deliveryPaid === 'na');
+  // ─── Non-authoritative DC display ──────────────────────────────
+  // dcAuto (or a blank amount) means the delivery agency hasn't given the
+  // real figure: show the amount flagged as approximate + the red ⚠️
+  // footnote. A manually-typed charge is admin-provided → shown plainly.
+  const DC_APPROX_SUFFIX   = '( আনুমানিক / দূরত্ব অনুযায়ী অটো হিসাব )';
+  const DC_AGENCY_FOOTNOTE = '⚠️ প্রকৃত ডেলিভারি চার্জ ডেলিভারি এজেন্সি প্রদান করেনি — চার্জ না জানা থাকলে খালি রাখুন।';
+  const dcIsApprox = o => !isPickupOrder(o) && (!!o.dcAuto || dcAmtOf(o) <= 0);
+  // Amount + optional approx suffix — used by the card, payment note and copies.
+  const dcAmtLine = o => {
+    const amt = dcAmtOf(o);
+    if (amt <= 0) return 'চার্জ ফাঁকা — এজেন্ট নেবে';
+    return `৳${fmtMoney(amt)}/-${o.dcAuto ? ` ${DC_APPROX_SUFFIX}` : ''}`;
+  };
+  // Red footnote for HTML surfaces (order card).
+  const dcFootnoteHtml = o => dcIsApprox(o) ? `<div class="dc-footnote">${DC_AGENCY_FOOTNOTE}</div>` : '';
+  // Modal helper: show the red ⚠️ footnote only while the DC field is blank
+  // (pickup hides it). Typing a figure = admin-provided → footnote hides.
+  const updateDcFootnote = () => {
+    const el = document.getElementById('f-delivery-amount');
+    const fn = document.getElementById('dc-footnote');
+    if (!el || !fn) return;
+      const fulfil = (document.getElementById('f-fulfilment') || {}).value || 'delivery';
+      const typed  = String(el.value || '').trim() !== '';
+      if (fulfil === 'pickup' || typed) { fn.style.display = 'none'; return; }
+      const prev = parseInt(el.dataset.prev || '', 10) || 0;
+      fn.innerHTML = prev > 0
+        ? `⚠️ ডেলিভারি চার্জ হতে পারে ৳${fmtMoney(prev)} (আনুমানিক / দূরত্ব অনুযায়ী অটো হিসাব) — প্রকৃত ডেলিভারি চার্জ ডেলিভারি এজেন্সি প্রদান করবে। চার্জ না জানা থাকলে খালি রাখুন।`
+        : '⚠️ ডেলিভারি চার্জ আনুমানিক হতে পারে (দূরত্ব অনুযায়ী অটো হিসাব) — প্রকৃত ডেলিভারি চার্জ ডেলিভারি এজেন্সি প্রদান করবে। চার্জ না জানা থাকলে খালি রাখুন।';
+      fn.style.display = 'block';
+  };
   // Cake price: cakePrice when DC is folded into total, else the total itself.
   const cakePriceOf = o => {
     const dc = dcAmtOf(o);
@@ -1009,9 +1039,9 @@ window.App = (() => {
     // any bKash cash-out charge) so the SRS message states the full-payment due.
     const cakeDue = Math.max(0, (Number(o.total) || 0) - Math.max(0, (Number(o.paid) || 0) - bkashCharge(o)));
     if (cakeDue > 0) msg += `Cake due: ${fmtMoney(cakeDue)}/-\n`;
-    if (o.deliveryPaid === 'unpaid' && o.deliveryAmount > 0) msg += `due: Delivery charge (${o.deliveryAmount}/-)`;
+    if (o.deliveryPaid === 'unpaid' && o.deliveryAmount > 0) msg += `due: Delivery charge (${o.deliveryAmount}/-${o.dcAuto ? ` ${DC_APPROX_SUFFIX}` : ''})`;
     else if (o.deliveryPaid === 'unpaid') msg += `due: Delivery charge`;
-    else msg += `Delivery charge: Paid`;
+    else msg += `Delivery charge: Paid${o.dcAuto && o.deliveryAmount > 0 ? ` ${DC_APPROX_SUFFIX}` : ''}`;
     return msg;
   };
 
@@ -1044,9 +1074,14 @@ window.App = (() => {
     const amt  = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
     const paid = String(o.deliveryPaid || '');
     if (o.fulfilment === 'pickup' || paid === 'na') return 'প্রযোজ্য নয় (সেল্ফ পিকআপ)';
-    if (paid === 'paid') return amt > 0 ? `৳${fmtMoney(amt)} (পরিশোধিত ✅)` : 'পরিশোধিত ✅';
-    return amt > 0 ? `৳${fmtMoney(amt)} (বাকি ⏳)` : 'বাকি ⏳ (চার্জ ফাঁকা — এজেন্ট নেবে)';
+    if (paid === 'paid') return amt > 0 ? `৳${fmtMoney(amt)}${o.dcAuto && amt > 0 ? ` ${DC_APPROX_SUFFIX}` : ''} (পরিশোধিত ✅)` : 'পরিশোধিত ✅';
+    return amt > 0 ? `৳${fmtMoney(amt)}${o.dcAuto && amt > 0 ? ` ${DC_APPROX_SUFFIX}` : ''} (বাকি ⏳)` : 'বাকি ⏳ (চার্জ ফাঁকা — এজেন্ট নেবে)';
   };
+  // Customer-facing warning appended to the confirm copy / WhatsApp text
+  // whenever the charge is still an estimate (or left blank).
+  const confirmDcFootnote = o => dcIsApprox(o)
+    ? '\n⚠️ প্রকৃত ডেলিভারি চার্জ ডেলিভারি এজেন্সি নির্ধারণ করবে — এটি আনুমানিক।'
+    : '';
   const confirmDeliveryWhen = o => {
     const d = o.date ? fmtDate(o.date) : '';
     const t = o.time || '';
@@ -1061,7 +1096,7 @@ window.App = (() => {
     const addr    = (o.address || '').trim() || '—';
     const money   = confirmCakeMoneyLine(o);
     const dcLine  = confirmDeliveryLine(o);
-    return `আসসালামু আলাইকুম ${name}! 🌸\nআপনার অর্ডার ${orderId} কনফার্ম হয়েছে! ✅\n\n🎂 কেক: ${cake}\n✏️ কেকে লেখা: ${writing}\n🚚 ডেলিভারি: ${when}\n📍 ঠিকানা: ${addr}\n\n💰 কেকের মোট: ${money}\n🚚 ডেলিভারি চার্জ: ${dcLine}\n\n${SHOP_NAME_BN} তে অর্ডার করার জন্য ধন্যবাদ! 💛\nকোনো পরিবর্তন লাগলে এই চ্যাটে রিপ্লাই দিন অথবা কল করুন ${SHOP_CALL_LINE}।`;
+    return `আসসালামু আলাইকুম ${name}! 🌸\nআপনার অর্ডার ${orderId} কনফার্ম হয়েছে! ✅\n\n🎂 কেক: ${cake}\n✏️ কেকে লেখা: ${writing}\n🚚 ডেলিভারি: ${when}\n📍 ঠিকানা: ${addr}\n\n💰 কেকের মোট: ${money}\n🚚 ডেলিভারি চার্জ: ${dcLine}${confirmDcFootnote(o)}\n\n${SHOP_NAME_BN} তে অর্ডার করার জন্য ধন্যবাদ! 💛\nকোনো পরিবর্তন লাগলে এই চ্যাটে রিপ্লাই দিন অথবা কল করুন ${SHOP_CALL_LINE}।`;
   };
   const openConfirmWhatsApp = key => {
     const o = orders.find(x => x.firebaseKey === key);
@@ -1099,15 +1134,16 @@ window.App = (() => {
     L.push(`💳 অগ্রিম: ৳${fmtMoney(advanceOf(o))}`);
     const dk = dueAmt(o);
     if (dk > 0) L.push(`🔴 কেকের বকেয়া: ৳${fmtMoney(dk)}`);
-    // Delivery charge — ALWAYS show paid/unpaid with the amount
+    // Delivery charge — status + amount; approx/blank gets the ⚠️ footnote.
     const dc  = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
     if (o.fulfilment === 'pickup' || o.deliveryPaid === 'na') {
       L.push('🚚 ডেলিভারি চার্জ: প্রযোজ্য নয় (সেল্ফ পিকআপ)');
     } else if (o.deliveryPaid === 'paid') {
-      L.push(`🚚 ডেলিভারি চার্জ: পরিশোধিত ✅${dc ? ` — ৳${fmtMoney(dc)}` : ''}`);
+      L.push(`🚚 ডেলিভারি চার্জ: পরিশোধিত ✅${dc ? ` — ${dcAmtLine(o)}` : ''}`);
     } else {
-      L.push(dc ? `🚚 ডেলিভারি চার্জ: বাকি 🔴 — ৳${fmtMoney(dc)}` : '🚚 ডেলিভারি চার্জ: বাকি 🔴 (চার্জ ফাঁকা — এজেন্ট নেবে)');
+      L.push(dc ? `🚚 ডেলিভারি চার্জ: বাকি 🔴 — ${dcAmtLine(o)}` : '🚚 ডেলিভারি চার্জ: বাকি 🔴 (চার্জ ফাঁকা — এজেন্ট নেবে)');
     }
+    if (dcIsApprox(o)) { L.push(''); L.push(DC_AGENCY_FOOTNOTE); }
     if (o.trx) L.push(`🔗 ট্রানজেকশন/লাস্ট ৩ ডিজিট: ${o.trx}`);
     if (o.notes) L.push(`📝 নোট: ${o.notes}`);
     return L.join('\n');
@@ -1200,11 +1236,12 @@ window.App = (() => {
     const dcAmtNp = dcAmtOf(o);
     const dcLineNp = isPickupOrder(o)
       ? 'প্রযোজ্য নয় (সেল্ফ পিকআপ)'
-      : (o.dcAuto ? `DC- ${dcAmtNp}/- (approx)` : `${dcAmtNp}/-`);
+      : dcAmtLine(o);
     L.push(`কেকের মূল্য- ${cakePriceOf(o)}/-`);
     L.push('');
     L.push(`ডেলিভারি চার্জ- ${dcLineNp}`);
     L.push('');
+    if (dcIsApprox(o)) { L.push(DC_AGENCY_FOOTNOTE); L.push(''); }
     L.push(`অগ্রিম / প্রদান- ${advanceOf(o)}/-${methodNameNp ? ` (${methodNameNp})` : ''}`);
     L.push('');
     if (dueAmt(o) > 0) L.push(`বকেয়া- ${dueAmt(o)}/- (ডেলিভারি চার্জ ছাড়া)`);
@@ -1332,7 +1369,8 @@ window.App = (() => {
       ${drow('📍', 'ঠিকানা', o.address)}
       ${o.surprise === 'yes' ? drow('🎁', 'সারপ্রাইজ', 'হ্যাঁ — গোপন রাখুন!') : ''}
       ${o.deliveryPaid && o.deliveryPaid !== 'na'
-        ? drow('🚚', 'ডেলিভারি চার্জ', (o.deliveryPaid === 'paid' ? 'পরিশোধিত' : 'বাকি') + (o.deliveryAmount ? ` — ৳${fmtMoney(o.deliveryAmount)}` : '') + (o.dcAuto ? ' (আনুমানিক)' : ''))
+        ? drow('🚚', 'ডেলিভারি চার্জ', (o.deliveryPaid === 'paid' ? 'পরিশোধিত' : 'বাকি') + (dcAmtOf(o) ? ` — ${dcAmtLine(o)}` : ''))
+        + dcFootnoteHtml(o)
         : ''}
     </div>
 
@@ -1344,18 +1382,15 @@ window.App = (() => {
         const cakeTotal = cakePriceOf(o);
         const advance   = advanceOf(o);
         const cakeDue   = dueAmt(o);
-        const dcAmt     = dcAmtOf(o);
         const dcNote = (o.fulfilment === 'pickup' || o.deliveryPaid === 'na')
-          ? '🚚 ডেলিভারি চার্জ: প্রযোজ্য নয় (সেল্ফ পিকআপ)'
-          : dcAmt > 0
-            ? `🚚 ডেলিভারি চার্জ: ৳${fmtMoney(dcAmt)}${o.dcAuto ? ' (আনুমানিক — ডেলিভারি এজেন্সি সঠিক চার্জ কনফার্ম করবে)' : ''} — ${o.deliveryPaid === 'paid' ? 'পরিশোধিত ✅' : 'বাকি ⏳'}`
-            : '🚚 ডেলিভারি চার্জ: আনুমানিক — ডেলিভারি এজেন্সি সঠিক চার্জ কনফার্ম করবে';
+          ? '🚚 ডেলিভারি চার্জ: প্রযোজ্য নয় (সেলফ পিকআপ)'
+          : `🚚 ডেলিভারি চার্জ: ${dcAmtLine(o)} — ${o.deliveryPaid === 'paid' ? 'পরিশোধিত ✅' : 'বাকি ⏳'}`;
         return `<div class="pay-box">
         <div class="pay-cell"><div class="pay-lbl">${lang==='bn'?'কেকের মূল্য':'Cake price'}</div><div class="pay-val">৳${fmtMoney(cakeTotal)}</div></div>
         <div class="pay-cell"><div class="pay-lbl">${lang==='bn'?'অগ্রিম / প্রদান':'Advance / Paid'}</div><div class="pay-val green">৳${fmtMoney(advance)}</div></div>
         <div class="pay-cell"><div class="pay-lbl">${tr('due')}</div><div class="pay-val ${cakeDue > 0 ? 'red' : 'green'}">৳${fmtMoney(cakeDue)}</div></div>
       </div>
-      <div class="pay-note">${dcNote}</div>`;
+      <div class="pay-note">${dcNote}</div>${dcFootnoteHtml(o)}`;
       })()}
       ${bkashCharge(o) > 0 ? `<div class="pay-note">💰 ${tr('bkashDeducted')}: অ্যাডভান্স ৳${fmtMoney(o.paid)} — ${o.paymentChargesLabel ? esc(o.paymentChargesLabel) : (o.paymentMethodName ? esc(o.paymentMethodName) : 'বিকাশ/নগদ')} চার্জ ৳${fmtMoney(bkashCharge(o))} আলাদা</div>` : ''}
       ${o.source === 'manual' && advanceOf(o) > 0 && (o.paymentMethodName || o.paymentMethod || o.paymentChargesLabel) ? `<div class="pay-note">💳 অগ্রিম পাওয়া গেছে: ${esc(o.paymentMethodName || ({bkash:'বিকাশ',nagad:'নগদ',bank:'ব্যাংক',cash:'ক্যাশ'})[String(o.paymentMethod||'').toLowerCase()] || o.paymentChargesLabel)}${o.trx ? ` | ট্রানজেকশন: ${esc(o.trx)}` : ''}</div>` : ''}
@@ -1399,7 +1434,7 @@ window.App = (() => {
       <button class="card-btn btn-call"   onclick="event.stopPropagation(); App.openMessenger('${fk}')">💬 Messenger</button>
       ${waLink ? `<button class="card-btn btn-wa" onclick="event.stopPropagation(); App.openConfirmWhatsApp('${fk}')">✅ কনফার্ম পাঠান</button>` : ''}
       ${waLink ? `<button class="card-btn btn-wa" onclick="event.stopPropagation(); window.open('${waLink}','_blank')">💬 WhatsApp</button>` : ''}
-      ${waPhone ? `<button class="card-btn btn-call" onclick="event.stopPropagation(); window.open('tel:${waPhone}')">${tr('call')}</button>` : ''}
+      ${waPhone ? `<button class="card-btn btn-call" onclick="event.stopPropagation(); window.open('tel:${waPhone.startsWith('880') ? '0' + waPhone.slice(3) : waPhone}')">${tr('call')}</button>` : ''}
       <button class="card-btn btn-edit"  onclick="event.stopPropagation(); App.openModal('${fk}')">✏️ এডিট</button>
       ${(o.cakes && o.cakes.length > 1) ? `<button class="card-btn btn-note" onclick="event.stopPropagation(); App.splitOrder('${fk}')" title="একটি অর্ডারের ${o.cakes.length}টি কেক আলাদা আলাদা অর্ডারে ভাগ করুন">✂️ আলাদা</button>` : ''}
       <button class="card-btn btn-del"   onclick="event.stopPropagation(); App.confirmDelete('${fk}')">🗑️ মুছুন</button>
@@ -2208,8 +2243,12 @@ window.App = (() => {
   const createQuoteFromModal = async () => {
     const g = id => document.getElementById(id);
     const fulfilmentVal = g('f-fulfilment') ? g('f-fulfilment').value : 'delivery';
-    const rawDc = g('f-delivery-amount') ? g('f-delivery-amount').value : '';
-    const deliveryCharge = fulfilmentVal === 'pickup' ? 0 : (parseFloat(rawDc) || 0);
+    const rawDc = g('f-delivery-amount') ? String(g('f-delivery-amount').value || '').trim() : '';
+    // Field opens blank → fall back to the stored amount so quotes keep the
+    // order's figure when the admin leaves the (non-authoritative) field empty.
+    const dcElQ = g('f-delivery-amount');
+    const dcAmtQ = rawDc !== '' ? (parseFloat(rawDc) || 0) : (parseInt((dcElQ && dcElQ.dataset.prev) || '', 10) || 0);
+    const deliveryCharge = fulfilmentVal === 'pickup' ? 0 : dcAmtQ;
     const cakeTotal = g('f-total') ? (parseFloat(g('f-total').value) || 0) : 0;
     let allCakes = [];
     try { allCakes = collectAdminCakes('', fulfilmentVal, deliveryCharge) || []; }
@@ -2994,7 +3033,17 @@ window.App = (() => {
     g('f-address').value        = o.address   || '';
     g('f-surprise').value       = o.surprise  || 'no';
     g('f-delivery-paid').value  = o.deliveryPaid    || 'unpaid';
-    g('f-delivery-amount').value = o.deliveryAmount || '';
+    // DC field opens BLANK (non-authoritative): the actual figure comes from
+    // the delivery agency. Keep the stored amount + approx flag in data-*
+    // so a blank save preserves both and the ⚠️ footnote can show the estimate.
+    {
+      const dcEl = g('f-delivery-amount');
+      const storedDc = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
+      dcEl.value = '';
+      dcEl.dataset.prev = String(storedDc || '');
+      dcEl.dataset.approx = (o.dcAuto === true || !!o.dcAutoNote) ? '1' : '';
+      updateDcFootnote();
+    }
     // Cake money only — DC lives in its own field above, never folded here.
     g('f-total').value          = cakePriceOf(o) || '';
     // f-paid shows the ADVANCE toward the cake (charge-free), same number
@@ -3496,6 +3545,8 @@ window.App = (() => {
       const sameDate = g(`cb-same-date-${i}`).checked;
       const sel = g(`f-flavour-${i}`);
       // Shared trip adds 0 extra; only a distinct trip carries its own charge.
+      // (Per-cake fields are repopulated by restoreAdminCakes on edit, so a
+      // blank field here simply means "no separate charge".)
       const chg = fulfilmentVal === 'pickup' ? 0
         : (sameCharge ? 0 : (parseFloat(g(`f-delivery-amount-${i}`).value) || 0));
       const photos = adminExtraPhotos[i] || [];
@@ -3742,9 +3793,9 @@ window.App = (() => {
       const m = ADV_METHODS[advMethod];
       if (m && advance > 0) {
         const chg = m.rate > 0 ? Math.ceil(advance * m.rate) : 0;   // same ceil as customer app
-        fn.textContent = chg > 0
-          ? `📱 ${m.name}: ৳${fmtMoney(advance)} + ${m.name} চার্জ ৳${fmtMoney(chg)} = কাস্টমার পাঠিয়েছে ৳${fmtMoney(advance + chg)} — অ্যাডভান্স হিসেবে ৳${fmtMoney(advance)}-ই ধরা হবে, চার্জ কখনো বাকিতে যোগ হয় না।`
-          : `${m.name}: ৳${fmtMoney(advance)} — কোনো চার্জ নেই, পুরোটাই অ্যাডভান্স হিসেবে ধরা হবে।`;
+      fn.textContent = chg > 0
+        ? `⚠️ 📱 ${m.name}: ৳${fmtMoney(advance)} + ${m.name} চার্জ ৳${fmtMoney(chg)} = কাস্টমার পাঠিয়েছে ৳${fmtMoney(advance + chg)} — অ্যাডভান্স হিসেবে ৳${fmtMoney(advance)}-ই ধরা হবে, চার্জ কখনো বাকিতে যোগ হয় না।`
+        : `⚠️ ${m.name}: ৳${fmtMoney(advance)} — কোনো চার্জ নেই, পুরোটাই অ্যাডভান্স হিসেবে ধরা হবে।`;
         fn.classList.add('show');
       } else {
         fn.classList.remove('show');
@@ -3761,8 +3812,11 @@ window.App = (() => {
             ? ` + ডেলিভারি চার্জ ৳${fmtMoney(dcAmt)} (পরিশোধিত ✅)`
             : ` + ডেলিভারি চার্জ ৳${fmtMoney(dcAmt)} (ডেলিভারির পর নেওয়া হবে)`)
         : '';
-      hint.textContent = `অ্যাডভান্সের পর বাকি পরিমাণ — স্বয়ংক্রিয়ভাবে হিসাব হয়${dcLine} — কোনো বিকাশ/নগদ চার্জ কখনো যোগ হয় না`;
+      hint.textContent = `⚠️ অ্যাডভান্সের পর বাকি পরিমাণ — স্বয়ংক্রিয়ভাবে হিসাব হয়${dcLine} — কোনো বিকাশ/নগদ চার্জ কখনো যোগ হয় না`;
     }
+    // Keep the modal's red ⚠️ DC footnote in sync with every input change
+    // (typing hides it, clearing shows it again).
+    updateDcFootnote();
   };
   const totalInput = () => updateDueField();
   // ─── Save order ──────────────────────────────────────────────
@@ -3825,8 +3879,13 @@ window.App = (() => {
     }
 
     const cakePrice      = parseFloat(g('f-total').value) || 0;
-    const deliveryAmt    = parseFloat(g('f-delivery-amount').value) || 0;
     const fulfilmentVal  = g('f-fulfilment').value;
+    // DC field opens blank: empty = keep the stored amount (non-authoritative
+    // display is driven by the approx flag, not by clearing the figure).
+    const dcRawVal = String(g('f-delivery-amount').value || '').trim();
+    const deliveryAmt    = dcRawVal !== ''
+      ? (parseFloat(dcRawVal) || 0)
+      : (parseInt(g('f-delivery-amount').dataset.prev || '', 10) || 0);
     // f-paid holds the ADVANCE toward the cake (cake money only, no DC and no
     // gateway charge — the card shows the same figure). 50% / 100% of the cake
     // price is what the customer actually sends for the cake.
@@ -3898,26 +3957,27 @@ window.App = (() => {
       updatedAt:      Date.now()
     };
 
-    // ─ Approx → confirmed ───────────────────────────────────────
-    // If the order carried an auto-calculated (approx) delivery charge and the
-    // admin has now edited any money field, the figure is admin-confirmed —
-    // drop the (approx) label so the card stops flagging it.
-    const prevDc = existing ? Math.round(Number(existing.deliveryAmount != null ? existing.deliveryAmount : existing.deliveryCharge) || 0) : 0;
-    const prevTotal = existing ? Math.round(Number(existing.total) || 0) : 0;
-    const prevPaid = existing ? Math.round(Number(existing.paid) || 0) : 0;
-    const moneyChanged = existing && (
-      prevDc !== Math.round(Number(o.deliveryAmount) || 0) ||
-      prevTotal !== Math.round(Number(o.total) || 0) ||
-      prevPaid !== Math.round(Number(o.paid) || 0)
-    );
-    const wasApprox = existing && (existing.dcAuto === true || !!existing.dcAutoNote);
-    if (!wasApprox || moneyChanged) {
-      o.dcAuto = false;          // admin-verified (or brand-new) order → certain
+    // ─ Approx (non-authoritative) DC ───────────────────────────────
+    // The field opens blank: leaving it blank KEEPS the approx flag (the card
+    // keeps showing the ⚠️ agency footnote); typing a figure = admin-provided
+    // → plain display, approx cleared. Unrelated money edits (cake price,
+    // advance) never touch the flag.
+    // Blank field → deliveryAmt above already fell back to data-prev, so the
+    // stored amount survives; only the flags are reconciled here.
+    const wasApprox = !!(existing && (existing.dcAuto === true || existing.dcAutoNote));
+    const approxFromModal = g('f-delivery-amount').dataset.approx === '1';
+    if (dcRawVal !== '') {
+      // Admin typed a figure → admin-provided, certain.
+      o.dcAuto = false;
       o.dcAutoNote = null;
-    } else {
-      // untouched approx order: keep the flag so the card still warns
+    } else if (wasApprox || approxFromModal) {
+      // Untouched blank save on an approx order (edit OR duplicate): keep the
+      // warning so the card/copies still flag the charge as non-authoritative.
       o.dcAuto = true;
-      o.dcAutoNote = existing.dcAutoNote || 'আনুমানিক (এলাকা অটো-হিসাব) — এজেন্সি কনফার্ম করবে';
+      o.dcAutoNote = (existing && existing.dcAutoNote) || 'আনুমানিক (দূরত্ব অনুযায়ী অটো হিসাব) — এজেন্সি কনফার্ম করবে';
+    } else {
+      o.dcAuto = false;
+      o.dcAutoNote = null;
     }
 
     // Keep the customer-app payment fields in sync. Customer-submitted orders
@@ -4355,6 +4415,7 @@ window.App = (() => {
       if (addr.value.trim() === PICKUP_ADDRESS) addr.value = '';
       if (dpaid.value === 'na') dpaid.value = 'unpaid';
     }
+    updateDcFootnote();
   };
 
   // Order ID — same NB + date + random format as the customer app.
