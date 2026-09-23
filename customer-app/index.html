@@ -157,7 +157,7 @@ button{cursor:pointer}
 /* ⚠️ Delivery-charge footnote — red warning under the DC field / order card */
 .dc-footnote{font-size:11.5px;color:var(--red);background:var(--red-light);border:1px solid #ef9a9a;border-radius:var(--radius-sm);padding:8px 10px;margin-top:6px;line-height:1.5;font-weight:600}
 .advance-options{display:flex;gap:8px;margin-bottom:12px}
-/* 50% is locked for surprise / mini cakes — greyed out, untappable */
+/* 50% is locked for mini cakes — greyed out, untappable (surprise only warns via footnote) */
 .advance-opt.adv-locked{background:#ececec;border-color:#d8d8d8;color:#9a9a9a;cursor:not-allowed;position:relative}
 .advance-opt.adv-locked::after{content:'🔒';position:absolute;top:2px;right:5px;font-size:10px}
 /* Mini cake: the pound/KG input is hidden; the mini info popup explains it */
@@ -458,7 +458,7 @@ html.t-gold .order-number-badge{color:#a5813e}
         <option value="no">না</option>
         <option value="yes">হ্যাঁ — সারপ্রাইজ 🎁</option>
       </select>
-      <div class="surprise-note" id="surprise-note">⚠️ সারপ্রাইজ কেকের জন্য ১০০% অগ্রিম পেমেন্ট আবশ্যক।</div>
+      <div class="surprise-note" id="surprise-note" data-bn="⚠️ কেকের গ্রহণকারী যদি অর্ডারকারী ব্যক্তি নিজে না হন, তবে অনুগ্রহ করে সম্পূর্ণ (১০০%) পেমেন্ট করতে হবে। আপনার সহযোগিতার জন্য আন্তরিক ধন্যবাদ।" data-en="⚠️ If the cake's receiver is someone other than the person placing the order, kindly complete the full (100%) payment. Thank you for your kind cooperation.">⚠️ কেকের গ্রহণকারী যদি অর্ডারকারী ব্যক্তি নিজে না হন, তবে অনুগ্রহ করে সম্পূর্ণ (১০০%) পেমেন্ট করতে হবে। আপনার সহযোগিতার জন্য আন্তরিক ধন্যবাদ।</div>
     </div>
   </div>
 

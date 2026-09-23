@@ -1205,18 +1205,19 @@ function confirmMiniCake() {
     : 'মিনি কেক — ডেলিভারি চার্জসহ ১০০% পেমেন্ট');
 }
 
-// A payment that is ALWAYS full: surprise cakes and mini cakes (also while
-// the mini-convert popup is still pending — 50% must lock right away). For
-// these the total counts the 100% cake price PLUS the delivery charge.
-// Everything else (normal cake, not surprise) keeps the normal 50% / 100% choice.
+// A payment that is ALWAYS full: mini cakes (also while the mini-convert
+// popup is still pending — 50% must lock right away). For these the total
+// counts the 100% cake price PLUS the delivery charge.
+// Surprise cakes no longer lock 50% — they only show a red ⚠️ footnote
+// requesting full payment when the receiver is someone other than the
+// orderer; both the 50% and 100% options stay open.
 function isFullOnlyPayment() {
-  if (isSurprise) return true;
   if (getCakeKind() === 'mini') return true;
   if (miniPending) return true;   // ≤300 g detected, OK popup open → lock now
   return false;
 }
 
-// Full payment = 100% of CAKE + 100% of DELIVERY for surprise/mini
+// Full payment = 100% of CAKE + 100% of DELIVERY for mini cakes
 // (all paid now); normal 100% = cake only (delivery paid later with due).
 function getFullBase() {
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
@@ -1247,8 +1248,8 @@ function syncFullOnlyPayment() {
 function setAdvanceType(type) {
   if (type === '50' && isFullOnlyPayment()) {
     showToast(lang === 'en'
-      ? 'Only full payment for surprise / mini cake'
-      : 'সারপ্রাইজ / মিনি কেকে শুধু ১০০% পেমেন্ট');
+      ? 'Only full payment for mini cake'
+      : 'মিনি কেকে শুধু ১০০% পেমেন্ট');
     return;   // 50% stays locked
   }
   advanceType = type;
@@ -1380,7 +1381,7 @@ function recalcPrice(manualEdit) {
   const advInput = document.getElementById('f-advance');
   const typedSend = parseFloat(advInput.value) || 0;
 
-  // 50% lock can come and go as surprise / cake-kind / fulfilment change,
+  // 50% lock can come and go as cake-kind / fulfilment change,
   // so re-check it on every recalculation (not just on option taps).
   // (Lock state only — the math below always uses the cake+delivery total.)
   syncFullOnlyPayment();
@@ -1397,15 +1398,15 @@ function recalcPrice(manualEdit) {
   // Total payment = cake price + delivery charge, always. (No separate note.)
   const total = Math.round(cakePrice) + Math.round(delivery);
   // NORMAL orders: advance is CAKE-ONLY (delivery paid later with the due).
-  // EXCEPTION — surprise + mini: advance = FULL cake + FULL delivery together
+  // EXCEPTION — mini cakes: advance = FULL cake + FULL delivery together
   // (50% locked, customer pays 100% + DC now, gateway charge on top).
   const fullNow = isFullOnlyPayment();
 
   let base, charge, sendAmount, isAuto = false;
   if (advanceType && !manualEdit) {
-    // AUTO: normal → chosen % of CAKE only; surprise/mini → full cake + full DC.
+    // AUTO: normal → chosen % of CAKE only; mini → full cake + full DC.
     // (charge rounded up, e.g. normal 50% of 1000 via bKash -> 500 + 10 = 510;
-    //  surprise/mini 1000 + 120 DC via bKash -> 1120 + 21 = 1141)
+    //  mini 1000 + 120 DC via bKash -> 1120 + 21 = 1141)
     isAuto = true;
     if (fullNow) {
       base = Math.round(cakePrice) + Math.round(delivery);
@@ -1426,12 +1427,12 @@ function recalcPrice(manualEdit) {
     charge = split.charge;
   }
 
-  // Due: normal → rest of cake + full DC (paid later); surprise/mini → 0 (all paid now).
+  // Due: normal → rest of cake + full DC (paid later); mini → 0 (all paid now).
   const due = fullNow ? 0 : Math.max(0, Math.round(cakePrice) - base) + Math.round(delivery);
   const methodName = paymentMethod ? paymentMethod.name : '';
 
   // Hint under the grey box showing where the bold figure came from.
-  // Surprise/mini spells out cake + DC (both paid now).
+  // Mini cakes spell out cake + DC (both paid now).
   const hint = document.getElementById('advance-hint');
   if (advanceType) {
     const pctLabel = fullNow
@@ -1778,19 +1779,12 @@ function onFulfilmentChange() {
   recalcPrice();
 }
 
-// Surprise
+// Surprise — only shows the red ⚠️ full-payment-request footnote. It does
+// NOT lock the 50% option: both 50% and 100% stay open, the note politely
+// asks for full payment when the receiver is someone other than the orderer.
 document.getElementById('f-surprise').addEventListener('change', function() {
   isSurprise = this.value === 'yes';
   document.getElementById('surprise-note').classList.toggle('show', isSurprise);
-  if (isSurprise) {
-    setAdvanceType('full');
-    // 50% locks while surprise is on (sync also re-locks on every recalc)
-    document.querySelectorAll('.advance-opt').forEach(el => el.style.opacity = '0.5');
-    document.getElementById('opt-full').style.opacity = '1';
-  } else {
-    document.querySelectorAll('.advance-opt').forEach(el => el.style.opacity = '1');
-  }
-  syncFullOnlyPayment();
 });
 
 // Progress
@@ -1895,7 +1889,7 @@ function validate() {
 if (timeError) { showToast(timeError); document.getElementById('f-timeslot').focus(); return false; }
   const writingError = getCakeWritingError(document.getElementById('f-writing').value);
   if (writingError) { showToast(writingError); document.getElementById('f-writing').focus(); return false; }
-  // Full-only (surprise / mini): FULL cake + FULL delivery must be covered
+  // Full-only (mini): FULL cake + FULL delivery must be covered
   // now in one send (gateway charge sits on top of that).
   if (isFullOnlyPayment()) {
     const cake = Math.round(parseFloat(document.getElementById('f-cake-price').value) || 0);
@@ -1986,7 +1980,7 @@ async function submitOrder() {
   const subtotal = Math.round(cakePrice) + Math.round(delivery);
   const total = subtotal;
   const advanceTotal = Math.round(sendAmount);
-  // Normal: due = cake-rest + full DC (paid later). Surprise/mini: all paid
+  // Normal: due = cake-rest + full DC (paid later). Mini: all paid
   // now (cake + DC in the advance), so due = 0 and DC counts as settled.
   const fullNowOrder = isFullOnlyPayment();
   const dueAmount = fullNowOrder ? 0 : Math.max(0, Math.round(cakePrice) - advance) + Math.round(delivery);
