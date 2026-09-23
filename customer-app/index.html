@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Baloo+Da+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
   --pink:#c2185b; --pink-dark:#880e4f; --pink-mid:#e91e8c;
@@ -30,10 +30,12 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{scroll-behavior:smooth}
-/* Bengali numerals (০-৯) render in Baloo Da 2 — open, rounded, easy to read.
-   Everything else stays in Hind Siliguri / Poppins. */
-@font-face{font-family:'BN-Digits';font-style:normal;font-display:swap;font-weight:400 700;src:url('https://fonts.gstatic.com/s/balooda2/v26/2-c39J9j0IaUMQZwAJyJaOX1UUnf3GLnYjALsTNe.ttf') format('truetype');unicode-range:U+09E6-09EF}
-body{font-family:'Hind Siliguri','BN-Digits','Poppins',-apple-system,sans-serif;background:linear-gradient(rgba(247,244,246,.91),rgba(247,244,246,.96)),url('https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=75') center/cover fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+/* Bengali numerals (০-৯) render in Noto Sans Bengali — plain, unambiguous digit
+   shapes (Baloo Da 2's ১/৪/৮ were hard to tell apart at small sizes).
+   Listed FIRST in the body stack so digits always use it; everything else stays
+   in Hind Siliguri / Poppins. */
+@font-face{font-family:'BN-Digits';font-style:normal;font-display:swap;font-weight:400 700;src:url('https://fonts.gstatic.com/s/notosansbengali/v33/Cn-fJsCGWQxOjaGwMQ6fIiMywrNJIky6nvd8BjzVMvJx2mc4I3mYvNY.woff2') format('woff2');unicode-range:U+09E6-09EF}
+body{font-family:'BN-Digits','Hind Siliguri','Poppins',-apple-system,sans-serif;background:linear-gradient(rgba(247,244,246,.91),rgba(247,244,246,.96)),url('https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=75') center/cover fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
 body:lang(en),body:lang(en) input,body:lang(en) select,body:lang(en) textarea,body:lang(en) button{font-family:'Poppins',-apple-system,sans-serif}
 input,select,textarea,button{font-family:inherit;font-size:inherit}
 button{cursor:pointer}
