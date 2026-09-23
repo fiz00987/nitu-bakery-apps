@@ -959,11 +959,52 @@ window.App = (() => {
   });
 
   // ─── Sorting ─────────────────────────────────────────────────
+  // Delivery-time → minutes since midnight, or null when the stored time
+  // is legacy free-text (e.g. "বিকাল ৪টা") that cannot be parsed.
+  const timeMinutesOf = o => {
+    const raw = String(o.time || o.timeSlotLabel || o.timeSlot || '').trim();
+    if (!raw) return null;
+    const bn = raw.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+    const m = bn.match(/(\d{1,2})(?:\s*[:.\-]\s*(\d{1,2}))?\s*(a\.?m\.?|p\.?m\.?)/i);
+    if (!m) return null;
+    let h = parseInt(m[1], 10);
+    const min = m[2] != null ? parseInt(m[2], 10) : 0;
+    if (h < 1 || h > 12 || min > 59) return null;
+    const pm = m[3][0].toLowerCase() === 'p';
+    if (pm && h !== 12) h += 12;
+    if (!pm && h === 12) h = 0;
+    return h * 60 + min;
+  };
+  // NEVER shuffle: every comparison ends in a stable, fully-deterministic
+  // tie-break chain (date → time → createdAt → Firebase key). The old sort
+  // compared the delivery date ONLY, so same-day orders kept whatever
+  // order the last snapshot/sort happened to leave behind — and any
+  // background write (healers, another device, a new order) re-sorted and
+  // visibly moved cards while the admin was working on them.
   const sortOrders = () => {
+    const stableTie = (a, b) => {
+      const ca = Number(a.createdAt) || 0, cb = Number(b.createdAt) || 0;
+      if (ca !== cb) return ca - cb;
+      const ka = String(a.firebaseKey || ''), kb = String(b.firebaseKey || '');
+      return ka < kb ? -1 : ka > kb ? 1 : 0;
+    };
     orders.sort((a, b) => {
-      if (sortMode === 'name') return (a.name || '').localeCompare(b.name || '');
-      if (sortMode === 'due')  return dueAmt(b) - dueAmt(a);
-      return toDate(a.date || '2099-01-01') - toDate(b.date || '2099-01-01');
+      if (sortMode === 'name') {
+        const c = (a.name || '').localeCompare(b.name || '');
+        if (c) return c;
+      } else if (sortMode === 'due') {
+        const c = dueAmt(b) - dueAmt(a);
+        if (c) return c;
+      }
+      const da = toDate(a.date || '2099-01-01').getTime();
+      const db = toDate(b.date || '2099-01-01').getTime();
+      const dA = Number.isNaN(da) ? Infinity : da;   // unparseable legacy dates sink last
+      const dB = Number.isNaN(db) ? Infinity : db;
+      if (dA !== dB) return dA - dB;
+      const ta = timeMinutesOf(a), tb = timeMinutesOf(b);
+      if (ta != null && tb != null && ta !== tb) return ta - tb;
+      if ((ta != null) !== (tb != null)) return ta != null ? -1 : 1;
+      return stableTie(a, b);
     });
   };
 
@@ -1046,12 +1087,22 @@ window.App = (() => {
     } else {
       msg += `Cake ${weightText(o)}\n`;
     }
-    // Cake due (total minus what actually counts toward the cake, i.e. excluding
-    // any bKash cash-out charge) so the SRS message states the full-payment due.
-    const cakeDue = Math.max(0, (Number(o.total) || 0) - Math.max(0, (Number(o.paid) || 0) - bkashCharge(o)));
+    // Cake due from the single source of truth: cake money ONLY (the
+    // delivery charge is never folded into this number — it has its own
+    // line below). Using dueAmt() fixes the old bug where `total − paid`
+    // silently included the delivery charge (double-counted due) or, when
+    // the stored `paid` was stale/large, hid a real due entirely.
+    const cakeDue = Math.max(0, Math.round(dueAmt(o)));
     if (cakeDue > 0) msg += `Cake due: ${fmtMoney(cakeDue)}/-\n`;
-    if (o.deliveryPaid === 'unpaid') msg += dcIsApprox(o) ? `due: Delivery charge (৳0)` : `due: Delivery charge (${o.deliveryAmount}/-)`;
-    else msg += `Delivery charge: Paid${dcIsApprox(o) ? ' (৳0)' : ''}`;
+    // Delivery charge: ONLY an explicit 'paid' means paid. Missing, blank
+    // or 'unpaid' all mean the money is still owed (the agent collects it)
+    // — the old code printed "Delivery charge: Paid" for every legacy order
+    // whose deliveryPaid field was simply absent, telling the courier the
+    // customer had paid in full when they had NOT.
+    if (!isPickupOrder(o)) {
+      if (o.deliveryPaid === 'paid') msg += `Delivery charge: Paid${dcIsApprox(o) ? ' (৳0)' : ''}`;
+      else msg += dcIsApprox(o) ? `due: Delivery charge (৳0)` : `due: Delivery charge (${dcAmtOf(o)}/-)`;
+    }
     return msg;
   };
 
@@ -1465,6 +1516,32 @@ window.App = (() => {
   };
 
   // ─── Render views ────────────────────────────────────────────
+  // A live snapshot can arrive at ANY moment (new order, another admin
+  // device, a background heal). Rebuilding innerHTML used to collapse the
+  // card the admin had open (e.g. while checking a reference photo) and
+  // jump the scroll — it felt like "the order changed into another one".
+  // Capture expanded cards + scroll before every rebuild, restore after.
+  const captureViewState = viewEl => {
+    const open = [];
+    try {
+      viewEl.querySelectorAll('.card.expanded').forEach(el => { if (el.id) open.push(el.id); });
+    } catch (e) {}
+    return { open, y: window.scrollY };
+  };
+  const restoreViewState = (viewEl, st) => {
+    if (!st) return;
+    try {
+      st.open.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.add('expanded');
+        const head = el.querySelector('.card-head');
+        if (head) head.setAttribute('aria-expanded', 'true');
+      });
+    } catch (e) {}
+    try { window.scrollTo(0, st.y); } catch (e) {}
+  };
+
   const renderPlan = () => {
     const viewEl = document.getElementById('view-plan');
     if (!viewEl) return;
@@ -1506,7 +1583,11 @@ window.App = (() => {
       <p>+ বাটন চাপুন নতুন অর্ডার যোগ করতে।</p>
     </div>`;
 
-    try { viewEl.innerHTML = html; } catch (e) { console.error('[orders] render failed:', e); }
+    try {
+      const st = captureViewState(viewEl);
+      viewEl.innerHTML = html;
+      restoreViewState(viewEl, st);
+    } catch (e) { console.error('[orders] render failed:', e); }
     const badge = document.getElementById('tc-plan');
     if (badge) {
       try { badge.textContent = pool.length + ((document.getElementById('search-input').value || '').trim() ? '/' : ''); }
@@ -1589,9 +1670,11 @@ window.App = (() => {
     if (badge) badge.textContent = pool.length;
     if (!el) return;
     try {
+      const st = captureViewState(el);
       el.innerHTML = pool.length
         ? pool.map(renderCardSafe).join('')
         : `<div class="empty"><div class="empty-icon">✅</div><h3>কোনো সম্পন্ন অর্ডার নেই</h3><p>ডেলিভার করা অর্ডার এখানে দেখাবে।</p></div>`;
+      restoreViewState(el, st);
     } catch (e) { console.error('[done] render failed:', e); }
   };
 

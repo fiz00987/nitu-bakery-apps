@@ -2189,6 +2189,22 @@ function getSelectedTime() {
   return `${p.h}:${String(p.min == null ? 0 : p.min).padStart(2, '0')} ${ap}`;
 }
 
+// ─── Delivery window: every day 12:00 PM – 8:00 PM ────────────
+// Customers can NEVER place an order for a delivery before noon or after
+// 8 PM — the bakery simply does not deliver outside this window.
+const DELIVERY_OPEN_MIN  = 12 * 60;   // 12:00 PM
+const DELIVERY_CLOSE_MIN = 20 * 60;   // 8:00 PM
+function deliveryWindowError(h, min, ap) {
+  const h24 = (h % 12) + (ap === 'PM' ? 12 : 0);
+  const mins = h24 * 60 + (min == null ? 0 : min);
+  if (mins < DELIVERY_OPEN_MIN || mins > DELIVERY_CLOSE_MIN) {
+    return lang === 'en'
+      ? 'Delivery is available only between 12 PM and 8 PM'
+      : 'ডেলিভারি শুধু দুপুর ১২টা থেকে রাত ৮টার মধ্যে হয়';
+  }
+  return '';
+}
+
 function getTimeError() {
   const raw = document.getElementById('f-timeslot').value.trim();
   const apEl = document.getElementById('f-time-ampm');
@@ -2197,7 +2213,8 @@ function getTimeError() {
     return lang === 'en' ? 'Please enter the delivery time' : 'ডেলিভারির সময় দিন';
   }
   const cleaned = raw.replace(/\s*(?:a\.?m\.?|p\.?m\.?|এএম|পিএম)\.?$/i, '').trim();
-  if (!parseTimeParts(cleaned)) {
+  const p = parseTimeParts(cleaned);
+  if (!p) {
     return lang === 'en'
       ? 'Enter a valid time like 3.00 (hour 1-12, minutes 0-59)'
       : 'সঠিক সময় লিখুন — যেমন 3.00 (ঘণ্টা ১-১২, মিনিট ০-৫৯)';
@@ -2205,7 +2222,7 @@ function getTimeError() {
   if (!ap) {
     return lang === 'en' ? 'Please select AM or PM' : 'AM অথবা PM নির্বাচন করুন';
   }
-  return '';
+  return deliveryWindowError(p.h, p.min, ap);
 }
 
 // Success
