@@ -157,19 +157,28 @@ window.App = (() => {
   const isPickupOrder = o => (o.fulfilment === 'pickup' || o.deliveryPaid === 'na');
   // ─── Non-authoritative DC display ──────────────────────────────
   // dcAuto (or a blank amount) means the delivery agency hasn't given the
-  // real figure: show the amount flagged as approximate + the red ⚠️
-  // footnote. A manually-typed charge is admin-provided → shown plainly.
-  const DC_APPROX_SUFFIX   = '( আনুমানিক / দূরত্ব অনুযায়ী অটো হিসাব )';
+  // real figure: the charge shows as ৳0 + the red ⚠️ footnote carrying the
+  // area + estimate. A shop-typed charge is certain → shown plainly.
   const DC_AGENCY_FOOTNOTE = '⚠️ প্রকৃত ডেলিভারি চার্জ ডেলিভারি এজেন্সি প্রদান করেনি — চার্জ না জানা থাকলে খালি রাখুন।';
   const dcIsApprox = o => !isPickupOrder(o) && (!!o.dcAuto || dcAmtOf(o) <= 0);
   // Amount + optional approx suffix — used by the card, payment note and copies.
+  // Approx/blank orders show ৳0 as the charge (the estimate lives in the red
+  // ⚠️ footnote below); a shop-typed figure is the exact charge, shown plainly.
   const dcAmtLine = o => {
     const amt = dcAmtOf(o);
-    if (amt <= 0) return 'চার্জ ফাঁকা — এজেন্ট নেবে';
-    return `৳${fmtMoney(amt)}/-${o.dcAuto ? ` ${DC_APPROX_SUFFIX}` : ''}`;
+    if (dcIsApprox(o)) return '৳0';
+    return `৳${fmtMoney(amt)}/-`;
+  };
+  // Footnote body for approx orders: "⚠️ 📍 এলাকা: X · → আনুমানিক ৳Y (…)".
+  // Falls back to the plain agency note when the order has no estimate/area.
+  const dcFootnoteText = o => {
+    const est = Math.round(Number(o.dcEstimate != null ? o.dcEstimate : dcAmtOf(o)) || 0);
+    const area = String(o.dcArea || '').trim();
+    if (est <= 0 && !area) return DC_AGENCY_FOOTNOTE;
+    return `⚠️${area ? ` 📍 এলাকা: ${area} ·` : ''}${est > 0 ? ` → আনুমানিক ৳${fmtMoney(est)}` : ''} ( আনুমানিক / দূরত্ব অনুযায়ী অটো হিসাব — ডেলিভারি এজেন্সি প্রকৃত চার্জ দেয়নি )`;
   };
   // Red footnote for HTML surfaces (order card).
-  const dcFootnoteHtml = o => dcIsApprox(o) ? `<div class="dc-footnote">${DC_AGENCY_FOOTNOTE}</div>` : '';
+  const dcFootnoteHtml = o => dcIsApprox(o) ? `<div class="dc-footnote">${dcFootnoteText(o)}</div>` : '';
   // Modal helper: show the red ⚠️ footnote only while the DC field is blank
   // (pickup hides it). Typing a figure = admin-provided → footnote hides.
   const updateDcFootnote = () => {
@@ -180,8 +189,10 @@ window.App = (() => {
       const typed  = String(el.value || '').trim() !== '';
       if (fulfil === 'pickup' || typed) { fn.style.display = 'none'; return; }
       const prev = parseInt(el.dataset.prev || '', 10) || 0;
-      fn.innerHTML = prev > 0
-        ? `⚠️ ডেলিভারি চার্জ হতে পারে ৳${fmtMoney(prev)} (আনুমানিক / দূরত্ব অনুযায়ী অটো হিসাব) — প্রকৃত ডেলিভারি চার্জ ডেলিভারি এজেন্সি প্রদান করবে। চার্জ না জানা থাকলে খালি রাখুন।`
+      const est  = parseInt(el.dataset.estimate || '', 10) || prev;
+      const area = String(el.dataset.area || '').trim();
+      fn.innerHTML = (est > 0 || area)
+        ? `⚠️${area ? ` 📍 এলাকা: ${esc(area)} ·` : ''}${est > 0 ? ` → আনুমানিক ৳${fmtMoney(est)}` : ''} ( আনুমানিক / দূরত্ব অনুযায়ী অটো হিসাব — ডেলিভারি এজেন্সি প্রকৃত চার্জ দেয়নি )। চার্জ না জানা থাকলে খালি রাখুন।`
         : '⚠️ ডেলিভারি চার্জ আনুমানিক হতে পারে (দূরত্ব অনুযায়ী অটো হিসাব) — প্রকৃত ডেলিভারি চার্জ ডেলিভারি এজেন্সি প্রদান করবে। চার্জ না জানা থাকলে খালি রাখুন।';
       fn.style.display = 'block';
   };
@@ -1039,9 +1050,8 @@ window.App = (() => {
     // any bKash cash-out charge) so the SRS message states the full-payment due.
     const cakeDue = Math.max(0, (Number(o.total) || 0) - Math.max(0, (Number(o.paid) || 0) - bkashCharge(o)));
     if (cakeDue > 0) msg += `Cake due: ${fmtMoney(cakeDue)}/-\n`;
-    if (o.deliveryPaid === 'unpaid' && o.deliveryAmount > 0) msg += `due: Delivery charge (${o.deliveryAmount}/-${o.dcAuto ? ` ${DC_APPROX_SUFFIX}` : ''})`;
-    else if (o.deliveryPaid === 'unpaid') msg += `due: Delivery charge`;
-    else msg += `Delivery charge: Paid${o.dcAuto && o.deliveryAmount > 0 ? ` ${DC_APPROX_SUFFIX}` : ''}`;
+    if (o.deliveryPaid === 'unpaid') msg += dcIsApprox(o) ? `due: Delivery charge (৳0)` : `due: Delivery charge (${o.deliveryAmount}/-)`;
+    else msg += `Delivery charge: Paid${dcIsApprox(o) ? ' (৳0)' : ''}`;
     return msg;
   };
 
@@ -1074,13 +1084,15 @@ window.App = (() => {
     const amt  = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
     const paid = String(o.deliveryPaid || '');
     if (o.fulfilment === 'pickup' || paid === 'na') return 'প্রযোজ্য নয় (সেল্ফ পিকআপ)';
-    if (paid === 'paid') return amt > 0 ? `৳${fmtMoney(amt)}${o.dcAuto && amt > 0 ? ` ${DC_APPROX_SUFFIX}` : ''} (পরিশোধিত ✅)` : 'পরিশোধিত ✅';
-    return amt > 0 ? `৳${fmtMoney(amt)}${o.dcAuto && amt > 0 ? ` ${DC_APPROX_SUFFIX}` : ''} (বাকি ⏳)` : 'বাকি ⏳ (চার্জ ফাঁকা — এজেন্ট নেবে)';
+    // Approx/blank → ৳0 (the estimate is carried by the ⚠️ footnote below);
+    // a shop-typed figure is the exact charge, shown plainly.
+    if (dcIsApprox(o)) return paid === 'paid' ? '৳0 (পরিশোধিত ✅)' : '৳0 (বাকি ⏳)';
+    return paid === 'paid' ? `৳${fmtMoney(amt)} (পরিশোধিত ✅)` : `৳${fmtMoney(amt)} (বাকি ⏳)`;
   };
   // Customer-facing warning appended to the confirm copy / WhatsApp text
   // whenever the charge is still an estimate (or left blank).
   const confirmDcFootnote = o => dcIsApprox(o)
-    ? '\n⚠️ প্রকৃত ডেলিভারি চার্জ ডেলিভারি এজেন্সি নির্ধারণ করবে — এটি আনুমানিক।'
+    ? '\n' + dcFootnoteText(o)
     : '';
   const confirmDeliveryWhen = o => {
     const d = o.date ? fmtDate(o.date) : '';
@@ -1134,16 +1146,15 @@ window.App = (() => {
     L.push(`💳 অগ্রিম: ৳${fmtMoney(advanceOf(o))}`);
     const dk = dueAmt(o);
     if (dk > 0) L.push(`🔴 কেকের বকেয়া: ৳${fmtMoney(dk)}`);
-    // Delivery charge — status + amount; approx/blank gets the ⚠️ footnote.
-    const dc  = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
+    // Delivery charge — status + amount; approx/blank shows ৳0 + the ⚠️ footnote.
     if (o.fulfilment === 'pickup' || o.deliveryPaid === 'na') {
       L.push('🚚 ডেলিভারি চার্জ: প্রযোজ্য নয় (সেল্ফ পিকআপ)');
     } else if (o.deliveryPaid === 'paid') {
-      L.push(`🚚 ডেলিভারি চার্জ: পরিশোধিত ✅${dc ? ` — ${dcAmtLine(o)}` : ''}`);
+      L.push(`🚚 ডেলিভারি চার্জ: পরিশোধিত ✅ — ${dcAmtLine(o)}`);
     } else {
-      L.push(dc ? `🚚 ডেলিভারি চার্জ: বাকি 🔴 — ${dcAmtLine(o)}` : '🚚 ডেলিভারি চার্জ: বাকি 🔴 (চার্জ ফাঁকা — এজেন্ট নেবে)');
+      L.push(`🚚 ডেলিভারি চার্জ: বাকি 🔴 — ${dcAmtLine(o)}`);
     }
-    if (dcIsApprox(o)) { L.push(''); L.push(DC_AGENCY_FOOTNOTE); }
+    if (dcIsApprox(o)) { L.push(''); L.push(dcFootnoteText(o)); }
     if (o.trx) L.push(`🔗 ট্রানজেকশন/লাস্ট ৩ ডিজিট: ${o.trx}`);
     if (o.notes) L.push(`📝 নোট: ${o.notes}`);
     return L.join('\n');
@@ -1241,7 +1252,7 @@ window.App = (() => {
     L.push('');
     L.push(`ডেলিভারি চার্জ- ${dcLineNp}`);
     L.push('');
-    if (dcIsApprox(o)) { L.push(DC_AGENCY_FOOTNOTE); L.push(''); }
+    if (dcIsApprox(o)) { L.push(dcFootnoteText(o)); L.push(''); }
     L.push(`অগ্রিম / প্রদান- ${advanceOf(o)}/-${methodNameNp ? ` (${methodNameNp})` : ''}`);
     L.push('');
     if (dueAmt(o) > 0) L.push(`বকেয়া- ${dueAmt(o)}/- (ডেলিভারি চার্জ ছাড়া)`);
@@ -1369,7 +1380,7 @@ window.App = (() => {
       ${drow('📍', 'ঠিকানা', o.address)}
       ${o.surprise === 'yes' ? drow('🎁', 'সারপ্রাইজ', 'হ্যাঁ — গোপন রাখুন!') : ''}
       ${o.deliveryPaid && o.deliveryPaid !== 'na'
-        ? drow('🚚', 'ডেলিভারি চার্জ', (o.deliveryPaid === 'paid' ? 'পরিশোধিত' : 'বাকি') + (dcAmtOf(o) ? ` — ${dcAmtLine(o)}` : ''))
+        ? drow('🚚', 'ডেলিভারি চার্জ', (o.deliveryPaid === 'paid' ? 'পরিশোধিত ✅' : 'বাকি ⏳') + ` — ${dcAmtLine(o)}`)
         + dcFootnoteHtml(o)
         : ''}
     </div>
@@ -3042,6 +3053,10 @@ window.App = (() => {
       dcEl.value = '';
       dcEl.dataset.prev = String(storedDc || '');
       dcEl.dataset.approx = (o.dcAuto === true || !!o.dcAutoNote) ? '1' : '';
+      // Carry the distance estimate + area so the modal ⚠️ footnote can show
+      // "📍 এলাকা: X · → আনুমানিক ৳Y" and a blank save preserves them.
+      dcEl.dataset.estimate = String(Math.round(Number(o.dcEstimate) || 0) || '');
+      dcEl.dataset.area = String(o.dcArea || '');
       updateDcFootnote();
     }
     // Cake money only — DC lives in its own field above, never folded here.
@@ -3970,14 +3985,21 @@ window.App = (() => {
       // Admin typed a figure → admin-provided, certain.
       o.dcAuto = false;
       o.dcAutoNote = null;
+      o.dcEstimate = null;
+      o.dcArea = null;
     } else if (wasApprox || approxFromModal) {
       // Untouched blank save on an approx order (edit OR duplicate): keep the
-      // warning so the card/copies still flag the charge as non-authoritative.
+      // warning + estimate so the card/copies still show "📍 এলাকা … আনুমানিক ৳Y".
       o.dcAuto = true;
-      o.dcAutoNote = (existing && existing.dcAutoNote) || 'আনুমানিক (দূরত্ব অনুযায়ী অটো হিসাব) — এজেন্সি কনফার্ম করবে';
+      o.dcAutoNote = (existing && existing.dcAutoNote) || 'আনুমানিক (দূরত্ব অনুযায়ী অটো হিসাব) — এজেন্সি প্রকৃত চার্জ দেয়নি';
+      o.dcEstimate = (existing && existing.dcEstimate != null) ? existing.dcEstimate
+        : (parseInt(g('f-delivery-amount').dataset.estimate || '', 10) || null);
+      o.dcArea = (existing && existing.dcArea) || g('f-delivery-amount').dataset.area || null;
     } else {
       o.dcAuto = false;
       o.dcAutoNote = null;
+      o.dcEstimate = null;
+      o.dcArea = null;
     }
 
     // Keep the customer-app payment fields in sync. Customer-submitted orders

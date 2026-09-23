@@ -541,8 +541,8 @@ async function trackOrder() {
     const dAmt = Number(order.deliveryAmount != null ? order.deliveryAmount : order.deliveryCharge) || 0;
     const dPaid = String(order.deliveryPaid || '');
     const dPickup = (order.fulfilment || 'delivery') === 'pickup' || dPaid === 'na';
-    const dLine = dPickup ? 'প্রযোজ্য নয় (সেলফ পিকআপ)' : (dAmt > 0 ? `৳${Math.round(dAmt)}${order.dcAuto ? ` ${dcApproxSuffixText()}` : ''} — ${dPaid === 'paid' ? 'পরিশোধিত ✅' : 'অপরিশোধিত ⏳'}` : `${dPaid === 'paid' ? 'পরিশোধিত ✅' : 'অপরিশোধিত ⏳ (চার্জ ফাঁকা — এজেন্টকে দিতে হবে)'}`);
-    const dFoot = dcIsApproxOrder(order) ? `<br><span style="color:var(--red);font-weight:600">${dcAgencyFootnoteText()}</span>` : '';
+    const dLine = dPickup ? 'প্রযোজ্য নয় (সেলফ পিকআপ)' : dcLineText(order);
+    const dFoot = dcIsApproxOrder(order) ? `<br><span style="color:var(--red);font-weight:600">${esc(dcEstimateFootnoteText(order))}</span>` : '';
     document.getElementById('prev-title').textContent = 'আপনার অর্ডার';
     document.getElementById('prev-list').innerHTML = `<div class="previous-order"><strong>${esc(order.orderId)}</strong><br>মোট ৳${order.total || 0}<br>ডেলিভারি চার্জ: ${esc(dLine)}${dFoot}<br>ডেলিভারি: ${esc(fmtDate(order.deliveryDate || ''))}</div>`;
     document.getElementById('previous-orders').classList.add('show');
@@ -564,7 +564,7 @@ async function loadPreviousOrders(phone) {
       <div class="previous-order">
         <div style="font-weight:600">${esc(o.customerName || o.name || '')} · ${esc(o.weightLabel || o.weight || '')} · ${esc(o.flavourName || o.flavour || '')}</div>
         <div style="color:#888;margin-top:2px">📅 ${esc(fmtDate(o.deliveryDate || o.date || ''))} · 💰 ৳${o.total || 0}</div>
-        <div style="color:#888">🚚 ডেলিভারি চার্জ: ${(o.fulfilment || 'delivery') === 'pickup' || o.deliveryPaid === 'na' ? 'প্রযোজ্য নয় (পিকআপ)' : ((()=>{const _a=Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0); return _a>0 ? `৳${_a}${o.dcAuto ? ` ${dcApproxSuffixText()}` : ''} — ${o.deliveryPaid === 'paid' ? 'পরিশোধিত ✅' : 'অপরিশোধিত ⏳'}` : `${o.deliveryPaid === 'paid' ? 'পরিশোধিত ✅' : 'অপরিশোধিত ⏳ (চার্জ ফাঁকা)'}`;})())}${dcIsApproxOrder(o) ? `<br><span style="color:var(--red);font-weight:600">${dcAgencyFootnoteText()}</span>` : ''}</div>
+        <div style="color:#888">🚚 ডেলিভারি চার্জ: ${(o.fulfilment || 'delivery') === 'pickup' || o.deliveryPaid === 'na' ? 'প্রযোজ্য নয় (পিকআপ)' : esc(dcLineText(o))}${dcIsApproxOrder(o) ? `<br><span style="color:var(--red);font-weight:600">${esc(dcEstimateFootnoteText(o))}</span>` : ''}</div>
       </div>
     `).join('');
     document.getElementById('previous-orders').classList.add('show');
@@ -613,10 +613,8 @@ function renderPreviousOrder() {
   const isPickupOrd = (order.fulfilment || 'delivery') === 'pickup' || dpaid === 'na';
   const delLine = isPickupOrd
     ? (lang === 'en' ? 'Not applicable (self pickup)' : 'প্রযোজ্য নয় (সেলফ পিকআপ)')
-    : (delAmt > 0
-      ? `৳${Math.round(delAmt)}${order.dcAuto ? ` ${dcApproxSuffixText()}` : ''} — ${dpaid === 'paid' ? (lang === 'en' ? 'Paid ✅' : 'পরিশোধিত ✅') : (lang === 'en' ? 'Not paid ⏳ (pay the delivery agent)' : 'অপরিশোধিত ⏳ (এজেন্টকে দিতে হবে)')}`
-      : `${dpaid === 'paid' ? (lang === 'en' ? 'Paid ✅' : 'পরিশোধিত ✅') : (lang === 'en' ? 'Not paid ⏳ (charge blank — pay the agent)' : 'অপরিশোধিত ⏳ (চার্জ ফাঁকা — এজেন্টকে দিতে হবে)')}`);
-  const delFoot = dcIsApproxOrder(order) ? `<div class="dc-footnote">${dcAgencyFootnoteText()}</div>` : '';
+    : dcLineText(order);
+  const delFoot = dcIsApproxOrder(order) ? `<div class="dc-footnote">${esc(dcEstimateFootnoteText(order))}</div>` : '';
 
   content.innerHTML = `
     <article class="order-history-card">
@@ -686,12 +684,13 @@ function proceedToForm(phone) {
   localStorage.setItem('nitu-cust-phone', phone);
   document.getElementById('entry-screen').classList.add('hidden');
   document.getElementById('form-screen').classList.add('active');
-  // Fresh form: delivery charge unlocked & blank — the estimate fills it once
-  // the address is typed (autoDeliveryCharge).
+  // Fresh form: delivery charge open & blank — the distance estimate shows in
+  // the red ⚠️ footnote under the box once the address is typed (never in the
+  // box itself).
   const dci = document.getElementById('f-delivery-charge');
   if (dci) { dci.value = ''; dci.readOnly = false; dci.disabled = false; dci.classList.remove('locked-field'); }
+  dcLastEstimate = 0; dcLastArea = '';
   const dn = document.getElementById('dc-note'); if (dn) { dn.style.display = 'none'; dn.innerHTML = ''; }
-  const de = document.getElementById('dc-edit-btn'); if (de) de.style.display = 'none';
   currentOrderId = generateOrderId();
   document.getElementById('form-order-id').textContent = currentOrderId;
   setMinDate();
@@ -1376,7 +1375,8 @@ function recalcPrice(manualEdit) {
   const delivery = getDeliveryCharge();
   // NOTE: no early-return on blank delivery — the grey auto-box must fill
   // with cake-only math (delivery treated as 0) so tapping 50%/100% never
-  // leaves a blank box. Submit-time validation still requires delivery.
+  // leaves a blank box. Blank DC is allowed at submit (non-authoritative);
+  // the estimate lives in the red ⚠️ footnote, not in the box.
   const advInput = document.getElementById('f-advance');
   const typedSend = parseFloat(advInput.value) || 0;
 
@@ -1514,28 +1514,43 @@ function detectDcZone() {
   return null;
 }
 
-// True when the delivery-charge box still holds the app's own locked estimate
-// (the customer has NOT taken ownership by editing/unlocking it).
-let dcManuallySet = false;   // set when the customer unlocks / edits the box
+// True while the delivery-charge box is BLANK — the customer never claimed a
+// figure, so any estimate on the order is the app's own distance auto-calc
+// (non-authoritative). Pickup (disabled box) and admin-locked quotes (box
+// pre-filled by the shop) are never "auto".
 function dcIsAutoEstimate() {
   const el = document.getElementById('f-delivery-charge');
-  return !!el && el.readOnly === true && !dcManuallySet;
+  return !!el && !el.disabled && String(el.value).trim() === '';
 }
 // ── Non-authoritative DC display text (BN/EN, mirrors admin app) ──
-// Auto/blank charges are flagged as approximate + carry the red ⚠️ footnote;
-// a manually-set charge is shown plainly.
-function dcApproxSuffixText() {
-  return lang === 'en' ? '( approximate / auto calculated by distance )' : '( আনুমানিক / দূরত্ব অনুযায়ী অটো হিসাব )';
-}
-function dcAgencyFootnoteText() {
-  return lang === 'en'
-    ? '⚠️ The actual delivery charge will be provided by the delivery agency — leave it blank if you don\'t know it.'
-    : '⚠️ প্রকৃত ডেলিভারি চার্জ ডেলিভারি এজেন্সি প্রদান করবে — চার্জ না জানা থাকলে খালি রাখুন।';
-}
+// Auto/blank charges show ৳0 on the card + the red ⚠️ footnote carrying the
+// area and the approx estimate; a charge typed by the shop is shown plainly.
 function dcIsApproxOrder(order) {
   const amt = Math.round(Number(order.deliveryAmount != null ? order.deliveryAmount : order.deliveryCharge) || 0);
   const pickup = (order.fulfilment || 'delivery') === 'pickup' || order.deliveryPaid === 'na';
   return !pickup && (!!order.dcAuto || amt <= 0);
+}
+// Red ⚠️ footnote for approx orders: "📍 এলাকা: X · → আনুমানিক ৳Y (…)".
+// Falls back to the stored delivery amount for orders saved before the
+// dcEstimate/dcArea fields existed.
+function dcEstimateFootnoteText(order) {
+  const o = order || {};
+  const est = Math.round(Number(o.dcEstimate != null ? o.dcEstimate : (o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge)) || 0);
+  const area = String(o.dcArea || '').trim();
+  if (lang === 'en') {
+    return '⚠️' + (area ? ` 📍 Area: ${area} ·` : '') + (est > 0 ? ` → approx ৳${est}` : '') +
+      ' ( approximate / auto calculated by distance — the delivery agency has not provided the actual charge )';
+  }
+  return '⚠️' + (area ? ` 📍 এলাকা: ${area} ·` : '') + (est > 0 ? ` → আনুমানিক ৳${est}` : '') +
+    ' ( আনুমানিক / দূরত্ব অনুযায়ী অটো হিসাব — ডেলিভারি এজেন্সি প্রকৃত চার্জ দেয়নি )';
+}
+// One shared DC line for the customer-facing cards: exact amount when the
+// shop typed it, otherwise ৳0 (the estimate lives in the footnote). Always
+// ends with the paid / due status.
+function dcLineText(o) {
+  const amt = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
+  const status = String(o.deliveryPaid) === 'paid' ? 'পরিশোধিত ✅' : 'বাকি ⏳';
+  return dcIsApproxOrder(o) ? `৳0 — ${status}` : `৳${amt} — ${status}`;
 }
 
 function parseWeightText(raw) {
@@ -1615,59 +1630,32 @@ function loadDcConfig() {
   } catch (e) {}
 }
 
-// Auto-fill the delivery charge from area + weight, then lock the box.
-// The note tells the customer: এটা আনুমানিক — এজেন্সি সঠিক চার্জ কনফার্ম করবে।
-function autoDeliveryCharge() {
-  const input = document.getElementById('f-delivery-charge');
-  if (!input) return;
+// ── Latest distance estimate (for the footnote + the order's dcEstimate) ──
+// The box itself is NEVER auto-filled or locked: it stays open and blank so
+// the charge on the order is only what someone actually typed. The estimate
+// lives in the red ⚠️ footnote under the box.
+let dcLastEstimate = 0;
+let dcLastArea = '';
+function refreshDcEstimate() {
+  const note = document.getElementById('dc-note');
   if (typeof quoteToken !== 'undefined' && quoteToken) return;   // quote DC is locked by admin
-  const fulfil = document.getElementById('f-fulfilment').value;
-  if (fulfil === 'pickup') return;                                // pickup: stays disabled/blank
-  const addr = document.getElementById('f-address').value.trim();
-  if (!addr) {
-    // Address cleared → drop the auto estimate so a stale charge can't be
-    // submitted (only when the box is still the app's own locked estimate).
-    if (input.readOnly) {
-      input.value = '';
-      input.readOnly = false;
-      input.classList.remove('locked-field');
-      const n = document.getElementById('dc-note'); if (n) { n.style.display = 'none'; n.innerHTML = ''; }
-      const b = document.getElementById('dc-edit-btn'); if (b) b.style.display = 'none';
-      recalcPrice();
-    }
-    return;
-  }
+  const fulfil = (document.getElementById('f-fulfilment') || {}).value;
+  if (fulfil === 'pickup') { dcLastEstimate = 0; dcLastArea = ''; if (note) { note.style.display = 'none'; note.innerHTML = ''; } return; }
+  const addr = ((document.getElementById('f-address') || {}).value || '').trim();
+  if (!addr) { dcLastEstimate = 0; dcLastArea = ''; if (note) { note.style.display = 'none'; note.innerHTML = ''; } return; }
   const zone = detectDcZone();
-  const charge = (zone ? zone.base : DC_DEFAULT_BASE) + dcWeightExtra();
-  const weightTxt = String(document.getElementById('f-weight').value || '').trim() || 'কেক';
-  const note = document.getElementById('dc-note');
-  const areaTxt = zone ? zone.name : 'অজানা এলাকা (এডমিন নিশ্চিত করবে)';
-  input.value = charge;
-  input.readOnly = true;
-  input.classList.add('locked-field');
-  if (note) note.style.display = 'block';
-  const eb = document.getElementById('dc-edit-btn');
-  if (eb) eb.style.display = '';
-  if (note) note.innerHTML = lang === 'en'
-    ? `⚠️ 📍 Area: <strong>${areaTxt}</strong> · ${esc(weightTxt)} → approximate <strong>৳${charge}</strong> ( approximate / auto calculated by distance )<br>The actual delivery charge will be provided by the delivery agency. <strong>Don't change this box until the agency confirms the exact charge.</strong>`
-    : `⚠️ 📍 এলাকা: <strong>${areaTxt}</strong> · ${esc(weightTxt)} → আনুমানিক <strong>৳${charge}</strong> ( আনুমানিক / দূরত্ব অনুযায়ী অটো হিসাব )<br>প্রকৃত ডেলিভারি চার্জ ডেলিভারি এজেন্সি প্রদান করবে। <strong>এজেন্সি থেকে সঠিক চার্জ না জানা পর্যন্ত এই ঘর পরিবর্তন করবেন না।</strong>`;
-  recalcPrice();
+  dcLastEstimate = (zone ? zone.base : DC_DEFAULT_BASE) + dcWeightExtra();
+  dcLastArea = zone ? zone.name : 'অজানা এলাকা (এডমিন নিশ্চিত করবে)';
+  const weightTxt = String((document.getElementById('f-weight') || {}).value || '').trim() || 'কেক';
+  if (note) {
+    note.style.display = 'block';
+    note.innerHTML = lang === 'en'
+      ? `⚠️ 📍 Area: <strong>${esc(dcLastArea)}</strong> · ${esc(weightTxt)} → approx <strong>৳${dcLastEstimate}</strong> ( approximate / auto calculated by distance — the delivery agency has not provided the actual charge )`
+      : `⚠️ 📍 এলাকা: <strong>${esc(dcLastArea)}</strong> · ${esc(weightTxt)} → আনুমানিক <strong>৳${dcLastEstimate}</strong> ( আনুমানিক / দূরত্ব অনুযায়ী অটো হিসাব — ডেলিভারি এজেন্সি প্রকৃত চার্জ দেয়নি )`;
+  }
 }
-
-// "I have the exact charge from the agency" → unlock the box for manual edit
-function unlockDeliveryCharge() {
-  const input = document.getElementById('f-delivery-charge');
-  if (!input) return;
-  input.readOnly = false;
-  input.classList.remove('locked-field');
-  dcManuallySet = true;   // customer took ownership → no "অটো হিসাব" note on the order
-  const eb = document.getElementById('dc-edit-btn');
-  if (eb) eb.style.display = 'none';
-  const note = document.getElementById('dc-note');
-  if (note) note.innerHTML = `⚠️ <strong>সাবধান:</strong> ডেলিভারি এজেন্সি কনফার্ম করা <strong>সঠিক চার্জ ছাড়া এই ঘর পরিবর্তন করবেন না</strong> — নাহলে রাইডারের কাছে টাকা কম-বেশি হয়ে যেতে পারে। সঠিক চার্জ পেলে সেটাই লিখুন।`;
-  showToast(lang === 'en' ? 'Unlocked — enter the agency-confirmed charge' : 'আনলক হয়েছে — এজেন্সির কনফার্ম করা চার্জ লিখুন');
-  input.focus();
-}
+// Back-compat alias: address/weight oninput handlers call this name.
+function autoDeliveryCharge() { refreshDcEstimate(); recalcPrice(); }
 
 // ─── Mini / Medium cake quick-select ─────────────────────────
 // One-tap options for the small sizes that don't fit the pound/KG box.
@@ -1767,9 +1755,8 @@ function onFulfilmentChange() {
   if (pickup) {
     if (dci) { dci.value = ''; dci.disabled = true; dci.placeholder = 'প্রযোজ্য নয় — সেল্ফ পিকআপ'; }
     const pn = document.getElementById('dc-note'); if (pn) { pn.style.display = 'none'; }
-    const pe = document.getElementById('dc-edit-btn'); if (pe) pe.style.display = 'none';
   } else {
-    if (dci && !quoteToken) { dci.disabled = false; dci.placeholder = 'ঠিকানা লিখলে আনুমানিক চার্জ অটো হিসাব হবে'; }
+    if (dci && !quoteToken) { dci.disabled = false; dci.placeholder = 'চার্জ না জানা থাকলে খালি রাখুন'; }
     autoDeliveryCharge();
   }
   document.getElementById('f-address').required = !pickup;
@@ -1893,14 +1880,9 @@ function validate() {
     }
   }
   if (document.getElementById('f-fulfilment').value === 'delivery' && !document.getElementById('f-address').value.trim()) { showToast('ঠিকানা দিন'); document.getElementById('f-address').focus(); return false; }
-  // Delivery charge is REQUIRED — it always joins the total payment.
-  if (document.getElementById('f-fulfilment').value === 'delivery' && !(getDeliveryCharge() > 0)) {
-    showToast(lang === 'en'
-      ? 'Enter the delivery charge — type the full address and it auto-calculates'
-      : 'ডেলিভারি চার্জ দিন — সম্পূর্ণ ঠিকানা লিখলে আনুমানিক চার্জ অটো হিসাব হয়ে যাবে');
-    document.getElementById('f-delivery-charge').focus();
-    return false;
-  }
+  // Delivery charge may stay BLANK — the box is non-authoritative: the agency
+  // confirms the real figure later. The distance estimate is only shown in the
+  // red ⚠️ footnote and saved on the order as dcEstimate/dcArea.
   if (!validateBangladeshPhone(document.getElementById('f-receiver-phone').value.trim())) {
     showToast('সঠিক রিসিভার ফোন দিন'); return false;
   }
@@ -2047,10 +2029,14 @@ async function submitOrder() {
     cakePrice: cakePrice,
     deliveryCharge: delivery,
     deliveryAmount: delivery,
-    // Mark orders whose delivery charge was the app's own area estimate, so
-    // admin sees the "অটো হিসাব (আনুমানিক)" warning on the card.
+    // Blank box = nobody typed a charge → the order's DC is the app's own
+    // distance estimate (non-authoritative). Keep the estimate + area so the
+    // cards can show "📍 এলাকা: X · → আনুমানিক ৳Y" in the red ⚠️ footnote
+    // until the shop types the agency-confirmed figure.
     dcAuto: dcIsAutoEstimate(),
-    dcAutoNote: dcIsAutoEstimate() ? (lang === 'en' ? 'Approximate (distance auto-calc) — agency will confirm' : 'আনুমানিক (দূরত্ব অনুযায়ী অটো হিসাব) — এজেন্সি কনফার্ম করবে') : null,
+    dcEstimate: dcIsAutoEstimate() ? dcLastEstimate : null,
+    dcArea: dcIsAutoEstimate() ? dcLastArea : null,
+    dcAutoNote: dcIsAutoEstimate() ? (lang === 'en' ? 'Approximate (distance auto-calc) — agency has not provided the actual charge' : 'আনুমানিক (দূরত্ব অনুযায়ী অটো হিসাব) — এজেন্সি প্রকৃত চার্জ দেয়নি') : null,
     // Delivery is always part of the total and collected online — never separate.
     deliveryPaid: document.getElementById('f-fulfilment').value === 'pickup' ? 'na' : (deliverySettled ? 'paid' : 'unpaid'),
     paymentCharges: charge,
@@ -2240,11 +2226,9 @@ function showSuccess(order) {
   const dcApprox = dcIsApproxOrder(order);
   const dcTxt = isPickup
     ? 'প্রযোজ্য নয় (সেলফ পিকআপ)'
-    : (dcAmt > 0
-      ? `৳${dcAmt}/-${order.dcAuto ? ` ${dcApproxSuffixText()}` : ''}`
-      : (lang === 'en' ? 'Blank — agency will confirm' : 'ফাঁকা — এজেন্সি কনফার্ম করবে'));
+    : dcLineText(order);
   const dcFootnote = (!isPickup && dcApprox)
-    ? `<div class="dc-footnote">${dcAgencyFootnoteText()}</div>`
+    ? `<div class="dc-footnote">${esc(dcEstimateFootnoteText(order))}</div>`
     : '';
   summary.innerHTML = `
     <div class="row"><span>অর্ডার আইডি</span><span>${esc(order.orderId)}</span></div>
@@ -2413,12 +2397,11 @@ function resetForm() {
   if (tb) tb.checked = false;
   const tbBox = document.getElementById('terms-box');
   if (tbBox) tbBox.classList.remove('error');
-  // Delivery-charge estimate state back to blank/unlocked for the new order
+  // Delivery-charge estimate state back to blank for the new order
   const rdci = document.getElementById('f-delivery-charge');
   if (rdci) { rdci.readOnly = false; rdci.disabled = false; rdci.classList.remove('locked-field'); }
-  dcManuallySet = false;
+  dcLastEstimate = 0; dcLastArea = '';
   const rdn = document.getElementById('dc-note'); if (rdn) { rdn.style.display = 'none'; rdn.innerHTML = ''; }
-  const rde = document.getElementById('dc-edit-btn'); if (rde) rde.style.display = 'none';
   currentPhotos = []; renderPhotos(); payShot = ''; renderPayShot(); advanceType = ''; lastAutoSend = 0; lastAutoBase = 0; isSurprise = false; cakeWritingNoticeShown = false;
   advanceMethod = '';
   flavourNoticeShown = false; // show the "exact flavour" notice again on a new order
