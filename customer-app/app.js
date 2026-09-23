@@ -1208,7 +1208,7 @@ function confirmMiniCake() {
 // A payment that is ALWAYS full: mini cakes (also while the mini-convert
 // popup is still pending — 50% must lock right away). For these the total
 // counts the 100% cake price PLUS the delivery charge.
-// Surprise cakes no longer lock 50% — they only show a red ⚠️ footnote
+// Surprise cakes no longer lock 50% — they only show a ⚠️ popup
 // requesting full payment when the receiver is someone other than the
 // orderer; both the 50% and 100% options stay open.
 function isFullOnlyPayment() {
@@ -1779,12 +1779,21 @@ function onFulfilmentChange() {
   recalcPrice();
 }
 
-// Surprise — only shows the red ⚠️ full-payment-request footnote. It does
-// NOT lock the 50% option: both 50% and 100% stay open, the note politely
-// asks for full payment when the receiver is someone other than the orderer.
+// Surprise — shows a ⚠️ popup asking for full payment. It does NOT lock
+// the 50% option: both 50% and 100% stay open, the popup politely asks for
+// full payment when the receiver is someone other than the orderer.
+function showSurprisePopup() {
+  document.getElementById('popup-title').textContent = lang === 'en' ? '⚠️ Surprise Cake' : '⚠️ সারপ্রাইজ কেক';
+  popupText = lang === 'en'
+    ? 'If it is a surprise gift cake (the receiver is someone else), 100% advance payment including the delivery charge is mandatory.'
+    : 'সারপ্রাইজ গিফট কেক হলে ( রিসিভার অন্য কেও হলে ) ডেলিভারি চার্জ সহ ১০০% এডভান্স পেমেন্ট আবশ্যক';
+  document.getElementById('popup-content').textContent = popupText;
+  document.getElementById('text-popup').classList.add('show');
+}
+
 document.getElementById('f-surprise').addEventListener('change', function() {
   isSurprise = this.value === 'yes';
-  document.getElementById('surprise-note').classList.toggle('show', isSurprise);
+  if (isSurprise) showSurprisePopup();
 });
 
 // Progress
@@ -2403,7 +2412,6 @@ function resetForm() {
   updateWritingCount();
   document.getElementById('calc-box').classList.remove('show');
   const df = document.getElementById('due-field'); if (df) df.classList.remove('show');
-  document.getElementById('surprise-note').classList.remove('show');
   document.getElementById('payment-info').classList.remove('show');
   document.querySelectorAll('.advance-opt').forEach(el => { el.classList.remove('active', 'adv-locked'); el.style.opacity = ''; el.style.pointerEvents = ''; });
   // Cake kind back to "normal" + weight box unlocked & cleared
