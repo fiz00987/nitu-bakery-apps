@@ -1259,6 +1259,10 @@ window.App = (() => {
     } else {
       msg += `( Full Paid ✅ )`;
     }
+    // Blank pickup-time slot right after the money line — the shop fills in
+    // its best pickup timing by hand after copying (kept as plain spaces so
+    // it's easy to tap in and type over).
+    msg += `\n( Pickup Time -          )`;
     return msg;
   };
 
