@@ -241,7 +241,8 @@ window.App = (() => {
     if (o.fulfilment === 'delivery' && o.deliveryPaid == null) o.deliveryPaid = 'unpaid';
     if (o.advanceTotal != null && o.paid == null) o.paid = Number(o.advanceTotal);
     if (o.paymentCharges != null && o.bkashCharge == null) o.bkashCharge = Number(o.paymentCharges);
-    if (o.fulfilment === 'pickup' && !o.address) o.address = 'Self pickup: Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram';
+    // 🛠️ Never refill a field the admin explicitly cleared on an edited order.
+    if (o.fulfilment === 'pickup' && !o.address && !o.adminEdited) o.address = 'Self pickup: Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram';
 
     // ── Status normalization (the software must think logically) ──
     // Over the years orders were saved with many status spellings
@@ -594,6 +595,145 @@ window.App = (() => {
     return d + (sfx || 'th');
   };
   const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  // ─── 🛠️ Admin superpower — "admin edited" is the final truth ─────
+  // Whenever the admin changes ANYTHING (edit-modal save, status tap,
+  // notes, mark-paid), the order is stamped with `adminEdited`, an
+  // `adminEditLog` entry (who / when / old → new) and `adminEditedFields`
+  // (every stored field the admin has ever touched). Every auto-heal and
+  // the modal's own "delivered ⇒ fully paid" block SKIP those fields
+  // forever — a hand-set value (e.g. advance ৳400 instead of ৳500/৳1000)
+  // is saved and kept exactly as entered, just labelled "admin edited".
+  const ADMIN_LOG_CAP = 20;                       // last N edit entries kept on the order
+  const ADMIN_ADV50_FIELDS = ['advance', 'advanceTotal', 'paid', 'dueAmount', 'bkashCharge', 'paymentCharges'];
+  const adminFieldsOf = o => (Array.isArray(o && o.adminEditedFields) ? o.adminEditedFields : []);
+  const adminHas = (o, field) => adminFieldsOf(o).indexOf(field) !== -1;
+  const adminLogOf = o => {
+    const raw = o && o.adminEditLog;
+    if (Array.isArray(raw)) return raw;
+    return (raw && typeof raw === 'object')
+      ? Object.keys(raw).sort((a, b) => a - b).map(k => raw[k]) : [];
+  };
+
+  // Comparable snapshot of the fields the modal can change. Aliases
+  // (name/customerName, total/cakePrice…) collapse into one group so the
+  // log reads "advance: 500 → 400" instead of one row per alias.
+  const orderEditSnapshot = o => {
+    const cakeSig = list => (Array.isArray(list) ? list : []).map(c => [
+      c.weight || c.weightLabel || '', c.flavour || c.flavourName || '',
+      c.writing || c.cakeWriting || '', c.photoNote || '',
+      c.address || c.deliveryAddress || '', c.receiver || '', c.receiverPhone || '',
+      c.date || c.deliveryDate || '', c.timeSlot || c.timeSlotLabel || '',
+      String(c.deliveryCharge != null ? c.deliveryCharge : (c.deliveryAmount != null ? c.deliveryAmount : ''))
+    ].map(v => String(v)).join('~')).join('|');
+    return {
+      name:           String(o.name || o.customerName || ''),
+      phone:          String(o.phone || o.customerPhone || ''),
+      date:           String(o.date || o.deliveryDate || ''),
+      time:           String(o.time || o.timeSlot || ''),
+      status:         String(o.status || ''),
+      weight:         String(o.weight || o.weightLabel || ''),
+      flavour:        String(o.flavourName || o.flavour || ''),
+      size:           String(o.size || ''),
+      writing:        String(o.writing || o.cakeWriting || ''),
+      address:        String(o.address || o.deliveryAddress || ''),
+      receiver:       String(o.receiver || ''),
+      receiverPhone:  String(o.receiverPhone || ''),
+      surprise:       String(o.surprise || ''),
+      fulfilment:     String(o.fulfilment || ''),
+      notes:          String(o.notes || ''),
+      bakingnotes:    String(o.bakingnotes || ''),
+      photoNote:      String(o.photoNote || ''),
+      paymentMethod:  String(o.paymentMethod || ''),
+      trx:            String(o.trx || ''),
+      cakePrice:      Math.round(Number(o.total) || 0),
+      advance:        Math.round(Number(o.advance != null ? o.advance : o.paid) || 0),
+      deliveryAmount: Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0),
+      deliveryPaid:   String(o.deliveryPaid || ''),
+      cakes:          cakeSig(o.cakes),
+      photos:         (Array.isArray(o.photos) && o.photos.filter(Boolean).length) || (o.photo ? 1 : 0),
+      deliveredPhoto: o.deliveredPhoto ? 1 : 0
+    };
+  };
+
+  // UI field group → every stored alias it writes: editing the advance
+  // protects advance/advanceTotal/paid/dueAmount as one unit, and so on.
+  const ADMIN_FIELD_EXPAND = {
+    name:           ['name', 'customerName'],
+    phone:          ['phone', 'customerPhone'],
+    date:           ['date', 'deliveryDate'],
+    time:           ['time', 'timeSlot', 'timeSlotLabel'],
+    weight:         ['weight', 'weightLabel'],
+    flavour:        ['flavour', 'flavourName'],
+    writing:        ['writing', 'cakeWriting'],
+    address:        ['address', 'deliveryAddress'],
+    cakePrice:      ['total', 'basePrice', 'cakePrice', 'subtotal'],
+    advance:        ['advance', 'advanceTotal', 'paid', 'dueAmount'],
+    deliveryAmount: ['deliveryAmount', 'deliveryCharge']
+  };
+  const expandAdminFields = keys => {
+    const out = [];
+    keys.forEach(k => (ADMIN_FIELD_EXPAND[k] || [k]).forEach(f => { if (out.indexOf(f) === -1) out.push(f); }));
+    return out;
+  };
+
+  const fmtEditVal = v => {
+    const s = (v == null || v === '') ? '—' : String(v);
+    return s.length > 70 ? s.slice(0, 68) + '…' : s;
+  };
+  // { field: { from, to } } for every field whose stored value differs.
+  const diffAdminEdits = (from, to) => {
+    const a = orderEditSnapshot(from || {}), b = orderEditSnapshot(to || {});
+    const out = {};
+    Object.keys(b).forEach(k => {
+      if (String(a[k]) !== String(b[k])) out[k] = { from: fmtEditVal(a[k]), to: fmtEditVal(b[k]) };
+    });
+    return out;
+  };
+  const fmtEditWhen = ts => {
+    const d = new Date(ts || Date.now());
+    let h = d.getHours(); const ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12;
+    return ORDINAL(d.getDate()) + ' ' + MONTHS_SHORT[d.getMonth()] + ' ' + d.getFullYear()
+      + ', ' + h + '.' + String(d.getMinutes()).padStart(2, '0') + ' ' + ampm;
+  };
+  // Human summary of the LAST admin edit (card chip tooltip, card note,
+  // modal title tooltip).
+  const adminEditSummary = o => {
+    const log  = adminLogOf(o);
+    const last = log[log.length - 1];
+    if (!last) return fmtEditWhen(o && o.adminEditedAt);
+    const keys  = Object.keys(last.changes || {});
+    const shown = keys.slice(0, 4).map(k => `${k}: ${last.changes[k].from} → ${last.changes[k].to}`);
+    const more  = keys.length - shown.length;
+    return `${fmtEditWhen(last.at)}${last.by ? ' · ' + last.by : ''} — ${shown.join(', ') || '—'}${more > 0 ? ` +${more}` : ''}`;
+  };
+  const adminEditTip = o => {
+    const locked = adminFieldsOf(o);
+    return (lang === 'bn' ? '🛠️ শেষ অ্যাডমিন এডিট: ' : '🛠️ Last admin edit: ') + adminEditSummary(o)
+      + (locked.length
+          ? ` | 🔒${lang === 'bn' ? 'এডিট-করা ফিল্ড (অটো-লজিক ছুঁবে না): ' : 'edited fields (auto-logic never touches): '}${locked.join(', ')}`
+          : '');
+  };
+  // Stamp an explicit card-button change (status / notes / mark-paid) the
+  // same way an edit-modal save is stamped: the fields the admin touched
+  // become "admin edits" and are locked against every auto-heal.
+  const stampAdminEdit = (o, changes) => {
+    if (!o || !changes || !Object.keys(changes).length) return {};
+    const by = (currentUser && (currentUser.email || currentUser.uid)) || 'admin';
+    const at = Date.now();
+    const locked = adminFieldsOf(o).slice();
+    Object.keys(changes).forEach(k => {
+      expandAdminFields([k]).forEach(f => { if (locked.indexOf(f) === -1) locked.push(f); });
+    });
+    return {
+      adminEdited:       true,
+      adminEditedAt:     at,
+      adminEditedBy:     by,
+      adminEditedFields: locked,
+      adminEditLog:      adminLogOf(o).slice(-(ADMIN_LOG_CAP - 1)).concat([{ at: at, by: by, changes: changes }])
+    };
+  };
+
   const tickTopbarClock = () => {
     const timeEl = document.getElementById('tb-time');
     const dateEl = document.getElementById('tb-date');
@@ -671,14 +811,14 @@ window.App = (() => {
           if (!o.firebaseKey) return;
           if (o.status === 'delivered' || o.status === 'cancelled') return;
           if (!isLogicallyComplete(o)) return;
+          // 🛠️ If the admin hand-set the status, leave the order exactly
+          // where the admin put it — never auto-flip it.
+          if (adminHas(o, 'status')) return;
           console.log('[auto-heal] past date + fully paid → delivered:', o.orderId || o.name);
-          ordersRef.child(o.firebaseKey).update({
-            status: 'delivered',
-            paid: (o.total || 0) + bkashCharge(o),
-            autoDelivered: true,
-            autoDeliveredAt: Date.now(),
-            updatedAt: Date.now()
-          }).catch(err => console.error('[auto-heal] failed:', err));
+          const healPatch = { status: 'delivered', autoDelivered: true, autoDeliveredAt: Date.now(), updatedAt: Date.now() };
+          if (!adminHas(o, 'paid')) healPatch.paid = (o.total || 0) + bkashCharge(o);
+          ordersRef.child(o.firebaseKey).update(healPatch)
+            .catch(err => console.error('[auto-heal] failed:', err));
           o.status = 'delivered';   // reflect immediately in this render
         });
         // ── Delivered = fully-paid healer ────────────────────────
@@ -693,15 +833,21 @@ window.App = (() => {
           if (!cakeDue && !delUnpaid) return;
           if (healedDelivered[o.firebaseKey]) return;
           healedDelivered[o.firebaseKey] = true;
+          // 🛠️ Fields the admin hand-edited (e.g. advance ৳400 on a ৳1000
+          // cake) are NEVER "healed" back to fully paid.
+          const patch = {};
+          if (cakeDue) {
+            if (!adminHas(o, 'paid'))         patch.paid         = (o.total || 0) + bkashCharge(o);
+            if (!adminHas(o, 'advance'))      patch.advance      = o.total || 0;
+            if (!adminHas(o, 'advanceTotal')) patch.advanceTotal = (o.total || 0) + bkashCharge(o);
+            if (!adminHas(o, 'dueAmount'))    patch.dueAmount    = 0;
+          }
+          if (delUnpaid && !adminHas(o, 'deliveryPaid')) patch.deliveryPaid = 'paid';
+          if (!Object.keys(patch).length) return;
           console.log('[delivered-heal] settling money on delivered order:', o.orderId || o.name);
-          ordersRef.child(o.firebaseKey).update({
-            paid:         (o.total || 0) + bkashCharge(o),
-            advance:      o.total || 0,
-            advanceTotal: (o.total || 0) + bkashCharge(o),
-            dueAmount:    0,
-            deliveryPaid: 'paid',
-            updatedAt:    Date.now()
-          }).catch(err => console.error('[delivered-heal] failed:', err));
+          patch.updatedAt = Date.now();
+          ordersRef.child(o.firebaseKey).update(patch)
+            .catch(err => console.error('[delivered-heal] failed:', err));
         });
         // ── 50%-advance charge-strip healer ─────────────────────
         // The old edit modal folded the bKash/Nagad gateway charge INTO the
@@ -711,6 +857,9 @@ window.App = (() => {
         orders.forEach(o => {
           if (!o.firebaseKey) return;
           if (o.status === 'delivered' || o.status === 'cancelled') return;
+          // 🛠️ Money the admin hand-set (a non-50% advance, a manual charge)
+          // must never be "stripped" or rewritten by this heuristic.
+          if (ADMIN_ADV50_FIELDS.some(f => adminHas(o, f))) return;
           const cake = cakePriceOf(o);
           const adv  = advanceOf(o);
           if (!(cake > 0 && adv > 0)) return;
@@ -1370,6 +1519,9 @@ window.App = (() => {
     const surpriseChip = o.surprise === 'yes' ? `<span class="chip chip-purple">🎁 সারপ্রাইজ</span>` : '';
     const tallyBadge   = o.source === 'tally'  ? `<span class="chip chip-tally">Tally</span>` : '';
     const customerBadge = o.source === 'customer' ? `<span class="chip chip-customer">অনলাইন অর্ডার</span>` : '';
+    const adminEditedBadge = o.adminEdited
+      ? `<span class="chip chip-adminedit" title="${esc(adminEditTip(o))}">🛠️ ${lang === 'bn' ? 'অ্যাডমিন এডিট' : 'Admin edited'}${adminLogOf(o).length > 1 ? ` ×${adminLogOf(o).length}` : ''}</span>`
+      : '';
     const dcAmtChip = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
     const deliveryChip = o.deliveryPaid === 'paid'
       ? `<span class="chip chip-green">🚚 ডেল. পরিশোধিত${dcAmtChip ? ` ৳${fmtMoney(dcAmtChip)}` : ''}</span>`
@@ -1396,7 +1548,7 @@ window.App = (() => {
       <div class="card-name"><span class="card-name-text">${esc(o.name)}</span>${tallyBadge}${customerBadge}<button class="name-copy-btn" type="button" onclick="event.stopPropagation();App.copyCardName(this)" title="নাম কপি করুন">📋 কপি</button></div>
       <div class="card-meta">${(o.cakes && o.cakes.length > 1) ? o.cakes.map(c => esc([c.weightLabel || c.weight, c.flavourName || c.flavour].filter(Boolean).join(' '))).join(' + ') + ' · <b>' + o.cakes.length + 'টি কেক</b>' : (esc(weightText(o)) + (weightText(o) && o.flavour ? ' · ' : '') + esc(flavourLabel(o)))}${o.time ? ' · ' + esc(o.time) : ''}</div>
       ${cdChip}
-      <div class="card-chips">${statusChip(o)}${dueChip}${surpriseChip}${deliveryChip}</div>
+      <div class="card-chips">${statusChip(o)}${dueChip}${surpriseChip}${deliveryChip}${adminEditedBadge}</div>
     </div>
     <div class="card-chevron-wrap" aria-hidden="true"><div class="card-chevron">⌄</div></div>
   </div>
@@ -1408,6 +1560,7 @@ window.App = (() => {
     ${(o.photos && o.photos.length > 1) ? o.photos.slice(1).map((p, i) => `<div class="card-photo-wrap"><img class="card-photo" src="${p}" alt="রেফারেন্স কেক ${i + 2}" loading="lazy" onclick="event.stopPropagation();App.openLightboxFor(this.src)"></div>`).join('') : ''}
 
     ${isOvdPay ? `<div class="overdue-alert">⚠️ বকেয়া পেমেন্ট: ৳${fmtMoney(d)} — ডেলিভারির তারিখ পেরিয়ে গেছে!</div>` : ''}
+    ${o.adminEdited ? `<div class="pay-note admin-edit-note">🛠️ <strong>${lang === 'bn' ? 'অ্যাডমিন এডিটেড' : 'Admin edited'}</strong> — ${esc(adminEditSummary(o))}</div>` : ''}
 
     <div class="detail-section">
       <div class="detail-title">🎂 কেক বিবরণ</div>
@@ -2792,6 +2945,8 @@ window.App = (() => {
         };
         const isDeliveryOrder = o.fulfilment === 'delivery' || (Number(o.deliveryAmount) || 0) > 0;
         if (isDeliveryOrder && o.deliveryPaid !== 'paid') updates.deliveryPaid = 'paid';
+        // 🛠️ An explicit admin tap = admin edit — lock it against auto-heals.
+        Object.assign(updates, stampAdminEdit(o, { status: { from: String(o.status || ''), to: val } }));
         ordersRef.child(key).update(updates)
           .then(() => {
             setSyncStatus('ok');
@@ -2805,7 +2960,9 @@ window.App = (() => {
         return;
       }
     }
-    ordersRef.child(key).update({ status: val, updatedAt: Date.now() })
+    const stO = orders.find(x => x.firebaseKey === key) || null;
+    ordersRef.child(key).update(Object.assign({ status: val, updatedAt: Date.now() },
+      stampAdminEdit(stO, { status: { from: String((stO && stO.status) || ''), to: val } })))
       .then(() => {
         setSyncStatus('ok');
         showToast('স্ট্যাটাস আপডেট হয়েছে ✅');
@@ -2819,7 +2976,9 @@ window.App = (() => {
 
   const updateNotes = (key, val) => {
     setSyncStatus('syncing', 'নোটস সেভ হচ্ছে...');
-    ordersRef.child(key).update({ bakingnotes: val, updatedAt: Date.now() })
+    const ntO = orders.find(x => x.firebaseKey === key) || null;
+    ordersRef.child(key).update(Object.assign({ bakingnotes: val, updatedAt: Date.now() },
+      stampAdminEdit(ntO, { bakingnotes: { from: String((ntO && ntO.bakingnotes) || ''), to: String(val || '') } })))
       .then(() => setSyncStatus('ok'))
       .catch(err => {
         console.error('Notes save failed:', err);
@@ -2840,7 +2999,8 @@ window.App = (() => {
       // Set paid so that effectivePaid == total (keep existing bKash charge)
       const newPaid = (o.total || 0) + bkashCharge(o);
       setSyncStatus('syncing', tr('saving'));
-      ordersRef.child(key).update({ paid: newPaid, updatedAt: Date.now() })
+      ordersRef.child(key).update(Object.assign({ paid: newPaid, updatedAt: Date.now() },
+        stampAdminEdit(o, { paid: { from: String(o.paid || 0), to: String(newPaid) } })))
         .then(() => {
           setSyncStatus('ok');
           showToast(lang === 'bn' ? '✅ সম্পূর্ণ পরিশোধিত!' : '✅ Marked fully paid!');
@@ -3215,8 +3375,11 @@ window.App = (() => {
     const nwIn = document.getElementById('f-writing');
     if (nwIn) { nwIn.disabled = false; nwIn.style.opacity = '1'; }
     const o = key ? orders.find(x => x.firebaseKey === key) : null;
-    document.getElementById('modal-title').textContent =
-      o ? 'অর্ডার সম্পাদনা করুন' : 'নতুন অর্ডার';
+    const mtEl = document.getElementById('modal-title');
+    if (mtEl) {
+      mtEl.textContent = o ? 'অর্ডার সম্পাদনা করুন' + (o.adminEdited ? ' 🛠️' : '') : 'নতুন অর্ডার';
+      mtEl.title = (o && o.adminEdited) ? adminEditTip(o) : '';
+    }
     // Show exactly WHEN the client placed this order (date + time).
     const oa = document.getElementById('modal-ordered-at');
     if (oa) {
@@ -4094,16 +4257,47 @@ window.App = (() => {
     o.advanceTotal   = advanceNum;
     o.dueAmount      = Math.round(Math.max(0, cakePrice - advanceNum));
 
+    // ──🛠️ Admin superpower ────────────────────────────────────────
+    // Diff the order being saved against the stored one. EVERYTHING the
+    // admin changed (name, amount, status — anything at all) is recorded
+    // as an "admin edit" (who / when / old → new) and locked against the
+    // delivered-force block below and every cloud auto-heal, so the save
+    // goes through EXACTLY as entered — e.g. advance ৳400 instead of the
+    // expected ৳500/৳1000 — just stamped "admin edited".
+    let adminChanges = {};
+    if (editingId && existing) {
+      adminChanges = diffAdminEdits(existing, o);
+      const changedNow = Object.keys(adminChanges);
+      if (changedNow.length) {
+        const by = (currentUser && (currentUser.email || currentUser.uid)) || 'admin';
+        const locked = adminFieldsOf(existing).slice();
+        expandAdminFields(changedNow).forEach(f => { if (locked.indexOf(f) === -1) locked.push(f); });
+        o.adminEdited       = true;
+        o.adminEditedAt     = Date.now();
+        o.adminEditedBy     = by;
+        o.adminEditedFields = locked;
+        o.adminEditLog      = adminLogOf(existing).slice(-(ADMIN_LOG_CAP - 1))
+          .concat([{ at: o.adminEditedAt, by: by, changes: adminChanges }]);
+      } else {
+        // Nothing really changed → carry the stored audit trail forward as-is.
+        ['adminEdited', 'adminEditedAt', 'adminEditedBy', 'adminEditedFields', 'adminEditLog']
+          .forEach(k => { if (existing[k] !== undefined) o[k] = existing[k]; });
+      }
+    }
+
     // Delivered = the client has paid EVERYTHING — cake total AND delivery
     // charge. If an order is saved/edited with status "delivered" from the
     // modal, force every money field to fully-paid so a delivered order can
     // never carry a due (from now and forever).
     if (o.status === 'delivered') {
-      o.advance      = cakePrice;
-      o.advanceTotal = cakePrice;
-      o.paid         = cakePrice;
-      o.dueAmount    = 0;
-      if (fulfilmentVal === 'delivery') o.deliveryPaid = 'paid';
+      // 🛠️ Delivered ⇒ fully paid — but ONLY for fields the admin did NOT
+      // hand-edit: an admin-edited field keeps the exact value saved.
+      const keep = f => adminHas(o, f);
+      if (!keep('advance'))      o.advance      = cakePrice;
+      if (!keep('advanceTotal')) o.advanceTotal = cakePrice;
+      if (!keep('paid'))         o.paid         = cakePrice;
+      if (!keep('dueAmount'))    o.dueAmount    = 0;
+      if (fulfilmentVal === 'delivery' && !keep('deliveryPaid')) o.deliveryPaid = 'paid';
     }
 
     // Delivery charge is OPTIONAL now: blank = not-paid yet (agent collects later).
@@ -4142,7 +4336,7 @@ window.App = (() => {
         .then(() => {
           clearTimeout(saveWatchdog);
           setSyncStatus('ok');
-          showToast('✅ অর্ডার আপডেট হয়েছে!');
+          showToast('✅ অর্ডার আপডেট হয়েছে!' + (Object.keys(adminChanges).length ? ' 🛠️ অ্যাডমিন এডিট হিসেবে সেভ হয়েছে।' : ''));
           currentPhoto = '';
           currentPhotos = [];
           currentDelPhoto = '';
