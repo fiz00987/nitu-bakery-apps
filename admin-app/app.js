@@ -67,6 +67,7 @@ window.App = (() => {
   let offdayCbDate  = null;         // date currently open in the off-day dialog
   let healedDelivered = {};         // delivered orders already money-healed this session
   let healedAdvance50 = {};         // 50%-advance orders already stripped of folded-in gateway charge
+  let cleanedAutoDc  = {};         // orders whose auto-calculated DC figure was already cleared
   let sortMode      = 'date';       // 'date' | 'name' | 'due'
   let quotes        = [];           // quotes/<TOKEN> live list
   let quotesReady   = false;
@@ -169,13 +170,13 @@ window.App = (() => {
     if (dcIsApprox(o)) return '৳0';
     return `৳${fmtMoney(amt)}/-`;
   };
-  // Footnote body for approx orders: "⚠️ 📍 এলাকা: X · → আনুমানিক ৳Y (…)".
-  // Falls back to the plain agency note when the order has no estimate/area.
+  // Footnote body for orders whose charge is NOT confirmed yet. NO auto /
+  // estimated figure is ever shown — the agency hasn't given the real charge,
+  // so the shop types it into the (blank) DC field later.
   const dcFootnoteText = o => {
-    const est = Math.round(Number(o.dcEstimate != null ? o.dcEstimate : dcAmtOf(o)) || 0);
     const area = String(o.dcArea || '').trim();
-    if (est <= 0 && !area) return DC_AGENCY_FOOTNOTE;
-    return `⚠️${area ? ` 📍 এলাকা: ${area} ·` : ''}${est > 0 ? ` → আনুমানিক ৳${fmtMoney(est)}` : ''} ( আনুমানিক / দূরত্ব অনুযায়ী অটো হিসাব — ডেলিভারি এজেন্সি প্রকৃত চার্জ দেয়নি )`;
+    if (!area) return DC_AGENCY_FOOTNOTE;
+    return `⚠️ 📍 এলাকা: ${area} · ডেলিভারি এজেন্সি প্রকৃত চার্জ এখনো দেয়নি — চার্জ জানা গেলে খালি ঘরে টাইপ করুন।`;
   };
   // Red footnote for HTML surfaces (order card).
   const dcFootnoteHtml = o => dcIsApprox(o) ? `<div class="dc-footnote">${dcFootnoteText(o)}</div>` : '';
@@ -189,11 +190,13 @@ window.App = (() => {
       const typed  = String(el.value || '').trim() !== '';
       if (fulfil === 'pickup' || typed) { fn.style.display = 'none'; return; }
       const prev = parseInt(el.dataset.prev || '', 10) || 0;
-      const est  = parseInt(el.dataset.estimate || '', 10) || prev;
       const area = String(el.dataset.area || '').trim();
-      fn.innerHTML = (est > 0 || area)
-        ? `⚠️${area ? ` 📍 এলাকা: ${esc(area)} ·` : ''}${est > 0 ? ` → আনুমানিক ৳${fmtMoney(est)}` : ''} ( আনুমানিক / দূরত্ব অনুযায়ী অটো হিসাব — ডেলিভারি এজেন্সি প্রকৃত চার্জ দেয়নি )। চার্জ না জানা থাকলে খালি রাখুন।`
-        : '⚠️ ডেলিভারি চার্জ আনুমানিক হতে পারে (দূরত্ব অনুযায়ী অটো হিসাব) — প্রকৃত ডেলিভারি চার্জ ডেলিভারি এজেন্সি প্রদান করবে। চার্জ না জানা থাকলে খালি রাখুন।';
+      // Only a charge THE ADMIN typed is ever shown. An auto/unknown charge
+      // shows no figure at all — the box just stays empty for manual entry.
+      const isApprox = el.dataset.approx === '1' || prev <= 0;
+      fn.innerHTML = isApprox
+        ? `⚠️${area ? ` 📍 এলাকা: ${esc(area)} ·` : ''} ডেলিভারি চার্জ এখনো নিশ্চিত নয় — ঘরটি ফাঁকাই থাকবে, চার্জ জানা গেলে এখানেই টাইপ করুন।`
+        : `✍️ ঘরটি খালি রাখলে সেভ করার পরেও চার্জ ৳${fmtMoney(prev)}/- থাকবে — নতুন চার্জ দিতে ঘরটিতে টাইপ করুন।`;
       fn.style.display = 'block';
   };
   // Cake price: cakePrice when DC is folded into total, else the total itself.
@@ -895,6 +898,28 @@ window.App = (() => {
           }).catch(err => console.error('[advance-50-heal] failed:', err));
         });
 
+        // ── Auto-DC cleanup (one-time, existing orders) ─────────────
+        // Orders still flagged as "charge not confirmed" must not keep any
+        // app-guessed figure: the distance auto-estimate is dropped and an
+        // amount equal to that estimate is cleared, so the field stays empty
+        // until the admin types the agency-confirmed charge. A DIFFERENT stored
+        // number was typed by the admin — it always survives.
+        orders.forEach(o => {
+          if (!o.firebaseKey || isPickupOrder(o)) return;
+          if (o.dcAuto !== true && !o.dcAutoNote) return;
+          const est = Math.round(Number(o.dcEstimate) || 0);
+          const amt = dcAmtOf(o);
+          if (o.dcEstimate == null && amt <= 0) return;      // already clean
+          if (amt > 0 && (est <= 0 || amt !== est)) return;  // admin-typed → keep
+          if (cleanedAutoDc[o.firebaseKey]) return;
+          cleanedAutoDc[o.firebaseKey] = true;
+          console.log('[auto-dc-clean] dropping guessed delivery charge:', o.orderId || o.name, amt || est);
+          const patch = { dcEstimate: null, updatedAt: Date.now() };
+          if (amt > 0) { patch.deliveryAmount = 0; patch.deliveryCharge = 0; }
+          ordersRef.child(o.firebaseKey).update(patch)
+            .catch(err => console.error('[auto-dc-clean] failed:', err));
+        });
+
         sortOrders();
         render();
         updateDailyBadge();
@@ -1257,7 +1282,8 @@ window.App = (() => {
     } else if (dcDue) {
       msg += `( Full Paid ✅ ( ⚠️ Delivery Charge - ${mny(dcAmt)}/- ) )`;
     } else {
-      msg += `( Full Paid ✅ )`;
+      // Paid in full — when a delivery charge was really paid, name it here.
+      msg += dcAmt > 0 ? `( Full Paid ✅ & Delivery Charge - ${mny(dcAmt)}/- )` : `( Full Paid ✅ )`;
     }
     // Blank pickup-time slot right after the money line — the shop fills in
     // its best pickup timing by hand after copying (kept as plain spaces so
@@ -2505,7 +2531,11 @@ window.App = (() => {
     // Field opens blank → fall back to the stored amount so quotes keep the
     // order's figure when the admin leaves the (non-authoritative) field empty.
     const dcElQ = g('f-delivery-amount');
-    const dcAmtQ = rawDc !== '' ? (parseFloat(rawDc) || 0) : (parseInt((dcElQ && dcElQ.dataset.prev) || '', 10) || 0);
+    // Same rule as saveOrder: a blank field keeps a charge the admin typed,
+    // but an auto/unknown one stays empty (0) — a quote never carries a guess.
+    const dcAutoQ = !!(dcElQ && dcElQ.dataset.approx === '1');
+    const dcAmtQ = rawDc !== '' ? (parseFloat(rawDc) || 0)
+      : (dcAutoQ ? 0 : (parseInt((dcElQ && dcElQ.dataset.prev) || '', 10) || 0));
     const deliveryCharge = fulfilmentVal === 'pickup' ? 0 : dcAmtQ;
     const cakeTotal = g('f-total') ? (parseFloat(g('f-total').value) || 0) : 0;
     let allCakes = [];
@@ -3627,6 +3657,9 @@ window.App = (() => {
         photoNote: grab(`f-photo-note-${i}`), addr: grab(`f-address-${i}`), recv: grab(`f-receiver-${i}`),
         recvPhone: grab(`f-receiver-phone-${i}`), time: grab(`f-time-${i}`), ampm: grab(`f-time-ampm-${i}`),
         charge: grab(`f-delivery-amount-${i}`), date: grab(`f-date-${i}`),
+        // Keep the parked (hidden) stored charge across a re-render so adding
+        // a cake mid-edit can't wipe a charge the admin typed earlier.
+        chgPrev: ((document.getElementById(`f-delivery-amount-${i}`) || {}).dataset || {}).prev || '',
         sameAddr: grab(`cb-same-address-${i}`), sameRcv: grab(`cb-same-receiver-${i}`),
         sameTime: grab(`cb-same-time-${i}`), sameCharge: grab(`cb-same-charge-${i}`),
         sameDate: grab(`cb-same-date-${i}`)
@@ -3657,6 +3690,10 @@ window.App = (() => {
         set(`f-time-${i}`, saved[i].time);
         set(`f-time-ampm-${i}`, saved[i].ampm);
         set(`f-delivery-amount-${i}`, saved[i].charge);
+        if (saved[i].chgPrev) {
+          const chgEl = document.getElementById(`f-delivery-amount-${i}`);
+          if (chgEl) chgEl.dataset.prev = saved[i].chgPrev;
+        }
         set(`f-date-${i}`, saved[i].date);
         set(`cb-same-address-${i}`, saved[i].sameAddr !== false);
         set(`cb-same-receiver-${i}`, saved[i].sameRcv !== false);
@@ -3817,10 +3854,15 @@ window.App = (() => {
       const sameDate = g(`cb-same-date-${i}`).checked;
       const sel = g(`f-flavour-${i}`);
       // Shared trip adds 0 extra; only a distinct trip carries its own charge.
-      // (Per-cake fields are repopulated by restoreAdminCakes on edit, so a
-      // blank field here simply means "no separate charge".)
+      // The per-cake box opens BLANK (no stored number is shown). Blank = keep
+      // the charge the admin typed last time (kept aside in dataset.prev) —
+      // unless the order's charge is still auto/unknown, where nothing is kept.
+      const chgEl = g(`f-delivery-amount-${i}`);
+      const parentApprox = ((g('f-delivery-amount') || {}).dataset || {}).approx === '1';
+      const chgTyped = parseFloat((chgEl || {}).value);
+      const chgPrev  = parentApprox ? 0 : (parseInt(((chgEl || {}).dataset || {}).prev || '', 10) || 0);
       const chg = fulfilmentVal === 'pickup' ? 0
-        : (sameCharge ? 0 : (parseFloat(g(`f-delivery-amount-${i}`).value) || 0));
+        : (sameCharge ? 0 : (Number.isFinite(chgTyped) ? chgTyped : chgPrev));
       const photos = adminExtraPhotos[i] || [];
       const cakeDate = sameDate ? cake1.date : (g(`f-date-${i}`).value || '');
       cakes.push({
@@ -3884,7 +3926,18 @@ window.App = (() => {
           set(`f-time-${i}`, c.timeSlot);
         }
       }
-      if (!c.sameChargeAsCake1) set(`f-delivery-amount-${i}`, c.deliveryCharge != null ? c.deliveryCharge : c.deliveryAmount);
+      // Per-cake charge opens BLANK like cake 1 — the stored figure is kept
+      // aside (dataset.prev) so a blank save can still preserve a charge the
+      // admin typed earlier.
+      if (!c.sameChargeAsCake1) {
+        const chgEl = document.getElementById(`f-delivery-amount-${i}`);
+        if (chgEl) {
+          chgEl.value = '';
+          chgEl.dataset.prev = String(c.deliveryCharge != null
+            ? c.deliveryCharge
+            : (c.deliveryAmount != null ? c.deliveryAmount : ''));
+        }
+      }
       set(`cb-same-address-${i}`, c.sameAddressAsCake1 !== false);
       set(`cb-same-receiver-${i}`, c.sameReceiverAsCake1 !== false);
       set(`cb-same-time-${i}`, c.sameTimeAsCake1 !== false);
@@ -4152,12 +4205,16 @@ window.App = (() => {
 
     const cakePrice      = parseFloat(g('f-total').value) || 0;
     const fulfilmentVal  = g('f-fulfilment').value;
-    // DC field opens blank: empty = keep the stored amount (non-authoritative
-    // display is driven by the approx flag, not by clearing the figure).
+    // DC field opens blank. Empty = keep the stored amount ONLY when that
+    // amount is one the admin actually typed. An auto/unknown (approx) charge
+    // is never kept — the field stays empty so the real agency figure can be
+    // typed in later.
     const dcRawVal = String(g('f-delivery-amount').value || '').trim();
+    const dcEl0    = g('f-delivery-amount');
+    const dcWasAuto = dcEl0.dataset.approx === '1' || !!(existing && (existing.dcAuto === true || existing.dcAutoNote));
     const deliveryAmt    = dcRawVal !== ''
       ? (parseFloat(dcRawVal) || 0)
-      : (parseInt(g('f-delivery-amount').dataset.prev || '', 10) || 0);
+      : (dcWasAuto ? 0 : (parseInt(dcEl0.dataset.prev || '', 10) || 0));
     // f-paid holds the ADVANCE toward the cake (cake money only, no DC and no
     // gateway charge — the card shows the same figure). 50% / 100% of the cake
     // price is what the customer actually sends for the cake.
@@ -4245,12 +4302,12 @@ window.App = (() => {
       o.dcEstimate = null;
       o.dcArea = null;
     } else if (wasApprox || approxFromModal) {
-      // Untouched blank save on an approx order (edit OR duplicate): keep the
-      // warning + estimate so the card/copies still show "📍 এলাকা … আনুমানিক ৳Y".
+      // Blank save on a not-yet-confirmed charge: keep the "charge unknown"
+      // flag so cards/copies keep the ⚠️ note, but store NO figure at all —
+      // no auto-calculated number survives anywhere.
       o.dcAuto = true;
-      o.dcAutoNote = (existing && existing.dcAutoNote) || 'আনুমানিক (দূরত্ব অনুযায়ী অটো হিসাব) — এজেন্সি প্রকৃত চার্জ দেয়নি';
-      o.dcEstimate = (existing && existing.dcEstimate != null) ? existing.dcEstimate
-        : (parseInt(g('f-delivery-amount').dataset.estimate || '', 10) || null);
+      o.dcAutoNote = (existing && existing.dcAutoNote) || 'চার্জ নিশ্চিত হয়নি — ডেলিভারি এজেন্সি প্রকৃত চার্জ দেয়নি';
+      o.dcEstimate = null;
       o.dcArea = (existing && existing.dcArea) || g('f-delivery-amount').dataset.area || null;
     } else {
       o.dcAuto = false;

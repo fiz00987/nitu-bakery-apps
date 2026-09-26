@@ -1536,14 +1536,13 @@ function dcIsApproxOrder(order) {
 // dcEstimate/dcArea fields existed.
 function dcEstimateFootnoteText(order) {
   const o = order || {};
-  const est = Math.round(Number(o.dcEstimate != null ? o.dcEstimate : (o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge)) || 0);
   const area = String(o.dcArea || '').trim();
   if (lang === 'en') {
-    return '⚠️' + (area ? ` 📍 Area: ${area} ·` : '') + (est > 0 ? ` → approx ৳${est}` : '') +
-      ' ( approximate / auto calculated by distance — the delivery agency has not provided the actual charge )';
+    return '⚠️' + (area ? ` 📍 Area: ${area} ·` : '') +
+      'the delivery agency has not provided the actual charge yet — the shop will update it';
   }
-  return '⚠️' + (area ? ` 📍 এলাকা: ${area} ·` : '') + (est > 0 ? ` → আনুমানিক ৳${est}` : '') +
-    ' ( আনুমানিক / দূরত্ব অনুযায়ী অটো হিসাব — ডেলিভারি এজেন্সি প্রকৃত চার্জ দেয়নি )';
+  return '⚠️' + (area ? ` 📍 এলাকা: ${area} ·` : '') +
+    'ডেলিভারি এজেন্সি প্রকৃত চার্জ এখনো দেয়নি — দোকান হিসাব করে পরে আপডেট করবে।';
 }
 // One shared DC line for the customer-facing cards: exact amount when the
 // shop typed it, otherwise ৳0 (the estimate lives in the footnote). Always
@@ -1637,23 +1636,14 @@ function loadDcConfig() {
 // lives in the red ⚠️ footnote under the box.
 let dcLastEstimate = 0;
 let dcLastArea = '';
+// No distance/zone auto-estimate any more: when the delivery agency hasn't
+// given the real charge, NOTHING is guessed, shown or stored — the box simply
+// stays empty and the shop types the confirmed figure into the admin app later.
 function refreshDcEstimate() {
   const note = document.getElementById('dc-note');
-  if (typeof quoteToken !== 'undefined' && quoteToken) return;   // quote DC is locked by admin
-  const fulfil = (document.getElementById('f-fulfilment') || {}).value;
-  if (fulfil === 'pickup') { dcLastEstimate = 0; dcLastArea = ''; if (note) { note.style.display = 'none'; note.innerHTML = ''; } return; }
-  const addr = ((document.getElementById('f-address') || {}).value || '').trim();
-  if (!addr) { dcLastEstimate = 0; dcLastArea = ''; if (note) { note.style.display = 'none'; note.innerHTML = ''; } return; }
-  const zone = detectDcZone();
-  dcLastEstimate = (zone ? zone.base : DC_DEFAULT_BASE) + dcWeightExtra();
-  dcLastArea = zone ? zone.name : 'অজানা এলাকা (এডমিন নিশ্চিত করবে)';
-  const weightTxt = String((document.getElementById('f-weight') || {}).value || '').trim() || 'কেক';
-  if (note) {
-    note.style.display = 'block';
-    note.innerHTML = lang === 'en'
-      ? `⚠️ 📍 Area: <strong>${esc(dcLastArea)}</strong> · ${esc(weightTxt)} → approx <strong>৳${dcLastEstimate}</strong> ( approximate / auto calculated by distance — the delivery agency has not provided the actual charge )`
-      : `⚠️ 📍 এলাকা: <strong>${esc(dcLastArea)}</strong> · ${esc(weightTxt)} → আনুমানিক <strong>৳${dcLastEstimate}</strong> ( আনুমানিক / দূরত্ব অনুযায়ী অটো হিসাব — ডেলিভারি এজেন্সি প্রকৃত চার্জ দেয়নি )`;
-  }
+  dcLastEstimate = 0;
+  dcLastArea = '';
+  if (note) { note.style.display = 'none'; note.innerHTML = ''; }
 }
 // Back-compat alias: address/weight oninput handlers call this name.
 function autoDeliveryCharge() { refreshDcEstimate(); recalcPrice(); }
@@ -2032,14 +2022,13 @@ async function submitOrder() {
     cakePrice: cakePrice,
     deliveryCharge: delivery,
     deliveryAmount: delivery,
-    // Blank box = nobody typed a charge → the order's DC is the app's own
-    // distance estimate (non-authoritative). Keep the estimate + area so the
-    // cards can show "📍 এলাকা: X · → আনুমানিক ৳Y" in the red ⚠️ footnote
-    // until the shop types the agency-confirmed figure.
+    // Blank box = nobody typed a charge → the order is simply "charge not
+    // confirmed yet". NO auto/estimated figure is stored or shown anywhere;
+    // the admin types the agency-confirmed charge in the app later.
     dcAuto: dcIsAutoEstimate(),
-    dcEstimate: dcIsAutoEstimate() ? dcLastEstimate : null,
-    dcArea: dcIsAutoEstimate() ? dcLastArea : null,
-    dcAutoNote: dcIsAutoEstimate() ? (lang === 'en' ? 'Approximate (distance auto-calc) — agency has not provided the actual charge' : 'আনুমানিক (দূরত্ব অনুযায়ী অটো হিসাব) — এজেন্সি প্রকৃত চার্জ দেয়নি') : null,
+    dcEstimate: null,
+    dcArea: null,
+    dcAutoNote: dcIsAutoEstimate() ? (lang === 'en' ? 'Charge not confirmed yet — the delivery agency has not provided the actual charge' : 'চার্জ নিশ্চিত হয়নি — ডেলিভারি এজেন্সি প্রকৃত চার্জ দেয়নি') : null,
     // Delivery is always part of the total and collected online — never separate.
     deliveryPaid: document.getElementById('f-fulfilment').value === 'pickup' ? 'na' : (deliverySettled ? 'paid' : 'unpaid'),
     paymentCharges: charge,
