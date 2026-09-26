@@ -1236,21 +1236,28 @@ window.App = (() => {
     } else {
       msg += `Cake ${weightText(o)}\n`;
     }
-    // Cake due from the single source of truth: cake money ONLY (the
-    // delivery charge is never folded into this number — it has its own
-    // line below). Using dueAmt() fixes the old bug where `total − paid`
-    // silently included the delivery charge (double-counted due) or, when
-    // the stored `paid` was stale/large, hid a real due entirely.
+    // ── Money line — ONE bracket, one rule for old AND new orders ──
+    // Cake due comes from dueAmt() (cake money ONLY — the delivery charge
+    // never folds into it). Delivery counts as paid ONLY on an explicit
+    // 'paid' (missing/blank/unpaid = still owed, the agent collects it).
+    //   cake due + delivery due → ( ⚠️ Due- Cake 560 + Delivery Charge : 200/- )
+    //   everything paid         → ( Full Paid ✅ )
+    //   cake paid, delivery due → ( Full Paid ✅ ( ⚠️ Delivery Charge - 170/- ) )
+    //   cake due only           → ( ⚠️ Due- Cake 560 )
+    // Computed live at copy time from the order itself, so every CURRENT
+    // (historical) order follows the same rule without any migration.
+    const mny = n => String(Math.round(Number(n) || 0));
     const cakeDue = Math.max(0, Math.round(dueAmt(o)));
-    if (cakeDue > 0) msg += `Cake due: ${fmtMoney(cakeDue)}/-\n`;
-    // Delivery charge: ONLY an explicit 'paid' means paid. Missing, blank
-    // or 'unpaid' all mean the money is still owed (the agent collects it)
-    // — the old code printed "Delivery charge: Paid" for every legacy order
-    // whose deliveryPaid field was simply absent, telling the courier the
-    // customer had paid in full when they had NOT.
-    if (!isPickupOrder(o)) {
-      if (o.deliveryPaid === 'paid') msg += `Delivery charge: Paid${dcIsApprox(o) ? ' (৳0)' : ''}`;
-      else msg += dcIsApprox(o) ? `due: Delivery charge (৳0)` : `due: Delivery charge (${dcAmtOf(o)}/-)`;
+    const dcDue   = !isPickupOrder(o) && o.deliveryPaid !== 'paid';
+    const dcAmt   = dcIsApprox(o) ? 0 : dcAmtOf(o);   // approx = agency hasn't confirmed → 0/- until typed
+    if (cakeDue > 0 && dcDue) {
+      msg += `( ⚠️ Due- Cake ${mny(cakeDue)} + Delivery Charge : ${mny(dcAmt)}/- )`;
+    } else if (cakeDue > 0) {
+      msg += `( ⚠️ Due- Cake ${mny(cakeDue)} )`;
+    } else if (dcDue) {
+      msg += `( Full Paid ✅ ( ⚠️ Delivery Charge - ${mny(dcAmt)}/- ) )`;
+    } else {
+      msg += `( Full Paid ✅ )`;
     }
     return msg;
   };
