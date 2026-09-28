@@ -1,26 +1,33 @@
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
+    ".read": false,
+    ".write": false,
 
-    "widgetFeed": {
-      ".read": true,
-      ".write": "auth != null"
+    "orders": {
+      ".read": "auth != null",
+      ".indexOn": ["customerPhone", "orderId", "status", "date"],
+      "$orderId": {
+        ".write": "auth != null && ((auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com') || (!data.exists() && newData.hasChild('customerName') && newData.hasChild('customerPhone') && newData.hasChild('deliveryDate') && newData.hasChild('total') && newData.hasChild('status') && newData.child('status').val() == 'pending' && newData.child('customerPhone').isString() && newData.child('customerPhone').val().length <= 20 && newData.child('customerPhone').val().length >= 11 && newData.child('total').isNumber() && newData.child('total').val() >= 0 && newData.child('total').val() <= 1000000 && !newData.hasChild('paid') && !newData.hasChild('adminEdited') && !newData.hasChild('adminEditLog') && !newData.hasChild('adminEditFields')))"
+      }
     },
 
-    "dcConfig": {
-      ".read": true,
-      ".write": "auth != null"
+    "customers": {
+      ".read": "auth != null",
+      "$phone": {
+        ".write": "auth != null && ((auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com') || (newData.hasChild('phone') && newData.hasChild('lastLoginAt') && newData.child('phone').isString() && newData.child('phone').val().length >= 11 && newData.child('phone').val().length <= 20 && (!data.hasChild('pointsBalance') && (!newData.hasChild('pointsBalance') || newData.child('pointsBalance').val() == 0) || data.hasChild('pointsBalance') && newData.hasChild('pointsBalance') && data.child('pointsBalance').val() == newData.child('pointsBalance').val()) && (!data.hasChild('totalEarned') && (!newData.hasChild('totalEarned') || newData.child('totalEarned').val() == 0) || data.hasChild('totalEarned') && newData.hasChild('totalEarned') && data.child('totalEarned').val() == newData.child('totalEarned').val()) && (!data.hasChild('totalRedeemed') && (!newData.hasChild('totalRedeemed') || newData.child('totalRedeemed').val() == 0) || data.hasChild('totalRedeemed') && newData.hasChild('totalRedeemed') && data.child('totalRedeemed').val() == newData.child('totalRedeemed').val())))"
+      }
     },
 
-    "offDays": {
-      ".read": true,
-      ".write": "auth != null"
+    "quotes": {
+      ".read": "auth != null",
+      "$quoteId": {
+        ".write": "auth != null && ((auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com') || (data.exists() && newData.hasChild('status') && newData.child('status').val() == 'used'))"
+      }
     },
 
     "dayBooks": {
       ".read": true,
-      ".write": "auth != null",
+      ".write": "auth != null && (auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com')",
       "$day": {
         ".validate": "newData.hasChildren()",
         "booked": {
@@ -32,8 +39,29 @@
       }
     },
 
-    "orders": {
-      ".indexOn": ["customerPhone", "orderId", "status", "date"]
+    "offDays": {
+      ".read": true,
+      ".write": "auth != null && (auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com')"
+    },
+
+    "dcConfig": {
+      ".read": true,
+      ".write": "auth != null && (auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com')"
+    },
+
+    "widgetFeed": {
+      ".read": true,
+      ".write": "auth != null && (auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com')"
+    },
+
+    "pushTokens": {
+      ".read": "auth != null && (auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com')",
+      ".write": "auth != null && (auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com')"
+    },
+
+    "shopNotepad": {
+      ".read": "auth != null && (auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com')",
+      ".write": "auth != null && (auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com')"
     }
   }
 }

@@ -248,6 +248,9 @@ async function bootQuote() {
   if (!token) return;
   quoteToken = token;
   let q = null;
+  // Quotes need a signed-in user under the hardened rules — wait for the
+  // silent sign-in so a fast link-open never hits a permission-denied.
+  if (window.ensureAuthReady) { try { await window.ensureAuthReady(); } catch (e) {} }
   try { const snap = await db.ref('quotes/' + token).once('value'); q = snap ? snap.val() : null; }
   catch (e) { q = null; }
   if (!q || (q.status && q.status !== 'open') || (q.expiresAt && Date.now() > q.expiresAt)) {
@@ -534,6 +537,9 @@ async function verifySecurity() {
 async function trackOrder() {
   const orderId = document.getElementById('entry-order-id').value.trim().toUpperCase();
   if (!orderId) { showToast('অর্ডার নম্বর লিখুন'); return; }
+  // Orders need a signed-in user under the hardened rules — wait for the
+  // silent sign-in (in-app browsers can be slow) before querying.
+  if (window.ensureAuthReady) { try { await window.ensureAuthReady(); } catch (e) {} }
   try {
     const snap = await db.ref('orders').orderByChild('orderId').equalTo(orderId).once('value');
     if (!snap.exists()) { showToast('অর্ডার পাওয়া যায়নি'); return; }
