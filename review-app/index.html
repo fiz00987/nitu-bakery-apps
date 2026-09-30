@@ -69,17 +69,6 @@
     .order-number, .order-name { display: block; }
     .order-number { color: var(--dark); font-weight: 700; }
     .order-name { margin-top: 2px; color: #594c5b; }
-    .facebook-link {
-      display: block;
-      padding: 14px;
-      border-radius: 12px;
-      background: #1877f2;
-      color: #fff;
-      font-weight: 700;
-      text-align: center;
-      text-decoration: none;
-    }
-    .facebook-link:hover, .facebook-link:focus-visible { background: #0d63d4; }
     .instructions {
       margin: 12px 0 16px;
       padding: 12px;
@@ -88,6 +77,9 @@
       color: #4b3855;
       line-height: 1.55;
     }
+    .instruction-step { margin-top: 14px; }
+    .instruction-step strong { display: block; margin-bottom: 7px; color: var(--dark); }
+    .instruction-step img { display: block; width: 100%; max-height: 560px; object-fit: contain; background: #fff; border: 1px solid #e4d9df; border-radius: 12px; }
     .status { float: right; color: #287d55; }
     .claim { padding: 11px; border-bottom: 1px solid #eadde4; }
     .hidden { display: none !important; }
@@ -122,13 +114,11 @@
 
       <div id="form" class="hidden">
         <div class="instructions">
-          <a class="facebook-link" href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer">
-            ⭐ Facebook-এ honest review লিখুন / Open Facebook
-          </a>
-          <div>
-            লিঙ্কটি খুলে আপনার সত্যি অভিজ্ঞতা লিখুন, একটি স্ক্রিনশট নিন, তারপর এখানে আপলোড করুন।<br>
-            Open the link, write an honest review, take a screenshot, then upload it here.
-          </div>
+          <b>Facebook অ্যাপে নিচের ৩টি ধাপ অনুসরণ করুন:</b><br>
+          Follow these three steps in the Facebook app, write your honest review, take a screenshot of the published review, then upload it below.
+          <div class="instruction-step"><strong>১. “নিতুবাবুর্চীর পোর্টফোলিও” প্রোফাইলে গিয়ে “100% recommend” চাপুন।</strong><img src="instructions/1.jpg" alt="Step 1: open the profile and tap 100% recommend" loading="lazy"></div>
+          <div class="instruction-step"><strong>২. Reviews পেজে “Yes” চাপুন।</strong><img src="instructions/2.jpg" alt="Step 2: tap Yes on the recommendation page" loading="lazy"></div>
+          <div class="instruction-step"><strong>৩. আপনার honest review লিখে “Share” চাপুন।</strong><img src="instructions/3.jpg" alt="Step 3: write the review and tap Share" loading="lazy"></div>
         </div>
 
         <label for="review">ছোট নোট (ঐচ্ছিক) / Optional note</label>

@@ -35,6 +35,22 @@ function orderPhone(order) {
   return order.customerPhone || order.phone || order.receiverPhone || '';
 }
 
+// A claim is only for the exact Firebase order record it names.  Do not use
+// orderId alone: legacy/order-import data can contain duplicate display IDs,
+// while orderKey is the actual record identity.
+function claimTargetsOrder(claim, order, expectedPhone) {
+  if (!claim || !order || String(claim.orderKey || '') !== String(order.orderKey || '')) return false;
+  if (expectedPhone && key(claim.phoneKey) !== key(expectedPhone)) return false;
+  return normalize(orderPhone(order)) === normalize(expectedPhone);
+}
+
+function claimMatchesOrder(claim, order, expectedPhone) {
+  if (!claimTargetsOrder(claim, order, expectedPhone)) return false;
+  const claimId = String(claim.orderId || '').trim();
+  const actualId = orderId(order).trim();
+  return !claimId || !actualId || claimId === actualId;
+}
+
 function delivered(order) {
   const status = String(order.status || order.orderStatus || '').toLowerCase();
   return /deliver|complete|received|done/.test(status) || order.delivered === true;
@@ -61,22 +77,37 @@ function setMessage(element, message) {
   element.textContent = message || '';
 }
 
-// Orders use several phone formats, so read the collection once and perform
-// canonical Bangladesh-phone matching in the client. Reusing this promise
-// also keeps repeated searches from downloading the full collection again.
-function loadOrdersOnce() {
-  if (!allOrdersPromise) {
-    allOrdersPromise = db.ref('orders').once('value').then(snapshot => {
+// Orders use several phone formats. Reusing this promise keeps repeated
+// searches from issuing the same customer-scoped queries again.
+function loadOrdersOnce(normalizedPhone) {
+  // The hardened rules expose customer-scoped queries rather than the whole
+  // orders collection. Check the common Bangladesh representations and merge
+  // duplicate Firebase keys without weakening the client-side phone match.
+  const phoneVariants = [
+    normalizedPhone,
+    '+880' + normalizedPhone.slice(1),
+    '880' + normalizedPhone.slice(1)
+  ].filter((value, index, values) => value && values.indexOf(value) === index);
+  const cacheKey = phoneVariants.join('|');
+  if (!allOrdersPromise || allOrdersPromise.cacheKey !== cacheKey) {
+    const request = Promise.all(phoneVariants.map(value =>
+      db.ref('orders').orderByChild('customerPhone').equalTo(value).once('value')
+    )).then(snapshots => {
       const allOrders = [];
-      snapshot.forEach(child => {
+      const seen = new Set();
+      snapshots.forEach(snapshot => snapshot.forEach(child => {
+        if (seen.has(child.key)) return;
+        seen.add(child.key);
         const value = child.val() || {};
         if (delivered(value)) allOrders.push({ ...value, orderKey: child.key });
-      });
+      }));
       return allOrders;
     }).catch(error => {
       allOrdersPromise = null;
       throw error;
     });
+    request.cacheKey = cacheKey;
+    allOrdersPromise = request;
   }
   return allOrdersPromise;
 }
@@ -150,21 +181,21 @@ async function find() {
     const authenticated = await authReady;
     if (!authenticated) throw new Error('anonymous-auth-failed');
     const [allOrders, loadedClaims] = await Promise.all([
-      loadOrdersOnce(),
+      loadOrdersOnce(normalized),
       loadClaims(key(normalized))
     ]);
     if (request !== lookupSequence) return;
 
     phone = normalized;
     claims = loadedClaims;
-    const usedOrders = new Set();
-    claims.forEach(claim => {
-      if (claim.orderKey) usedOrders.add(String(claim.orderKey));
-      if (claim.orderId) usedOrders.add(String(claim.orderId));
-    });
     orders = allOrders.filter(order => {
       const matchingPhone = normalize(orderPhone(order)) === normalized;
-      return matchingPhone && !usedOrders.has(String(order.orderKey)) && !usedOrders.has(orderId(order));
+      // Every existing claim for this phone blocks another claim for the
+      // same exact order, including rejected claims.  A malformed claim for
+      // another order must not hide a valid order merely because its display
+      // orderId happens to match.
+      const alreadyClaimed = claims.some(claim => claimTargetsOrder(claim, order, normalized));
+      return matchingPhone && !alreadyClaimed;
     });
 
     renderClaims();
@@ -226,14 +257,46 @@ async function submit() {
   const submitButton = $('submit');
   submitButton.disabled = true;
   try {
+    // Re-read the selected order immediately before creating a claim.  The
+    // initial list is only a convenience view and may be stale or tampered
+    // with in the browser.
+    // Re-query the selected phone and require the same Firebase key. This
+    // avoids relying on arbitrary direct child reads under the hardened rules.
+    const orderSnapshot = await db.ref('orders').orderByChild('customerPhone').equalTo(String(orderPhone(selected))).once('value');
+    let freshOrder = null;
+    orderSnapshot.forEach(child => {
+      if (!freshOrder && child.key === String(selected.orderKey || '')) freshOrder = { ...(child.val() || {}), orderKey: child.key };
+    });
+    if (!freshOrder) throw new Error('order-not-found');
+    if (orderId(selected).trim() !== orderId(freshOrder).trim()) throw new Error('order-mismatch');
+    if (!delivered(freshOrder) || !claimMatchesOrder({ orderKey: freshOrder.orderKey, orderId: orderId(freshOrder), phoneKey: key(phone) }, freshOrder, phone)) {
+      throw new Error('order-mismatch');
+    }
+
+    // Re-check the phone-indexed claims so a second tab/device cannot submit
+    // the same order based on stale state.
+    const phoneClaimsSnapshot = await db.ref('reviewClaims').orderByChild('phoneKey').equalTo(key(phone)).once('value');
+    const latestClaims = [];
+    const seenClaimKeys = new Set();
+    [phoneClaimsSnapshot].forEach(snapshot => snapshot.forEach(child => {
+      if (seenClaimKeys.has(child.key)) return;
+      seenClaimKeys.add(child.key);
+      latestClaims.push({ ...(child.val() || {}), key: child.key });
+    }));
+    if (latestClaims.some(claim => claimTargetsOrder(claim, freshOrder, phone))) {
+      throw new Error('claim-already-exists');
+    }
+
     const screenshot = await readScreenshot(file);
+    if (!/^data:image\//i.test(String(screenshot || ''))) throw new Error('invalid-screenshot');
     const note = $('review').value.trim();
     const claim = {
-      orderKey: selected.orderKey,
-      orderId: orderId(selected),
+      orderKey: freshOrder.orderKey,
+      orderId: orderId(freshOrder),
       normalizedCustomerPhone: phone,
       phoneKey: key(phone),
-      customerName: orderCustomerName(selected),
+      customerPhone: orderPhone(freshOrder),
+      customerName: orderCustomerName(freshOrder),
       // The note is optional in the UI. Keep a short fallback for the current
       // Firebase validation rule, which requires reviewText to be a string.
       reviewText: note || DEFAULT_REVIEW_TEXT,
@@ -241,17 +304,25 @@ async function submit() {
       status: 'pending',
       createdAt: firebase.database.ServerValue.TIMESTAMP
     };
-    const claimReference = db.ref('reviewClaims').push();
+    // Use a deterministic per-order key as a best-effort client-side
+    // idempotency guard. Existing random-key claims are checked above for
+    // backwards compatibility with older submissions. A direct write is used
+    // instead of a transaction because customer reads are query-scoped by the
+    // database rules.
+    const claimReference = db.ref('reviewClaims').child('order-' + String(freshOrder.orderKey));
     await claimReference.set(claim);
     claims.push({ ...claim, key: claimReference.key });
     renderClaims();
-    orders = orders.filter(order => order.orderKey !== selected.orderKey);
+    orders = orders.filter(order => order.orderKey !== freshOrder.orderKey);
     renderOrders();
     $('done').classList.remove('hidden');
     setMessage(message, '');
   } catch (error) {
     console.error('Could not submit review claim', error);
-    setMessage(message, 'রিভিউ জমা দেওয়া যায়নি। আবার চেষ্টা করুন। / Could not submit the review. Please try again.');
+    const duplicate = error && (error.message === 'claim-already-exists' || error.message === 'order-mismatch');
+    setMessage(message, duplicate
+      ? 'এই অর্ডারের জন্য রিভিউ ইতিমধ্যে জমা হয়েছে। / A review claim already exists for this order.'
+      : 'রিভিউ জমা দেওয়া যায়নি। আবার চেষ্টা করুন। / Could not submit the review. Please try again.');
     submitButton.disabled = false;
   }
 }

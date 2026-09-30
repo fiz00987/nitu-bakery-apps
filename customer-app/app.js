@@ -29,6 +29,9 @@ function toE164BD(phone) {
   return null;
 }
 let currentOrderId = '';
+// Prevent two rapid clicks (or two handlers racing while async checks run)
+// from creating two customer orders from the same form.
+let orderSubmitInFlight = false;
 let previousOrderHistory = [];
 let previousOrderCursor = 0;
 let cakeWritingNoticeShown = false;
@@ -472,6 +475,27 @@ async function loadReviewReward(phone) {
     if (reviewReward && card) card.style.display = 'block';
   } catch (e) { console.warn('review reward lookup failed', e); }
 }
+
+// The reward lookup at form entry is only a display hint. Re-read the claim
+// immediately before an order write so a reward approved/consumed elsewhere
+// during checkout is not blindly applied from stale client state.
+async function refreshSelectedReviewReward() {
+  if (!reviewRewardSelected) return { ok: true };
+  const id = reviewReward && reviewReward.id;
+  const phone = localStorage.getItem('nitu-cust-phone') || '';
+  if (!id || !phone) return { ok: false };
+  // Claims are read through the phone-scoped query allowed to customers;
+  // avoid relying on an arbitrary direct claim-path read.
+  const snap = await db.ref('reviewClaims').orderByChild('phoneKey').equalTo(phoneKeyOf(phone)).once('value');
+  let claim = null;
+  snap.forEach(child => { if (!claim && child.key === String(id)) claim = child.val() || null; });
+  const approved = claim && String(claim.status || '').toLowerCase() === 'approved';
+  const unused = claim && !claim.used && !claim.usedAt && !claim.usedOrderId && !claim.usedOrderKey;
+  const samePhone = claim && phoneKeyOf(claim.normalizedCustomerPhone || claim.customerPhone || claim.phoneKey) === phoneKeyOf(phone);
+  if (!approved || !unused || !samePhone) return { ok: false };
+  reviewReward = { id: String(id), ...claim };
+  return { ok: true };
+}
 function updateReviewRewardDiscountNote(cakePrice) {
   const note = document.getElementById('review-reward-discount-note');
   if (!note) return;
@@ -889,6 +913,7 @@ async function handlePayShot(e) {
   const file = e.target.files && e.target.files[0];
   e.target.value = '';
   if (!file) return;
+  if (!file.type || !file.type.startsWith('image/')) { showToast('শুধু পেমেন্টের স্ক্রিনশট ছবি দিন'); return; }
   if (file.size > 5 * 1024 * 1024) { showToast('ছবি ৫MB এর কম হতে হবে'); return; }
   try { payShot = await compressImage(file); } catch (_) { showToast('ছবি লোড করা যায়নি'); return; }
   payShotVerified = null;                 // reset — new image picked
@@ -1907,7 +1932,7 @@ function validate() {
     return false;
   }
   // Payment screenshot is mandatory — the proof of payment
-  if (!payShot) {
+  if (!payShot || !/^data:image\//i.test(String(payShot))) {
     showToast('💳 পেমেন্টের স্ক্রিনশট দিন — bKash / Nagad / ব্যাংক কনফার্মেশন পেজের ছবি');
     document.getElementById('f-payshot').scrollIntoView({ block: 'center', behavior: 'smooth' });
     return false;
@@ -1972,10 +1997,20 @@ function getOrderTotal() {
   return Math.round(cakePrice) + Math.round(delivery);
 }
 
+function releaseOrderSubmit() {
+  orderSubmitInFlight = false;
+  const button = document.getElementById('submit-btn');
+  if (button) button.disabled = false;
+}
+
 // Submit
 async function submitOrder() {
-  if (!checkTerms()) return;
-  if (!validate()) return;
+  if (orderSubmitInFlight) return;
+  orderSubmitInFlight = true;
+  const submitButton = document.getElementById('submit-btn');
+  if (submitButton) submitButton.disabled = true;
+  if (!checkTerms()) { releaseOrderSubmit(); return; }
+  if (!validate()) { releaseOrderSubmit(); return; }
 
   // FINAL live door re-check right before writing: re-read /offDays and
   // /dayBooks fresh for the delivery date, so the last slot can never be
@@ -1994,6 +2029,7 @@ async function submitOrder() {
           ? `⛔ Sorry — orders can't be taken for ${fmtDate(kLive)}. Please choose another date.`
           : `⛔ দুঃখিত — ${fmtDate(kLive)} তারিখে অর্ডার নেওয়া যাবে না। অন্য তারিখ বেছে নিন।`);
         checkDateClosed();
+        releaseOrderSubmit();
         return;
       }
       if (liveOff) offDays[kLive] = liveOff; else delete offDays[kLive];
@@ -2006,7 +2042,7 @@ async function submitOrder() {
     showLoading(true);
     const chk = await validateQuoteLock();
     showLoading(false);
-    if (!chk.ok) { showToast(chk.msg); return; }
+    if (!chk.ok) { showToast(chk.msg); releaseOrderSubmit(); return; }
   }
 
   const phone = localStorage.getItem('nitu-cust-phone') || '';
@@ -2137,20 +2173,55 @@ async function submitOrder() {
     showToast(lang === 'en'
       ? 'Connection check failed — please reopen the page (or turn off the in-app browser).'
       : 'সংযোগ যাচাই করা যায়নি — পেজটা আবার খুলুন (হলে Facebook/Messenger-এর ভেতরের ব্রাউজার বন্ধ করে Chrome-এ খুলুন)।');
+    releaseOrderSubmit();
     return;
   }
-  db.ref('orders').push(order).then(snap => {
+  // The reward check must be the last claim read before the order write. This
+  // is still client-side protection only; the backend must enforce one-time
+  // reward redemption for a security guarantee.
+  const rewardState = await refreshSelectedReviewReward().catch(() => ({ ok: false }));
+  if (!rewardState.ok) {
+    showLoading(false);
+    showToast(lang === 'en'
+      ? 'This review reward is no longer available. Please refresh and try again.'
+      : 'এই রিভিউ রিওয়ার্ডটি আর ব্যবহারযোগ্য নয়। পেজ রিফ্রেশ করে আবার চেষ্টা করুন।');
+    releaseOrderSubmit();
+    return;
+  }
+
+  // If a request was interrupted after Firebase accepted it, a retry should
+  // find the same client-generated order ID instead of pushing a second row.
+  const duplicateSnapshot = await db.ref('orders').orderByChild('orderId').equalTo(String(order.orderId)).once('value').catch(() => null);
+  if (duplicateSnapshot && duplicateSnapshot.exists()) {
+    let existing = null;
+    duplicateSnapshot.forEach(child => {
+      if (!existing) existing = { ...(child.val() || {}), firebaseKey: child.key };
+    });
+    if (existing && phoneKeyOf(existing.customerPhone) === phoneKeyOf(order.customerPhone)) {
+      showLoading(false);
+      showSuccess(existing);
+      return;
+    }
+    showLoading(false);
+    showToast(lang === 'en' ? 'Order ID conflict — please refresh and try again.' : 'অর্ডার আইডি মিলে গেছে — পেজ রিফ্রেশ করে আবার চেষ্টা করুন।');
+    releaseOrderSubmit();
+    return;
+  }
+
+  try {
+    const snap = await db.ref('orders').push(order);
     showLoading(false);
     if (order.quoteToken) {
       db.ref('quotes/' + order.quoteToken).update({ status: 'used', usedAt: Date.now(), usedOrderId: (snap && snap.key) || order.orderId }).catch(e => console.error(e));
     }
     try { fireNtfyAlert(order); } catch (_) {}
     showSuccess(order);
-  }).catch(err => {
+  } catch (err) {
     showLoading(false);
+    releaseOrderSubmit();
     showToast('সমস্যা হয়েছে, আবার চেষ্টা করুন');
     console.error(err);
-  });
+  }
 }
 
 // ─── Instant push alert on submit (independent safety channel) ──
@@ -2452,6 +2523,7 @@ function scheduleWindowClose() { wipeSubmittedData(); }
 function orderIdForScreenshot() { return currentOrderId || 'nitu-bakery-order'; }
 
 function resetForm() {
+  releaseOrderSubmit();
   if (autoCloseTimer) { clearTimeout(autoCloseTimer); autoCloseTimer = null; }
   if (autoCloseTick) { clearInterval(autoCloseTick); autoCloseTick = null; }
   downloadPressed = true;
