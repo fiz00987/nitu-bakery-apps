@@ -466,8 +466,9 @@ html.t-gold .order-number-badge{color:#a5813e}
     <div class="section-title">💳 <span data-bn="পেমেন্ট" data-en="Payment">পেমেন্ট</span></div>
     <div class="field">
       <label data-bn="কেকের নির্ধারিত মূল্য * (৳)" data-en="Total payment of the cake * (Tk)">কেকের নির্ধারিত মূল্য * (৳)</label>
-      <input type="number" id="f-cake-price" min="0" placeholder="কেকের মূল্য লিখুন" data-bn-placeholder="কেকের মূল্য লিখুন" data-en-placeholder="Enter cake price" oninput="recalcPrice()">
+      <input type="number" id="f-cake-price" min="0" placeholder="কেকের মূল্য লিখুন" data-bn-placeholder="কেকের মূল্য লিখুন" data-en-placeholder="Enter cake price" oninput="handleCakePriceInput()">
     </div>
+    <div id="review-reward-card" class="note-box" style="display:none;background:var(--green-light);border-color:#a5d6a7;color:var(--green)"><label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer"><input type="checkbox" id="review-reward-check" onchange="toggleReviewReward()" style="width:18px;height:18px;flex-shrink:0"><span id="review-reward-text">আপনার রিভিউ রিওয়ার্ড ব্যবহার করে কেকের দামে ১০% ছাড় নিন (ঐচ্ছিক)</span></label></div>
     <div class="calc-box" id="calc-box">
       <div class="calc-row"><span>কেকের মূল্য:</span><span id="calc-base">৳0</span></div>
       <div class="calc-row"><span>ডেলিভারি:</span><span id="calc-delivery">৳0</span></div>

@@ -27,6 +27,7 @@ window.App = (() => {
   try { db.goOnline(); } catch (e) {}
   const auth      = firebase.auth();
   const ordersRef = db.ref('orders');
+  const reviewClaimsRef = db.ref('reviewClaims');
   // (keepSynced removed — it fought with the live listener on some devices;
   //  the localStorage cache below already gives instant first paint.)
   // Shared shopping notepad — multi-page (with photos), live-synced.
@@ -46,6 +47,8 @@ window.App = (() => {
 
   // ─── State ───────────────────────────────────────────────────
   let orders        = [];
+  let reviewClaims  = [];
+  let reviewFilter  = 'pending';
   let currentUser   = null;
   let editingId     = null;
   let activeTab     = 'plan';
@@ -773,7 +776,7 @@ window.App = (() => {
       const ordersTimer = setTimeout(() => {
         if (firstOrdersSnap) setSyncStatus('syncing', lang === 'bn' ? '☁️ ক্লাউডে সংযুক্ত হচ্ছে...' : '☁️ Connecting to cloud...');
       }, 1200);
-      ordersRef.on('value', snap => {
+       ordersRef.on('value', snap => {
         try {
         const isFirstSnap = firstOrdersSnap;   // captured BEFORE flipping below
         firstOrdersSnap = false;
@@ -921,6 +924,10 @@ window.App = (() => {
         });
 
         sortOrders();
+        // A reward is a one-use, cake-only benefit. Reconcile it after every
+        // order snapshot so an order created/edited in the customer app is
+        // reflected here without requiring the Rewards tab to be opened.
+        reconcileReviewRewards();
         render();
         updateDailyBadge();
         // Remember this snapshot on disk (IndexedDB) so the next app open can
@@ -944,6 +951,14 @@ window.App = (() => {
         // Even on error, the cached paint above (if any) stays visible —
         // the user can still browse old orders offline.
         render();
+      });
+      reviewClaimsRef.on('value', snap => {
+        reviewClaims = [];
+        const data = snap.val() || {};
+        Object.keys(data).forEach(k => reviewClaims.push(Object.assign({firebaseKey:k}, data[k] || {})));
+        const pending = reviewClaims.filter(c => (c.status || 'pending') === 'pending').length;
+        const badge = document.getElementById('tc-rewards'); if (badge) badge.textContent = pending;
+        if (activeTab === 'rewards') renderRewards();
       });
 
       // Non-critical listeners wait until the browser is idle (or 2.5s max) so
@@ -1556,6 +1571,7 @@ window.App = (() => {
     const surpriseChip = o.surprise === 'yes' ? `<span class="chip chip-purple">🎁 সারপ্রাইজ</span>` : '';
     const tallyBadge   = o.source === 'tally'  ? `<span class="chip chip-tally">Tally</span>` : '';
     const customerBadge = o.source === 'customer' ? `<span class="chip chip-customer">অনলাইন অর্ডার</span>` : '';
+    const rewardChip = o.reviewRewardId ? `<span class="chip chip-green">⭐ Review reward −৳${fmtMoney(o.reviewDiscount || Math.round((Number(o.originalCakePrice || o.total) || 0) * .1))}</span>` : '';
     const adminEditedBadge = o.adminEdited
       ? `<span class="chip chip-adminedit" title="${esc(adminEditTip(o))}">🛠️ ${lang === 'bn' ? 'অ্যাডমিন এডিট' : 'Admin edited'}${adminLogOf(o).length > 1 ? ` ×${adminLogOf(o).length}` : ''}</span>`
       : '';
@@ -1582,15 +1598,15 @@ window.App = (() => {
     <div class="card-stripe ${colClass(o)}"></div>
     <div class="card-head-body">
       ${o.orderId ? `<div class="card-order-id-row"><span class="card-order-id">🆔 ${esc(o.orderId)}</span><button class="id-copy-btn" type="button" onclick="event.stopPropagation();App.copyOrderId('${fk}')" title="অর্ডার আইডি কপি করুন">📋</button></div>` : ''}
-      <div class="card-name"><span class="card-name-text">${esc(o.name)}</span>${tallyBadge}${customerBadge}<button class="name-copy-btn" type="button" onclick="event.stopPropagation();App.copyCardName(this)" title="নাম কপি করুন">📋 কপি</button></div>
+       <div class="card-name"><span class="card-name-text">${esc(o.name)}</span>${tallyBadge}${customerBadge}<span class="chip chip-customer" title="Customer login phone">Phone number: ${esc(o.customerPhone || o.phone || o.receiverPhone || '—')}</span><button class="name-copy-btn" type="button" onclick="event.stopPropagation();App.copyCardName(this)" title="নাম কপি করুন">📋 কপি</button></div>
       <div class="card-meta">${(o.cakes && o.cakes.length > 1) ? o.cakes.map(c => esc([c.weightLabel || c.weight, c.flavourName || c.flavour].filter(Boolean).join(' '))).join(' + ') + ' · <b>' + o.cakes.length + 'টি কেক</b>' : (esc(weightText(o)) + (weightText(o) && o.flavour ? ' · ' : '') + esc(flavourLabel(o)))}${o.time ? ' · ' + esc(o.time) : ''}</div>
       ${cdChip}
-      <div class="card-chips">${statusChip(o)}${dueChip}${surpriseChip}${deliveryChip}${adminEditedBadge}</div>
+      <div class="card-chips">${statusChip(o)}${dueChip}${rewardChip}${surpriseChip}${deliveryChip}${adminEditedBadge}</div>
     </div>
     <div class="card-chevron-wrap" aria-hidden="true"><div class="card-chevron">⌄</div></div>
   </div>
 
-  ${payProgressBar(o)}
+      ${payProgressBar(o)}
 
   <div class="card-details">
     ${o.photo ? `<div class="card-photo-wrap"><img class="card-photo" src="${o.photo}" onclick="App.openLightbox('${fk}')" alt="রেফারেন্স কেক" loading="lazy"></div>` : ''}
@@ -2650,13 +2666,47 @@ window.App = (() => {
     }).join('');
   };
 
+  // ─── Review reward administration ────────────────────────────
+  const reviewStatus = c => c.status || 'pending';
+  const renderRewards = () => {
+    const el = document.getElementById('view-rewards'); if (!el) return;
+    const groups = ['pending','approved','used','rejected'];
+    const rows = reviewClaims.filter(c => reviewStatus(c) === reviewFilter);
+    el.innerHTML = `<div class="card" style="padding:16px"><h2>⭐ Review rewards</h2><p style="color:var(--text2)">Approved reward: 10% off cake price only (delivery is never discounted).</p><div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0">${groups.map(s => `<button class="chip ${s===reviewFilter?'chip-green':''}" onclick="App.filterRewards('${s}')">${s} (${reviewClaims.filter(c=>reviewStatus(c)===s).length})</button>`).join('')}</div>${rows.length ? rows.map(c => { const link=String(c.reviewLink||''); const image=c.screenshotUrl||c.screenshot||c.imageUrl||''; return `<article class="card" style="padding:12px;margin:10px 0"><strong>${esc(c.customerName || c.name || 'Customer')}</strong> · ${esc(c.orderId || c.orderKey || 'No order linked')}<div>${c.customerPhone||c.phone ? `📞 ${esc(c.customerPhone||c.phone)}` : ''}</div><div style="margin-top:6px">${esc(c.reviewText || c.text || 'No review text')}</div>${/^https?:\/\//i.test(link) ? `<a href="${esc(link)}" target="_blank" rel="noopener noreferrer">Open review ↗</a>` : ''}${image ? `<img src="${esc(image)}" alt="review screenshot" style="display:block;max-width:240px;max-height:180px;margin-top:8px;border-radius:8px;object-fit:contain">` : ''}<small>Status: ${reviewStatus(c)}${c.usedOrderId ? ` · used on ${esc(c.usedOrderId)}` : ''}</small>${reviewStatus(c)==='pending' ? `<div style="margin-top:8px"><button class="btn-cnf-yes green" onclick="App.updateReview('${c.firebaseKey}','approved')">Approve 10%</button> <button class="btn-cnf-no" onclick="App.updateReview('${c.firebaseKey}','rejected')">Reject</button></div>` : ''}${reviewStatus(c)==='used' ? `<button class="btn-cnf-no" onclick="App.restoreReview('${c.firebaseKey}')">Restore (only if order cancelled)</button>` : ''}</article>`; }).join('') : '<p style="padding:20px;color:var(--text2)">No claims in this group.</p>'}</div>`;
+  };
+  const filterRewards = s => { reviewFilter = s; renderRewards(); };
+  const updateReview = (key, status) => reviewClaimsRef.child(key).update({status, reviewedAt: firebase.database.ServerValue.TIMESTAMP, reviewedBy: currentUser && currentUser.email || 'admin'});
+  const restoreReview = key => { const c = reviewClaims.find(x=>x.firebaseKey===key); const o = orders.find(x=>x.firebaseKey===c?.usedOrderKey || x.reviewRewardId===key || x.orderId===c?.usedOrderId); if (o && o.status === 'cancelled') return reviewClaimsRef.child(key).update({status:'approved', usedOrderKey:null, usedOrderId:null, usedAt:null}); showToast('Cannot restore: linked order is not cancelled'); };
+  // Keep claim state authoritative from the orders snapshot. A cancelled
+  // order must never consume a reward; if its reward was already consumed,
+  // return the claim to approved so it can be used once more.
+  const reconcileReviewRewards = () => reviewClaims.forEach(c => {
+    const claimKey = c.firebaseKey;
+    const linked = orders.filter(o => String(o.reviewRewardId || '') === String(claimKey));
+    const active = linked.find(o => o.status !== 'cancelled');
+    const usedOrder = c.usedOrderKey && orders.find(o => o.firebaseKey === c.usedOrderKey);
+    if (reviewStatus(c) === 'used') {
+      if (usedOrder && usedOrder.status === 'cancelled') {
+        reviewClaimsRef.child(claimKey).update({ status: 'approved', usedOrderKey: null, usedOrderId: null, usedAt: null });
+      }
+      return;
+    }
+    if (reviewStatus(c) !== 'approved' || !active) return;
+    // Do not let a second order spend the same claim.
+    reviewClaimsRef.child(claimKey).update({
+      status: 'used', usedOrderKey: active.firebaseKey,
+      usedOrderId: active.orderId || active.firebaseKey,
+      usedAt: firebase.database.ServerValue.TIMESTAMP
+    });
+  });
+
   // ─── Tab switcher ─────────────────────────────────────────────
   // 'all' is merged into 'plan' — old links/keys redirect automatically.
   const switchTab = t => {
     if (t === 'all') t = 'plan';
     if (t === 'quotes') t = 'plan';
     activeTab = t;
-    ['plan','done','cdb','revenue'].forEach(n => {
+    ['plan','done','cdb','revenue','rewards'].forEach(n => {
       const view = document.getElementById(`view-${n}`);
       if (view) view.classList.toggle('hidden', n !== t);
       const btn = document.getElementById(`tab-${n === 'revenue' ? 'rev' : n}`);
@@ -2670,6 +2720,7 @@ window.App = (() => {
     if (t === 'done')    renderDone();
     if (t === 'cdb')     renderCdb();
     if (t === 'revenue') renderRevenue();
+    if (t === 'rewards') { reconcileReviewRewards(); renderRewards(); }
   };
 
   // ─── Toggle card expand ──────────────────────────────────────
@@ -4895,6 +4946,9 @@ window.App = (() => {
 
   return {
     switchTab,
+    filterRewards,
+    updateReview,
+    restoreReview,
     toggleCard,
     copyCardName,
     copySrsMessage,

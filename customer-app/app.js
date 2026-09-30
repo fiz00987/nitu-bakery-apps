@@ -7,6 +7,7 @@ let advanceType = '';
 let isSurprise = false;
 let currentSecurityQ = null;
 let pendingPhone = '';
+let reviewReward = null, reviewRewardSelected = false, reviewOriginalCakePrice = 0;
 // ─── Captcha state (customer app entry) ──────────────────────
 let captchaPassed = false;
 let currentCaptcha = null;
@@ -455,6 +456,36 @@ async function proceedAfterCaptcha() {
   try { await loadPreviousOrders(pendingPhone); } catch (e) { console.error(e); }
   try { await upsertCustomerProfile(pendingPhone); } catch (e) { console.error(e); }
   proceedToForm(pendingPhone);
+  loadReviewReward(pendingPhone);
+}
+
+async function loadReviewReward(phone) {
+  reviewReward = null; reviewRewardSelected = false; reviewOriginalCakePrice = 0;
+  const card = document.getElementById('review-reward-card');
+  if (card) card.style.display = 'none';
+  try {
+    const snap = await db.ref('reviewClaims').orderByChild('phoneKey').equalTo(phoneKeyOf(phone)).once('value');
+    const claims = snap.val() || {};
+    Object.keys(claims).some(id => { const c = claims[id] || {}; if (String(c.status).toLowerCase() === 'approved' && !c.used && !c.usedAt) { reviewReward = { id, ...c }; return true; } return false; });
+    if (reviewReward && card) card.style.display = 'block';
+  } catch (e) { console.warn('review reward lookup failed', e); }
+}
+function toggleReviewReward() {
+  const input = document.getElementById('f-cake-price');
+  const checked = !!(document.getElementById('review-reward-check') || {}).checked;
+  if (!input || (checked && !reviewReward)) return;
+  if (checked) { reviewOriginalCakePrice = Math.round(Number(input.value) || 0); reviewRewardSelected = true; input.value = Math.round(reviewOriginalCakePrice * 0.9); }
+  else { reviewRewardSelected = false; if (reviewOriginalCakePrice) input.value = reviewOriginalCakePrice; reviewOriginalCakePrice = 0; }
+  recalcPrice();
+}
+function handleCakePriceInput() {
+  const input = document.getElementById('f-cake-price');
+  if (reviewRewardSelected && input) {
+    const payable = Math.round(Number(input.value) || 0);
+    reviewOriginalCakePrice = Math.round(payable / 0.9);
+    input.value = Math.round(reviewOriginalCakePrice * 0.9);
+  }
+  recalcPrice();
 }
 
 async function sendOtp() {
@@ -1967,6 +1998,8 @@ async function submitOrder() {
   const timeSlot = getSelectedTime();
   const method = getPaymentMethod(document.getElementById('f-payment-method').value);
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
+  const originalCakePrice = reviewRewardSelected ? (reviewOriginalCakePrice || Math.round(cakePrice / 0.9)) : Math.round(cakePrice);
+  const reviewDiscount = reviewRewardSelected ? Math.max(0, originalCakePrice - Math.round(cakePrice)) : 0;
   const sendAmount = parseFloat(document.getElementById('f-advance').value) || 0;
 
   const delivery = document.getElementById('f-fulfilment').value === 'pickup' ? 0 : (parseFloat(document.getElementById('f-delivery-charge').value) || 0);
@@ -2026,6 +2059,9 @@ async function submitOrder() {
     basePrice: cakePrice,
     weightPrice: 0,
     cakePrice: cakePrice,
+    originalCakePrice: originalCakePrice,
+    reviewDiscount: reviewDiscount,
+    reviewRewardId: reviewRewardSelected && reviewReward ? reviewReward.id : null,
     deliveryCharge: delivery,
     deliveryAmount: delivery,
     // Blank box = nobody typed a charge → the order is simply "charge not
@@ -2399,6 +2435,9 @@ function resetForm() {
   if (autoCloseTimer) { clearTimeout(autoCloseTimer); autoCloseTimer = null; }
   if (autoCloseTick) { clearInterval(autoCloseTick); autoCloseTick = null; }
   downloadPressed = true;
+  reviewReward = null; reviewRewardSelected = false; reviewOriginalCakePrice = 0;
+  const rewardCard = document.getElementById('review-reward-card');
+  if (rewardCard) rewardCard.style.display = 'none';
   hideAutoClosePopup();
   document.getElementById('success-screen').classList.remove('active');
   document.getElementById('entry-screen').classList.remove('hidden');

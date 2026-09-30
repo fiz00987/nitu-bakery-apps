@@ -6,7 +6,8 @@
     "nitusbakingplanv2": {
       "hosting": {
         "admin": ["nitusbakingplanv2"],
-        "customer": ["nitusbakingplanv2-customer"]
+        "customer": ["nitusbakingplanv2-customer"],
+        "review": ["nitusbakingplanv2-review"]
       }
     }
   }

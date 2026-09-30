@@ -18,6 +18,14 @@
       }
     },
 
+    "reviewClaims": {
+      ".read": "auth != null",
+      ".indexOn": ["phoneKey", "status", "orderKey"],
+      "$claimId": {
+        ".write": "auth != null && ((auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com') || (!data.exists() && newData.child('status').val() == 'pending' && newData.child('phoneKey').isString() && newData.child('phoneKey').val().length >= 11 && newData.child('phoneKey').val().length <= 20 && newData.child('orderKey').isString() && newData.child('reviewText').isString() && newData.child('reviewText').val().length >= 5 && newData.child('reviewText').val().length <= 4000))"
+      }
+    },
+
     "quotes": {
       ".read": "auth != null",
       "$quoteId": {
