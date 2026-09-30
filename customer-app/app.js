@@ -173,6 +173,7 @@ function setLang(l) {
     FLAVOURS.forEach(f => { const option = document.querySelector(`#f-flavour option[value="${f.value}"]`); if (option) option.textContent = f.label; });
     PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.name; });
   }
+  updateReviewRewardDiscountNote();
 }
 
 function t(key) { return lang === 'en' ? (translationsEn[key] || key) : (translations[key] || key); }
@@ -463,12 +464,30 @@ async function loadReviewReward(phone) {
   reviewReward = null; reviewRewardSelected = false; reviewOriginalCakePrice = 0;
   const card = document.getElementById('review-reward-card');
   if (card) card.style.display = 'none';
+  updateReviewRewardDiscountNote();
   try {
     const snap = await db.ref('reviewClaims').orderByChild('phoneKey').equalTo(phoneKeyOf(phone)).once('value');
     const claims = snap.val() || {};
     Object.keys(claims).some(id => { const c = claims[id] || {}; if (String(c.status).toLowerCase() === 'approved' && !c.used && !c.usedAt) { reviewReward = { id, ...c }; return true; } return false; });
     if (reviewReward && card) card.style.display = 'block';
   } catch (e) { console.warn('review reward lookup failed', e); }
+}
+function updateReviewRewardDiscountNote(cakePrice) {
+  const note = document.getElementById('review-reward-discount-note');
+  if (!note) return;
+  if (!reviewRewardSelected) {
+    note.textContent = '';
+    note.classList.remove('show');
+    return;
+  }
+  const input = document.getElementById('f-cake-price');
+  const payable = Math.round(Number(cakePrice != null ? cakePrice : (input ? input.value : 0)) || 0);
+  const original = Math.round(Number(reviewOriginalCakePrice) || (payable ? payable / 0.9 : 0));
+  const discount = Math.max(0, original - payable);
+  note.textContent = lang === 'en'
+    ? `10% discount applied — discount: ৳${discount} (cake price only; delivery charge excluded).`
+    : `১০% ছাড় প্রয়োগ হয়েছে — ছাড়ের পরিমাণ: ৳${discount} (শুধু কেকের মূল্যে; ডেলিভারি চার্জ বাদ)।`;
+  note.classList.add('show');
 }
 function toggleReviewReward() {
   const input = document.getElementById('f-cake-price');
@@ -1410,6 +1429,7 @@ function getDeliveryCharge() {
 function recalcPrice(manualEdit) {
   const methodId = advanceMethod || document.getElementById('f-payment-method').value;
   const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
+  updateReviewRewardDiscountNote(cakePrice);
   const delivery = getDeliveryCharge();
   // NOTE: no early-return on blank delivery — the grey auto-box must fill
   // with cake-only math (delivery treated as 0) so tapping 50%/100% never
@@ -2438,6 +2458,9 @@ function resetForm() {
   reviewReward = null; reviewRewardSelected = false; reviewOriginalCakePrice = 0;
   const rewardCard = document.getElementById('review-reward-card');
   if (rewardCard) rewardCard.style.display = 'none';
+  const rewardCheck = document.getElementById('review-reward-check');
+  if (rewardCheck) rewardCheck.checked = false;
+  updateReviewRewardDiscountNote();
   hideAutoClosePopup();
   document.getElementById('success-screen').classList.remove('active');
   document.getElementById('entry-screen').classList.remove('hidden');

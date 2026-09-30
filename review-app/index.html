@@ -1,1 +1,158 @@
-<!doctype html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>নিতুর বেকারি — আপনার মতামত</title><link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet"><style>:root{--p:#c2185b;--d:#880e4f}*{box-sizing:border-box}body{margin:0;background:linear-gradient(#fff8f0ee,#fff8f0f5),url('../customer-app/client-bg-3.jpg') center/cover fixed;color:#271b2b;font-family:'Hind Siliguri',sans-serif}main{max-width:680px;margin:auto;padding:25px 16px 55px}.brand{text-align:center}.brand img{width:105px}.brand h1{color:var(--d);margin:5px 0}.sub{color:#756878}.card{background:#fffdfcdd;border:1px solid #eadde4;border-radius:20px;padding:20px;margin:14px 0;box-shadow:0 7px 22px #5d284015}h2{font-size:20px;margin:0 0 13px;color:var(--d)}label{display:block;font-weight:600;margin:12px 0 5px}input,textarea,button{font:inherit}input,textarea{width:100%;border:1px solid #d9cbd3;border-radius:11px;padding:11px;font-size:16px}textarea{min-height:112px}button{width:100%;border:0;border-radius:11px;background:var(--p);color:#fff;font-weight:700;padding:12px;margin-top:14px}.hint{font-size:13px;color:#756878}.orders{display:grid;gap:9px}.order{border:1px solid #eadde4;border-radius:12px;padding:12px;cursor:pointer}.selected{outline:2px solid var(--p);background:#fff0f5}.status{float:right;color:#287d55}.claim{padding:11px;border-bottom:1px solid #eadde4}.check{display:flex;gap:8px;font-weight:400}.check input{width:auto}.hidden{display:none!important}.error{color:#b3261e}.success{background:#eaf7ef;color:#17663e;padding:13px;border-radius:11px;margin-top:12px}@media(max-width:480px){main{padding-top:14px}.card{padding:16px}}</style></head><body><main><header class="brand"><img src="../customer-app/logo.png"><h1>আপনার মতামত আমাদের কাছে মূল্যবান</h1><div class="sub">সত্যি অভিজ্ঞতা শেয়ার করুন — ভালো বা উন্নতির পরামর্শ, সবই স্বাগত</div></header><section class="card"><h2>📱 ফোন নম্বর যাচাই</h2><label>আপনার অর্ডারের ফোন নম্বর</label><input id="phone" inputmode="tel" placeholder="01XXXXXXXXX"><div class="hint">বাংলাদেশি ১১ ডিজিটের নম্বর দিন</div><button id="find">অর্ডার খুঁজুন</button><div id="msg" class="error"></div></section><section class="card hidden" id="workspace"><h2>আপনার ডেলিভারি হওয়া অর্ডার</h2><div id="orders" class="orders"></div><div id="form" class="hidden"><label>আপনার সৎ অভিজ্ঞতা লিখুন</label><textarea id="review" maxlength="1200" placeholder="কী ভালো লেগেছে বা কী উন্নত করা যায়?"></textarea><label>Facebook recommendation পোস্টের লিংক (ঐচ্ছিক)</label><input id="url" type="url" placeholder="https://www.facebook.com/..."><label>পোস্টের স্ক্রিনশট (ঐচ্ছিক)</label><input id="shot" type="file" accept="image/*"><div class="hint">ছবিটি ছোট করে জমা হবে (সর্বোচ্চ ১.৫ MB)</div><label class="check"><input id="consent" type="checkbox">আমি নিশ্চিত করছি এটি আমার সত্যিকারের মতামত। সৎ মতামতের জন্যই পুরস্কার প্রযোজ্য — ইতিবাচক হওয়া বাধ্যতামূলক নয়।</label><button id="submit">রিভিউ জমা দিন</button><div id="done" class="success">ধন্যবাদ! আপনার রিভিউ যাচাইয়ের জন্য জমা হয়েছে।</div></div></section><section class="card hidden" id="history"><h2>আপনার আগের রিভিউ</h2><div id="claims"></div></section></main><script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script><script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script><script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script><script src="firebase-config.js"></script><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>নিতুর বেকারি — আপনার মতামত</title>
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --primary: #c2185b; --dark: #880e4f; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(#fff8f0ee, #fff8f0f5), url('../customer-app/client-bg-3.jpg') center / cover fixed;
+      color: #271b2b;
+      font-family: 'Hind Siliguri', sans-serif;
+    }
+    main { max-width: 680px; margin: auto; padding: 25px 16px 55px; }
+    .brand { text-align: center; }
+    .brand img { width: 105px; }
+    .brand h1 { color: var(--dark); margin: 5px 0; }
+    .sub { color: #756878; }
+    .card {
+      background: #fffdfcdd;
+      border: 1px solid #eadde4;
+      border-radius: 20px;
+      padding: 20px;
+      margin: 14px 0;
+      box-shadow: 0 7px 22px #5d284015;
+    }
+    h2 { font-size: 20px; margin: 0 0 13px; color: var(--dark); }
+    label { display: block; font-weight: 600; margin: 12px 0 5px; }
+    input, textarea, button { font: inherit; }
+    input, textarea {
+      width: 100%;
+      border: 1px solid #d9cbd3;
+      border-radius: 11px;
+      padding: 11px;
+      font-size: 16px;
+    }
+    textarea { min-height: 82px; resize: vertical; }
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 11px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 700;
+      padding: 12px;
+      margin-top: 14px;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .65; cursor: wait; }
+    .hint { font-size: 13px; color: #756878; }
+    .orders { display: grid; gap: 9px; }
+    .order {
+      display: block;
+      width: 100%;
+      margin: 0;
+      border: 1px solid #eadde4;
+      border-radius: 12px;
+      padding: 12px;
+      background: #fff;
+      color: #271b2b;
+      text-align: left;
+      cursor: pointer;
+    }
+    .order:hover, .order:focus-visible { border-color: var(--primary); }
+    .order.selected { outline: 2px solid var(--primary); background: #fff0f5; }
+    .order-number, .order-name { display: block; }
+    .order-number { color: var(--dark); font-weight: 700; }
+    .order-name { margin-top: 2px; color: #594c5b; }
+    .facebook-link {
+      display: block;
+      padding: 14px;
+      border-radius: 12px;
+      background: #1877f2;
+      color: #fff;
+      font-weight: 700;
+      text-align: center;
+      text-decoration: none;
+    }
+    .facebook-link:hover, .facebook-link:focus-visible { background: #0d63d4; }
+    .instructions {
+      margin: 12px 0 16px;
+      padding: 12px;
+      border-radius: 11px;
+      background: #f6efff;
+      color: #4b3855;
+      line-height: 1.55;
+    }
+    .status { float: right; color: #287d55; }
+    .claim { padding: 11px; border-bottom: 1px solid #eadde4; }
+    .hidden { display: none !important; }
+    .error { color: #b3261e; margin-top: 8px; }
+    .success { background: #eaf7ef; color: #17663e; padding: 13px; border-radius: 11px; margin-top: 12px; }
+    @media (max-width: 480px) {
+      main { padding-top: 14px; }
+      .card { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="brand">
+      <img src="../customer-app/logo.png" alt="নিতুর বেকারি">
+      <h1>আপনার মতামত আমাদের কাছে মূল্যবান</h1>
+      <div class="sub">সত্যি অভিজ্ঞতা শেয়ার করুন — ভালো বা উন্নতির পরামর্শ, সবই স্বাগত</div>
+    </header>
+
+    <section class="card">
+      <h2>১. ফোন নম্বর দিন / Enter your phone</h2>
+      <label for="phone">ডেলিভারি অর্ডারের ফোন নম্বর</label>
+      <input id="phone" inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX">
+      <div class="hint">যে নম্বরে অর্ডারটি করা হয়েছিল / The number used for the order</div>
+      <button id="find" type="button">ডেলিভারি অর্ডার খুঁজুন / Find orders</button>
+      <div id="msg" class="error" role="alert" aria-live="polite"></div>
+    </section>
+
+    <section class="card hidden" id="workspace">
+      <h2>২. একটি ডেলিভারি অর্ডার বেছে নিন / Select an order</h2>
+      <div id="orders" class="orders" aria-live="polite"></div>
+
+      <div id="form" class="hidden">
+        <div class="instructions">
+          <a class="facebook-link" href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer">
+            ⭐ Facebook-এ honest review লিখুন / Open Facebook
+          </a>
+          <div>
+            লিঙ্কটি খুলে আপনার সত্যি অভিজ্ঞতা লিখুন, একটি স্ক্রিনশট নিন, তারপর এখানে আপলোড করুন।<br>
+            Open the link, write an honest review, take a screenshot, then upload it here.
+          </div>
+        </div>
+
+        <label for="review">ছোট নোট (ঐচ্ছিক) / Optional note</label>
+        <textarea id="review" maxlength="240" placeholder="চাইলে সংক্ষিপ্ত কোনো নোট লিখুন / Add a short note if useful"></textarea>
+
+        <label for="shot">Facebook review-এর স্ক্রিনশট * / Review screenshot *</label>
+        <input id="shot" type="file" accept="image/*" required>
+        <div class="hint">স্ক্রিনশটটি ১.৫ MB-এর মধ্যে রাখুন / Keep the screenshot under 1.5 MB</div>
+        <div id="formMsg" class="error" role="alert" aria-live="polite"></div>
+        <button id="submit" type="button">স্ক্রিনশটসহ রিভিউ জমা দিন / Submit review</button>
+        <div id="done" class="success hidden" role="status">ধন্যবাদ! আপনার রিভিউ যাচাইয়ের জন্য জমা হয়েছে। / Thanks! Your review is pending verification.</div>
+      </div>
+    </section>
+
+    <section class="card hidden" id="history">
+      <h2>আপনার রিভিউয়ের অবস্থা / Review status history</h2>
+      <div id="claims"></div>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
