@@ -1261,14 +1261,14 @@ window.App = (() => {
     } else {
       msg += `Cake ${weightText(o)}\n`;
     }
-    // ── Money line — ONE bracket, one rule for old AND new orders ──
+    // ── Money line — due/delivery amounts stay unbracketed ──
     // Cake due comes from dueAmt() (cake money ONLY — the delivery charge
     // never folds into it). Delivery counts as paid ONLY on an explicit
     // 'paid' (missing/blank/unpaid = still owed, the agent collects it).
-    //   cake due + delivery due → ( ⚠️ Due- Cake 560 + Delivery Charge : 200/- )
+    //   cake due + delivery due → ⚠️ Due- Cake 560 + Delivery Charge : 200/-
     //   everything paid         → ( Full Paid ✅ )
-    //   cake paid, delivery due → ( Full Paid ✅ ( ⚠️ Delivery Charge - 170/- ) )
-    //   cake due only           → ( ⚠️ Due- Cake 560 )
+    //   cake paid, delivery due → Full Paid ✅ ⚠️ Delivery Charge - 170/-
+    //   cake due only           → ⚠️ Due- Cake 560
     // Computed live at copy time from the order itself, so every CURRENT
     // (historical) order follows the same rule without any migration.
     const mny = n => String(Math.round(Number(n) || 0));
@@ -1276,14 +1276,14 @@ window.App = (() => {
     const dcDue   = !isPickupOrder(o) && o.deliveryPaid !== 'paid';
     const dcAmt   = dcIsApprox(o) ? 0 : dcAmtOf(o);   // approx = agency hasn't confirmed → 0/- until typed
     if (cakeDue > 0 && dcDue) {
-      msg += `( ⚠️ Due- Cake ${mny(cakeDue)} + Delivery Charge : ${mny(dcAmt)}/- )`;
+      msg += `⚠️ Due- Cake ${mny(cakeDue)} + Delivery Charge : ${mny(dcAmt)}/-`;
     } else if (cakeDue > 0) {
-      msg += `( ⚠️ Due- Cake ${mny(cakeDue)} )`;
+      msg += `⚠️ Due- Cake ${mny(cakeDue)}`;
     } else if (dcDue) {
-      msg += `( Full Paid ✅ ( ⚠️ Delivery Charge - ${mny(dcAmt)}/- ) )`;
+      msg += `Full Paid ✅ ⚠️ Delivery Charge - ${mny(dcAmt)}/-`;
     } else {
       // Paid in full — when a delivery charge was really paid, name it here.
-      msg += dcAmt > 0 ? `( Full Paid ✅ & Delivery Charge - ${mny(dcAmt)}/- )` : `( Full Paid ✅ )`;
+      msg += dcAmt > 0 ? `Full Paid ✅ & Delivery Charge - ${mny(dcAmt)}/-` : `( Full Paid ✅ )`;
     }
     // Blank pickup-time slot right after the money line — the shop fills in
     // its best pickup timing by hand after copying (kept as plain spaces so
