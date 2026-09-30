@@ -1598,7 +1598,7 @@ window.App = (() => {
     <div class="card-stripe ${colClass(o)}"></div>
     <div class="card-head-body">
       ${o.orderId ? `<div class="card-order-id-row"><span class="card-order-id">🆔 ${esc(o.orderId)}</span><button class="id-copy-btn" type="button" onclick="event.stopPropagation();App.copyOrderId('${fk}')" title="অর্ডার আইডি কপি করুন">📋</button></div>` : ''}
-       <div class="card-name"><span class="card-name-text">${esc(o.name)}</span>${tallyBadge}${customerBadge}<span class="chip chip-customer" title="Customer login phone">Phone number: ${esc(o.customerPhone || o.phone || o.receiverPhone || '—')}</span><button class="name-copy-btn" type="button" onclick="event.stopPropagation();App.copyCardName(this)" title="নাম কপি করুন">📋 কপি</button></div>
+       <div class="card-name"><span class="card-name-text">${esc(o.name)}</span>${tallyBadge}${customerBadge}<button class="chip chip-customer phone-copy-chip" type="button" onclick="event.stopPropagation();App.copyCustomerPhone(this)" title="Copy customer phone">📱 Phone number: ${esc(o.customerPhone || o.phone || o.receiverPhone || '—')} · Copy</button><button class="name-copy-btn" type="button" onclick="event.stopPropagation();App.copyCardName(this)" title="নাম কপি করুন">📋 কপি</button></div>
       <div class="card-meta">${(o.cakes && o.cakes.length > 1) ? o.cakes.map(c => esc([c.weightLabel || c.weight, c.flavourName || c.flavour].filter(Boolean).join(' '))).join(' + ') + ' · <b>' + o.cakes.length + 'টি কেক</b>' : (esc(weightText(o)) + (weightText(o) && o.flavour ? ' · ' : '') + esc(flavourLabel(o)))}${o.time ? ' · ' + esc(o.time) : ''}</div>
       ${cdChip}
       <div class="card-chips">${statusChip(o)}${dueChip}${rewardChip}${surpriseChip}${deliveryChip}${adminEditedBadge}</div>
@@ -2742,6 +2742,13 @@ window.App = (() => {
     } else {
       fallbackCopyText(name, done);
     }
+  };
+  const copyCustomerPhone = btn => {
+    const phone = (btn.textContent || '').replace(/^📱\s*Phone number:\s*/i, '').replace(/\s*·\s*Copy\s*$/i, '').trim();
+    if (!phone || phone === '—') return showToast('⚠️ এই অর্ডারে ফোন নম্বর নেই');
+    const done = () => showToast('✅ ফোন নম্বর কপি হয়েছে!');
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(phone).then(done).catch(() => fallbackCopyText(phone, done));
+    else fallbackCopyText(phone, done);
   };
   const fallbackCopyText = (text, done) => {
     const ta = document.createElement('textarea');
@@ -4951,6 +4958,7 @@ window.App = (() => {
     restoreReview,
     toggleCard,
     copyCardName,
+    copyCustomerPhone,
     copySrsMessage,
     copyConfirmMessage,
     copyFullDetails,
