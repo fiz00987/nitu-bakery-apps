@@ -1487,7 +1487,12 @@ window.App = (() => {
     : '';
   const confirmDeliveryWhen = o => {
     const d = o.date ? fmtDate(o.date) : '';
-    const t = o.time || '';
+    // Legacy/customer orders can retain TIME NOT CONFIRMED in `time` while
+    // the structured admin edit is stored in timeSlot/timeSlotLabel. Prefer
+    // the real structured value so Confirm Copy reflects the latest edit.
+    const t = [o.time, o.timeSlotLabel, o.timeSlot]
+      .map(value => String(value || '').trim())
+      .find(value => value && value.toUpperCase() !== 'TIME NOT CONFIRMED') || '';
     return [d, t].filter(Boolean).join(', ') || '—';
   };
   const buildConfirmBnMsg = o => {
