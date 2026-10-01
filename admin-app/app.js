@@ -28,6 +28,7 @@ window.App = (() => {
   const auth      = firebase.auth();
   const ordersRef = db.ref('orders');
   const reviewClaimsRef = db.ref('reviewClaims');
+  const reviewRedemptionsRef = db.ref('reviewRedemptions');
   // (keepSynced removed — it fought with the live listener on some devices;
   //  the localStorage cache below already gives instant first paint.)
   // Shared shopping notepad — multi-page (with photos), live-synced.
@@ -146,6 +147,18 @@ window.App = (() => {
   const fmtMoney = n => {
     n = Math.round(Number(n) || 0);
     return n.toLocaleString('bn-BD');
+  };
+
+  // Store customer phones in the same local Bangladesh format used by the
+  // customer/review apps so formatted manual entries remain discoverable.
+  const canonicalizeBangladeshPhone = value => {
+    const compact = String(value || '').trim()
+      .replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d))
+      .replace(/[\s\-().]/g, '');
+    if (/^01[3-9]\d{8}$/.test(compact)) return compact;
+    if (/^\+8801[3-9]\d{8}$/.test(compact)) return '0' + compact.slice(4);
+    if (/^8801[3-9]\d{8}$/.test(compact)) return '0' + compact.slice(3);
+    return '';
   };
 
   // Effective amount that actually counts toward the cake.
@@ -951,16 +964,14 @@ window.App = (() => {
           if (!cakeDue && !delUnpaid) return;
           if (healedDelivered[o.firebaseKey]) return;
           healedDelivered[o.firebaseKey] = true;
-          // 🛠️ Fields the admin hand-edited (e.g. advance ৳400 on a ৳1000
-          // cake) are NEVER "healed" back to fully paid.
           const patch = {};
           if (cakeDue) {
-            if (!adminHas(o, 'paid'))         patch.paid         = (o.total || 0) + bkashCharge(o);
-            if (!adminHas(o, 'advance'))      patch.advance      = o.total || 0;
-            if (!adminHas(o, 'advanceTotal')) patch.advanceTotal = (o.total || 0) + bkashCharge(o);
-            if (!adminHas(o, 'dueAmount'))    patch.dueAmount    = 0;
+            patch.paid         = (o.total || 0) + bkashCharge(o);
+            patch.advance      = o.total || 0;
+            patch.advanceTotal = (o.total || 0) + bkashCharge(o);
+            patch.dueAmount    = 0;
           }
-          if (delUnpaid && !adminHas(o, 'deliveryPaid')) patch.deliveryPaid = 'paid';
+          if (delUnpaid) patch.deliveryPaid = 'paid';
           if (!Object.keys(patch).length) return;
           console.log('[delivered-heal] settling money on delivered order:', o.orderId || o.name);
           patch.updatedAt = Date.now();
@@ -1420,7 +1431,7 @@ window.App = (() => {
     // never folds into it). Delivery counts as paid ONLY on an explicit
     // 'paid' (missing/blank/unpaid = still owed, the agent collects it).
     //   cake due + delivery due → ⚠️ Due- Cake 560 + Delivery Charge : 200/-
-    //   everything paid         → ( Full Paid ✅ )
+    //   everything paid         → Full Paid ✅
     //   cake paid, delivery due → Full Paid ✅ ⚠️ Delivery Charge - 170/-
     //   cake due only           → ⚠️ Due- Cake 560
     // Computed live at copy time from the order itself, so every CURRENT
@@ -1437,12 +1448,12 @@ window.App = (() => {
       msg += `Full Paid ✅ ⚠️ Delivery Charge - ${mny(dcAmt)}/-`;
     } else {
       // Paid in full — when a delivery charge was really paid, name it here.
-      msg += dcAmt > 0 ? `Full Paid ✅ & Delivery Charge - ${mny(dcAmt)}/-` : `( Full Paid ✅ )`;
+      msg += dcAmt > 0 ? `Full Paid ✅ & Delivery Charge - ${mny(dcAmt)}/-` : `Full Paid ✅`;
     }
     // Blank pickup-time slot right after the money line — the shop fills in
     // its best pickup timing by hand after copying (kept as plain spaces so
     // it's easy to tap in and type over).
-    msg += `\n( Pickup Time -          )`;
+    msg += `\nPickup Time -          `;
     return msg;
   };
 
@@ -1454,8 +1465,8 @@ window.App = (() => {
   const SHOP_CALL_LINE = '01303-931284';
   const waPhoneOf = o => {
     const src = String(o.customerPhone || o.phone || o.receiverPhone || '');
-    const m = src.match(/(?:\+?880|0)(1[3-9]\d{8})/);
-    return m ? `880${m[1]}` : '';
+    const local = canonicalizeBangladeshPhone(src);
+    return local ? `880${local.slice(1)}` : '';
   };
   const confirmCakeLine = o => {
     if (o.cakes && o.cakes.length > 1) {
@@ -1468,17 +1479,17 @@ window.App = (() => {
     const paid  = advanceOf(o);
     const due   = Math.max(0, Math.round(dueAmt(o)));
     const f = n => `৳${fmtMoney(n)}`;
-    if (due <= 0) return `${f(total)} (সম্পূর্ণ পরিশোধিত ✅)`;
-    return `${f(total)} (জমা ${f(paid)}, বাকি ${f(due)})`;
+    if (due <= 0) return `${f(total)} — সম্পূর্ণ পরিশোধিত ✅`;
+    return `${f(total)} — জমা ${f(paid)}, বাকি ${f(due)}`;
   };
   const confirmDeliveryLine = o => {
     const amt  = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
     const paid = String(o.deliveryPaid || '');
-    if (o.fulfilment === 'pickup' || paid === 'na') return 'প্রযোজ্য নয় (সেল্ফ পিকআপ)';
+    if (o.fulfilment === 'pickup' || paid === 'na') return 'প্রযোজ্য নয় — সেল্ফ পিকআপ';
     // Approx/blank → ৳0 (the estimate is carried by the ⚠️ footnote below);
     // a shop-typed figure is the exact charge, shown plainly.
-    if (dcIsApprox(o)) return paid === 'paid' ? '৳0 (পরিশোধিত ✅)' : '৳0 (বাকি ⏳)';
-    return paid === 'paid' ? `৳${fmtMoney(amt)} (পরিশোধিত ✅)` : `৳${fmtMoney(amt)} (বাকি ⏳)`;
+    if (dcIsApprox(o)) return paid === 'paid' ? '৳0 — পরিশোধিত ✅' : '৳0 — বাকি ⏳';
+    return paid === 'paid' ? `৳${fmtMoney(amt)} — পরিশোধিত ✅` : `৳${fmtMoney(amt)} — বাকি ⏳`;
   };
   // Customer-facing warning appended to the confirm copy / WhatsApp text
   // whenever the charge is still an estimate (or left blank).
@@ -1544,7 +1555,7 @@ window.App = (() => {
     if (dk > 0) L.push(`🔴 কেকের বকেয়া: ৳${fmtMoney(dk)}`);
     // Delivery charge — status + amount; approx/blank shows ৳0 + the ⚠️ footnote.
     if (o.fulfilment === 'pickup' || o.deliveryPaid === 'na') {
-      L.push('🚚 ডেলিভারি চার্জ: প্রযোজ্য নয় (সেল্ফ পিকআপ)');
+      L.push('🚚 ডেলিভারি চার্জ: প্রযোজ্য নয় — সেল্ফ পিকআপ');
     } else if (o.deliveryPaid === 'paid') {
       L.push(`🚚 ডেলিভারি চার্জ: পরিশোধিত ✅ — ${dcAmtLine(o)}`);
     } else {
@@ -1559,7 +1570,7 @@ window.App = (() => {
     const o = orders.find(x => x.firebaseKey === key);
     if (!o) return;
     const msg = buildFullDetailsText(o);
-    const done = () => showToast('✅ বিস্তারিত (ডেলিভারি চার্জসহ) কপি হয়েছে!');
+    const done = () => showToast('✅ বিস্তারিত — ডেলিভারি চার্জসহ কপি হয়েছে!');
     if (navigator.clipboard?.writeText) navigator.clipboard.writeText(msg).then(done).catch(() => fallbackCopy(msg, done));
     else fallbackCopy(msg, done);
   };
@@ -1642,16 +1653,16 @@ window.App = (() => {
       (methodMapNp[mIdNp] || o.advanceMethod || o.paymentMethod || '');
     const dcAmtNp = dcAmtOf(o);
     const dcLineNp = isPickupOrder(o)
-      ? 'প্রযোজ্য নয় (সেল্ফ পিকআপ)'
+      ? 'প্রযোজ্য নয় — সেল্ফ পিকআপ'
       : dcAmtLine(o);
     L.push(`কেকের মূল্য- ${cakePriceOf(o)}/-`);
     L.push('');
     L.push(`ডেলিভারি চার্জ- ${dcLineNp}`);
     L.push('');
     if (dcIsApprox(o)) { L.push(dcFootnoteText(o)); L.push(''); }
-    L.push(`অগ্রিম / প্রদান- ${advanceOf(o)}/-${methodNameNp ? ` (${methodNameNp})` : ''}`);
+    L.push(`অগ্রিম / প্রদান- ${advanceOf(o)}/-${methodNameNp ? ` — ${methodNameNp}` : ''}`);
     L.push('');
-    if (dueAmt(o) > 0) L.push(`বকেয়া- ${dueAmt(o)}/- (ডেলিভারি চার্জ ছাড়া)`);
+    if (dueAmt(o) > 0) L.push(`বকেয়া- ${dueAmt(o)}/- — ডেলিভারি চার্জ ছাড়া`);
 
     return L.join('\n');
   };
@@ -2862,7 +2873,13 @@ window.App = (() => {
       revokedBy: currentUser && currentUser.email || 'admin'
     }).then(() => showToast('✅ 10% reward cancelled')).catch(() => showToast('❌ Could not cancel the reward'));
   };
-  const restoreReview = key => { const c = reviewClaims.find(x=>x.firebaseKey===key); const o = orders.find(x=>x.firebaseKey===c?.usedOrderKey || x.reviewRewardId===key || x.orderId===c?.usedOrderId); if (o && o.status === 'cancelled') return reviewClaimsRef.child(key).update({status:'approved', usedOrderKey:null, usedOrderId:null, usedAt:null}); showToast('Cannot restore: linked order is not cancelled'); };
+  const completeReviewRedemption = (claimKey, order) => reviewRedemptionsRef.child(claimKey).once('value').then(snap => {
+    if (!snap.exists()) return null; // legacy orders may predate reservations
+    return reviewRedemptionsRef.child(claimKey).update({
+      state: 'completed', orderKey: order.firebaseKey, completedAt: Date.now()
+    });
+  });
+  const restoreReview = key => { const c = reviewClaims.find(x=>x.firebaseKey===key); const o = orders.find(x=>x.firebaseKey===c?.usedOrderKey || x.reviewRewardId===key || x.orderId===c?.usedOrderId); if (o && o.status === 'cancelled') return Promise.all([reviewClaimsRef.child(key).update({status:'approved', usedOrderKey:null, usedOrderId:null, usedAt:null}), reviewRedemptionsRef.child(key).remove()]); showToast('Cannot restore: linked order is not cancelled'); };
   // Keep claim state authoritative from the orders snapshot. A cancelled
   // order must never consume a reward; if its reward was already consumed,
   // return the claim to approved so it can be used once more.
@@ -2873,17 +2890,23 @@ window.App = (() => {
     const usedOrder = c.usedOrderKey && orders.find(o => o.firebaseKey === c.usedOrderKey);
     if (reviewStatus(c) === 'used') {
       if (usedOrder && usedOrder.status === 'cancelled') {
-        reviewClaimsRef.child(claimKey).update({ status: 'approved', usedOrderKey: null, usedOrderId: null, usedAt: null });
+        Promise.all([
+          reviewClaimsRef.child(claimKey).update({ status: 'approved', usedOrderKey: null, usedOrderId: null, usedAt: null }),
+          reviewRedemptionsRef.child(claimKey).remove()
+        ]);
       }
       return;
     }
     if (reviewStatus(c) !== 'approved' || !active) return;
     // Do not let a second order spend the same claim.
-    reviewClaimsRef.child(claimKey).update({
+    Promise.all([
+      reviewClaimsRef.child(claimKey).update({
       status: 'used', usedOrderKey: active.firebaseKey,
       usedOrderId: active.orderId || active.firebaseKey,
       usedAt: firebase.database.ServerValue.TIMESTAMP
-    });
+      }),
+      completeReviewRedemption(claimKey, active)
+    ]);
   });
 
   // ─── Tab switcher ─────────────────────────────────────────────
@@ -4395,8 +4418,8 @@ window.App = (() => {
       const isPickup = (document.getElementById('f-fulfilment') || {}).value === 'pickup' || dcPaid === 'na';
       const dcLine = (!isPickup && dcAmt > 0)
         ? (dcPaid === 'paid'
-            ? ` + ডেলিভারি চার্জ ৳${fmtMoney(dcAmt)} (পরিশোধিত ✅)`
-            : ` + ডেলিভারি চার্জ ৳${fmtMoney(dcAmt)} (ডেলিভারির পর নেওয়া হবে)`)
+            ? ` + ডেলিভারি চার্জ ৳${fmtMoney(dcAmt)} — পরিশোধিত ✅`
+            : ` + ডেলিভারি চার্জ ৳${fmtMoney(dcAmt)} — ডেলিভারির পর নেওয়া হবে`)
         : '';
       hint.textContent = `⚠️ অ্যাডভান্সের পর বাকি পরিমাণ — স্বয়ংক্রিয়ভাবে হিসাব হয়${dcLine} — কোনো বিকাশ/নগদ চার্জ কখনো যোগ হয় না`;
     }
@@ -4423,6 +4446,8 @@ window.App = (() => {
     const g    = id => document.getElementById(id);
     const name = g('f-name').value.trim();
     const date = g('f-date').value;
+    const rawCustomerPhone = g('f-phone').value.trim();
+    const customerPhone = canonicalizeBangladeshPhone(rawCustomerPhone) || rawCustomerPhone;
 
     if (!name) { showToast('⚠️ কাস্টমারের নাম দিন।'); g('f-name').focus(); return; }
     if (!date) { showToast('⚠️ ডেলিভারির তারিখ দিন।'); g('f-date').focus(); return; }
@@ -4493,8 +4518,9 @@ window.App = (() => {
       orderId:        (existing && existing.orderId) || generateAdminOrderId(),
       name,
       customerName:   name,
-      phone:          g('f-phone').value.trim(),
-      customerPhone:  g('f-phone').value.trim(),
+      phone:          customerPhone,
+      customerPhone:  customerPhone,
+      phoneKey:       canonicalizeBangladeshPhone(customerPhone) || customerPhone,
       category:       'custom',
       categoryName:   'কাস্টম কেক',
       cakeCount:      cakes.length,
@@ -4619,14 +4645,11 @@ window.App = (() => {
     // modal, force every money field to fully-paid so a delivered order can
     // never carry a due (from now and forever).
     if (o.status === 'delivered') {
-      // 🛠️ Delivered ⇒ fully paid — but ONLY for fields the admin did NOT
-      // hand-edit: an admin-edited field keeps the exact value saved.
-      const keep = f => adminHas(o, f);
-      if (!keep('advance'))      o.advance      = cakePrice;
-      if (!keep('advanceTotal')) o.advanceTotal = cakePrice;
-      if (!keep('paid'))         o.paid         = cakePrice;
-      if (!keep('dueAmount'))    o.dueAmount    = 0;
-      if (fulfilmentVal === 'delivery' && !keep('deliveryPaid')) o.deliveryPaid = 'paid';
+      o.advance      = cakePrice;
+      o.advanceTotal = cakePrice;
+      o.paid         = cakePrice;
+      o.dueAmount    = 0;
+      if (fulfilmentVal === 'delivery') o.deliveryPaid = 'paid';
     }
 
     // Delivery charge is OPTIONAL now: blank = not-paid yet (agent collects later).

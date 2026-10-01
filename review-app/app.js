@@ -71,8 +71,12 @@ function claimMatchesOrder(claim, order, expectedPhone) {
 }
 
 function delivered(order) {
-  const status = String(order.status || order.orderStatus || '').toLowerCase();
-  return /deliver|complete|received|done/.test(status) || order.delivered === true;
+  const status = String(order.status || order.orderStatus || '')
+    .trim().toLowerCase().replace(/[\s_-]+/g, '');
+  // Only explicit completed states qualify. Broad substring matching could
+  // incorrectly accept "not delivered" or "out for delivery".
+  return new Set(['delivered', 'deliverd', 'delievered', 'complete', 'completed', 'done', 'finished', 'fulfilled', 'success', 'successful', 'shipped']).has(status)
+    || order.delivered === true;
 }
 
 function escapeHtml(value) {
@@ -109,9 +113,11 @@ function loadOrdersOnce(normalizedPhone) {
   ].filter((value, index, values) => value && values.indexOf(value) === index);
   const cacheKey = phoneVariants.join('|');
   if (!allOrdersPromise || allOrdersPromise.cacheKey !== cacheKey) {
-    const request = Promise.all(phoneVariants.map(value =>
-      db.ref('orders').orderByChild('customerPhone').equalTo(value).once('value')
-    )).then(snapshots => {
+    const queries = [
+      db.ref('orders').orderByChild('phoneKey').equalTo(normalizedPhone).once('value'),
+      ...phoneVariants.map(value => db.ref('orders').orderByChild('customerPhone').equalTo(value).once('value'))
+    ];
+    const request = Promise.all(queries).then(snapshots => {
       const allOrders = [];
       const seen = new Set();
       snapshots.forEach(snapshot => snapshot.forEach(child => {

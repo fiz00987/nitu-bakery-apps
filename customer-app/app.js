@@ -564,6 +564,46 @@ async function refreshSelectedReviewReward() {
   reviewReward = { id: String(claim.key), ...claim };
   return { ok: true };
 }
+
+// Spark-compatible one-time reward lock. The transaction reserves the reward
+// for this order before the order write, so two fast checkouts cannot both
+// pass the same reward check. An abandoned checkout expires after 24 hours;
+// the admin reconciliation still marks successful orders used.
+const REVIEW_REWARD_RESERVATION_MS = 24 * 60 * 60 * 1000;
+async function reserveReviewReward(order) {
+  if (!reviewRewardSelected || !reviewReward || !order) return { ok: true };
+  const claimId = String(reviewReward.id || '');
+  if (!claimId || !order.orderId) return { ok: false };
+  const ref = db.ref('reviewRedemptions').child(claimId);
+  const now = Date.now();
+  const expiresAt = now + REVIEW_REWARD_RESERVATION_MS;
+  const result = await ref.transaction(current => {
+    if (current && Number(current.expiresAt) > Date.now() && String(current.orderId || '') !== String(order.orderId)) return;
+    return {
+      state: 'reserved',
+      orderId: String(order.orderId),
+      phoneKey: phoneKeyOf(order.customerPhone),
+      createdAt: now,
+      expiresAt
+    };
+  });
+  const value = result && result.snapshot && result.snapshot.val ? result.snapshot.val() : null;
+  return { ok: !!(result && result.committed && value && String(value.orderId) === String(order.orderId)), claimId };
+}
+
+async function completeReviewRewardReservation(claimId, orderKey) {
+  if (!claimId || !orderKey) return;
+  try {
+    await db.ref('reviewRedemptions').child(String(claimId)).update({
+      state: 'completed',
+      orderKey: String(orderKey),
+      completedAt: Date.now()
+    });
+  } catch (error) {
+    // The admin reconciliation can complete the claim from the order record.
+    console.warn('review reward reservation completion deferred', error);
+  }
+}
 function enteredCakePrice() {
   const input = document.getElementById('f-cake-price');
   return Math.max(0, Math.round(parseFloat(input && input.value) || 0));
@@ -2213,6 +2253,7 @@ async function submitOrder() {
   const order = {
     orderId: currentOrderId || generateOrderId(),
     customerPhone: phone,
+    phoneKey: phoneKeyOf(phone),
     customerName: customerName,
     category: 'custom',
     categoryName: cakeKind === 'mini' ? 'মিনি কেক' : 'কাস্টম কেক',
@@ -2308,9 +2349,8 @@ async function submitOrder() {
     releaseOrderSubmit();
     return;
   }
-  // The reward check must be the last claim read before the order write. This
-  // is still client-side protection only; the backend must enforce one-time
-  // reward redemption for a security guarantee.
+  // Re-read the claim before reserving the one-time reward. The subsequent
+  // Firebase transaction lock prevents two fast checkouts from reserving it.
   const rewardState = await refreshSelectedReviewReward().catch(() => ({ ok: false }));
   if (!rewardState.ok) {
     showLoading(false);
@@ -2344,8 +2384,22 @@ async function submitOrder() {
     return;
   }
 
+  const rewardReservation = await reserveReviewReward(order).catch(error => {
+    console.warn('review reward reservation failed', error);
+    return { ok: false };
+  });
+  if (!rewardReservation.ok) {
+    showLoading(false);
+    showToast(lang === 'en'
+      ? 'This review reward is being used or is no longer available. Please refresh and try again.'
+      : 'এই রিভিউ রিওয়ার্ডটি অন্য অর্ডারে ব্যবহার হচ্ছে বা আর ব্যবহারযোগ্য নয়। পেজ রিফ্রেশ করে আবার চেষ্টা করুন।');
+    releaseOrderSubmit();
+    return;
+  }
+
   try {
     const snap = await db.ref('orders').push(order);
+    await completeReviewRewardReservation(rewardReservation.claimId, snap && snap.key);
     showLoading(false);
     if (order.quoteToken) {
       db.ref('quotes/' + order.quoteToken).update({ status: 'used', usedAt: Date.now(), usedOrderId: (snap && snap.key) || order.orderId }).catch(e => console.error(e));
