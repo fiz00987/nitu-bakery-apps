@@ -2814,13 +2814,14 @@ window.App = (() => {
   const reviewStatus = c => String((c && c.status) || 'pending');
   const renderRewards = () => {
     const el = document.getElementById('view-rewards'); if (!el) return;
-    const groups = ['pending','approved','used','rejected'];
+    const groups = ['pending','approved','used','rejected','revoked'];
     const rows = reviewClaims.filter(c => reviewStatus(c) === reviewFilter);
     const groupButtons = groups.map(s =>
       `<button class="chip ${s === reviewFilter ? 'chip-green' : ''}" onclick="App.filterRewards(${jsArg(s)})">${esc(s)} (${reviewClaims.filter(c => reviewStatus(c) === s).length})</button>`
     ).join('');
     const cards = rows.map(c => {
       const status = reviewStatus(c);
+      const statusLabel = status === 'revoked' ? 'Cancelled' : status;
       const key = jsArg(c.firebaseKey);
       const link = safeHttpUrl(c.reviewLink);
       const image = safeImageUrl(c.screenshotUrl || c.screenshot || c.imageUrl || '');
@@ -2830,8 +2831,9 @@ window.App = (() => {
         <div style="margin-top:6px">${esc(c.reviewText || c.text || 'No review text')}</div>
         ${link ? `<a href="${escAttr(link)}" target="_blank" rel="noopener noreferrer">Open review ↗</a>` : ''}
         ${image ? `<img${imageSrcAttr(image)} alt="review screenshot" role="button" tabindex="0" onclick="App.openReviewScreenshot(${key})" style="display:block;max-width:240px;max-height:180px;margin-top:8px;border-radius:8px;object-fit:contain;cursor:zoom-in">` : ''}
-        <small>Status: ${esc(status)}${c.usedOrderId ? ` · used on ${esc(c.usedOrderId)}` : ''}</small>
+        <small>Status: ${esc(statusLabel)}${c.usedOrderId ? ` · used on ${esc(c.usedOrderId)}` : ''}</small>
         ${status === 'pending' ? `<div style="margin-top:8px"><button class="btn-cnf-yes green" onclick="App.updateReview(${key},'approved')">Approve 10%</button> <button class="btn-cnf-no" onclick="App.updateReview(${key},'rejected')">Reject</button></div>` : ''}
+        ${status === 'approved' && !c.usedOrderKey && !c.usedOrderId ? `<button class="btn-cnf-no" style="margin-top:8px" onclick="App.revokeReview(${key})">Cancel 10% reward</button>` : ''}
         ${status === 'used' ? `<button class="btn-cnf-no" onclick="App.restoreReview(${key})">Restore (only if order cancelled)</button>` : ''}
       </article>`;
     }).join('');
@@ -2844,6 +2846,17 @@ window.App = (() => {
   };
   const filterRewards = s => { reviewFilter = s; renderRewards(); };
   const updateReview = (key, status) => reviewClaimsRef.child(key).update({status, reviewedAt: firebase.database.ServerValue.TIMESTAMP, reviewedBy: currentUser && currentUser.email || 'admin'});
+  const revokeReview = key => {
+    const claim = reviewClaims.find(c => String(c.firebaseKey) === String(key));
+    if (!claim || reviewStatus(claim) !== 'approved') return showToast('This reward is not available to cancel');
+    if (claim.usedOrderKey || claim.usedOrderId) return showToast('This reward has already been used');
+    if (!window.confirm('Cancel this approved 10% reward? The customer will no longer receive it.')) return;
+    reviewClaimsRef.child(key).update({
+      status: 'revoked',
+      revokedAt: firebase.database.ServerValue.TIMESTAMP,
+      revokedBy: currentUser && currentUser.email || 'admin'
+    }).then(() => showToast('✅ 10% reward cancelled')).catch(() => showToast('❌ Could not cancel the reward'));
+  };
   const restoreReview = key => { const c = reviewClaims.find(x=>x.firebaseKey===key); const o = orders.find(x=>x.firebaseKey===c?.usedOrderKey || x.reviewRewardId===key || x.orderId===c?.usedOrderId); if (o && o.status === 'cancelled') return reviewClaimsRef.child(key).update({status:'approved', usedOrderKey:null, usedOrderId:null, usedAt:null}); showToast('Cannot restore: linked order is not cancelled'); };
   // Keep claim state authoritative from the orders snapshot. A cancelled
   // order must never consume a reward; if its reward was already consumed,
@@ -5140,6 +5153,7 @@ window.App = (() => {
     switchTab,
     filterRewards,
     updateReview,
+    revokeReview,
     restoreReview,
     toggleCard,
     copyCardName,
