@@ -8,6 +8,8 @@ let isSurprise = false;
 let currentSecurityQ = null;
 let pendingPhone = '';
 let reviewReward = null, reviewRewardSelected = false, reviewOriginalCakePrice = 0;
+let reviewRewardLoadPromise = null;
+let reviewRewardLoadGeneration = 0;
 // ─── Captcha state (customer app entry) ──────────────────────
 let captchaPassed = false;
 let currentCaptcha = null;
@@ -162,7 +164,7 @@ function setLang(l) {
     if (field && field.parentElement) field.parentElement.querySelector('label').textContent = text;
   });
   if (l === 'en') {
-    document.getElementById('f-cake-price').placeholder = 'Enter cake price';
+    document.getElementById('f-cake-price').placeholder = 'Enter original cake price';
     document.getElementById('f-weight').placeholder = 'Example: 2 pound, 2.5 pound, 1 KG';
     document.getElementById('f-timeslot').placeholder = 'Example: 3.00';
     document.getElementById('f-writing').placeholder = 'Example: Your smile is our home\'s light';
@@ -175,7 +177,7 @@ function setLang(l) {
     FLAVOURS.forEach(f => { const option = document.querySelector(`#f-flavour option[value="${f.value}"]`); if (option) option.textContent = f.labelEn; });
     PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.nameEn; });
   } else {
-    document.getElementById('f-cake-price').placeholder = 'কেকের মূল্য লিখুন';
+    document.getElementById('f-cake-price').placeholder = 'কেকের মূল মূল্য লিখুন';
     document.getElementById('f-weight').placeholder = 'যেমন: 2 pound, 2.5 pound, 1 KG';
     document.getElementById('f-timeslot').placeholder = 'যেমন: 3.00';
     document.getElementById('f-writing').placeholder = 'যেমন: তোমার হাসিই আমাদের ঘরের আলো';
@@ -252,6 +254,7 @@ function applyQuoteToForm() {
   showQuoteBanner('🔒 এডমিনের দেওয়া কোটেশন: ' + esc(parts) +
     ' — মোট ৳' + (quoteTotalOf(q) + del) +
     (del ? ' (ডেলিভারি চার্জ ৳' + del + ' সহ)' : ''), true);
+  recalcPrice();
 }
 async function bootQuote() {
   let token = '';
@@ -292,7 +295,7 @@ async function validateQuoteLock() {
   const gotFTxt = (fEl && fEl.selectedIndex >= 0) ? String(fEl.options[fEl.selectedIndex].textContent || '').trim() : '';
   if (expF && gotF !== expF && gotFTxt !== expF) return { ok: false, msg: '❌ ফ্লেভার মিলছে না' };
   const expTotal = quoteTotalOf(fresh);
-  const gotTotal = parseFloat(document.getElementById('f-cake-price').value) || 0;
+  const gotTotal = enteredCakePrice();
   if (expTotal !== gotTotal) return { ok: false, msg: '❌ কেকের মূল্য মিলছে না (কোটেশন: ৳' + expTotal + ')' };
   if ((fresh.fulfilment || 'delivery') !== 'pickup') {
     const expDel = Number(fresh.deliveryCharge) || 0;
@@ -496,30 +499,54 @@ async function proceedAfterCaptcha() {
   try { await loadPreviousOrders(pendingPhone); } catch (e) { console.error(e); }
   try { await upsertCustomerProfile(pendingPhone); } catch (e) { console.error(e); }
   proceedToForm(pendingPhone);
-  loadReviewReward(pendingPhone);
+  reviewRewardLoadPromise = loadReviewReward(pendingPhone).catch(e => console.warn('review reward lookup failed', e));
+  await reviewRewardLoadPromise;
 }
 
 async function loadReviewReward(phone) {
-  reviewReward = null; reviewRewardSelected = false; reviewOriginalCakePrice = 0;
+  const generation = ++reviewRewardLoadGeneration;
+  clearReviewRewardBinding();
   const card = document.getElementById('review-reward-card');
-  if (card) card.style.display = 'none';
-  updateReviewRewardDiscountNote();
   try {
     const claims = await loadPhoneScopedClaims(phone);
-    claims.some(claim => {
-      if (String(claim.status).toLowerCase() === 'approved' && !claim.used && !claim.usedAt) {
-        reviewReward = { id: String(claim.key), ...claim };
-        return true;
-      }
-      return false;
+    if (generation !== reviewRewardLoadGeneration) return;
+    const phoneKey = phoneKeyOf(phone);
+    const eligible = claims.filter(claim => {
+      const claimPhone = claim.normalizedCustomerPhone || claim.customerPhone || claim.phoneKey;
+      return String(claim.status || '').toLowerCase() === 'approved' &&
+        !claim.used && !claim.usedAt && !claim.usedOrderId && !claim.usedOrderKey &&
+        phoneKeyOf(claimPhone) === phoneKey;
+    }).sort((a, b) => {
+      const aTime = Number(a.approvedAt || a.reviewedAt || a.createdAt) || 0;
+      const bTime = Number(b.approvedAt || b.reviewedAt || b.createdAt) || 0;
+      return aTime - bTime;
     });
-    if (reviewReward && card) card.style.display = 'block';
+    if (eligible.length) {
+      reviewReward = { id: String(eligible[0].key), ...eligible[0] };
+      // Binding is automatic: the first approved, unused reward for the
+      // logged-in phone is reserved for this customer's next order.
+      reviewRewardSelected = true;
+      const input = document.getElementById('f-cake-price');
+      reviewOriginalCakePrice = Math.round(parseFloat(input && input.value) || 0);
+      if (card) card.style.display = 'block';
+      updateReviewRewardDiscountNote();
+      recalcPrice();
+    }
   } catch (e) { console.warn('review reward lookup failed', e); }
 }
 
-// The reward lookup at form entry is only a display hint. Re-read the claim
-// immediately before an order write so a reward approved/consumed elsewhere
-// during checkout is not blindly applied from stale client state.
+function clearReviewRewardBinding() {
+  reviewReward = null;
+  reviewRewardSelected = false;
+  reviewOriginalCakePrice = 0;
+  const card = document.getElementById('review-reward-card');
+  if (card) card.style.display = 'none';
+  updateReviewRewardDiscountNote();
+}
+
+// Re-read the bound claim immediately before an order write so a reward
+// approved/consumed elsewhere during checkout is not blindly applied from
+// stale client state.
 async function refreshSelectedReviewReward() {
   if (!reviewRewardSelected) return { ok: true };
   const id = reviewReward && reviewReward.id;
@@ -537,7 +564,30 @@ async function refreshSelectedReviewReward() {
   reviewReward = { id: String(claim.key), ...claim };
   return { ok: true };
 }
-function updateReviewRewardDiscountNote(cakePrice) {
+function enteredCakePrice() {
+  const input = document.getElementById('f-cake-price');
+  return Math.max(0, Math.round(parseFloat(input && input.value) || 0));
+}
+
+// The visible field always keeps the customer's original cake price.  A bound
+// review reward changes only the payable cake amount used by payment and order
+// totals; delivery is added separately and is never discounted.
+function getCakePricing() {
+  const originalCakePrice = enteredCakePrice();
+  if (!reviewRewardSelected) {
+    reviewOriginalCakePrice = 0;
+    return { originalCakePrice, payableCakePrice: originalCakePrice, reviewDiscount: 0 };
+  }
+  reviewOriginalCakePrice = originalCakePrice;
+  const payableCakePrice = Math.round(originalCakePrice * 0.9);
+  return {
+    originalCakePrice,
+    payableCakePrice,
+    reviewDiscount: Math.max(0, originalCakePrice - payableCakePrice)
+  };
+}
+
+function updateReviewRewardDiscountNote() {
   const note = document.getElementById('review-reward-discount-note');
   if (!note) return;
   if (!reviewRewardSelected) {
@@ -545,30 +595,20 @@ function updateReviewRewardDiscountNote(cakePrice) {
     note.classList.remove('show');
     return;
   }
-  const input = document.getElementById('f-cake-price');
-  const payable = Math.round(Number(cakePrice != null ? cakePrice : (input ? input.value : 0)) || 0);
-  const original = Math.round(Number(reviewOriginalCakePrice) || (payable ? payable / 0.9 : 0));
-  const discount = Math.max(0, original - payable);
+  const pricing = getCakePricing();
+  const original = pricing.originalCakePrice;
+  const payable = pricing.payableCakePrice;
+  const discount = pricing.reviewDiscount;
   note.textContent = lang === 'en'
-    ? `10% discount applied — discount: ৳${discount} (cake price only; delivery charge excluded).`
-    : `১০% ছাড় প্রয়োগ হয়েছে — ছাড়ের পরিমাণ: ৳${discount} (শুধু কেকের মূল্যে; ডেলিভারি চার্জ বাদ)।`;
+    ? (original > 0
+      ? `10% discount applied — original cake price: ৳${original}; payable cake price: ৳${payable}; discount: ৳${discount} (cake price only; delivery charge excluded).`
+      : '10% discount will be applied to the cake price only; delivery charge is excluded.')
+    : (original > 0
+      ? `১০% ছাড় প্রয়োগ হয়েছে — কেকের মূল মূল্য: ৳${original}; পরিশোধযোগ্য কেকের মূল্য: ৳${payable}; ছাড়: ৳${discount} (শুধু কেকের মূল্যে; ডেলিভারি চার্জ বাদ)।`
+      : '১০% ছাড় শুধু কেকের মূল্যে প্রয়োগ হবে; ডেলিভারি চার্জে ছাড় নেই।');
   note.classList.add('show');
 }
-function toggleReviewReward() {
-  const input = document.getElementById('f-cake-price');
-  const checked = !!(document.getElementById('review-reward-check') || {}).checked;
-  if (!input || (checked && !reviewReward)) return;
-  if (checked) { reviewOriginalCakePrice = Math.round(Number(input.value) || 0); reviewRewardSelected = true; input.value = Math.round(reviewOriginalCakePrice * 0.9); }
-  else { reviewRewardSelected = false; if (reviewOriginalCakePrice) input.value = reviewOriginalCakePrice; reviewOriginalCakePrice = 0; }
-  recalcPrice();
-}
 function handleCakePriceInput() {
-  const input = document.getElementById('f-cake-price');
-  if (reviewRewardSelected && input) {
-    const payable = Math.round(Number(input.value) || 0);
-    reviewOriginalCakePrice = Math.round(payable / 0.9);
-    input.value = Math.round(reviewOriginalCakePrice * 0.9);
-  }
   recalcPrice();
 }
 
@@ -927,7 +967,7 @@ function loadTesseract() {
 let payExpectedAmounts = [];
 function captureExpectedAmounts() {
   const adv = Math.round(parseFloat((document.getElementById('f-advance') || {}).value) || 0);
-  const cake = Math.round(parseFloat((document.getElementById('f-cake-price') || {}).value) || 0);
+  const cake = getCakePricing().payableCakePrice;
   const del = document.getElementById('f-fulfilment') && document.getElementById('f-fulfilment').value === 'pickup'
     ? 0 : Math.round(parseFloat((document.getElementById('f-delivery-charge') || {}).value) || 0);
   const total = cake + del;
@@ -1364,7 +1404,7 @@ function isFullOnlyPayment() {
 // Full payment = 100% of CAKE + 100% of DELIVERY for mini cakes
 // (all paid now); normal 100% = cake only (delivery paid later with due).
 function getFullBase() {
-  const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
+  const cakePrice = getCakePricing().payableCakePrice;
   if (isFullOnlyPayment()) return Math.round(cakePrice) + Math.round(getDeliveryCharge());
   return Math.round(cakePrice);
 }
@@ -1400,7 +1440,7 @@ function setAdvanceType(type) {
   document.querySelectorAll('.advance-opt').forEach(el => el.classList.remove('active'));
   document.getElementById('opt-' + type).classList.add('active');
   lastAutoSend = 0; lastAutoBase = 0;
-  const price = parseFloat(document.getElementById('f-cake-price').value) || 0;
+  const price = getCakePricing().payableCakePrice;
   if (price <= 0) document.getElementById('f-advance').value = '';
   // No popup: the gateway is picked from the inline payment section
   // (method select + bKash/Nagad/Bank grid) — recalc right away.
@@ -1516,8 +1556,9 @@ function getDeliveryCharge() {
 
 function recalcPrice(manualEdit) {
   const methodId = advanceMethod || document.getElementById('f-payment-method').value;
-  const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
-  updateReviewRewardDiscountNote(cakePrice);
+  const pricing = getCakePricing();
+  const cakePrice = pricing.payableCakePrice;
+  updateReviewRewardDiscountNote();
   const delivery = getDeliveryCharge();
   // NOTE: no early-return on blank delivery — the grey auto-box must fill
   // with cake-only math (delivery treated as 0) so tapping 50%/100% never
@@ -1595,6 +1636,10 @@ function recalcPrice(manualEdit) {
 
   // Top calc box (cake price / delivery / total — delivery folded into total)
   document.getElementById('calc-base').textContent = '৳' + Math.round(cakePrice);
+  const baseLabel = document.getElementById('calc-base-label');
+  if (baseLabel) baseLabel.textContent = reviewRewardSelected
+    ? (lang === 'en' ? 'Payable cake price:' : 'পরিশোধযোগ্য কেকের মূল্য:')
+    : (lang === 'en' ? 'Cake price:' : 'কেকের মূল্য:');
   const isPickupCalc = document.getElementById('f-fulfilment').value === 'pickup';
   document.getElementById('calc-delivery').textContent = isPickupCalc ? 'প্রযোজ্য নয় (পিকআপ)' : '৳' + Math.round(delivery);
   document.getElementById('calc-total').textContent = '৳' + Math.round(total);
@@ -2040,7 +2085,7 @@ if (timeError) { showToast(timeError); document.getElementById('f-timeslot').foc
   // Full-only (mini): FULL cake + FULL delivery must be covered
   // now in one send (gateway charge sits on top of that).
   if (isFullOnlyPayment()) {
-    const cake = Math.round(parseFloat(document.getElementById('f-cake-price').value) || 0);
+    const cake = getCakePricing().payableCakePrice;
     const del = Math.round(getDeliveryCharge());
     const need = cake + del;
     const send = Math.round(parseFloat(document.getElementById('f-advance').value) || 0);
@@ -2057,7 +2102,7 @@ if (timeError) { showToast(timeError); document.getElementById('f-timeslot').foc
 
 function getOrderTotal() {
   const wt = resolveWeight();
-  const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
+  const cakePrice = getCakePricing().payableCakePrice;
   if (!wt || cakePrice <= 0) return 0;
   // Total payment = cake price + delivery charge, always (no separate note).
   const delivery = getDeliveryCharge();
@@ -2079,6 +2124,11 @@ async function submitOrder() {
   orderSubmitInFlight = true;
   const submitButton = document.getElementById('submit-btn');
   if (submitButton) submitButton.disabled = true;
+  // Do not let a fast submit race the phone-scoped reward lookup.  The lookup
+  // binds the approved reward to this order before the final live re-check.
+  if (reviewRewardLoadPromise) {
+    try { await reviewRewardLoadPromise; } catch (_) {}
+  }
   if (!checkTerms()) { releaseOrderSubmit(); return; }
   if (!validate()) { releaseOrderSubmit(); return; }
 
@@ -2130,9 +2180,10 @@ async function submitOrder() {
   const fl = getFlavour(document.getElementById('f-flavour').value);
   const timeSlot = getSelectedTime();
   const method = getPaymentMethod(document.getElementById('f-payment-method').value);
-  const cakePrice = parseFloat(document.getElementById('f-cake-price').value) || 0;
-  const originalCakePrice = reviewRewardSelected ? (reviewOriginalCakePrice || Math.round(cakePrice / 0.9)) : Math.round(cakePrice);
-  const reviewDiscount = reviewRewardSelected ? Math.max(0, originalCakePrice - Math.round(cakePrice)) : 0;
+  const pricing = getCakePricing();
+  const cakePrice = pricing.payableCakePrice;
+  const originalCakePrice = pricing.originalCakePrice;
+  const reviewDiscount = pricing.reviewDiscount;
   const sendAmount = parseFloat(document.getElementById('f-advance').value) || 0;
 
   const delivery = document.getElementById('f-fulfilment').value === 'pickup' ? 0 : (parseFloat(document.getElementById('f-delivery-charge').value) || 0);
@@ -2233,9 +2284,13 @@ async function submitOrder() {
     order.weight = order.weightLabel = String(qc.weightLabel || qc.weight || order.weight || '').trim();
     order.flavour = String(qc.flavour || order.flavour).trim();
     order.flavourName = String(qc.flavourName || order.flavourName).trim();
-    order.cakePrice = order.basePrice = quoteTotalOf(quoteData);
+    const quoteCakeOriginal = Math.round(quoteTotalOf(quoteData));
+    const quoteCakePayable = reviewRewardSelected ? Math.round(quoteCakeOriginal * 0.9) : quoteCakeOriginal;
+    order.originalCakePrice = quoteCakeOriginal;
+    order.reviewDiscount = Math.max(0, quoteCakeOriginal - quoteCakePayable);
+    order.cakePrice = order.basePrice = quoteCakePayable;
     // Delivery is always part of the total — quote total = cake + delivery.
-    order.subtotal = order.total = quoteTotalOf(quoteData) + ((quoteData.fulfilment === 'pickup') ? 0 : (Number(quoteData.deliveryCharge) || 0));
+    order.subtotal = order.total = quoteCakePayable + ((quoteData.fulfilment === 'pickup') ? 0 : (Number(quoteData.deliveryCharge) || 0));
     if (quoteData.fulfilment === 'pickup') { order.fulfilment = 'pickup'; order.deliveryCharge = 0; }
     else { order.fulfilment = 'delivery'; order.deliveryCharge = Number(quoteData.deliveryCharge) || 0; }
     order.quoteToken = quoteToken;
@@ -2278,6 +2333,7 @@ async function submitOrder() {
     if (existing) {
       showLoading(false);
       currentOrderId = existing.orderId || order.orderId;
+      clearReviewRewardBinding();
       showSuccess(existing);
       orderSubmitInFlight = false;
       return;
@@ -2295,6 +2351,7 @@ async function submitOrder() {
       db.ref('quotes/' + order.quoteToken).update({ status: 'used', usedAt: Date.now(), usedOrderId: (snap && snap.key) || order.orderId }).catch(e => console.error(e));
     }
     try { fireNtfyAlert(order); } catch (_) {}
+    clearReviewRewardBinding();
     showSuccess(order);
   } catch (err) {
     showLoading(false);
@@ -2607,12 +2664,9 @@ function resetForm() {
   if (autoCloseTimer) { clearTimeout(autoCloseTimer); autoCloseTimer = null; }
   if (autoCloseTick) { clearInterval(autoCloseTick); autoCloseTick = null; }
   downloadPressed = true;
-  reviewReward = null; reviewRewardSelected = false; reviewOriginalCakePrice = 0;
-  const rewardCard = document.getElementById('review-reward-card');
-  if (rewardCard) rewardCard.style.display = 'none';
-  const rewardCheck = document.getElementById('review-reward-check');
-  if (rewardCheck) rewardCheck.checked = false;
-  updateReviewRewardDiscountNote();
+  reviewRewardLoadGeneration++;
+  reviewRewardLoadPromise = null;
+  clearReviewRewardBinding();
   hideAutoClosePopup();
   document.getElementById('success-screen').classList.remove('active');
   document.getElementById('entry-screen').classList.remove('hidden');

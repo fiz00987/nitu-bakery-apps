@@ -2829,7 +2829,7 @@ window.App = (() => {
         <div>${c.customerPhone || c.phone ? `📞 ${esc(c.customerPhone || c.phone)}` : ''}</div>
         <div style="margin-top:6px">${esc(c.reviewText || c.text || 'No review text')}</div>
         ${link ? `<a href="${escAttr(link)}" target="_blank" rel="noopener noreferrer">Open review ↗</a>` : ''}
-        ${image ? `<img${imageSrcAttr(image)} alt="review screenshot" style="display:block;max-width:240px;max-height:180px;margin-top:8px;border-radius:8px;object-fit:contain">` : ''}
+        ${image ? `<img${imageSrcAttr(image)} alt="review screenshot" role="button" tabindex="0" onclick="App.openReviewScreenshot(${key})" style="display:block;max-width:240px;max-height:180px;margin-top:8px;border-radius:8px;object-fit:contain;cursor:zoom-in">` : ''}
         <small>Status: ${esc(status)}${c.usedOrderId ? ` · used on ${esc(c.usedOrderId)}` : ''}</small>
         ${status === 'pending' ? `<div style="margin-top:8px"><button class="btn-cnf-yes green" onclick="App.updateReview(${key},'approved')">Approve 10%</button> <button class="btn-cnf-no" onclick="App.updateReview(${key},'rejected')">Reject</button></div>` : ''}
         ${status === 'used' ? `<button class="btn-cnf-no" onclick="App.restoreReview(${key})">Restore (only if order cancelled)</button>` : ''}
@@ -3007,6 +3007,15 @@ window.App = (() => {
     document.getElementById('lightbox-img').src = safe;
     document.getElementById('lightbox').classList.add('open');
     document.body.style.overflow = 'hidden';
+  };
+  // Review screenshots are untrusted claim data; validate again before
+  // handing the source to the shared full-size lightbox.
+  const openReviewScreenshot = key => {
+    const claim = reviewClaims.find(c => String(c.firebaseKey) === String(key));
+    if (!claim) return;
+    const image = safeImageUrl(claim.screenshotUrl || claim.screenshot || claim.imageUrl || '');
+    if (!image) return;
+    openLightboxFor(image);
   };
   const closeLightbox = () => {
     document.getElementById('lightbox').classList.remove('open');
@@ -5149,6 +5158,7 @@ window.App = (() => {
     exportData,
     openLightbox,
     openPayShot,
+    openReviewScreenshot,
     closeLightbox,
     confirmStatusChange,
     updateNotes,

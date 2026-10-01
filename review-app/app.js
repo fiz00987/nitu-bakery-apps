@@ -147,11 +147,16 @@ function loadClaims(phoneValue) {
 }
 
 function renderClaims() {
-  $('claims').innerHTML = claims.map(claim => {
+  const history = $('history');
+  const container = $('claims');
+  // Claim history is used internally to prevent duplicate submissions, but it
+  // is intentionally not shown in the customer-facing review flow.
+  if (!history || !container) return;
+  container.innerHTML = claims.map(claim => {
     const id = claim.orderId || claim.orderKey || 'অর্ডার';
     return `<div class="claim"><b>${escapeHtml(id)}</b><span class="status">${escapeHtml(statusLabel(claim.status || 'pending'))}</span></div>`;
   }).join('');
-  $('history').classList.toggle('hidden', !claims.length);
+  history.classList.toggle('hidden', !claims.length);
 }
 
 function selectOrder(index, element) {
