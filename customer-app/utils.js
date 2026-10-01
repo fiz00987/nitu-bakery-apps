@@ -60,6 +60,40 @@ const BKASH_RATE = 0.0182;
 const NAGAD_RATE = 0.0149;
 
 // ─── HELPER FUNCTIONS ───────────────────────
+const BANGLA_DIGIT_MAP = { '০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9' };
+const SAFE_IMAGE_MIME_TYPES = Object.freeze(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']);
+const MAX_IMAGE_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_PIXELS = 25 * 1000 * 1000;
+const MAX_IMAGE_DIMENSION = 10000;
+const MAX_IMAGE_DATA_URL_LENGTH = 4000000;
+
+// Keep one canonical customer-phone representation in every newly-created
+// order. Legacy values such as +880..., 880..., spaces, hyphens, and Bengali
+// digits are accepted at the boundary and converted to 01XXXXXXXXX.
+function canonicalizeBangladeshPhone(phone) {
+  const compact = String(phone || '')
+    .trim()
+    .replace(/[০-৯]/g, digit => BANGLA_DIGIT_MAP[digit])
+    .replace(/[\s\-().]/g, '');
+  if (/^01[3-9]\d{8}$/.test(compact)) return compact;
+  if (/^\+8801[3-9]\d{8}$/.test(compact)) return '0' + compact.slice(4);
+  if (/^8801[3-9]\d{8}$/.test(compact)) return '0' + compact.slice(3);
+  return '';
+}
+
+function isSafeImageFile(file, maxBytes) {
+  if (!file || !Number.isFinite(file.size) || file.size <= 0) return false;
+  const limit = Number(maxBytes) || MAX_IMAGE_FILE_BYTES;
+  const type = String(file.type || '').toLowerCase();
+  return file.size <= limit && SAFE_IMAGE_MIME_TYPES.includes(type);
+}
+
+function isSafeImageDataUrl(value, maxLength) {
+  const dataUrl = String(value || '');
+  const limit = Number(maxLength) || MAX_IMAGE_DATA_URL_LENGTH;
+  return dataUrl.length <= limit && /^data:image\/(?:jpeg|jpg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/i.test(dataUrl);
+}
+
 function getPaymentMethod(id) {
   return PAYMENT_METHODS.find(p => p.id === id) || null;
 }
@@ -101,13 +135,11 @@ function calculatePayment(basePrice, weightPrice, deliveryCharge, paymentMethodI
 }
 
 function validateBangladeshPhone(phone) {
-  const clean = phone.replace(/[\s\-]/g, '');
-  const regex = /^01[3-9]\d{8}$/;
-  return regex.test(clean);
+  return !!canonicalizeBangladeshPhone(phone);
 }
 
 function formatPhoneForDisplay(phone) {
-  const clean = phone.replace(/[\s\-]/g, '');
+  const clean = canonicalizeBangladeshPhone(phone) || String(phone || '').replace(/[\s\-]/g, '');
   if (clean.length === 11) {
     return `${clean.slice(0, 3)}-${clean.slice(3)}`;
   }

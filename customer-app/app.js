@@ -21,12 +21,18 @@ let otpConfirmation = null;
 let otpRecaptcha = null;
 let otpCooldownUntil = 0;
 let otpTimerTick = null;
-function phoneKeyOf(phone) { return String(phone || '').replace(/[\s\-]/g, ''); }
+function phoneKeyOf(phone) {
+  const canonical = canonicalizeBangladeshPhone(phone);
+  return canonical || String(phone || '').trim().replace(/[\s\-]/g, '');
+}
+function phoneQueryVariants(phone) {
+  const canonical = canonicalizeBangladeshPhone(phone);
+  if (!canonical) return phoneKeyOf(phone) ? [phoneKeyOf(phone)] : [];
+  return [canonical, '+880' + canonical.slice(1), '880' + canonical.slice(1)];
+}
 function toE164BD(phone) {
-  const d = phoneKeyOf(phone);
-  if (/^01[3-9]\d{8}$/.test(d)) return '+880' + d.slice(1);
-  if (/^\+8801[3-9]\d{8}$/.test(String(phone || '').trim())) return String(phone).trim();
-  return null;
+  const d = canonicalizeBangladeshPhone(phone);
+  return d ? '+880' + d.slice(1) : null;
 }
 let currentOrderId = '';
 // Prevent two rapid clicks (or two handlers racing while async checks run)
@@ -403,7 +409,7 @@ function checkEmojiCaptcha(btn) {
 
 // Entry handler
 async function handleEntry() {
-  const phone = document.getElementById('entry-phone').value.trim();
+  const phone = canonicalizeBangladeshPhone(document.getElementById('entry-phone').value);
   const err = document.getElementById('entry-error');
   err.classList.remove('show');
 
@@ -413,16 +419,46 @@ async function handleEntry() {
     return;
   }
 
-    pendingPhone = phone;
+  pendingPhone = phone;
   if (!captchaPassed) { askSecurityQuestion(); return; }
   await proceedAfterCaptcha();
 }
 
 async function checkReturningCustomer(phone) {
   try {
-    const snap = await db.ref('orders').orderByChild('customerPhone').equalTo(phone).limitToFirst(1).once('value');
-    return snap.exists();
+    const snapshots = await Promise.all(phoneQueryVariants(phone).map(value =>
+      db.ref('orders').orderByChild('customerPhone').equalTo(value).limitToFirst(1).once('value')
+    ));
+    return snapshots.some(snap => snap.exists());
   } catch (e) { console.error(e); return false; }
+}
+
+async function loadPhoneScopedOrders(phone) {
+  const snapshots = await Promise.all(phoneQueryVariants(phone).map(value =>
+    db.ref('orders').orderByChild('customerPhone').equalTo(value).once('value')
+  ));
+  const orders = [];
+  const seen = new Set();
+  snapshots.forEach(snapshot => snapshot.forEach(child => {
+    if (seen.has(child.key)) return;
+    seen.add(child.key);
+    orders.push(child.val());
+  }));
+  return orders;
+}
+
+async function loadPhoneScopedClaims(phone) {
+  const snapshots = await Promise.all(phoneQueryVariants(phone).map(value =>
+    db.ref('reviewClaims').orderByChild('phoneKey').equalTo(value).once('value')
+  ));
+  const result = [];
+  const seen = new Set();
+  snapshots.forEach(snapshot => snapshot.forEach(child => {
+    if (seen.has(child.key)) return;
+    seen.add(child.key);
+    result.push({ ...(child.val() || {}), key: child.key });
+  }));
+  return result;
 }
 
 const BN_DIGITS = { '০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9' };
@@ -469,9 +505,14 @@ async function loadReviewReward(phone) {
   if (card) card.style.display = 'none';
   updateReviewRewardDiscountNote();
   try {
-    const snap = await db.ref('reviewClaims').orderByChild('phoneKey').equalTo(phoneKeyOf(phone)).once('value');
-    const claims = snap.val() || {};
-    Object.keys(claims).some(id => { const c = claims[id] || {}; if (String(c.status).toLowerCase() === 'approved' && !c.used && !c.usedAt) { reviewReward = { id, ...c }; return true; } return false; });
+    const claims = await loadPhoneScopedClaims(phone);
+    claims.some(claim => {
+      if (String(claim.status).toLowerCase() === 'approved' && !claim.used && !claim.usedAt) {
+        reviewReward = { id: String(claim.key), ...claim };
+        return true;
+      }
+      return false;
+    });
     if (reviewReward && card) card.style.display = 'block';
   } catch (e) { console.warn('review reward lookup failed', e); }
 }
@@ -482,18 +523,18 @@ async function loadReviewReward(phone) {
 async function refreshSelectedReviewReward() {
   if (!reviewRewardSelected) return { ok: true };
   const id = reviewReward && reviewReward.id;
-  const phone = localStorage.getItem('nitu-cust-phone') || '';
+  const phone = canonicalizeBangladeshPhone(localStorage.getItem('nitu-cust-phone'));
   if (!id || !phone) return { ok: false };
   // Claims are read through the phone-scoped query allowed to customers;
   // avoid relying on an arbitrary direct claim-path read.
-  const snap = await db.ref('reviewClaims').orderByChild('phoneKey').equalTo(phoneKeyOf(phone)).once('value');
+  const claims = await loadPhoneScopedClaims(phone);
   let claim = null;
-  snap.forEach(child => { if (!claim && child.key === String(id)) claim = child.val() || null; });
+  claims.some(value => { if (value.key === String(id)) { claim = value; return true; } return false; });
   const approved = claim && String(claim.status || '').toLowerCase() === 'approved';
   const unused = claim && !claim.used && !claim.usedAt && !claim.usedOrderId && !claim.usedOrderKey;
   const samePhone = claim && phoneKeyOf(claim.normalizedCustomerPhone || claim.customerPhone || claim.phoneKey) === phoneKeyOf(phone);
   if (!approved || !unused || !samePhone) return { ok: false };
-  reviewReward = { id: String(id), ...claim };
+  reviewReward = { id: String(claim.key), ...claim };
   return { ok: true };
 }
 function updateReviewRewardDiscountNote(cakePrice) {
@@ -532,7 +573,7 @@ function handleCakePriceInput() {
 }
 
 async function sendOtp() {
-  const phone = document.getElementById('entry-phone').value.trim();
+  const phone = canonicalizeBangladeshPhone(document.getElementById('entry-phone').value);
   const err = document.getElementById('entry-error');
   err.classList.remove('show');
   if (!validateBangladeshPhone(phone)) {
@@ -549,7 +590,7 @@ async function sendOtp() {
   try {
     if (!otpRecaptcha) otpRecaptcha = new firebase.auth.RecaptchaVerifier('entry-btn', { size: 'invisible' });
     otpConfirmation = await firebase.auth().signInWithPhoneNumber(e164, otpRecaptcha);
-    pendingPhone = phoneKeyOf(phone);
+    pendingPhone = phone;
     document.getElementById('otp-box').classList.add('show');
     document.getElementById('entry-otp').value = '';
     document.getElementById('entry-otp').focus();
@@ -575,7 +616,7 @@ async function verifyOtp() {
   try {
     const cred = await otpConfirmation.confirm(code);
     const verifiedE164 = (cred && cred.user && cred.user.phoneNumber) || toE164BD(pendingPhone);
-    const local = verifiedE164 && verifiedE164.indexOf('+880') === 0 ? '0' + verifiedE164.slice(4) : pendingPhone;
+    const local = canonicalizeBangladeshPhone(verifiedE164) || canonicalizeBangladeshPhone(pendingPhone);
     document.getElementById('otp-box').classList.remove('show');
     let authOk0 = true;
     try { authOk0 = window.ensureAuthReady ? !!(await window.ensureAuthReady()) : true; } catch (e) { authOk0 = false; }
@@ -631,9 +672,7 @@ async function trackOrder() {
 
 async function loadPreviousOrders(phone) {
   try {
-    const snap = await db.ref('orders').orderByChild('customerPhone').equalTo(phone).once('value');
-    const orders = [];
-    snap.forEach(c => orders.push(c.val()));
+    const orders = await loadPhoneScopedOrders(phone);
     orders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
     if (orders.length === 0) return;
@@ -722,7 +761,7 @@ function renderPreviousOrder() {
 }
 
 async function showPreviousOrders() {
-  const phone = localStorage.getItem('nitu-cust-phone') || '';
+  const phone = canonicalizeBangladeshPhone(localStorage.getItem('nitu-cust-phone'));
   if (!phone) { showToast(lang === 'en' ? 'Enter and verify your phone number first.' : 'আগে আপনার ফোন নম্বর যাচাই করুন।'); return; }
 
   const popup = document.getElementById('previous-orders-popup');
@@ -732,9 +771,7 @@ async function showPreviousOrders() {
   document.getElementById('previous-orders-nav').hidden = true;
 
   try {
-    const snap = await db.ref('orders').orderByChild('customerPhone').equalTo(phone).once('value');
-    previousOrderHistory = [];
-    snap.forEach(child => previousOrderHistory.push(child.val()));
+    previousOrderHistory = await loadPhoneScopedOrders(phone);
     // Newest delivery date first; creation time is the fallback if a legacy order has no date.
     previousOrderHistory.sort((a, b) => previousOrderDateValue(b) - previousOrderDateValue(a));
     previousOrderCursor = 0;
@@ -761,7 +798,9 @@ function closePreviousOrders(event) {
 }
 
 function proceedToForm(phone) {
-  localStorage.setItem('nitu-cust-phone', phone);
+  const canonicalPhone = canonicalizeBangladeshPhone(phone);
+  if (!canonicalPhone) return;
+  localStorage.setItem('nitu-cust-phone', canonicalPhone);
   document.getElementById('entry-screen').classList.add('hidden');
   document.getElementById('form-screen').classList.add('active');
   // Fresh form: delivery charge open & blank — the distance estimate shows in
@@ -785,16 +824,35 @@ const MAX_PHOTOS = 4;
 
 function compressImage(file) {
   return new Promise((resolve, reject) => {
+    if (!isSafeImageFile(file, MAX_IMAGE_FILE_BYTES)) {
+      reject(new Error('unsupported-image'));
+      return;
+    }
     const reader = new FileReader();
     reader.onload = function(ev) {
       const img = new Image();
       img.onload = function() {
-        const canvas = document.createElement('canvas');
-        const MAX = 800; let w = img.width, h = img.height;
-        if (w > MAX) { h = h * MAX / w; w = MAX; }
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
+        const sourceWidth = Number(img.naturalWidth || img.width);
+        const sourceHeight = Number(img.naturalHeight || img.height);
+        if (!sourceWidth || !sourceHeight || !Number.isFinite(sourceWidth) || !Number.isFinite(sourceHeight) ||
+            sourceWidth > MAX_IMAGE_DIMENSION || sourceHeight > MAX_IMAGE_DIMENSION ||
+            sourceWidth * sourceHeight > MAX_IMAGE_PIXELS) {
+          reject(new Error('image-dimensions-too-large'));
+          return;
+        }
+        try {
+          const canvas = document.createElement('canvas');
+          const MAX = 800; let w = sourceWidth, h = sourceHeight;
+          if (w > MAX) { h = h * MAX / w; w = MAX; }
+          canvas.width = Math.max(1, Math.round(w));
+          canvas.height = Math.max(1, Math.round(h));
+          const context = canvas.getContext('2d');
+          if (!context) throw new Error('canvas-unavailable');
+          context.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          if (!isSafeImageDataUrl(dataUrl)) throw new Error('image-output-invalid');
+          resolve(dataUrl);
+        } catch (error) { reject(error); }
       };
       img.onerror = reject;
       img.src = ev.target.result;
@@ -812,7 +870,10 @@ async function handlePhoto(e) {
   if (slots <= 0) { showToast(`সর্বোচ্চ ${MAX_PHOTOS}টি ছবি দেওয়া যাবে`); return; }
   if (files.length > slots) showToast(`প্রথম ${slots}টি ছবি নেওয়া হলো`);
   for (const file of files.slice(0, slots)) {
-    if (file.size > 5 * 1024 * 1024) { showToast(`${file.name || 'ছবি'}: ৫MB এর কম হতে হবে`); continue; }
+    if (!isSafeImageFile(file, MAX_IMAGE_FILE_BYTES)) {
+      showToast(`${file.name || 'ছবি'}: JPEG, PNG, WEBP বা GIF ছবি (৫MB-এর মধ্যে) দিন`);
+      continue;
+    }
     try { currentPhotos.push(await compressImage(file)); } catch (_) { showToast('ছবি লোড করা যায়নি'); }
   }
   renderPhotos();
@@ -913,8 +974,10 @@ async function handlePayShot(e) {
   const file = e.target.files && e.target.files[0];
   e.target.value = '';
   if (!file) return;
-  if (!file.type || !file.type.startsWith('image/')) { showToast('শুধু পেমেন্টের স্ক্রিনশট ছবি দিন'); return; }
-  if (file.size > 5 * 1024 * 1024) { showToast('ছবি ৫MB এর কম হতে হবে'); return; }
+  if (!isSafeImageFile(file, MAX_IMAGE_FILE_BYTES)) {
+    showToast('শুধু JPEG, PNG, WEBP বা GIF পেমেন্টের স্ক্রিনশট (৫MB-এর মধ্যে) দিন');
+    return;
+  }
   try { payShot = await compressImage(file); } catch (_) { showToast('ছবি লোড করা যায়নি'); return; }
   payShotVerified = null;                 // reset — new image picked
   payAmountMatch = null;
@@ -1932,9 +1995,13 @@ function validate() {
     return false;
   }
   // Payment screenshot is mandatory — the proof of payment
-  if (!payShot || !/^data:image\//i.test(String(payShot))) {
+  if (!payShot || !isSafeImageDataUrl(payShot)) {
     showToast('💳 পেমেন্টের স্ক্রিনশট দিন — bKash / Nagad / ব্যাংক কনফার্মেশন পেজের ছবি');
     document.getElementById('f-payshot').scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return false;
+  }
+  if (currentPhotos.some(photo => !isSafeImageDataUrl(photo))) {
+    showToast(lang === 'en' ? 'Please remove and re-upload the reference photo.' : 'রেফারেন্স ছবিটি সরিয়ে আবার আপলোড করুন।');
     return false;
   }
   if (!resolveWeight()) { showToast('সঠিক ওজন লিখুন (যেমন: 2 pound বা 1 KG)'); return false; }
@@ -2005,7 +2072,10 @@ function releaseOrderSubmit() {
 
 // Submit
 async function submitOrder() {
-  if (orderSubmitInFlight) return;
+  if (orderSubmitInFlight) {
+    showToast(lang === 'en' ? 'Your order is already being submitted…' : 'আপনার অর্ডার জমা হচ্ছে…');
+    return;
+  }
   orderSubmitInFlight = true;
   const submitButton = document.getElementById('submit-btn');
   if (submitButton) submitButton.disabled = true;
@@ -2045,7 +2115,14 @@ async function submitOrder() {
     if (!chk.ok) { showToast(chk.msg); releaseOrderSubmit(); return; }
   }
 
-  const phone = localStorage.getItem('nitu-cust-phone') || '';
+  const phone = canonicalizeBangladeshPhone(localStorage.getItem('nitu-cust-phone'));
+  if (!phone) {
+    showLoading(false);
+    showToast(lang === 'en' ? 'Please verify your phone number again.' : 'ফোন নম্বরটি আবার যাচাই করুন।');
+    releaseOrderSubmit();
+    return;
+  }
+  localStorage.setItem('nitu-cust-phone', phone);
   const customerName = document.getElementById('f-name').value.trim();
   localStorage.setItem('nitu-cust-name', customerName);
 
@@ -2195,11 +2272,14 @@ async function submitOrder() {
   if (duplicateSnapshot && duplicateSnapshot.exists()) {
     let existing = null;
     duplicateSnapshot.forEach(child => {
-      if (!existing) existing = { ...(child.val() || {}), firebaseKey: child.key };
+      const candidate = { ...(child.val() || {}), firebaseKey: child.key };
+      if (!existing && phoneKeyOf(candidate.customerPhone) === phoneKeyOf(order.customerPhone)) existing = candidate;
     });
-    if (existing && phoneKeyOf(existing.customerPhone) === phoneKeyOf(order.customerPhone)) {
+    if (existing) {
       showLoading(false);
+      currentOrderId = existing.orderId || order.orderId;
       showSuccess(existing);
+      orderSubmitInFlight = false;
       return;
     }
     showLoading(false);
@@ -2697,8 +2777,11 @@ function loadOffDays() {
   if (window.ensureAuthReady) { window.ensureAuthReady().then(loadDcConfig); } else { loadDcConfig(); }
   loadOffDays();   // admin-crossed closed dates (syncs live)
   setLang(lang);
-  const savedPhone = localStorage.getItem('nitu-cust-phone');
-  if (savedPhone) document.getElementById('entry-phone').value = savedPhone;
+  const savedPhone = canonicalizeBangladeshPhone(localStorage.getItem('nitu-cust-phone'));
+  if (savedPhone) {
+    localStorage.setItem('nitu-cust-phone', savedPhone);
+    document.getElementById('entry-phone').value = savedPhone;
+  }
   setMinDate();
   bootQuote();
 })();

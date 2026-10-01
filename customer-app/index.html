@@ -387,7 +387,7 @@ html.t-gold .order-number-badge{color:#a5813e}
     <div class="field">
       <label data-bn="রেফারেন্স ছবি (ঐচ্ছিক)" data-en="Reference Photo (Optional)">রেফারেন্স ছবি (ঐচ্ছিক)</label>
       <div class="photo-upload" onclick="document.getElementById('f-photo').click()">📎<div>ছবি আপলোড করুন</div></div>
-      <input type="file" id="f-photo" accept="image/*" multiple style="display:none" onchange="handlePhoto(event)">
+      <input type="file" id="f-photo" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="display:none" onchange="handlePhoto(event)">
       <div class="photo-grid" id="photo-grid"></div>
       <div style="font-size:11px;color:var(--text3);margin-top:4px">📸 একাধিক ছবি দিতে পারেন (সর্বোচ্চ ৪টি)</div>
     </div>
@@ -505,7 +505,7 @@ html.t-gold .order-number-badge{color:#a5813e}
 
     <div class="field" style="margin-top:12px">
       <label data-bn="💳 পেমেন্টের স্ক্রিনশট *" data-en="Payment screenshot *">💳 পেমেন্টের স্ক্রিনশট *</label>
-      <input type="file" id="f-payshot" accept="image/*" style="display:none" onchange="handlePayShot(event)">
+      <input type="file" id="f-payshot" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="handlePayShot(event)">
       <div class="photo-upload" onclick="document.getElementById('f-payshot').click()">📎<div>পেমেন্টের স্ক্রিনশট আপলোড করুন</div></div>
       <div class="photo-grid" id="payshot-grid"></div>
       <div class="note-box">⚠️ bKash / Nagad / ব্যাংক পেমেন্টের কনফার্মেশন পেজের ছবি দিন। এডমিন এটা দেখেই অর্ডার কনফার্ম করবেন।</div>

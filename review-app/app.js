@@ -10,9 +10,16 @@ let lookupSequence = 0;
 
 const DEFAULT_REVIEW_TEXT = 'Facebook review screenshot submitted.';
 const MAX_SCREENSHOT_BYTES = 1500000;
+const SAFE_SCREENSHOT_MIME_TYPES = Object.freeze(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']);
+const MAX_SCREENSHOT_PIXELS = 25 * 1000 * 1000;
+const MAX_SCREENSHOT_DIMENSION = 10000;
+const MAX_SCREENSHOT_DATA_URL_LENGTH = 4000000;
+let submitInFlight = false;
 
 function normalize(value) {
-  let v = String(value || '').trim().replace(/[\s-]/g, '');
+  let v = String(value || '').trim()
+    .replace(/[০-৯]/g, digit => '০১২৩৪৫৬৭৮৯'.indexOf(digit))
+    .replace(/[\s\-().]/g, '');
   if (/^\+8801[3-9]\d{8}$/.test(v)) return '0' + v.slice(4);
   if (/^8801[3-9]\d{8}$/.test(v)) return '0' + v.slice(3);
   if (/^01[3-9]\d{8}$/.test(v)) return v;
@@ -20,7 +27,13 @@ function normalize(value) {
 }
 
 function key(value) {
-  return String(value || '').replace(/\D/g, '');
+  return normalize(value) || String(value || '').replace(/\D/g, '');
+}
+
+function phoneVariants(value) {
+  const normalized = normalize(value);
+  if (!normalized) return key(value) ? [key(value)] : [];
+  return [normalized, '+880' + normalized.slice(1), '880' + normalized.slice(1)];
 }
 
 function orderId(order) {
@@ -39,8 +52,14 @@ function orderPhone(order) {
 // orderId alone: legacy/order-import data can contain duplicate display IDs,
 // while orderKey is the actual record identity.
 function claimTargetsOrder(claim, order, expectedPhone) {
-  if (!claim || !order || String(claim.orderKey || '') !== String(order.orderKey || '')) return false;
-  if (expectedPhone && key(claim.phoneKey) !== key(expectedPhone)) return false;
+  if (!claim || !order) return false;
+  const claimOrderKey = String(claim.orderKey || '');
+  const actualOrderKey = String(order.orderKey || '');
+  // Claims are tied to the exact Firebase order record. A display order ID is
+  // not sufficient because imported/legacy data can reuse display IDs.
+  if (!claimOrderKey || !actualOrderKey || claimOrderKey !== actualOrderKey) return false;
+  const claimPhone = claim.phoneKey || claim.normalizedCustomerPhone || claim.customerPhone;
+  if (expectedPhone && normalize(claimPhone) !== normalize(expectedPhone)) return false;
   return normalize(orderPhone(order)) === normalize(expectedPhone);
 }
 
@@ -112,10 +131,17 @@ function loadOrdersOnce(normalizedPhone) {
   return allOrdersPromise;
 }
 
-function loadClaims(phoneKey) {
-  return db.ref('reviewClaims').orderByChild('phoneKey').equalTo(phoneKey).once('value').then(snapshot => {
+function loadClaims(phoneValue) {
+  return Promise.all(phoneVariants(phoneValue).map(value =>
+    db.ref('reviewClaims').orderByChild('phoneKey').equalTo(value).once('value')
+  )).then(snapshots => {
     const result = [];
-    snapshot.forEach(child => result.push({ ...child.val(), key: child.key }));
+    const seen = new Set();
+    snapshots.forEach(snapshot => snapshot.forEach(child => {
+      if (seen.has(child.key)) return;
+      seen.add(child.key);
+      result.push({ ...(child.val() || {}), key: child.key });
+    }));
     return result;
   });
 }
@@ -212,19 +238,38 @@ async function find() {
 
 function readScreenshot(file) {
   return new Promise((resolve, reject) => {
+    if (!file || !SAFE_SCREENSHOT_MIME_TYPES.includes(String(file.type || '').toLowerCase()) ||
+        !Number.isFinite(file.size) || file.size <= 0 || file.size > MAX_SCREENSHOT_BYTES) {
+      reject(new Error('unsupported-screenshot'));
+      return;
+    }
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('screenshot-read-failed'));
     reader.onload = () => {
       const image = new Image();
       image.onerror = () => reject(new Error('screenshot-decode-failed'));
       image.onload = () => {
-        const scale = Math.min(1, 1200 / image.width);
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(image.width * scale));
-        canvas.height = Math.max(1, Math.round(image.height * scale));
-        const context = canvas.getContext('2d');
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.72));
+        const sourceWidth = Number(image.naturalWidth || image.width);
+        const sourceHeight = Number(image.naturalHeight || image.height);
+        if (!sourceWidth || !sourceHeight || !Number.isFinite(sourceWidth) || !Number.isFinite(sourceHeight) ||
+            sourceWidth > MAX_SCREENSHOT_DIMENSION || sourceHeight > MAX_SCREENSHOT_DIMENSION ||
+            sourceWidth * sourceHeight > MAX_SCREENSHOT_PIXELS) {
+          reject(new Error('screenshot-dimensions-too-large'));
+          return;
+        }
+        try {
+          const scale = Math.min(1, 1200 / sourceWidth);
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+          canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+          const context = canvas.getContext('2d');
+          if (!context) throw new Error('canvas-unavailable');
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+          if (dataUrl.length > MAX_SCREENSHOT_DATA_URL_LENGTH ||
+              !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/i.test(dataUrl)) throw new Error('screenshot-output-invalid');
+          resolve(dataUrl);
+        } catch (error) { reject(error); }
       };
       image.src = reader.result;
     };
@@ -232,9 +277,24 @@ function readScreenshot(file) {
   });
 }
 
+function claimKeyForOrder(orderKey) {
+  const value = String(orderKey || '');
+  let safe = '';
+  for (const character of value) {
+    safe += /[A-Za-z0-9_-]/.test(character)
+      ? character
+      : '_' + character.charCodeAt(0).toString(16) + '_';
+  }
+  return 'order-' + safe.slice(0, 700);
+}
+
 async function submit() {
   const message = $('formMsg');
   setMessage(message, '');
+  if (submitInFlight) {
+    setMessage(message, 'রিভিউ জমা হচ্ছে… / Your review is already being submitted…');
+    return;
+  }
   if (!selected) {
     setMessage(message, 'আগে একটি অর্ডার নির্বাচন করুন। / Select an order first.');
     return;
@@ -245,16 +305,17 @@ async function submit() {
     setMessage(message, 'Facebook review-এর স্ক্রিনশট আপলোড করুন। / Upload the review screenshot.');
     return;
   }
-  if (!file.type.startsWith('image/')) {
-    setMessage(message, 'শুধু ছবি আপলোড করুন। / Please upload an image.');
+  if (!SAFE_SCREENSHOT_MIME_TYPES.includes(String(file.type || '').toLowerCase())) {
+    setMessage(message, 'JPEG, PNG, WEBP বা GIF ছবি দিন। / Please upload a JPEG, PNG, WEBP, or GIF image.');
     return;
   }
-  if (file.size > MAX_SCREENSHOT_BYTES) {
+  if (!Number.isFinite(file.size) || file.size <= 0 || file.size > MAX_SCREENSHOT_BYTES) {
     setMessage(message, 'স্ক্রিনশট ১.৫ MB-এর মধ্যে রাখুন। / Keep the screenshot under 1.5 MB.');
     return;
   }
 
   const submitButton = $('submit');
+  submitInFlight = true;
   submitButton.disabled = true;
   try {
     // Re-read the selected order immediately before creating a claim.  The
@@ -275,20 +336,15 @@ async function submit() {
 
     // Re-check the phone-indexed claims so a second tab/device cannot submit
     // the same order based on stale state.
-    const phoneClaimsSnapshot = await db.ref('reviewClaims').orderByChild('phoneKey').equalTo(key(phone)).once('value');
-    const latestClaims = [];
-    const seenClaimKeys = new Set();
-    [phoneClaimsSnapshot].forEach(snapshot => snapshot.forEach(child => {
-      if (seenClaimKeys.has(child.key)) return;
-      seenClaimKeys.add(child.key);
-      latestClaims.push({ ...(child.val() || {}), key: child.key });
-    }));
+    const latestClaims = await loadClaims(phone);
     if (latestClaims.some(claim => claimTargetsOrder(claim, freshOrder, phone))) {
       throw new Error('claim-already-exists');
     }
 
     const screenshot = await readScreenshot(file);
-    if (!/^data:image\//i.test(String(screenshot || ''))) throw new Error('invalid-screenshot');
+    if (screenshot.length > MAX_SCREENSHOT_DATA_URL_LENGTH || !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/i.test(String(screenshot || ''))) {
+      throw new Error('invalid-screenshot');
+    }
     const note = $('review').value.trim();
     const claim = {
       orderKey: freshOrder.orderKey,
@@ -309,20 +365,33 @@ async function submit() {
     // backwards compatibility with older submissions. A direct write is used
     // instead of a transaction because customer reads are query-scoped by the
     // database rules.
-    const claimReference = db.ref('reviewClaims').child('order-' + String(freshOrder.orderKey));
-    await claimReference.set(claim);
+    const claimReference = db.ref('reviewClaims').child(claimKeyForOrder(freshOrder.orderKey));
+    try {
+      await claimReference.set(claim);
+    } catch (writeError) {
+      // The database rule rejects a second write to the deterministic key.
+      // Re-read the phone-scoped claims so a lost response or a second tab is
+      // shown as already submitted instead of inviting a retry loop.
+      const afterWriteClaims = await loadClaims(phone).catch(() => []);
+      if (afterWriteClaims.some(value => claimTargetsOrder(value, freshOrder, phone))) {
+        throw new Error('claim-already-exists');
+      }
+      throw writeError;
+    }
     claims.push({ ...claim, key: claimReference.key });
     renderClaims();
     orders = orders.filter(order => order.orderKey !== freshOrder.orderKey);
     renderOrders();
     $('done').classList.remove('hidden');
     setMessage(message, '');
+    submitInFlight = false;
   } catch (error) {
     console.error('Could not submit review claim', error);
     const duplicate = error && (error.message === 'claim-already-exists' || error.message === 'order-mismatch');
     setMessage(message, duplicate
       ? 'এই অর্ডারের জন্য রিভিউ ইতিমধ্যে জমা হয়েছে। / A review claim already exists for this order.'
       : 'রিভিউ জমা দেওয়া যায়নি। আবার চেষ্টা করুন। / Could not submit the review. Please try again.');
+    submitInFlight = false;
     submitButton.disabled = false;
   }
 }

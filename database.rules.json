@@ -12,8 +12,9 @@
     },
 
     "customers": {
-      ".read": "auth != null",
+      ".read": "auth != null && (auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com')",
       "$phone": {
+        ".read": "auth != null",
         ".write": "auth != null && ((auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com') || (newData.hasChild('phone') && newData.hasChild('lastLoginAt') && newData.child('phone').isString() && newData.child('phone').val().length >= 11 && newData.child('phone').val().length <= 20 && (!data.hasChild('pointsBalance') && (!newData.hasChild('pointsBalance') || newData.child('pointsBalance').val() == 0) || data.hasChild('pointsBalance') && newData.hasChild('pointsBalance') && data.child('pointsBalance').val() == newData.child('pointsBalance').val()) && (!data.hasChild('totalEarned') && (!newData.hasChild('totalEarned') || newData.child('totalEarned').val() == 0) || data.hasChild('totalEarned') && newData.hasChild('totalEarned') && data.child('totalEarned').val() == newData.child('totalEarned').val()) && (!data.hasChild('totalRedeemed') && (!newData.hasChild('totalRedeemed') || newData.child('totalRedeemed').val() == 0) || data.hasChild('totalRedeemed') && newData.hasChild('totalRedeemed') && data.child('totalRedeemed').val() == newData.child('totalRedeemed').val())))"
       }
     },
@@ -28,8 +29,9 @@
     },
 
     "quotes": {
-      ".read": "auth != null",
+      ".read": "auth != null && (auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com')",
       "$quoteId": {
+        ".read": "auth != null",
         ".write": "auth != null && ((auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com') || (data.exists() && newData.hasChild('status') && newData.child('status').val() == 'used'))"
       }
     },
