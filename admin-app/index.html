@@ -2664,6 +2664,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
         <div class="field">
           <label data-i18n="fTotal">কেকের মূল্য (৳)</label>
           <input id="f-total" type="number" placeholder="1850" min="0" oninput="App.totalInput()">
+          <div id="f-price-note" class="pay-note" hidden></div>
         </div>
 
         <div class="field">
@@ -2795,7 +2796,7 @@ function isIosDevice() {
 }
 </script>
 
-<script src="./app.js?v=2026-09-24-srsfix"></script>
+<script src="./app.js?v=2026-10-03-price-integrity"></script>
 
 <!-- PUSH NOTIFICATION SYSTEM (Firebase Cloud Messaging / Web Push) — deferred so
      it never competes with the first orders download on slow networks. -->

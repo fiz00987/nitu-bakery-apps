@@ -52,6 +52,7 @@ window.App = (() => {
   let reviewFilter  = 'pending';
   let currentUser   = null;
   let editingId     = null;
+  let editingRevision = null;       // order as it was when the edit form opened
   let activeTab     = 'plan';
   let isConnected   = false;
   let confirmCb     = null;
@@ -215,19 +216,29 @@ window.App = (() => {
         : `✍️ ঘরটি খালি রাখলে সেভ করার পরেও চার্জ ৳${fmtMoney(prev)}/- থাকবে — নতুন চার্জ দিতে ঘরটিতে টাইপ করুন।`;
       fn.style.display = 'block';
   };
-  // Cake price: cakePrice when DC is folded into total, else the total itself.
+  // `cakePrice` is the explicit cake-only amount. Customer orders put cake +
+  // delivery in `total`, while admin/legacy orders put cake only there. Never
+  // replace the explicit price with that ambiguous alias (or with money paid).
+  const moneyValue = value => {
+    if (value == null || String(value).trim() === '') return null;
+    const amount = Number(value);
+    return Number.isFinite(amount) && amount >= 0 ? Math.round(amount) : null;
+  };
   const cakePriceOf = o => {
-    const dc = dcAmtOf(o);
-    const cp = Math.round(Number(o.cakePrice) || 0);
-    const total = Math.round(Number(o.total) || 0);
-    if (cp > 0 && dc > 0 && cp + dc === total) return cp;
-    return total;
+    const cp = moneyValue(o.cakePrice);
+    return cp != null ? cp : (moneyValue(o.total) ?? 0);
+  };
+  const priceConflictOf = o => {
+    const cp = moneyValue(o.cakePrice), total = moneyValue(o.total);
+    if (cp == null || total == null) return false;
+    // Both historical total conventions are valid. Anything else needs review.
+    return total !== cp && total !== cp + Math.max(0, dcAmtOf(o));
   };
   // Advance toward the cake: customer orders keep it in `advance`; manual
   // orders in `paid`. If only the DC-folded total is available, strip DC.
   const advanceOf = o => {
-    const a = Math.round(Number(o.advance) || 0);
-    if (a > 0) return a;
+    const a = moneyValue(o.advance);
+    if (a != null) return a; // zero is an explicit payment value, not "missing"
     const eff = effectivePaid(o);
     const dc = dcAmtOf(o);
     const cp = Math.round(Number(o.cakePrice) || 0);
@@ -253,7 +264,7 @@ window.App = (() => {
     if (!o.flavourName && o.flavour && FLAVOUR_MAP[o.flavour]) o.flavourName = FLAVOUR_MAP[o.flavour];
     if (o.flavour && FLAVOUR_MAP[o.flavour]) o.flavour = FLAVOUR_MAP[o.flavour];
     if (o.cakeWriting && !o.writing) o.writing = o.cakeWriting;
-    if (o.cakePrice != null && !o.total) o.total = Number(o.cakePrice);
+    if (moneyValue(o.total) == null && moneyValue(o.cakePrice) != null) o.total = Number(o.cakePrice);
     if (o.deliveryCharge != null && o.deliveryAmount == null) o.deliveryAmount = Number(o.deliveryCharge);
     if (o.fulfilment === 'pickup' && o.deliveryPaid == null) o.deliveryPaid = 'na';
     // Blank/0 delivery charge on a DELIVERY order = still unpaid (agent collects later).
@@ -295,8 +306,9 @@ window.App = (() => {
   // can never be "new work", no matter what stale status says.
   const isLogicallyComplete = o => {
     if (o.status === 'delivered' || o.status === 'cancelled') return true;
-    if (!o.date || !(o.total > 0)) return false;
-    if (effectivePaid(o) < o.total) return false;             // still unpaid work
+    if (!o.date || !(cakePriceOf(o) > 0) || priceConflictOf(o)) return false;
+    if (dueAmt(o) > 0) return false;                         // still unpaid work
+    if (!isPickupOrder(o) && dcAmtOf(o) > 0 && o.deliveryPaid !== 'paid') return false;
     const d = toDate(o.date);
     return !Number.isNaN(d.getTime()) && d < today0();        // date already passed
   };
@@ -737,7 +749,7 @@ window.App = (() => {
       photoNote:      String(o.photoNote || ''),
       paymentMethod:  String(o.paymentMethod || ''),
       trx:            String(o.trx || ''),
-      cakePrice:      Math.round(Number(o.total) || 0),
+      cakePrice:      cakePriceOf(o),
       advance:        Math.round(Number(o.advance != null ? o.advance : o.paid) || 0),
       deliveryAmount: Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0),
       deliveryPaid:   String(o.deliveryPaid || ''),
@@ -759,6 +771,7 @@ window.App = (() => {
     writing:        ['writing', 'cakeWriting'],
     address:        ['address', 'deliveryAddress'],
     cakePrice:      ['total', 'basePrice', 'cakePrice', 'subtotal'],
+    priceReconciliation: ['total', 'basePrice', 'cakePrice', 'subtotal'],
     advance:        ['advance', 'advanceTotal', 'paid', 'dueAmount'],
     deliveryAmount: ['deliveryAmount', 'deliveryCharge']
   };
@@ -766,6 +779,39 @@ window.App = (() => {
     const out = [];
     keys.forEach(k => (ADMIN_FIELD_EXPAND[k] || [k]).forEach(f => { if (out.indexOf(f) === -1) out.push(f); }));
     return out;
+  };
+
+  // Keep all monetary inputs in the live-render signature. Older clients and
+  // console edits don't always bump updatedAt; a price-only change must repaint.
+  const ordersFingerprint = list => JSON.stringify(list.map(o => JSON.stringify([
+    o.firebaseKey, o.updatedAt, orderEditSnapshot(o),
+    o.cakePrice, o.total, o.basePrice, o.subtotal, o.originalCakePrice,
+    o.advance, o.advanceTotal, o.paid, o.dueAmount, o.bkashCharge,
+    o.paymentCharges, o.advanceCharge, o.deliveryCharge, o.deliveryAmount,
+    o.reviewDiscount, o.reviewRewardId, o.quoteToken, o.adminEditedFields,
+    o.dcAuto, o.dcAutoNote
+  ])).sort());
+
+  // Used only on opening/saving an edit, not on every render. Normalize legacy
+  // aliases and sort object keys so Firebase's property order is irrelevant.
+  const orderRevision = o => JSON.stringify(normalizeCustomerOrder({ ...o }), (key, value) => {
+    if (key === 'firebaseKey') return undefined;
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return Object.fromEntries(Object.keys(value).sort().map(k => [k, value[k]]));
+    }
+    return value;
+  });
+
+  const priceNotice = o => {
+    if (priceConflictOf(o)) return lang === 'bn'
+      ? `⚠️ সংরক্ষিত মূল্যে অমিল: কেকের মূল্য ৳${fmtMoney(o.cakePrice)}, total ৳${fmtMoney(o.total)}। কেকের মূল্য দেখানো হচ্ছে — সম্মত মূল্য যাচাই করে এডিট করুন।`
+      : `⚠️ Stored prices disagree: cake price ৳${fmtMoney(o.cakePrice)}, total ৳${fmtMoney(o.total)}. Showing the cake price — verify the agreed amount and edit the order.`;
+    if (o.source === 'customer' && !o.quoteToken && !adminHas(o, 'cakePrice') && !adminHas(o, 'total')) {
+      return lang === 'bn'
+        ? 'ℹ️ এই মূল্য কাস্টমার ফর্মে লিখেছেন — কথোপকথনে সম্মত মূল্যের সাথে মিলিয়ে নিন। পাঠানো টাকা কেকের মূল্য নয়।'
+        : 'ℹ️ Customer-entered price — check it against the agreed price. Money sent is separate from the cake price.';
+    }
+    return '';
   };
 
   const fmtEditVal = v => {
@@ -923,9 +969,7 @@ window.App = (() => {
         // echoes. Rebuilding every view (cards carry embedded photos) is
         // the heaviest thing this app does, so compare a cheap signature
         // first and bail out when nothing actually changed.
-        const fp = orders.map(o =>
-          `${o.firebaseKey}:${o.updatedAt || 0}:${o.status || ''}:${o.paid || 0}:${o.deliveryPaid || ''}`
-        ).sort().join('|') + `#${orders.length}`;
+        const fp = ordersFingerprint(orders);
         // The FIRST snapshot of a session must always render — a matching fp
         // from the cached paint must never swallow the live render.
         if (fp === lastOrdersFp && !isFirstSnap) return;
@@ -947,7 +991,6 @@ window.App = (() => {
           if (adminHas(o, 'status')) return;
           console.log('[auto-heal] past date + fully paid → delivered:', o.orderId || o.name);
           const healPatch = { status: 'delivered', autoDelivered: true, autoDeliveredAt: Date.now(), updatedAt: Date.now() };
-          if (!adminHas(o, 'paid')) healPatch.paid = (o.total || 0) + bkashCharge(o);
           ordersRef.child(o.firebaseKey).update(healPatch)
             .catch(err => console.error('[auto-heal] failed:', err));
           o.status = 'delivered';   // reflect immediately in this render
@@ -959,19 +1002,22 @@ window.App = (() => {
         // show money owed on delivered cakes. Heals each order at most once.
         orders.forEach(o => {
           if (!o.firebaseKey || o.status !== 'delivered') return;
+          if (priceConflictOf(o)) return;
           const cakeDue   = dueAmt(o) > 0;
           const delUnpaid = o.deliveryPaid === 'unpaid' && (Number(o.deliveryAmount) || 0) > 0;
           if (!cakeDue && !delUnpaid) return;
           if (healedDelivered[o.firebaseKey]) return;
           healedDelivered[o.firebaseKey] = true;
           const patch = {};
-          if (cakeDue) {
-            patch.paid         = (o.total || 0) + bkashCharge(o);
-            patch.advance      = o.total || 0;
-            patch.advanceTotal = (o.total || 0) + bkashCharge(o);
+          // An explicitly recorded short payment must survive a reload. The
+          // legacy delivered healer may not override the admin's money edits.
+          if (cakeDue && !ADMIN_ADV50_FIELDS.some(f => adminHas(o, f)) && !adminHas(o, 'cakePrice') && !adminHas(o, 'total')) {
+            patch.paid         = cakePriceOf(o) + bkashCharge(o);
+            patch.advance      = cakePriceOf(o);
+            patch.advanceTotal = cakePriceOf(o) + bkashCharge(o);
             patch.dueAmount    = 0;
           }
-          if (delUnpaid) patch.deliveryPaid = 'paid';
+          if (delUnpaid && !adminHas(o, 'deliveryPaid')) patch.deliveryPaid = 'paid';
           if (!Object.keys(patch).length) return;
           console.log('[delivered-heal] settling money on delivered order:', o.orderId || o.name);
           patch.updatedAt = Date.now();
@@ -986,6 +1032,7 @@ window.App = (() => {
         orders.forEach(o => {
           if (!o.firebaseKey) return;
           if (o.status === 'delivered' || o.status === 'cancelled') return;
+          if (priceConflictOf(o)) return;
           // 🛠️ Money the admin hand-set (a non-50% advance, a manual charge)
           // must never be "stripped" or rewritten by this heuristic.
           if (ADMIN_ADV50_FIELDS.some(f => adminHas(o, f))) return;
@@ -1757,6 +1804,7 @@ window.App = (() => {
       <div class="card-meta">${(o.cakes && o.cakes.length > 1) ? o.cakes.map(c => esc([c.weightLabel || c.weight, c.flavourName || c.flavour].filter(Boolean).join(' '))).join(' + ') + ' · <b>' + o.cakes.length + 'টি কেক</b>' : (esc(weightText(o)) + (weightText(o) && o.flavour ? ' · ' : '') + esc(flavourLabel(o)))}${o.time ? ' · ' + esc(o.time) : ''}</div>
       ${cdChip}
       <div class="card-chips">${statusChip(o)}${dueChip}${rewardChip}${surpriseChip}${deliveryChip}${adminEditedBadge}</div>
+      ${priceNotice(o) ? `<div class="pay-note">${esc(priceNotice(o))}</div>` : ''}
     </div>
     <div class="card-chevron-wrap" aria-hidden="true"><div class="card-chevron">⌄</div></div>
   </div>
@@ -1985,7 +2033,7 @@ window.App = (() => {
       <div class="cdb-sub">অর্ডারে ট্যাপ করলে অর্ডার ফর্ম খুলবে · ছবিতে ট্যাপ করলে বড় করে দেখা যাবে (${db_.length}টি)</div>
       <div class="cdb-grid">`;
     db_.forEach(o => {
-      const price = Number(o.total || 0);
+      const price = cakePriceOf(o);
       const img   = safeImageUrl(o.deliveredPhoto || o.photo);
       const keyArg = jsArg(o.firebaseKey);
       html += `<div class="cdb-card" onclick="App.openModal(${keyArg})" role="button" tabindex="0">
@@ -2045,12 +2093,9 @@ window.App = (() => {
   // measured reliably. "Earn" is therefore simply the total cake
   // sale value EXCLUDING the delivery charge (goes fully to the
   // delivery agent) and the bKash charge (payment fee).
-  const earnOf = o => Math.max(
-    0,
-    (Number(o.total) || 0) -
-    (Number(o.deliveryAmount) || 0) -
-    bkashCharge(o)
-  );
+  // Cake-only price already excludes delivery and gateway fees. Subtracting
+  // them again made a ৳2500 cake with ৳600 delivery appear as ৳1900 in sales.
+  const earnOf = o => cakePriceOf(o);
 
   // ─── Monthly mini chart: orders taken per month ──────────────
   const buildMonthlyChart = () => {
@@ -3249,14 +3294,14 @@ window.App = (() => {
     // the existing bKash charge), mirroring the "Mark Fully Paid" action.
     if (val === 'delivered') {
       const o = orders.find(x => x.firebaseKey === key);
-      const newPaid = o ? (o.total || 0) + bkashCharge(o) : null;
+      const newPaid = o ? cakePriceOf(o) + bkashCharge(o) : null;
       if (newPaid != null) {
         // Delivered = the client has paid EVERYTHING: cake total AND the
         // delivery charge. From now on, marking delivered settles both.
         const updates = {
           status:       val,
           paid:         newPaid,
-          advance:      o.total || 0,      // customer-app fields — full cake
+          advance:      cakePriceOf(o),    // customer-app fields — full cake
           advanceTotal: newPaid,            // covered, nothing left as due
           dueAmount:    0,
           updatedAt:    Date.now()
@@ -3315,10 +3360,13 @@ window.App = (() => {
     showConfirm(title, msg, true, ok => {
       if (!ok) return;
       // Set paid so that effectivePaid == total (keep existing bKash charge)
-      const newPaid = (o.total || 0) + bkashCharge(o);
+      const newPaid = cakePriceOf(o) + bkashCharge(o);
       setSyncStatus('syncing', tr('saving'));
-      ordersRef.child(key).update(Object.assign({ paid: newPaid, updatedAt: Date.now() },
-        stampAdminEdit(o, { paid: { from: String(o.paid || 0), to: String(newPaid) } })))
+      ordersRef.child(key).update(Object.assign({
+        paid: newPaid, advance: cakePriceOf(o), advanceTotal: newPaid,
+        dueAmount: isPickupOrder(o) || o.deliveryPaid === 'paid' ? 0 : Math.max(0, dcAmtOf(o)),
+        updatedAt: Date.now()
+      }, stampAdminEdit(o, { advance: { from: String(advanceOf(o)), to: String(cakePriceOf(o)) } })))
         .then(() => {
           setSyncStatus('ok');
           showToast(lang === 'bn' ? '✅ সম্পূর্ণ পরিশোধিত!' : '✅ Marked fully paid!');
@@ -3372,6 +3420,7 @@ window.App = (() => {
     const o = orders.find(x => x.firebaseKey === key);
     if (!o) return;
     editingId     = null;
+    editingRevision = null;
     currentPhoto  = '';
     currentPhotos = [];
     currentDelPhoto = '';
@@ -3621,7 +3670,9 @@ window.App = (() => {
       updateDcFootnote();
     }
     // Cake money only — DC lives in its own field above, never folded here.
-    g('f-total').value          = cakePriceOf(o) || '';
+    g('f-total').value          = moneyValue(o.cakePrice) != null || moneyValue(o.total) != null ? cakePriceOf(o) : '';
+    const priceNote = g('f-price-note');
+    if (priceNote) { priceNote.textContent = priceNotice(o); priceNote.hidden = !priceNote.textContent; }
     // f-paid shows the ADVANCE toward the cake (charge-free), same number
     // the card shows. No charge deduction needed — advance is already clean.
     g('f-paid').value           = advanceOf(o) || '';
@@ -3693,6 +3744,7 @@ window.App = (() => {
     const nwIn = document.getElementById('f-writing');
     if (nwIn) { nwIn.disabled = false; nwIn.style.opacity = '1'; }
     const o = key ? orders.find(x => x.firebaseKey === key) : null;
+    editingRevision = o ? orderRevision(o) : null;
     const mtEl = document.getElementById('modal-title');
     if (mtEl) {
       mtEl.textContent = o ? 'অর্ডার সম্পাদনা করুন' + (o.adminEdited ? ' 🛠️' : '') : 'নতুন অর্ডার';
@@ -3723,6 +3775,7 @@ window.App = (() => {
 
   const closeModal = () => {
     savingOrder = false;
+    editingRevision = null;
     // CRITICAL: re-enable the save button on every close. saveOrder disables
     // it while writing and only failSave used to re-enable it — so after one
     // successful save the button stayed disabled and every NEXT order edit
@@ -4453,6 +4506,12 @@ window.App = (() => {
     if (!date) { showToast('⚠️ ডেলিভারির তারিখ দিন।'); g('f-date').focus(); return; }
 
     const existing   = editingId ? orders.find(x => x.firebaseKey === editingId) : null;
+    if (editingId && (!existing || editingRevision !== orderRevision(existing))) {
+      showToast(lang === 'bn'
+        ? '⚠️ অর্ডারটি অন্য জায়গা থেকে বদলেছে। নতুন তথ্য দেখতে বন্ধ করে আবার খুলুন — এই এডিট সেভ হয়নি।'
+        : '⚠️ Order changed elsewhere. Close and reopen it to review the latest values — this edit was not saved.');
+      return;
+    }
     // Multi-photo: keep whatever is currently in the modal grid; fall back to
     // the stored array / single legacy photo if the admin didn't touch photos.
     const photosToSave = currentPhotos.length
@@ -4489,7 +4548,11 @@ window.App = (() => {
       }
     }
 
-    const cakePrice      = parseFloat(g('f-total').value) || 0;
+    const cakePrice      = moneyValue(g('f-total').value);
+    if (cakePrice == null) {
+      showToast(lang === 'bn' ? '⚠️ সঠিক কেকের মূল্য লিখুন।' : '⚠️ Enter a valid cake price.');
+      g('f-total').focus(); return;
+    }
     const fulfilmentVal  = g('f-fulfilment').value;
     // DC field opens blank. Empty = keep the stored amount ONLY when that
     // amount is one the admin actually typed. An auto/unknown (approx) charge
@@ -4622,6 +4685,12 @@ window.App = (() => {
     let adminChanges = {};
     if (editingId && existing) {
       adminChanges = diffAdminEdits(existing, o);
+      if (priceConflictOf(existing)) {
+        adminChanges.priceReconciliation = {
+          from: `cakePrice=${existing.cakePrice}, total=${existing.total}`,
+          to: `cakePrice=${cakePrice}, total=${cakePrice}`
+        };
+      }
       const changedNow = Object.keys(adminChanges);
       if (changedNow.length) {
         const by = (currentUser && (currentUser.email || currentUser.uid)) || 'admin';
@@ -4640,16 +4709,18 @@ window.App = (() => {
       }
     }
 
-    // Delivered = the client has paid EVERYTHING — cake total AND delivery
-    // charge. If an order is saved/edited with status "delivered" from the
-    // modal, force every money field to fully-paid so a delivered order can
-    // never carry a due (from now and forever).
+    // Keep the legacy delivered shortcut only when no explicit price/payment
+    // correction exists. An admin-recorded underpayment always takes priority.
     if (o.status === 'delivered') {
-      o.advance      = cakePrice;
-      o.advanceTotal = cakePrice;
-      o.paid         = cakePrice;
-      o.dueAmount    = 0;
-      if (fulfilmentVal === 'delivery') o.deliveryPaid = 'paid';
+      // Preserve explicit corrections (including a price increase that leaves
+      // money due), rather than silently inventing a full payment on save.
+      if (!ADMIN_ADV50_FIELDS.some(f => adminHas(o, f)) && !adminHas(o, 'cakePrice') && !adminHas(o, 'total')) {
+        o.advance      = cakePrice;
+        o.advanceTotal = cakePrice;
+        o.paid         = cakePrice;
+        o.dueAmount    = 0;
+      }
+      if (fulfilmentVal === 'delivery' && !adminHas(o, 'deliveryPaid')) o.deliveryPaid = 'paid';
     }
 
     // Delivery charge is OPTIONAL now: blank = not-paid yet (agent collects later).
@@ -4684,9 +4755,25 @@ window.App = (() => {
         savingOrder = 'timeout';   // next tap re-arms the button without duplicating
         if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '☁️ সেভ করুন'; }
       }, 25000);
-      ordersRef.child(editingId).update(o)
-        .then(() => {
+      const revision = editingRevision;
+      ordersRef.child(editingId).transaction(current => {
+        // Firebase may initially supply null before fetching the server value.
+        // Returning null lets it retry without resurrecting a deleted order.
+        if (current == null) return null;
+        if (orderRevision(current) !== revision) return undefined;
+        return { ...current, ...o };
+      }, undefined, false)
+        .then(result => {
           clearTimeout(saveWatchdog);
+          if (!result.committed || !result.snapshot.exists()) {
+            savingOrder = false;
+            if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '☁️ সেভ করুন'; }
+            setSyncStatus('ok');
+            showToast(lang === 'bn'
+              ? '⚠️ অর্ডারটি বদলেছে বা মুছে গেছে। বন্ধ করে আবার খুলুন — এই এডিট সেভ হয়নি।'
+              : '⚠️ Order changed or was deleted. Close and reopen it — this edit was not saved.');
+            return;
+          }
           setSyncStatus('ok');
           showToast('✅ অর্ডার আপডেট হয়েছে!' + (Object.keys(adminChanges).length ? ' 🛠️ অ্যাডমিন এডিট হিসেবে সেভ হয়েছে।' : ''));
           currentPhoto = '';
@@ -5164,7 +5251,7 @@ window.App = (() => {
         <div>
           <div class="d-name">${esc(nm)}</div>
           <div class="d-meta">${lang === 'bn' ? 'অর্ডার করেছে' : 'Ordered'} ${esc(wt)} ${esc(fl)} ${lang === 'bn' ? 'কেক' : 'cake'}</div>
-          <div class="d-meta">${lang === 'bn' ? 'মূল্য' : 'price'}: <span class="d-price">৳${fmtMoney(o.total)}</span> · ${lang === 'bn' ? 'ডেলিভারির তারিখ' : 'delivery date'}: ${esc(dailyFmtDate(dstr))}</div>
+          <div class="d-meta">${lang === 'bn' ? 'মূল্য' : 'price'}: <span class="d-price">৳${fmtMoney(cakePriceOf(o))}</span> · ${lang === 'bn' ? 'ডেলিভারির তারিখ' : 'delivery date'}: ${esc(dailyFmtDate(dstr))}</div>
         </div>
          <button class="daily-dismiss" onclick="App.dismissDailyOrder(${jsArg(o.firebaseKey)})" title="${lang === 'bn' ? 'আজকের তালিকা থেকে সরান' : 'Remove from today\'s list'}">✕</button>
       </div>`;
