@@ -806,11 +806,6 @@ window.App = (() => {
     if (priceConflictOf(o)) return lang === 'bn'
       ? `⚠️ সংরক্ষিত মূল্যে অমিল: কেকের মূল্য ৳${fmtMoney(o.cakePrice)}, total ৳${fmtMoney(o.total)}। কেকের মূল্য দেখানো হচ্ছে — সম্মত মূল্য যাচাই করে এডিট করুন।`
       : `⚠️ Stored prices disagree: cake price ৳${fmtMoney(o.cakePrice)}, total ৳${fmtMoney(o.total)}. Showing the cake price — verify the agreed amount and edit the order.`;
-    if (o.source === 'customer' && !o.quoteToken && !adminHas(o, 'cakePrice') && !adminHas(o, 'total')) {
-      return lang === 'bn'
-        ? 'ℹ️ এই মূল্য কাস্টমার ফর্মে লিখেছেন — কথোপকথনে সম্মত মূল্যের সাথে মিলিয়ে নিন। পাঠানো টাকা কেকের মূল্য নয়।'
-        : 'ℹ️ Customer-entered price — check it against the agreed price. Money sent is separate from the cake price.';
-    }
     return '';
   };
 

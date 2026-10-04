@@ -226,12 +226,13 @@ test('a declared zero cake price survives a stale nonzero total', t => {
   assert.match(h.card().textContent, /Stored prices disagree/);
 });
 
-test('customer-entered 1900 is labelled, not guessed up to an unknown agreed price', t => {
+test('customer-entered cake price is displayed without a routine price notice', t => {
   const h = harness(t, order({ cakePrice: 1900, total: 1900, advance: 0 }));
   assert.equal(h.card().querySelector('.pay-val').textContent, money(1900));
-  assert.match(h.card().textContent, /Customer-entered price/);
+  assert.doesNotMatch(h.card().textContent, /Customer-entered price/);
   h.w.App.openModal('test');
-  assert.match(h.el('f-price-note').textContent, /Customer-entered price/);
+  assert.equal(h.el('f-price-note').textContent, '');
+  assert.equal(h.el('f-price-note').hidden, true);
 });
 
 test('fully-paid action updates the advance used by the card and preserves the cake price', async t => {
