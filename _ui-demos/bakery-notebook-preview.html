@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Bakery Notebook — Local Preview</title>
+  <link rel="stylesheet" href="../admin-app/notepad.css?v=2026-10-04-bakery-notebook">
+  <style>
+    .preview-intro { padding: 20px; font: 14px/1.6 system-ui,sans-serif; color: #17483b; }
+    .preview-intro button { padding: 12px 18px; border: 0; background: #0f5a50; color: #fff; border-radius: 10px; cursor: pointer; }
+    #preview-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 4500; background: #0f5a50; color: #fff; padding: 5px 12px; font: 12px/1.5 system-ui,sans-serif; text-align: center; }
+    #notepad-overlay { padding-top: 38px; }
+  </style>
+</head>
+<body>
+  <div id="preview-banner">LOCAL PREVIEW · Sample notes only · Not connected to your cloud data</div>
+  <div class="preview-intro"><h1>Bakery Notebook</h1><p>Try the categories, calculator, shopping checklist and recipe scaler. This preview uses sample data in memory.</p><button onclick="App.openNotepad()">Open notebook</button><button onclick="previewLanguage()">বাংলা / English</button></div>
+  <script src="../admin-app/notepad.js?v=2026-10-04-bakery-notebook"></script>
+  <script>
+  (async () => {
+    const source = await (await fetch('../admin-app/index.html')).text();
+    const parsed = new DOMParser().parseFromString(source, 'text/html');
+    parsed.querySelectorAll('head style').forEach(style => document.head.append(style.cloneNode(true)));
+    document.body.append(parsed.getElementById('notepad-overlay').cloneNode(true));
+    // In-memory refs only. Firebase is neither loaded nor called in this preview.
+    const state = { pages: {
+      0: { text: 'This week’s baking supplies\n\n• Whipping cream — 2 packs\n• Cake boards — 6 pieces\n• Dark chocolate — 500 g\n• Boxes and ribbon', title: 'Weekly shopping', photos: [], items: { a: { name: 'Butter', detail: '2 kg', checked: false }, b: { name: 'Flour', detail: '1 kg', checked: true } }, createdAt: 1 },
+      1: { text: 'Baking equipment\n\nPiping bags, palette knife and parchment paper.', title: 'Tools & packaging', photos: [], createdAt: 2 },
+      2: { text: 'Vanilla sponge — my working recipe\n\nOven: 160°C\nTime: 30–35 minutes\nLet the cake cool completely before frosting.', title: 'Vanilla sponge', category: 'baking', photos: [], createdAt: 3 },
+      3: { text: 'Ideas for this month\n\nTry a new chocolate filling.\nAsk suppliers for box prices.', title: 'Ideas & suppliers', category: 'other', photos: [], createdAt: 4 }
+    }, text: '' };
+    const copy = value => value == null ? null : JSON.parse(JSON.stringify(value));
+    const at = parts => parts.reduce((value, key) => value && value[key], state) ?? null;
+    let number = 0, language = 'en';
+    const ref = parts => ({
+      child: key => ref(parts.concat(key)), push: () => ({ key: 'preview-' + ++number }),
+      once: async () => ({ val: () => copy(at(parts)) }),
+      set: async value => { const parent = parts.slice(0, -1).reduce((value, key) => value[key], state); parent[parts.at(-1)] = copy(value); },
+      transaction: async fn => {
+        const next = fn(copy(at(parts)));
+        if (next === undefined) return { committed: false, snapshot: { val: () => copy(at(parts)) } };
+        const parent = parts.slice(0, -1).reduce((value, key) => value[key] ||= {}, state);
+        parent[parts.at(-1)] = copy(next);
+        return { committed: true, snapshot: { val: () => copy(at(parts)) } };
+      }
+    });
+    const notebook = NituNotepad.create({ pagesRef: ref(['pages']), notesRef: ref(['text']), toast: text => { document.getElementById('preview-banner').textContent = 'LOCAL PREVIEW · ' + text; }, sync() {},
+      confirm: (...args) => args.at(-1)(window.confirm(args[0])), language: () => language,
+      photoUrl: value => value, openPhoto: value => window.open(value, '_blank', 'noopener'),
+      compressPhoto: (file, cb) => { const reader = new FileReader(); reader.onload = () => cb(reader.result); reader.readAsDataURL(file); }
+    });
+    window.App = {
+      openNotepad: () => notebook.open(), closeNotepad: () => notebook.close(), closeNotepadBg() {},
+      notepadTab: value => notebook.switchCategory(value), notepadSwitchPage: value => notebook.switchPage(value),
+      notepadMove: value => notebook.movePage(value), addNotepadPage: () => notebook.addPage(),
+      notepadAddPhoto: value => notebook.addPhoto(value), notepadAddItem: () => notebook.addItem(),
+      notepadExport: () => notebook.exportAll(), notepadRecover: () => notebook.recover(), notepadRetry: () => notebook.retry(),
+      notepadCalcKey: value => notebook.calculatorKey(value), notepadCalculate: () => notebook.calculateUi(),
+      notepadInsertCalculation: () => notebook.insertCalculation(), notepadScale: () => notebook.scaleUi(),
+      notepadInsertScale: () => notebook.insertScale(), notepadTemplate: () => notebook.template()
+    };
+    window.previewLanguage = () => { language = language === 'en' ? 'bn' : 'en'; notebook.render(); };
+    notebook.activate('local-preview'); await notebook.receive(state.pages); await notebook.open();
+  })().catch(error => { document.getElementById('preview-banner').textContent = 'Preview error: ' + error.message; });
+  </script>
+</body>
+</html>

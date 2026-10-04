@@ -69,15 +69,18 @@ self.addEventListener('notificationclick', function (event) {
 });
 
 /* ─── Offline caching (bulletproof edition) ────────────────── */
-var CACHE_NAME = 'nitu-bakery-v19';
+var CACHE_NAME = 'nitu-bakery-v20';
 // Build stamp — bump on every deploy so you can confirm in DevTools which
 // version the browser is actually running.
-var ADMIN_BUILD = '2026-09-18-sprinkles';
-try { console.log('Nitu admin build:', ADMIN_BUILD, '— splash photo + rotating topbar photo'); } catch (e) {}
+var ADMIN_BUILD = '2026-10-04-bakery-notebook';
+try { console.log('Nitu admin build:', ADMIN_BUILD); } catch (e) {}
 var INDEX_KEY  = './index.html';
 var APP_SHELL = [
   './index.html',
   './',
+  './notepad.js?v=2026-10-04-bakery-notebook',
+  './notepad.css?v=2026-10-04-bakery-notebook',
+  './app.js?v=2026-10-04-bakery-notebook',
   './manifest.json',
   './logo-splash.png',
   './splash-bg.jpg',

@@ -32,7 +32,7 @@ window.App = (() => {
   // (keepSynced removed — it fought with the live listener on some devices;
   //  the localStorage cache below already gives instant first paint.)
   // Shared shopping notepad — multi-page (with photos), live-synced.
-  // notesRef keeps the legacy single-string in sync (page 1 / active page text)
+  // notesRef keeps the legacy single-string in sync (latest edited page text)
   // so any older reader of shopNotepad/text keeps working.
   const notesRef  = db.ref('shopNotepad/text');
   const pagesRef  = db.ref('shopNotepad/pages');
@@ -62,12 +62,7 @@ window.App = (() => {
   let adminCakeCount = 1;           // cakes in the modal order (1-5)
   let savedScrollY  = 0;            // list scroll pos to restore after the modal closes
   let currentDelPhoto = '';         // completed-cake photo (≤50KB data URL)
-  let notepadText   = '';
-  let notepadPages  = [{ text: '', photos: [], createdAt: Date.now() }];
-  let notepadActive = 0;
-  try { notepadActive = parseInt(localStorage.getItem('nitu-notepad-page') || '0', 10) || 0; } catch (e) {}
-  let notepadReady  = false;        // first Firebase snapshot received
-  let notepadTimer  = null;
+  let notepad = null;
   let offDays       = {};           // 'YYYY-MM-DD' → { reason, ... }
   let offdayCbDate  = null;         // date currently open in the off-day dialog
   let healedDelivered = {};         // delivered orders already money-healed this session
@@ -438,6 +433,7 @@ window.App = (() => {
     localStorage.setItem('nitu-lang', l);
     applyI18n();
     render();
+    if (notepad) notepad.render();
     syncTopbarHeight();  // labels change → re-measure the sticky offset
   };
 
@@ -908,9 +904,7 @@ window.App = (() => {
       quotesReady = false;
       offDays = {};
       dayBooks = {};
-      notepadPages = [{ text: '', photos: [], createdAt: Date.now() }];
-      notepadText = '';
-      notepadReady = false;
+      if (notepad) notepad.reset();
       currentPhoto = '';
       currentPhotos = [];
       adminExtraPhotos = {};
@@ -924,6 +918,7 @@ window.App = (() => {
     }
     currentUser = user;
     if (user) {
+      if (notepad) notepad.activate(user.uid);
       // User is signed in - show main app
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('last-sync-text').textContent = user.email;
@@ -1161,24 +1156,8 @@ window.App = (() => {
       idleRun(() => {
         if (session !== authSession || !currentUser || currentUser.uid !== user.uid) return;
         pagesRef.on('value', snap => {
-         if (session !== authSession || !currentUser || currentUser.uid !== user.uid) return;
-         const pages = snap.val();
-        if (Array.isArray(pages) && pages.length) {
-          notepadPages = pages;
-        } else if (!notepadReady) {
-           // First run: migrate the legacy single-string notepad into page 1
-           notepadReady = true;
-           notesRef.once('value').then(legacySnap => {
-             if (session !== authSession || !currentUser || currentUser.uid !== user.uid) return null;
-             notepadPages = [{ text: String(legacySnap.val() || ''), photos: [], createdAt: Date.now() }];
-             notepadActive = 0;
-            return pagesRef.set(notepadPages);
-          }).catch(() => {});
-        }
-        notepadReady = true;
-        notepadActive = Math.max(0, Math.min(notepadActive, notepadPages.length - 1));
-         renderNotepad();
-         renderNotepadStatus();
+          if (session !== authSession || !currentUser || currentUser.uid !== user.uid) return;
+          notepad.receive(snap.val());
         }, err => {
           if (session === authSession && currentUser && currentUser.uid === user.uid) console.error('Notepad listener error:', err);
         });
@@ -2466,96 +2445,7 @@ window.App = (() => {
 
   // ─── Home-screen widget feed (/widgetFeed) ───────────────────
 
-  // ─── Shopping notepad (shared, live-synced, multi-page + photos) ──
-  const renderNotepad = () => {
-    const sel = document.getElementById('notepad-page-sel');
-    const ta  = document.getElementById('notepad-text');
-    const ph  = document.getElementById('notepad-photos');
-    if (sel) {
-      sel.innerHTML = notepadPages.map((p, i) =>
-        `<option value="${i}" ${i === notepadActive ? 'selected' : ''}>📄 পেজ ${i + 1}${(p.photos && p.photos.length) ? ' 🖼️' : ''}</option>`
-      ).join('');
-    }
-    if (ta) {
-      const cur = notepadPages[notepadActive] || { text: '', photos: [] };
-      // Never clobber what a user is actively typing
-      if (document.activeElement !== ta) {
-        ta.value = cur.text || '';
-        ta.style.height = 'auto';
-        ta.style.height = Math.max(ta.scrollHeight, window.innerHeight * 0.46) + 'px';
-      }
-    }
-    if (ph) {
-      const cur = notepadPages[notepadActive] || { photos: [] };
-      ph.innerHTML = (cur.photos || []).map((src, i) =>
-        safeImageUrl(src)
-          ? `<div class="np-thumb-wrap"><img${imageSrcAttr(src)} class="np-thumb" onclick="App.notepadRemovePhoto(${i})" alt="নোট ছবি"><span class="np-thumb-x">✕</span></div>`
-          : ''
-      ).join('');
-    }
-  };
-  const openNotepad = () => {
-    renderNotepad();
-    renderNotepadStatus();
-    document.getElementById('notepad-overlay').classList.add('open');
-    document.body.style.overflow = 'hidden';
-  };
-  const closeNotepad = () => {
-    document.getElementById('notepad-overlay').classList.remove('open');
-    document.body.style.overflow = '';
-  };
-  const closeNotepadBg = e => {
-    if (e.target === document.getElementById('notepad-overlay')) closeNotepad();
-  };
-  const renderNotepadStatus = () => {
-    const el = document.getElementById('notepad-status');
-    if (el) el.textContent = notepadReady ? `☁️ লাইভ সিঙ্ক চালু — পেজ ${notepadActive + 1}/${notepadPages.length} · সবাই একই নোট দেখছে` : 'সংযোগ হচ্ছে...';
-  };
-  const saveNotepadPages = () => {
-    setSyncStatus('syncing', 'নোট সেভ হচ্ছে...');
-    pagesRef.set(notepadPages)
-      .then(() => { setSyncStatus('ok'); })
-      .catch(() => {
-        setSyncStatus('error', '❌ নোট সেভ হয়নি');
-        showToast('❌ নোট সেভ হয়নি — ইন্টারনেট চেক করুন');
-      });
-    // Keep the legacy single-string notepad in sync (active page text)
-    const cur = notepadPages[notepadActive];
-    if (cur) notesRef.set(cur.text || '').catch(() => {});
-  };
-  const notepadInput = () => {
-    const ta = document.getElementById('notepad-text');
-    if (!ta) return;
-    if (!notepadPages[notepadActive]) notepadPages[notepadActive] = { text: '', photos: [], createdAt: Date.now() };
-    notepadPages[notepadActive].text = ta.value;
-    clearTimeout(notepadTimer);
-    notepadTimer = setTimeout(saveNotepadPages, 700);
-  };
-  const rememberActivePage = () => {
-    try { localStorage.setItem('nitu-notepad-page', String(notepadActive)); } catch (e) {}
-  };
-  const addNotepadPage = () => {
-    notepadPages.push({ text: '', photos: [], createdAt: Date.now() });
-    notepadActive = notepadPages.length - 1;
-    rememberActivePage();
-    saveNotepadPages();
-    renderNotepad();
-    renderNotepadStatus();
-    showToast('📄 নতুন পেজ তৈরি হয়েছে');
-  };
-  const notepadSwitchPage = v => {
-    const ta = document.getElementById('notepad-text');
-    // Flush any typed-but-unsaved text of the old page before switching
-    if (ta && document.activeElement === ta && notepadPages[notepadActive]) {
-      notepadPages[notepadActive].text = ta.value;
-      clearTimeout(notepadTimer);
-      saveNotepadPages();
-    }
-    notepadActive = Math.max(0, Math.min(parseInt(v, 10) || 0, notepadPages.length - 1));
-    rememberActivePage();
-    renderNotepad();
-    renderNotepadStatus();
-  };
+  // ─── Bakery notebook: categorized pages and work helpers ──────
   // Compress a notepad photo to a ≤50KB JPEG data URL (same approach as the
   // delivered-cake photo compressor).
   const compressNotepadPhoto = (file, cb) => {
@@ -2581,57 +2471,12 @@ window.App = (() => {
     };
     reader.readAsDataURL(file);
   };
-  const notepadAddPhoto = input => {
-    const file = input && input.files && input.files[0];
-    if (!file) return;
-    const cur = notepadPages[notepadActive];
-    if (cur && Array.isArray(cur.photos) && cur.photos.length >= 6) {
-      showToast('⚠️ এক পেজে সর্বোচ্চ ৬টি ছবি যোগ করা যায়');
-      input.value = '';
-      return;
-    }
-    showToast('🖼️ ছবি যোগ হচ্ছে...');
-    compressNotepadPhoto(file, dataUrl => {
-      if (!notepadPages[notepadActive]) notepadPages[notepadActive] = { text: '', photos: [], createdAt: Date.now() };
-      if (!Array.isArray(notepadPages[notepadActive].photos)) notepadPages[notepadActive].photos = [];
-      notepadPages[notepadActive].photos.push(dataUrl);
-      saveNotepadPages();
-      renderNotepad();
-      renderNotepadStatus();
-      showToast('✅ ছবি যোগ হয়েছে');
-      input.value = '';
-    });
-  };
-  const notepadRemovePhoto = i => {
-    const cur = notepadPages[notepadActive];
-    if (!cur || !cur.photos || !cur.photos[i]) return;
-    cur.photos.splice(i, 1);
-    saveNotepadPages();
-    renderNotepad();
-    showToast('🗑️ ছবি মুছে ফেলা হয়েছে');
-  };
-  const clearNotepad = () => {
-    showConfirm('এই পেজটি মুছবেন? 🗑️', 'এই পেজের সব লেখা ও ছবি সবার কাছ থেকে মুছে যাবে।', false, ok => {
-      if (!ok) return;
-      clearTimeout(notepadTimer);
-      if (notepadPages.length > 1) {
-        notepadPages.splice(notepadActive, 1);
-        notepadActive = Math.min(notepadActive, notepadPages.length - 1);
-      } else {
-        notepadPages[0] = { text: '', photos: [], createdAt: Date.now() };
-      }
-      rememberActivePage();
-      saveNotepadPages();
-      renderNotepad();
-      renderNotepadStatus();
-      showToast('🗑️ পেজ মুছে ফেলা হয়েছে');
-    });
-  };
-  // Debounced live-save while typing (registered after notepadInput exists)
-  {
-    const npTa = document.getElementById('notepad-text');
-    if (npTa) npTa.addEventListener('input', notepadInput);
-  }
+  notepad = window.NituNotepad.create({
+    pagesRef, notesRef, toast: showToast, sync: setSyncStatus,
+    confirm: (...args) => showConfirm(...args), language: () => lang,
+    photoUrl: safeImageUrl, compressPhoto: compressNotepadPhoto,
+    openPhoto: src => openLightboxFor(src)
+  });
 
   // A tiny summary written to the database so widget apps (KWGT on
   // Android, Scriptable on iOS) can show "today's + latest orders" on
@@ -5305,14 +5150,24 @@ window.App = (() => {
     openOffdayDialog,
     offdayPickMode,
     offdayLimitStep,
-    openNotepad,
-    closeNotepad,
-    closeNotepadBg,
-    clearNotepad,
-    addNotepadPage,
-    notepadSwitchPage,
-    notepadAddPhoto,
-    notepadRemovePhoto,
+    openNotepad: () => notepad.open(),
+    closeNotepad: () => notepad.close(),
+    closeNotepadBg: e => { if (e.target.id === 'notepad-overlay') notepad.close(); },
+    addNotepadPage: () => notepad.addPage(),
+    notepadSwitchPage: key => notepad.switchPage(key),
+    notepadTab: category => notepad.switchCategory(category),
+    notepadMove: category => notepad.movePage(category),
+    notepadAddPhoto: input => notepad.addPhoto(input),
+    notepadAddItem: () => notepad.addItem(),
+    notepadExport: () => notepad.exportAll(),
+    notepadRecover: () => notepad.recover(),
+    notepadRetry: () => notepad.retry(),
+    notepadCalcKey: key => notepad.calculatorKey(key),
+    notepadCalculate: () => notepad.calculateUi(),
+    notepadInsertCalculation: () => notepad.insertCalculation(),
+    notepadScale: () => notepad.scaleUi(),
+    notepadInsertScale: () => notepad.insertScale(),
+    notepadTemplate: () => notepad.template(),
     renderCdb,
     openCdbLightbox,
   cdbAddPhoto,

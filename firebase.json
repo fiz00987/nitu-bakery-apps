@@ -39,7 +39,7 @@
           ]
         },
         {
-          "source": "/@(app|utils|notifications).js",
+          "source": "/@(app|utils|notifications|notepad).js",
           "headers": [
             { "key": "Cache-Control", "value": "no-cache" }
           ]

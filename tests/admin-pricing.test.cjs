@@ -70,6 +70,7 @@ function harness(t, initial) {
   w.requestAnimationFrame = () => 1;
   w.scrollTo = () => {};
   w.fetch = () => Promise.reject(new Error('Network disabled in tests'));
+  w.eval(fs.readFileSync(path.join(root, 'admin-app/notepad.js'), 'utf8'));
   w.eval(fs.readFileSync(path.join(root, 'admin-app/app.js'), 'utf8'));
   authListener({ uid: 'test-admin', email: 'admin111@gmail.com' });
   const emit = () => {

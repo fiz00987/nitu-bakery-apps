@@ -1,0 +1,59 @@
+/* Bakery workspace — inherits every existing light/dark theme. */
+#notepad-overlay .np-workspace { max-width: 820px; max-height: 92dvh; padding: 20px; }
+.np-workspace [hidden] { display: none !important; }
+.np-workspace .cal-popup-title { font-size: 18px; }
+.np-eyebrow { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--text3); margin-bottom: 3px; }
+.np-tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 16px 0 12px; }
+.np-tab { border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 8px; background: var(--surface2); color: var(--text2); cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 700; line-height: 1.5; text-align: left; }
+.np-tab.active { border-color: var(--pink); background: var(--pink-light); color: var(--pink); box-shadow: 0 0 0 2px var(--pink-glow); }
+.np-tab-icon { font-size: 20px; display: block; margin-bottom: 5px; }
+.np-tab-count { float: right; border-radius: 20px; background: var(--surface); padding: 0 7px; font-size: 11px; }
+.np-tab small { display: block; font-size: 10px; font-weight: 500; opacity: .8; }
+.np-workspace .np-toolbar { flex-wrap: wrap; }
+.np-workspace .np-btn { cursor: pointer; min-height: 36px; color: var(--pink); }
+.np-workspace button:disabled { opacity: .5; cursor: wait; }
+.np-workspace input, .np-workspace select { font: inherit; color: var(--text); background: var(--surface2); border: 1px solid var(--border); border-radius: 9px; padding: 9px 10px; min-width: 0; }
+.np-workspace input:focus, .np-workspace select:focus { outline: 2px solid var(--pink-soft); outline-offset: 1px; }
+.np-workspace #notepad-page-sel { min-width: 140px; }
+.np-page-meta { display: grid; grid-template-columns: 1fr 170px; gap: 12px; margin-bottom: 12px; }
+.np-workspace label > span.np-label { display: block; font-size: 11px; font-weight: 600; color: var(--text2); margin: 0 0 4px; }
+.np-page-meta input, .np-page-meta select { width: 100%; }
+.np-layout { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 16px; align-items: start; }
+.np-workspace #notepad-text { min-height: 230px; max-height: 65vh; }
+.np-section { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-top: 12px; background: var(--surface2); }
+.np-section-title { display: flex; justify-content: space-between; gap: 6px; color: var(--text); font-size: 12px; font-weight: 700; margin-bottom: 9px; }
+.np-section-title small { font-size: 10px; font-weight: 500; color: var(--text3); }
+.np-check-row { display: flex; align-items: flex-start; gap: 9px; padding: 9px 0; border-bottom: 1px dashed var(--border); color: var(--text); font-size: 13px; line-height: 1.5; }
+.np-check-row:last-child { border-bottom: 0; }
+.np-check-row input { accent-color: var(--pink); width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
+.np-check-row.checked span { text-decoration: line-through; color: var(--text3); }
+.np-add-item { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .8fr) auto; gap: 5px; }
+.np-add-item input { width: 100%; font-size: 12px; }
+.np-tools { border: 1px solid var(--border); border-radius: 12px; background: var(--surface2); overflow: hidden; }
+.np-tools summary { cursor: pointer; padding: 12px; font-size: 12px; font-weight: 700; color: var(--pink); }
+.np-tool-body { padding: 0 12px 12px; }
+.np-tool-body label { display: block; margin-bottom: 9px; }
+.np-tool-body input, .np-tool-body select { width: 100%; font-size: 12px; background: var(--surface); }
+.np-tool-body .np-btn { width: 100%; margin-top: 7px; }
+.np-calc-display { font-variant-numeric: tabular-nums; text-align: right; }
+.np-tool-result { display: block; border-radius: 8px; background: var(--surface); color: var(--pink); font-size: 15px; font-weight: 700; padding: 10px; margin: 8px 0; overflow-wrap: anywhere; min-height: 40px; }
+.np-calc-keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.np-calc-keys button { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); cursor: pointer; padding: 9px 0; font-size: 15px; }
+.np-tool-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.np-tool-hint { font-size: 10.5px; color: var(--text3); line-height: 1.6; margin-bottom: 9px; }
+.np-tools + .np-tools { margin-top: 10px; }
+.np-empty { text-align: center; padding: 22px 12px; border: 1px dashed var(--pink-soft); border-radius: 12px; color: var(--text2); font-size: 13px; }
+.np-draft-alert { border: 1px solid var(--amber); background: var(--amber-light); border-radius: 10px; padding: 10px; color: var(--text); font-size: 12px; margin-bottom: 12px; }
+.np-draft-alert .np-btn { margin-top: 8px; white-space: normal; }
+.np-thumb-remove { position: absolute; right: -6px; top: -6px; border-radius: 50%; border: 0; background: var(--red); color: #fff; width: 23px; height: 23px; cursor: pointer; }
+.np-footer { display: flex; justify-content: space-between; gap: 10px; align-items: center; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 14px; }
+@media (max-width: 640px) {
+  #notepad-overlay .np-workspace { padding: 14px 12px; }
+  .np-layout { grid-template-columns: minmax(0, 1fr); }
+  .np-page-meta { grid-template-columns: minmax(0, 1fr) 135px; gap: 7px; }
+  .np-tab { padding: 9px 6px; font-size: 11px; }
+  .np-tabs { gap: 5px; }
+  .np-add-item { grid-template-columns: minmax(0, 1fr) minmax(0, .7fr) auto; }
+  .np-footer { align-items: flex-start; }
+  .np-footer .notepad-status { text-align: left; }
+}
