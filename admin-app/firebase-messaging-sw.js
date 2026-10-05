@@ -78,9 +78,9 @@ var INDEX_KEY  = './index.html';
 var APP_SHELL = [
   './index.html',
   './',
-  './notepad.js?v=2026-10-04-bakery-notebook',
-  './notepad.css?v=2026-10-04-bakery-notebook',
-  './app.js?v=2026-10-04-bakery-notebook',
+  './notepad.js?v=2026-10-04-bakery-notebook-v2',
+  './notepad.css?v=2026-10-04-bakery-notebook-v2',
+  './app.js?v=2026-10-04-bakery-notebook-v2',
   './manifest.json',
   './logo-splash.png',
   './splash-bg.jpg',

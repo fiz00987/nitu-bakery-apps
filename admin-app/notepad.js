@@ -2,6 +2,8 @@
 'use strict';
 window.NituNotepad = (() => {
   const CATEGORIES = ['cake', 'baking', 'other'];
+  const VIEWS = [...CATEGORIES, 'calculator', 'recipe'];
+  const isToolView = value => value === 'calculator' || value === 'recipe';
   const categoryOf = page => CATEGORIES.includes(page && page.category) ? page.category : 'cake';
   const entries = raw => Object.entries(raw || {}).filter(([, page]) => page && typeof page === 'object')
     .sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true }));
@@ -62,7 +64,7 @@ window.NituNotepad = (() => {
   const create = ({ pagesRef, notesRef, toast, sync, confirm, language, photoUrl, compressPhoto, openPhoto }) => {
     const el = id => document.getElementById(id);
     const say = (en, bn) => language() === 'bn' ? bn : en;
-    let pages = {}, legacy = null, ready = false, active = null, category = 'cake';
+    let pages = {}, legacy = null, ready = false, active = null, category = 'cake', activeView = 'cake';
     let drafts = {}, user = '', epoch = 0, loadSequence = 0, timer = null;
     const saving = new Map();
     const lastPage = {};
@@ -84,7 +86,7 @@ window.NituNotepad = (() => {
       persist();
       epoch++; loadSequence++;
       clearTimeout(timer);
-      pages = {}; legacy = null; ready = false; active = null; category = 'cake';
+      pages = {}; legacy = null; ready = false; active = null; category = 'cake'; activeView = 'cake';
       drafts = {}; user = ''; saving.clear();
       Object.keys(lastPage).forEach(key => delete lastPage[key]);
       el('notepad-overlay').classList.remove('open');
@@ -181,6 +183,7 @@ window.NituNotepad = (() => {
       if (!Object.hasOwn(draft.base, field)) draft.base[field] = String(current()[field] || '');
       draft.patch[field] = value; draft.version++;
       if (draft.error === 'network') delete draft.error;
+      if (field === 'text' && category === 'cake') renderQuickBoard(current(), draft);
       persist(); renderStatus();
       clearTimeout(timer);
       const key = active;
@@ -215,9 +218,10 @@ window.NituNotepad = (() => {
       } catch (e) { if (session === epoch) toast(say('Page could not be saved. Try again.', 'পেজ সেভ হয়নি। আবার চেষ্টা করুন।')); return false; }
     };
     const switchCategory = async value => {
-      if (!CATEGORIES.includes(value) || !await flush()) return;
+      if (!VIEWS.includes(value) || !await flush()) return;
+      if (isToolView(value)) { activeView = value; render(true); return; }
       if (active != null) lastPage[category] = active;
-      category = value; active = lastPage[category] || null;
+      activeView = category = value; active = lastPage[category] || null;
       render(true);
     };
     const switchPage = async key => {
@@ -258,14 +262,15 @@ window.NituNotepad = (() => {
         : say('Your draft is kept. Reconnect to retry, or save it as a new page.', 'আপনার ড্রাফট রাখা আছে। সংযোগ দিয়ে আবার চেষ্টা করুন বা নতুন পেজে সেভ করুন।');
     };
     const render = (force = false) => {
-      const visible = choosePage(), page = current(), draft = drafts[active];
+      const visible = choosePage(), page = current(), draft = drafts[active], tool = isToolView(activeView);
       document.querySelectorAll('[data-np-en]').forEach(node => { node.textContent = say(node.dataset.npEn, node.dataset.npBn); });
       document.querySelectorAll('[data-np-placeholder-en]').forEach(node => { node.placeholder = say(node.dataset.npPlaceholderEn, node.dataset.npPlaceholderBn); });
-      CATEGORIES.forEach(key => {
+      VIEWS.forEach(key => {
         const tab = el('notepad-tab-' + key), count = entries(pages).filter(([, p]) => categoryOf(p) === key).length;
-        tab.classList.toggle('active', category === key); tab.setAttribute('aria-selected', String(category === key));
-        tab.tabIndex = category === key ? 0 : -1;
-        tab.querySelector('.np-tab-count').textContent = count;
+        const selected = activeView === key;
+        tab.classList.toggle('active', selected); tab.setAttribute('aria-selected', String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+        const badge = tab.querySelector('.np-tab-count'); if (badge) badge.textContent = CATEGORIES.includes(key) ? count : '';
       });
       const select = el('notepad-page-sel');
       select.replaceChildren();
@@ -275,11 +280,24 @@ window.NituNotepad = (() => {
         if (p.photos && Object.keys(p.photos).length) option.textContent += ' 🖼️';
         option.selected = key === active; select.append(option);
       });
-      el('notepad-empty').hidden = !!page;
-      el('notepad-editor').hidden = !page;
-      el('notepad-new-page').disabled = !ready;
-      select.disabled = !page;
-      el('notepad-panel').setAttribute('aria-labelledby', 'notepad-tab-' + category);
+      el('notepad-panel').hidden = tool;
+      el('notepad-tool-host').hidden = !tool;
+      el('notepad-empty').hidden = tool || !!page;
+      el('notepad-editor').hidden = tool || !page;
+      el('notepad-new-page').disabled = !ready || tool;
+      select.disabled = !page || tool;
+      el('notepad-panel').setAttribute('aria-labelledby', 'notepad-tab-' + activeView);
+      const helper = el('notepad-helper-aside');
+      if (helper) {
+        (tool ? el('notepad-tool-host') : el('notepad-helper-slot')).appendChild(helper);
+        helper.querySelectorAll('details').forEach((detail, index) => {
+          detail.hidden = !tool || (activeView === 'calculator' ? index !== 0 : index !== 1);
+          detail.open = tool && !detail.hidden;
+        });
+      }
+      el('np-cake-board').hidden = tool || category !== 'cake' || !page;
+      el('notepad-edit-details').open = !tool && category !== 'cake';
+      renderQuickBoard(page, draft);
       el('notepad-category-description').textContent = category === 'cake'
         ? say('Shopping comes first. Keep ingredients, packaging and things to buy here.', 'সবার আগে কেনাকাটা। উপকরণ, প্যাকেজিং ও কেনার তালিকা এখানে রাখুন।')
         : category === 'baking' ? say('Recipes, oven settings and baking methods — each on its own page.', 'রেসিপি, ওভেনের সেটিং ও বেকিং পদ্ধতি — আলাদা আলাদা পেজে।')
@@ -301,13 +319,13 @@ window.NituNotepad = (() => {
         });
         renderChecklist();
       }
-      el('notepad-shopping').hidden = category !== 'cake';
-      el('notepad-recipe-template').hidden = category !== 'baking';
+      el('notepad-shopping').hidden = tool || category !== 'cake';
+      el('notepad-recipe-template').hidden = tool || category !== 'baking';
       renderStatus();
     };
     const open = async () => {
       if (!await flush()) return;
-      category = 'cake'; active = lastPage.cake || null;
+      activeView = category = 'cake'; active = lastPage.cake || null;
       render(true); el('notepad-overlay').classList.add('open'); document.body.style.overflow = 'hidden';
     };
     const close = () => { flush(); el('notepad-overlay').classList.remove('open'); document.body.style.overflow = ''; };
@@ -352,6 +370,19 @@ window.NituNotepad = (() => {
         const text = document.createElement('span'); text.textContent = item.name + (item.detail ? ' · ' + item.detail : '');
         row.append(check, text); list.append(row);
       });
+    };
+    const renderQuickBoard = (page, draft) => {
+      const board = el('np-cake-board'); if (!board) return;
+      board.replaceChildren();
+      if (!page) return;
+      const text = draft && Object.hasOwn(draft.patch, 'text') ? draft.patch.text : String(page.text || '');
+      const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      const items = entries(page.items).map(([, item]) => `${item.checked ? '✓ ' : '○ '}${item.name}${item.detail ? ' · ' + item.detail : ''}`);
+      [...lines, ...items].forEach((line, index) => {
+        const node = document.createElement('div'); node.className = 'np-board-line' + (line.startsWith('✓') ? ' done' : '');
+        node.textContent = line; node.title = line; node.dataset.index = String(index); board.append(node);
+      });
+      if (!board.children.length) { const empty = document.createElement('div'); empty.className = 'np-board-empty'; empty.textContent = say('No shopping items yet — use Edit full note below.', 'এখনো কেনাকাটার আইটেম নেই — নিচে পূর্ণ নোট এডিট করুন।'); board.append(empty); }
     };
     const addItem = async () => {
       const name = el('notepad-item-name').value.trim(), detail = el('notepad-item-detail').value.trim(), key = active;
@@ -410,16 +441,16 @@ window.NituNotepad = (() => {
     el('notepad-title').addEventListener('input', event => edit('title', event.target.value));
     el('np-calc-input').addEventListener('input', calculateUi);
     el('np-calc-input').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); calculateUi(); } });
-    CATEGORIES.forEach((key, index) => el('notepad-tab-' + key).addEventListener('keydown', async event => {
+    VIEWS.forEach((key, index) => el('notepad-tab-' + key).addEventListener('keydown', async event => {
       let next;
-      if (event.key === 'ArrowRight') next = (index + 1) % CATEGORIES.length;
-      else if (event.key === 'ArrowLeft') next = (index + CATEGORIES.length - 1) % CATEGORIES.length;
+      if (event.key === 'ArrowRight') next = (index + 1) % VIEWS.length;
+      else if (event.key === 'ArrowLeft') next = (index + VIEWS.length - 1) % VIEWS.length;
       else if (event.key === 'Home') next = 0;
-      else if (event.key === 'End') next = CATEGORIES.length - 1;
+      else if (event.key === 'End') next = VIEWS.length - 1;
       else return;
       event.preventDefault();
-      await switchCategory(CATEGORIES[next]);
-      el('notepad-tab-' + category).focus();
+      await switchCategory(VIEWS[next]);
+      el('notepad-tab-' + VIEWS[next]).focus();
     }));
     render();
     return { activate, reset, receive, render, open, close, addPage, switchCategory, switchPage, movePage, addPhoto, removePhoto, addItem, toggleItem, calculatorKey, calculateUi, insertCalculation, scaleUi, insertScale, template, exportAll, recover, retry, flush };

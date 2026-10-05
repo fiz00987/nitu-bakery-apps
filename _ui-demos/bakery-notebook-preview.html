@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Bakery Notebook — Local Preview</title>
-  <link rel="stylesheet" href="../admin-app/notepad.css?v=2026-10-04-bakery-notebook">
+  <link rel="stylesheet" href="../admin-app/notepad.css?v=2026-10-04-bakery-notebook-v2">
   <style>
     .preview-intro { padding: 20px; font: 14px/1.6 system-ui,sans-serif; color: #17483b; }
     .preview-intro button { padding: 12px 18px; border: 0; background: #0f5a50; color: #fff; border-radius: 10px; cursor: pointer; }
@@ -15,7 +15,7 @@
 <body>
   <div id="preview-banner">LOCAL PREVIEW · Sample notes only · Not connected to your cloud data</div>
   <div class="preview-intro"><h1>Bakery Notebook</h1><p>Try the categories, calculator, shopping checklist and recipe scaler. This preview uses sample data in memory.</p><button onclick="App.openNotepad()">Open notebook</button><button onclick="previewLanguage()">বাংলা / English</button></div>
-  <script src="../admin-app/notepad.js?v=2026-10-04-bakery-notebook"></script>
+  <script src="../admin-app/notepad.js?v=2026-10-04-bakery-notebook-v2"></script>
   <script>
   (async () => {
     const source = await (await fetch('../admin-app/index.html')).text();

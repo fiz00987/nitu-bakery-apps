@@ -3,12 +3,13 @@
 .np-workspace [hidden] { display: none !important; }
 .np-workspace .cal-popup-title { font-size: 18px; }
 .np-eyebrow { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--text3); margin-bottom: 3px; }
-.np-tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 16px 0 12px; }
+.np-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; margin: 16px 0 12px; }
 .np-tab { border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 8px; background: var(--surface2); color: var(--text2); cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 700; line-height: 1.5; text-align: left; }
 .np-tab.active { border-color: var(--pink); background: var(--pink-light); color: var(--pink); box-shadow: 0 0 0 2px var(--pink-glow); }
 .np-tab-icon { font-size: 20px; display: block; margin-bottom: 5px; }
 .np-tab-count { float: right; border-radius: 20px; background: var(--surface); padding: 0 7px; font-size: 11px; }
 .np-tab small { display: block; font-size: 10px; font-weight: 500; opacity: .8; }
+.np-tool-tab { border-color: var(--pink-soft); }
 .np-workspace .np-toolbar { flex-wrap: wrap; }
 .np-workspace .np-btn { cursor: pointer; min-height: 36px; color: var(--pink); }
 .np-workspace button:disabled { opacity: .5; cursor: wait; }
@@ -20,6 +21,16 @@
 .np-page-meta input, .np-page-meta select { width: 100%; }
 .np-layout { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 16px; align-items: start; }
 .np-workspace #notepad-text { min-height: 230px; max-height: 65vh; }
+.np-cake-board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 5px 10px; min-height: 100px; border: 1px solid var(--pink-soft); border-radius: 10px; padding: 10px; background: var(--surface2); color: var(--text); font-size: 12px; line-height: 1.35; }
+.np-board-line { min-width: 0; overflow-wrap: anywhere; }
+.np-board-line.done { color: var(--text3); text-decoration: line-through; }
+.np-board-empty { grid-column: 1 / -1; color: var(--text3); text-align: center; padding: 14px 4px; }
+.np-edit-details { margin-top: 8px; border: 1px dashed var(--border); border-radius: 9px; padding: 7px 9px; background: var(--surface2); }
+.np-edit-details summary { color: var(--pink); cursor: pointer; font-size: 12px; font-weight: 700; }
+.np-edit-details #notepad-text { margin-top: 8px; }
+#notepad-tool-host { padding-top: 4px; }
+#notepad-tool-host #notepad-helper-aside { display: block; }
+#notepad-tool-host .np-tools + .np-tools { margin-top: 0; }
 .np-section { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-top: 12px; background: var(--surface2); }
 .np-section-title { display: flex; justify-content: space-between; gap: 6px; color: var(--text); font-size: 12px; font-weight: 700; margin-bottom: 9px; }
 .np-section-title small { font-size: 10px; font-weight: 500; color: var(--text3); }
@@ -51,8 +62,14 @@
   #notepad-overlay .np-workspace { padding: 14px 12px; }
   .np-layout { grid-template-columns: minmax(0, 1fr); }
   .np-page-meta { grid-template-columns: minmax(0, 1fr) 135px; gap: 7px; }
-  .np-tab { padding: 9px 6px; font-size: 11px; }
-  .np-tabs { gap: 5px; }
+  .np-tab { padding: 8px 4px; font-size: 9.5px; line-height: 1.25; }
+  .np-tab-icon { font-size: 17px; margin-bottom: 3px; }
+  .np-tab small { font-size: 8.5px; line-height: 1.15; margin-top: 3px; }
+  .np-tabs { gap: 4px; }
+  .np-tab-count { font-size: 9px; padding: 0 4px; }
+  .np-cake-board { font-size: 11px; line-height: 1.25; gap: 3px 7px; padding: 8px; max-height: none; }
+  .np-workspace #notepad-shopping { margin-top: 8px; }
+  #notepad-tool-host #notepad-helper-aside { grid-template-columns: minmax(0, 1fr); }
   .np-add-item { grid-template-columns: minmax(0, 1fr) minmax(0, .7fr) auto; }
   .np-footer { align-items: flex-start; }
   .np-footer .notepad-status { text-align: left; }

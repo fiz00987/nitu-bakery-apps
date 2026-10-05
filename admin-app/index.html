@@ -2215,7 +2215,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
 #tf-soft .tf-bn{font-family:'Mukta',sans-serif}#tf-soft .tf-en{font-family:'Nunito',sans-serif}
 #tf-modern .tf-bn{font-family:'Anek Bangla',sans-serif}#tf-modern .tf-en{font-family:'Outfit',sans-serif}
 </style>
-<link rel="stylesheet" href="./notepad.css?v=2026-10-04-bakery-notebook">
+<link rel="stylesheet" href="./notepad.css?v=2026-10-04-bakery-notebook-v2">
 </head>
 <body>
 
@@ -2406,10 +2406,12 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
       <div><span class="np-eyebrow" data-np-en="YOUR BAKING WORKSPACE" data-np-bn="আপনার বেকিং ওয়ার্কস্পেস">আপনার বেকিং ওয়ার্কস্পেস</span><div class="cal-popup-title" id="notepad-heading" data-np-en="📝 Bakery Notebook" data-np-bn="📝 বেকারি নোটবুক">📝 বেকারি নোটবুক</div></div>
       <button class="cal-popup-close" onclick="App.closeNotepad()" aria-label="Close notebook">✕</button>
     </div>
-    <div class="np-tabs" role="tablist" aria-label="Note categories">
+    <div class="np-tabs" role="tablist" aria-label="Note categories and tools">
       <button type="button" id="notepad-tab-cake" class="np-tab active" role="tab" aria-selected="true" aria-controls="notepad-panel" onclick="App.notepadTab('cake')"><span class="np-tab-count">0</span><span class="np-tab-icon">🛒</span><span data-np-en="Cake Items" data-np-bn="কেক আইটেম">কেক আইটেম</span><small data-np-en="Shopping & supplies" data-np-bn="কেনাকাটা ও উপকরণ">কেনাকাটা ও উপকরণ</small></button>
       <button type="button" id="notepad-tab-baking" class="np-tab" role="tab" aria-selected="false" aria-controls="notepad-panel" onclick="App.notepadTab('baking')"><span class="np-tab-count">0</span><span class="np-tab-icon">🥣</span><span data-np-en="Baking Instructions" data-np-bn="বেকিং নির্দেশনা">বেকিং নির্দেশনা</span><small data-np-en="Recipes & methods" data-np-bn="রেসিপি ও পদ্ধতি">রেসিপি ও পদ্ধতি</small></button>
       <button type="button" id="notepad-tab-other" class="np-tab" role="tab" aria-selected="false" aria-controls="notepad-panel" onclick="App.notepadTab('other')"><span class="np-tab-count">0</span><span class="np-tab-icon">📌</span><span data-np-en="Other" data-np-bn="অন্যান্য">অন্যান্য</span><small data-np-en="Ideas & reminders" data-np-bn="আইডিয়া ও মনে রাখার নোট">আইডিয়া ও মনে রাখার নোট</small></button>
+      <button type="button" id="notepad-tab-calculator" class="np-tab np-tool-tab" role="tab" aria-selected="false" aria-controls="notepad-tool-host" onclick="App.notepadTab('calculator')"><span class="np-tab-icon">🧮</span><span data-np-en="Calculator" data-np-bn="ক্যালকুলেটর">ক্যালকুলেটর</span><small data-np-en="Add / subtract / multiply" data-np-bn="যোগ / বিয়োগ / গুণ">যোগ / বিয়োগ / গুণ</small></button>
+      <button type="button" id="notepad-tab-recipe" class="np-tab np-tool-tab" role="tab" aria-selected="false" aria-controls="notepad-tool-host" onclick="App.notepadTab('recipe')"><span class="np-tab-icon">📐</span><span data-np-en="Recipe Scaler" data-np-bn="রেসিপি স্কেলার">রেসিপি স্কেলার</span><small data-np-en="Resize ingredients" data-np-bn="উপকরণের পরিমাণ">উপকরণের পরিমাণ</small></button>
     </div>
     <div id="notepad-panel" role="tabpanel">
       <p class="notepad-hint" id="notepad-category-description"></p>
@@ -2431,24 +2433,28 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
         <div class="np-layout">
           <div>
             <label for="notepad-text"><span class="np-label" data-np-en="Your notes" data-np-bn="আপনার নোট">আপনার নোট</span></label>
-            <textarea id="notepad-text" data-np-placeholder-en="Write shopping notes, recipes or reminders…" data-np-placeholder-bn="কেনাকাটা, রেসিপি বা মনে রাখার কথা লিখুন…" placeholder="কেনাকাটা, রেসিপি বা মনে রাখার কথা লিখুন…"></textarea>
+            <div id="np-cake-board" class="np-cake-board" aria-label="All cake shopping notes"></div>
+            <details class="np-edit-details" id="notepad-edit-details">
+              <summary data-np-en="✏️ Edit full note" data-np-bn="✏️ পূর্ণ নোট এডিট করুন">✏️ পূর্ণ নোট এডিট করুন</summary>
+              <textarea id="notepad-text" data-np-placeholder-en="Write shopping notes, recipes or reminders…" data-np-placeholder-bn="কেনাকাটা, রেসিপি বা মনে রাখার কথা লিখুন…" placeholder="কেনাকাটা, রেসিপি বা মনে রাখার কথা লিখুন…"></textarea>
+            </details>
             <div class="np-toolbar" style="margin-top:8px">
               <button type="button" class="np-btn" onclick="document.getElementById('notepad-photo-input').click()" data-np-en="🖼 Add photo" data-np-bn="🖼 ছবি যোগ করুন">🖼 ছবি যোগ করুন</button>
               <button type="button" class="np-btn" id="notepad-recipe-template" onclick="App.notepadTemplate()" data-np-en="＋ Recipe outline" data-np-bn="＋ রেসিপির ছক">＋ রেসিপির ছক</button>
               <input type="file" id="notepad-photo-input" accept="image/*" hidden onchange="App.notepadAddPhoto(this)">
             </div>
             <div id="notepad-photos" class="np-photos"></div>
-            <div class="np-section" id="notepad-shopping">
-              <div class="np-section-title"><span data-np-en="🛒 Shopping checklist" data-np-bn="🛒 কেনাকাটার তালিকা">🛒 কেনাকাটার তালিকা</span><small id="notepad-check-progress">0/0</small></div>
+            <details class="np-section" id="notepad-shopping">
+              <summary class="np-section-title"><span data-np-en="🛒 Edit shopping checklist" data-np-bn="🛒 কেনাকাটার তালিকা এডিট করুন">🛒 কেনাকাটার তালিকা এডিট করুন</span><small id="notepad-check-progress">0/0</small></summary>
               <div class="np-add-item">
                 <input id="notepad-item-name" maxlength="120" aria-label="Shopping item" data-np-placeholder-en="Butter, flour…" data-np-placeholder-bn="বাটার, ময়দা…" placeholder="বাটার, ময়দা…">
                 <input id="notepad-item-detail" maxlength="80" aria-label="Quantity or detail" data-np-placeholder-en="2 kg / brand" data-np-placeholder-bn="২ কেজি / ব্র্যান্ড" placeholder="২ কেজি / ব্র্যান্ড">
                 <button type="button" class="np-btn" onclick="App.notepadAddItem()" aria-label="Add shopping item">＋</button>
               </div>
               <div id="notepad-checklist"></div>
-            </div>
+            </details>
           </div>
-          <aside aria-label="Baking helpers">
+          <div id="notepad-helper-slot"></div><aside id="notepad-helper-aside" aria-label="Baking helpers">
             <details class="np-tools" open>
               <summary data-np-en="🧮 Quick calculator" data-np-bn="🧮 দ্রুত হিসাব">🧮 দ্রুত হিসাব</summary>
               <div class="np-tool-body">
@@ -2486,6 +2492,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
         </div>
       </div>
     </div>
+    <div id="notepad-tool-host" hidden role="tabpanel" aria-label="Notebook tool"></div>
     <div class="np-footer">
       <div class="notepad-status" id="notepad-status" role="status"></div>
       <button type="button" class="np-btn" onclick="App.notepadExport()" data-np-en="↓ Backup all notes" data-np-bn="↓ সব নোটের ব্যাকআপ">↓ সব নোটের ব্যাকআপ</button>
@@ -2868,8 +2875,8 @@ function isIosDevice() {
 }
 </script>
 
-<script src="./notepad.js?v=2026-10-04-bakery-notebook"></script>
-<script src="./app.js?v=2026-10-04-bakery-notebook"></script>
+<script src="./notepad.js?v=2026-10-04-bakery-notebook-v2"></script>
+<script src="./app.js?v=2026-10-04-bakery-notebook-v2"></script>
 
 <!-- PUSH NOTIFICATION SYSTEM (Firebase Cloud Messaging / Web Push) — deferred so
      it never competes with the first orders download on slow networks. -->

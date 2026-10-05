@@ -216,3 +216,36 @@ test('renaming one page retains concurrent changes to other page fields', async 
   assert.equal(h.state.pages[0].newField, 'Also keep this');
   assert.equal(h.state.pages[0].extraField, 'preserve me');
 });
+
+test('mobile shopping board shows every line without changing stored notes', async t => {
+  const shopping = Array.from({ length: 20 }, (_, i) => `Item ${i + 1} with a long ingredient name`).join('\n');
+  const h = await harness(t, { 0: page(shopping) });
+  const board = h.el('np-cake-board');
+  assert.equal(board.children.length, 20);
+  assert.equal(board.children[19].textContent, 'Item 20 with a long ingredient name');
+  assert.equal(h.el('notepad-shopping').open, false);
+  h.input('notepad-text', shopping + '\nItem 21');
+  assert.equal(board.children.length, 21, 'preview updates as the note is typed');
+  assert.equal(h.state.pages[0].text, shopping, 'preview does not write until the draft is saved');
+  await h.notebook.flush();
+  assert.equal(h.state.pages[0].text, shopping + '\nItem 21');
+});
+
+test('calculator and recipe occupy separate tabs without changing note pages', async t => {
+  const original = { 0: page('Shopping'), 1: page('Instructions', { category: 'baking' }) };
+  const h = await harness(t, original);
+  const tools = h.el('notepad-helper-aside').querySelectorAll('details');
+  await h.notebook.switchCategory('calculator');
+  assert.equal(h.el('notepad-panel').hidden, true);
+  assert.equal(h.el('notepad-tool-host').hidden, false);
+  assert.equal(tools[0].hidden, false);
+  assert.equal(tools[1].hidden, true);
+  await h.notebook.switchCategory('recipe');
+  assert.equal(tools[0].hidden, true);
+  assert.equal(tools[1].hidden, false);
+  await h.notebook.switchCategory('baking');
+  assert.equal(h.el('notepad-panel').hidden, false);
+  assert.equal(h.el('notepad-edit-details').open, true);
+  assert.deepEqual(h.state.pages, original);
+  assert.equal(h.writes.length, 0);
+});
