@@ -151,17 +151,8 @@ function setLang(l) {
   document.querySelectorAll('[data-bn][data-en]').forEach(el => {
     el.textContent = l === 'en' ? el.dataset.en : el.dataset.bn;
   });
-  const labels = l === 'en' ? {
-    '#entry-phone': 'Phone Number *', '#f-weight': 'Weight *',
-    '#f-flavour': 'Flavour *', '#f-address': 'Delivery Address *', '#f-date': 'Delivery Date *',
-    '#f-timeslot': 'Delivery Time *', '#f-receiver': 'Receiver Name *', '#f-receiver-phone': 'Receiver Phone *',
-    '#f-fulfilment': 'Fulfilment *', '#f-surprise': 'Surprise Cake?', '#f-payment-method': 'Payment Method *',
-    '#f-writing': 'Cake writing text (Optional)',
-    '#f-notes': 'Additional Info (Optional)'
-  } : {};
-  Object.entries(labels).forEach(([selector, text]) => {
-    const field = document.querySelector(selector);
-    if (field && field.parentElement) field.parentElement.querySelector('label').textContent = text;
+  document.querySelectorAll('[data-bn-placeholder][data-en-placeholder]').forEach(el => {
+    el.placeholder = l === 'en' ? el.dataset.enPlaceholder : el.dataset.bnPlaceholder;
   });
   if (l === 'en') {
     document.getElementById('f-cake-price').placeholder = 'Enter original cake price';
@@ -172,7 +163,7 @@ function setLang(l) {
     document.querySelector('#f-payment-method option[value=""]').textContent = 'Select payment method';
     document.querySelector('#f-fulfilment option[value="delivery"]').textContent = 'Delivery';
     document.querySelector('#f-fulfilment option[value="pickup"]').textContent = 'Self pickup';
-  document.querySelector('#f-surprise option[value="no"]').textContent = 'No';
+    document.querySelector('#f-surprise option[value="no"]').textContent = 'No';
     document.querySelector('#f-surprise option[value="yes"]').textContent = 'Yes - surprise';
     FLAVOURS.forEach(f => { const option = document.querySelector(`#f-flavour option[value="${f.value}"]`); if (option) option.textContent = f.labelEn; });
     PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.nameEn; });
@@ -181,10 +172,18 @@ function setLang(l) {
     document.getElementById('f-weight').placeholder = 'যেমন: 2 pound, 2.5 pound, 1 KG';
     document.getElementById('f-timeslot').placeholder = 'যেমন: 3.00';
     document.getElementById('f-writing').placeholder = 'যেমন: তোমার হাসিই আমাদের ঘরের আলো';
+    document.querySelector('#f-fulfilment option[value="delivery"]').textContent = 'ডেলিভারি';
+    document.querySelector('#f-fulfilment option[value="pickup"]').textContent = 'সেলফ পিকআপ';
+    document.querySelector('#f-surprise option[value="no"]').textContent = 'না';
+    document.querySelector('#f-surprise option[value="yes"]').textContent = 'হ্যাঁ — সারপ্রাইজ 🎁';
+    document.querySelector('#f-flavour option[value=""]').textContent = 'নির্বাচন করুন';
+    document.querySelector('#f-payment-method option[value=""]').textContent = 'নির্বাচন করুন';
     FLAVOURS.forEach(f => { const option = document.querySelector(`#f-flavour option[value="${f.value}"]`); if (option) option.textContent = f.label; });
     PAYMENT_METHODS.forEach(p => { const option = document.querySelector(`#f-payment-method option[value="${p.id}"]`); if (option) option.textContent = p.name; });
   }
   updateReviewRewardDiscountNote();
+  showPaymentInfo(document.getElementById('f-payment-method').value);
+  recalcPrice();
 }
 
 function t(key) { return lang === 'en' ? (translationsEn[key] || key) : (translations[key] || key); }
@@ -1101,13 +1100,25 @@ function onPaymentChange() {
   const methodId = document.getElementById('f-payment-method').value;
   showPaymentInfo(methodId);
   // Keep the button grid in sync if the select was changed programmatically.
-  if (methodId) {
-    advanceMethod = methodId;
-    document.querySelectorAll('.adv-method-opt').forEach(el => el.classList.remove('active'));
-    const gridOpt = document.getElementById('adv-opt-' + methodId);
-    if (gridOpt) gridOpt.classList.add('active');
-  }
+  advanceMethod = methodId;
+  syncPaymentChoices(methodId);
   recalcPrice();
+}
+
+function syncPaymentChoices(methodId) {
+  document.querySelectorAll('.adv-method-opt').forEach(el => {
+    const selected = el.dataset.method === methodId;
+    el.classList.toggle('active', selected);
+    el.setAttribute('aria-pressed', String(selected));
+  });
+}
+
+function syncAdvanceChoices(type) {
+  document.querySelectorAll('.advance-opt').forEach(el => {
+    const selected = el.id === 'opt-' + type;
+    el.classList.toggle('active', selected);
+    el.setAttribute('aria-pressed', String(selected));
+  });
 }
 
 // Number / account details shown right below the buttons.
@@ -1117,22 +1128,25 @@ function showPaymentInfo(methodId) {
   if (!info) return;
   const method = getPaymentMethod(methodId);
   if (method && method.number) {
-    const copyField = (label, value) => `<div class="pay-line"><span>${label}: <strong>${value}</strong></span> <button type="button" class="copy-button" onclick="copyValue('${value}', this)">কপি</button></div>`;
+    const copyField = (label, value) => `<div class="pay-line"><span>${label}: <strong>${value}</strong></span> <button type="button" class="copy-button" onclick="copyValue('${value}', this)">${lang === 'en' ? 'Copy' : 'কপি'}</button></div>`;
     const plainField = (label, value) => `<div class="pay-line"><span>${label}: <strong>${value}</strong></span></div>`;
     let body = '';
     if (methodId === 'bank') {
-      body = copyField('অ্যাকাউন্ট নম্বর', method.number)
-        + copyField('ব্যাংক', 'IFIC Bank')
-        + copyField('শাখা', 'Hathazari')
-        + copyField('রাউটিং', '120 153 224')
+      body = copyField(lang === 'en' ? 'Account number' : 'অ্যাকাউন্ট নম্বর', method.number)
+        + copyField(lang === 'en' ? 'Bank' : 'ব্যাংক', 'IFIC Bank')
+        + copyField(lang === 'en' ? 'Branch' : 'শাখা', 'Hathazari')
+        + copyField(lang === 'en' ? 'Routing number' : 'রাউটিং', '120 153 224')
         + copyField('SWIFT', 'IFICBDDH')
-        + copyField('অ্যাকাউন্টধারী', 'Sabrina Akter Bhuiyan')
-        + copyField('যোগাযোগ', '01521400475');
+        + copyField(lang === 'en' ? 'Account holder' : 'অ্যাকাউন্টধারী', 'Sabrina Akter Bhuiyan')
+        + copyField(lang === 'en' ? 'Contact' : 'যোগাযোগ', '01521400475');
     } else {
-      body = copyField('নম্বর', method.number)
-        + (method.regName ? plainField('নাম', method.regName) : '');
+      body = copyField(lang === 'en' ? 'Number' : 'নম্বর', method.number)
+        + (method.regName ? plainField(lang === 'en' ? 'Name' : 'নাম', method.regName) : '');
     }
-    info.innerHTML = `📱 <strong>${method.name}</strong>${body}<br><small>${methodId === 'bkash' ? 'বিকাশ Send Money করুন। আপনার অগ্রিমের উপর ১.৮২% চার্জ যোগ হবে।' : methodId === 'nagad' ? 'নগদ Send Money করুন। আপনার অগ্রিমের উপর ১.৪৯% চার্জ যোগ হবে।' : 'পেমেন্টের বিস্তারিত যাচাই করা হবে।'}</small>`;
+    const instructions = lang === 'en'
+      ? (methodId === 'bkash' ? 'Send Money via bKash. A 1.82% charge is added to your advance.' : methodId === 'nagad' ? 'Send Money via Nagad. A 1.49% charge is added to your advance.' : 'Your bank payment details will be checked.')
+      : (methodId === 'bkash' ? 'বিকাশ Send Money করুন। আপনার অগ্রিমের উপর ১.৮২% চার্জ যোগ হবে।' : methodId === 'nagad' ? 'নগদ Send Money করুন। আপনার অগ্রিমের উপর ১.৪৯% চার্জ যোগ হবে।' : 'পেমেন্টের বিস্তারিত যাচাই করা হবে।');
+    info.innerHTML = `📱 <strong>${lang === 'en' ? method.nameEn : method.name}</strong>${body}<br><small>${instructions}</small>`;
     info.classList.add('show');
   } else {
     info.classList.remove('show');
@@ -1142,7 +1156,7 @@ function showPaymentInfo(methodId) {
 
 function copyValue(value, btn) {
   const done = () => {
-    showToast('কপি হয়েছে');
+    showToast(lang === 'en' ? 'Copied' : 'কপি হয়েছে');
     if (btn) {
       const old = btn.textContent;
       btn.textContent = '✓';
@@ -1169,7 +1183,7 @@ function fallbackCopy(value, done) {
     document.execCommand('copy');
     document.body.removeChild(ta);
     done();
-  } catch (e) { showToast('কপি হয়নি — নম্বরটি লিখে নিন'); }
+  } catch (e) { showToast(lang === 'en' ? 'Could not copy — please write down the number' : 'কপি হয়নি — নম্বরটি লিখে নিন'); }
 }
 
 let popupText = '';
@@ -1456,14 +1470,13 @@ function syncFullOnlyPayment() {
   const opt50 = document.getElementById('opt-50');
   if (opt50) {
     opt50.classList.toggle('adv-locked', lock);
+    opt50.disabled = lock;
     opt50.style.opacity = lock ? '0.4' : '';
     opt50.style.pointerEvents = lock ? 'none' : '';
   }
   if (lock && advanceType === '50') {
     advanceType = 'full';
-    document.querySelectorAll('.advance-opt').forEach(el => el.classList.remove('active'));
-    const full = document.getElementById('opt-full');
-    if (full) full.classList.add('active');
+    syncAdvanceChoices('full');
     lastAutoSend = 0; lastAutoBase = 0;
   }
   return lock;
@@ -1477,8 +1490,7 @@ function setAdvanceType(type) {
     return;   // 50% stays locked
   }
   advanceType = type;
-  document.querySelectorAll('.advance-opt').forEach(el => el.classList.remove('active'));
-  document.getElementById('opt-' + type).classList.add('active');
+  syncAdvanceChoices(type);
   lastAutoSend = 0; lastAutoBase = 0;
   const price = getCakePricing().payableCakePrice;
   if (price <= 0) document.getElementById('f-advance').value = '';
@@ -1541,9 +1553,7 @@ function chooseAdvanceMethod(id) {
   advanceMethod = id;
   const pop = document.getElementById('adv-method-popup');
   if (pop) pop.classList.remove('show');
-  document.querySelectorAll('.adv-method-opt').forEach(el => el.classList.remove('active'));
-  const gridOpt = document.getElementById('adv-opt-' + id);
-  if (gridOpt) gridOpt.classList.add('active');
+  syncPaymentChoices(id);
   // Hidden select stays in sync (charge math + submit read it),
   // details render right below the buttons.
   const sel = document.getElementById('f-payment-method');
@@ -1681,7 +1691,7 @@ function recalcPrice(manualEdit) {
     ? (lang === 'en' ? 'Payable cake price:' : 'পরিশোধযোগ্য কেকের মূল্য:')
     : (lang === 'en' ? 'Cake price:' : 'কেকের মূল্য:');
   const isPickupCalc = document.getElementById('f-fulfilment').value === 'pickup';
-  document.getElementById('calc-delivery').textContent = isPickupCalc ? 'প্রযোজ্য নয় (পিকআপ)' : '৳' + Math.round(delivery);
+  document.getElementById('calc-delivery').textContent = isPickupCalc ? (lang === 'en' ? 'Not applicable (pickup)' : 'প্রযোজ্য নয় (পিকআপ)') : '৳' + Math.round(delivery);
   document.getElementById('calc-total').textContent = '৳' + Math.round(total);
   document.getElementById('calc-box').classList.add('show');
 }
@@ -2742,12 +2752,13 @@ function resetForm() {
   currentPhotos = []; renderPhotos(); payShot = ''; renderPayShot(); advanceType = ''; lastAutoSend = 0; lastAutoBase = 0; isSurprise = false; cakeWritingNoticeShown = false;
   advanceMethod = '';
   flavourNoticeShown = false; // show the "exact flavour" notice again on a new order
-  document.querySelectorAll('.adv-method-opt').forEach(el => el.classList.remove('active'));
+  syncPaymentChoices('');
   updateWritingCount();
   document.getElementById('calc-box').classList.remove('show');
   const df = document.getElementById('due-field'); if (df) df.classList.remove('show');
   document.getElementById('payment-info').classList.remove('show');
-  document.querySelectorAll('.advance-opt').forEach(el => { el.classList.remove('active', 'adv-locked'); el.style.opacity = ''; el.style.pointerEvents = ''; });
+  syncAdvanceChoices('');
+  document.querySelectorAll('.advance-opt').forEach(el => { el.classList.remove('adv-locked'); el.disabled = false; el.style.opacity = ''; el.style.pointerEvents = ''; });
   // Cake kind back to "normal" + weight box unlocked & cleared
   cakeKind = 'normal';
   miniNoticeShown = false;
@@ -2755,7 +2766,7 @@ function resetForm() {
   const wEl = document.getElementById('f-weight');
   if (wEl) { wEl.disabled = false; wEl.style.display = ''; wEl.classList.remove('locked-field'); }
   syncFullOnlyPayment();   // fresh form → 50% available again
-  document.getElementById('entry-btn').textContent = 'অর্ডার শুরু করুন';
+  document.getElementById('entry-btn').textContent = lang === 'en' ? 'Start order' : 'অর্ডার শুরু করুন';
   document.getElementById('entry-btn').onclick = handleEntry;
   updateProgress();
 }

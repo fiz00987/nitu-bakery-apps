@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -37,6 +37,7 @@ body{font-family:'Hind Siliguri','BN-Digits','Poppins',-apple-system,sans-serif;
 body:lang(en),body:lang(en) input,body:lang(en) select,body:lang(en) textarea,body:lang(en) button{font-family:'Poppins',-apple-system,sans-serif}
 input,select,textarea,button{font-family:inherit;font-size:inherit}
 button{cursor:pointer}
+button:focus-visible,a:focus-visible{outline:3px solid var(--pink);outline-offset:3px}
 
 /* SPLASH (welcome, ~2.5s) */
 .splash-screen{position:fixed;inset:0;z-index:5000;background:#fbf4e8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .6s ease,visibility .6s}
@@ -136,11 +137,12 @@ button{cursor:pointer}
 .pay-footnote{font-size:11.5px;color:var(--green);background:var(--green-light);border:1px solid #a5d6a7;border-radius:var(--radius-sm);padding:8px 10px;margin-top:8px;line-height:1.5;display:none}
 .pay-footnote.show{display:block}
 .advance-options{display:flex;gap:8px;margin-bottom:12px}
-.advance-opt{flex:1;padding:10px;border:2px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-size:13px;font-weight:600;cursor:pointer;color:var(--text2)}
+.advance-opt{flex:1;min-width:0;padding:10px;border:2px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-size:13px;font-weight:600;cursor:pointer;color:var(--text2);background:var(--surface2)}
 .advance-opt.active{border-color:var(--pink);background:var(--pink-light);color:var(--pink)}
+.advance-opt:disabled{opacity:.5;cursor:not-allowed}
 /* "How did you pay?" gateway chooser (auto-popup after advance pick) */
 .adv-method-grid{display:flex;gap:8px}
-.adv-method-opt{flex:1;padding:10px 6px;border:2px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-size:13px;font-weight:700;cursor:pointer;color:var(--text2);background:var(--surface2)}
+.adv-method-opt{flex:1;min-width:0;padding:10px 6px;border:2px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-size:13px;font-weight:700;cursor:pointer;color:var(--text2);background:var(--surface2)}
 .adv-method-opt.active{border-color:var(--pink);background:var(--pink-light);color:var(--pink)}
 .adv-method-opt small{display:block;font-weight:500;font-size:10.5px;margin-top:2px;opacity:.75;color:inherit}
 /* Auto-calculated payment amount — grey box, bold; editable but warns on tap */
@@ -307,11 +309,11 @@ html.t-gold .order-number-badge{color:#a5813e}
     </div>
     <div class="entry-error" id="entry-error"></div>
     <div class="field">
-      <label data-bn="ফোন নম্বর *" data-en="Phone Number *">ফোন নম্বর *</label>
+       <label for="entry-phone" data-bn="ফোন নম্বর *" data-en="Phone Number *">ফোন নম্বর *</label>
       <input type="tel" id="entry-phone" placeholder="017xx-xxxxxx" autocomplete="tel" maxlength="14">
     </div>
     <div class="security-box" id="security-box">
-      <label id="security-label"></label>
+       <label for="entry-security" id="security-label"></label>
       <input type="text" inputmode="numeric" id="entry-security" placeholder="উত্তর">
     </div>
     <div class="previous-orders" id="previous-orders">
@@ -336,7 +338,7 @@ html.t-gold .order-number-badge{color:#a5813e}
   <div class="section">
     <div class="section-title">🎂 <span data-bn="কেক তথ্য" data-en="Cake Details">কেক তথ্য</span></div>
     <div class="field">
-      <label data-bn="আপনার নাম *" data-en="Your Name *">আপনার নাম *</label>
+       <label for="f-name" data-bn="আপনার নাম *" data-en="Your Name *">আপনার নাম *</label>
       <input type="text" id="f-name" placeholder="Place your exact Facebook profile name here" oninput="updateProgress()">
       <div class="hint-box">Facebook প্রোফাইলে যে নাম আছে, ঠিক সেভাবে লিখুন — যেন আমরা আপনাকে সহজে খুঁজে পাই।</div>
     </div>
@@ -373,21 +375,21 @@ html.t-gold .order-number-badge{color:#a5813e}
 
       <!-- Same address -->
       <label class="same-toggle"><input type="checkbox" id="same-address-check" checked> <span data-bn="উভয় কেক একই ঠিকানায় যাবে" data-en="Both cakes to the same address">উভয় কেক একই ঠিকানায় যাবে</span></label>
-      <div class="field"><label data-bn="ডেলিভারি ঠিকানা *" data-en="Delivery Address *">ডেলিভারি ঠিকানা *</label><textarea id="f-address" placeholder="পূর্ণ ঠিকানা লিখুন" oninput="updateProgress()"></textarea></div>
+       <div class="field"><label for="f-address" data-bn="ডেলিভারি ঠিকানা *" data-en="Delivery Address *">ডেলিভারি ঠিকানা *</label><textarea id="f-address" placeholder="পূর্ণ ঠিকানা লিখুন" data-bn-placeholder="পূর্ণ ঠিকানা লিখুন" data-en-placeholder="Enter the full address" oninput="updateProgress()"></textarea></div>
       <div id="cake2-address-block" class="field-hidden">
-        <div class="field"><label data-bn="কেক ২ ঠিকানা *" data-en="Cake 2 address *">কেক ২ ঠিকানা *</label><textarea id="f-address-2" placeholder="পূর্ণ ঠিকানা লিখুন" oninput="updateProgress()"></textarea></div>
+         <div class="field"><label for="f-address-2" data-bn="কেক ২ ঠিকানা *" data-en="Cake 2 address *">কেক ২ ঠিকানা *</label><textarea id="f-address-2" placeholder="পূর্ণ ঠিকানা লিখুন" data-bn-placeholder="পূর্ণ ঠিকানা লিখুন" data-en-placeholder="Enter the full address" oninput="updateProgress()"></textarea></div>
       </div>
 
       <!-- Same receiver name -->
       <label class="same-toggle"><input type="checkbox" id="same-receiver-check" checked> <span data-bn="একই ব্যক্তি কেক গ্রহণ করবেন" data-en="Same person receives both cakes">একই ব্যক্তি কেক গ্রহণ করবেন</span></label>
-      <div class="field"><label data-bn="রিসিভারের নাম *" data-en="Receiver Name *">রিসিভারের নাম *</label><input type="text" id="f-receiver" placeholder="কে নেবেন" oninput="updateProgress()"></div>
+       <div class="field"><label for="f-receiver" data-bn="রিসিভারের নাম *" data-en="Receiver Name *">রিসিভারের নাম *</label><input type="text" id="f-receiver" placeholder="কে নেবেন" data-bn-placeholder="কে নেবেন" data-en-placeholder="Who will receive the cake?" oninput="updateProgress()"></div>
       <div id="cake2-receiver-block" class="field-hidden">
-        <div class="field"><label data-bn="কেক ২ রিসিভারের নাম *" data-en="Cake 2 receiver name *">কেক ২ রিসিভারের নাম *</label><input type="text" id="f-receiver-2" placeholder="কে নেবেন" oninput="updateProgress()"></div>
+         <div class="field"><label for="f-receiver-2" data-bn="কেক ২ রিসিভারের নাম *" data-en="Cake 2 receiver name *">কেক ২ রিসিভারের নাম *</label><input type="text" id="f-receiver-2" placeholder="কে নেবেন" data-bn-placeholder="কে নেবেন" data-en-placeholder="Who will receive cake 2?" oninput="updateProgress()"></div>
       </div>
 
       <!-- Receiver phone (cake 1) + my-number checkbox -->
       <div class="field">
-        <label data-bn="রিসিভার ফোন *" data-en="Receiver Phone *">রিসিভার ফোন *</label>
+         <label for="f-receiver-phone" data-bn="রিসিভার ফোন *" data-en="Receiver Phone *">রিসিভার ফোন *</label>
         <div style="display:flex;gap:8px;align-items:center">
           <input type="tel" id="f-receiver-phone" placeholder="017xx-xxxxxx" maxlength="14" style="flex:1" oninput="updateProgress()">
           <label class="inline-check"><input type="checkbox" id="receiver-same-cust" onchange="onReceiverSameCust(1)"> <span data-bn="আমার নম্বর" data-en="My number">আমার নম্বর</span></label>
@@ -397,7 +399,7 @@ html.t-gold .order-number-badge{color:#a5813e}
       <label class="same-toggle"><input type="checkbox" id="same-phone-check" checked> <span data-bn="কেক ২-এর রিসিভার ফোনও একই" data-en="Cake 2 receiver phone is the same">কেক ২-এর রিসিভার ফোনও একই</span></label>
       <div id="cake2-phone-block" class="field-hidden">
         <div class="field">
-          <label data-bn="কেক ২ রিসিভার ফোন *" data-en="Cake 2 receiver phone *">কেক ২ রিসিভার ফোন *</label>
+           <label for="f-receiver-phone-2" data-bn="কেক ২ রিসিভার ফোন *" data-en="Cake 2 receiver phone *">কেক ২ রিসিভার ফোন *</label>
           <div style="display:flex;gap:8px;align-items:center">
             <input type="tel" id="f-receiver-phone-2" placeholder="017xx-xxxxxx" maxlength="14" style="flex:1" oninput="updateProgress()">
             <label class="inline-check"><input type="checkbox" id="receiver-same-cust-2" onchange="onReceiverSameCust(2)"> <span data-bn="আমার নম্বর" data-en="My number">আমার নম্বর</span></label>
@@ -407,30 +409,30 @@ html.t-gold .order-number-badge{color:#a5813e}
 <!-- Alt phone -->
       <label class="same-toggle"><input type="checkbox" id="alt-phone-check"> <span data-bn="জরুরি বিকল্প ফোন নম্বর যোগ করুন" data-en="Add an emergency alternate phone">জরুরি বিকল্প ফোন নম্বর যোগ করুন</span></label>
       <div id="alt-phone-block" class="field-hidden">
-        <div class="field"><label data-bn="বিকল্প ফোন নম্বর" data-en="Alternate phone number">বিকল্প ফোন নম্বর</label><input type="tel" id="f-alt-phone" placeholder="01XXXXXXXXX"></div>
+         <div class="field"><label for="f-alt-phone" data-bn="বিকল্প ফোন নম্বর" data-en="Alternate phone number">বিকল্প ফোন নম্বর</label><input type="tel" id="f-alt-phone" placeholder="01XXXXXXXXX"></div>
       </div>
 
       <!-- Same date -->
       <label class="same-toggle"><input type="checkbox" id="same-date-check" checked> <span data-bn="উভয় কেক একই তারিখে" data-en="Both cakes on the same date">উভয় কেক একই তারিখে</span></label>
       <div class="row2">
-        <div class="field"><label data-bn="ডেলিভারি তারিখ *" data-en="Delivery Date *">ডেলিভারি তারিখ *</label><input type="date" id="f-date" oninput="updateProgress()"></div>
-        <div id="cake2-date-block" class="field-hidden"><div class="field"><label data-bn="কেক ২ তারিখ *" data-en="Cake 2 date *">কেক ২ তারিখ *</label><input type="date" id="f-date-2" oninput="updateProgress()"></div></div>
+         <div class="field"><label for="f-date" data-bn="ডেলিভারি তারিখ *" data-en="Delivery Date *">ডেলিভারি তারিখ *</label><input type="date" id="f-date" oninput="updateProgress()"></div>
+         <div id="cake2-date-block" class="field-hidden"><div class="field"><label for="f-date-2" data-bn="কেক ২ তারিখ *" data-en="Cake 2 date *">কেক ২ তারিখ *</label><input type="date" id="f-date-2" oninput="updateProgress()"></div></div>
       </div>
 
       <!-- Same time -->
       <label class="same-toggle"><input type="checkbox" id="same-time-check" checked> <span data-bn="উভয় কেক একই সময়ে" data-en="Both cakes at the same time">উভয় কেক একই সময়ে</span></label>
       <div class="row2">
         <div class="field">
-          <label data-bn="ডেলিভারি সময় *" data-en="Delivery Time *">ডেলিভারি সময় *</label>
+           <label for="f-timeslot" data-bn="ডেলিভারি সময় *" data-en="Delivery Time *">ডেলিভারি সময় *</label>
           <div style="display:flex;gap:6px">
             <input type="text" id="f-timeslot" inputmode="decimal" placeholder="যেমন: 3.00" autocomplete="off" style="flex:1;min-width:0" onblur="normalizeTimeInput(1)" oninput="updateProgress()">
             <select id="f-time-ampm" style="width:84px;flex-shrink:0" onchange="updateProgress()"><option value="">--</option><option value="AM">AM</option><option value="PM">PM</option></select>
           </div>
-          <div class="note-box">🕐 ডেলিভারি: প্রতিদিন দুপুর ১২টা থেকে রাত ৮টা পর্যন্ত। দুপুর ১২টার আগে অর্ডার নেওয়া হয় না।</div>
+           <div class="note-box" data-bn="🕐 ডেলিভারি: প্রতিদিন দুপুর ১২টা থেকে রাত ৮টা পর্যন্ত। দুপুর ১২টার আগে অর্ডার নেওয়া হয় না।" data-en="🕐 Delivery is available daily from 12 PM to 8 PM. Orders before 12 PM are not accepted.">🕐 ডেলিভারি: প্রতিদিন দুপুর ১২টা থেকে রাত ৮টা পর্যন্ত। দুপুর ১২টার আগে অর্ডার নেওয়া হয় না।</div>
         </div>
         <div id="cake2-time-block" class="field-hidden">
           <div class="field">
-            <label data-bn="কেক ২ সময় *" data-en="Cake 2 time *">কেক ২ সময় *</label>
+             <label for="f-timeslot-2" data-bn="কেক ২ সময় *" data-en="Cake 2 time *">কেক ২ সময় *</label>
             <div style="display:flex;gap:6px">
               <input type="text" id="f-timeslot-2" inputmode="decimal" placeholder="যেমন: 3.00" autocomplete="off" style="flex:1;min-width:0" onblur="normalizeTimeInput(2)" oninput="updateProgress()">
               <select id="f-time-ampm-2" style="width:84px;flex-shrink:0" onchange="updateProgress()"><option value="">--</option><option value="AM">AM</option><option value="PM">PM</option></select>
@@ -439,15 +441,15 @@ html.t-gold .order-number-badge{color:#a5813e}
         </div>
       </div>
 <div class="field delivery-charge-field" id="delivery-charge-field">
-        <label>ডেলিভারি চার্জ (ফাঁকা রাখলে বাকি ⏳ — এজেন্টকে দিতে হবে)</label>
-        <input type="number" id="f-delivery-charge" min="0" step="1" placeholder="জানা থাকলে লিখুন, না জানলে ফাঁকা রাখুন" oninput="recalcPrice()">
-        <div class="note-box">এই চার্জটি কেকের দামের অংশ নয়। পুরো টাকা ডেলিভারি এজেন্টকে দেওয়া হবে।</div>
+         <label for="f-delivery-charge" data-bn="ডেলিভারি চার্জ (ফাঁকা রাখলে বাকি ⏳ — এজেন্টকে দিতে হবে)" data-en="Delivery charge (leave blank if unknown ⏳ — pay the agent later)">ডেলিভারি চার্জ (ফাঁকা রাখলে বাকি ⏳ — এজেন্টকে দিতে হবে)</label>
+         <input type="number" id="f-delivery-charge" min="0" step="1" placeholder="জানা থাকলে লিখুন, না জানলে ফাঁকা রাখুন" data-bn-placeholder="জানা থাকলে লিখুন, না জানলে ফাঁকা রাখুন" data-en-placeholder="Enter if known; otherwise leave blank" oninput="recalcPrice()">
+         <div class="note-box" data-bn="এই চার্জটি কেকের দামের অংশ নয়। পুরো টাকা ডেলিভারি এজেন্টকে দেওয়া হবে।" data-en="This charge is separate from the cake price. Pay the full amount to the delivery agent.">এই চার্জটি কেকের দামের অংশ নয়। পুরো টাকা ডেলিভারি এজেন্টকে দেওয়া হবে।</div>
       </div>
       <label class="same-toggle"><input type="checkbox" id="same-charge-check" checked> <span data-bn="কেক ২-এর ডেলিভারি চার্জও একই" data-en="Cake 2 delivery charge is the same">কেক ২-এর ডেলিভারি চার্জও একই</span></label>
       <div id="cake2-charge-block" class="field-hidden">
         <div class="field delivery-charge2-field" id="delivery-charge2-field">
-          <label>কেক ২ ডেলিভারি চার্জ</label>
-          <input type="number" id="f-delivery-charge-2" min="0" step="1" placeholder="কেক ২ চার্জ লিখুন" oninput="recalcPrice()">
+           <label for="f-delivery-charge-2" data-bn="কেক ২ ডেলিভারি চার্জ" data-en="Cake 2 delivery charge">কেক ২ ডেলিভারি চার্জ</label>
+           <input type="number" id="f-delivery-charge-2" min="0" step="1" placeholder="কেক ২ চার্জ লিখুন" data-bn-placeholder="কেক ২ চার্জ লিখুন" data-en-placeholder="Enter cake 2 delivery charge" oninput="recalcPrice()">
         </div>
       </div>
     </div>
@@ -455,22 +457,22 @@ html.t-gold .order-number-badge{color:#a5813e}
     <!-- Surprise cake -->
     <div class="field" style="margin-top:16px">
       <label data-bn="সারপ্রাইজ কেক?" data-en="Surprise Cake?">সারপ্রাইজ কেক?</label>
-      <select id="f-surprise"><option value="no">না</option><option value="yes">হ্যাঁ — সারপ্রাইজ 🎁</option></select>
-      <div class="surprise-note" id="surprise-note">⚠️ সারপ্রাইজ কেকের জন্য ১০০% অগ্রিম পেমেন্ট আবশ্যক।</div>
+       <select id="f-surprise"><option value="no">না</option><option value="yes">হ্যাঁ — সারপ্রাইজ 🎁</option></select>
+       <div class="surprise-note" id="surprise-note" data-bn="⚠️ সারপ্রাইজ কেকের জন্য ১০০% অগ্রিম পেমেন্ট আবশ্যক।" data-en="⚠️ Surprise cakes require full advance payment.">⚠️ সারপ্রাইজ কেকের জন্য ১০০% অগ্রিম পেমেন্ট আবশ্যক।</div>
     </div>
     <div class="field">
       <label data-bn="ডেলিভারি ধরন *" data-en="Fulfilment type *">ডেলিভারি ধরন *</label>
       <select id="f-fulfilment" onchange="onFulfilmentChange()"><option value="delivery">ডেলিভারিম্যান</option><option value="pickup">সেলফ পিকআপ</option></select>
-      <div class="pickup-box" id="pickup-box">সেলফ পিকআপ ঠিকানা: Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram.<br><a href="https://maps.app.goo.gl/vAk44BoEWRbppBuz8" target="_blank" rel="noopener">Google Maps-এ ঠিকানা খুলুন</a></div>
+       <div class="pickup-box" id="pickup-box"><span data-bn="সেলফ পিকআপ ঠিকানা:" data-en="Self-pickup address:">সেলফ পিকআপ ঠিকানা:</span> Rongdhonu apartment, Khoshalshah road, Amanbazar, Hathazari Road, Chattogram.<br><a href="https://maps.app.goo.gl/vAk44BoEWRbppBuz8" target="_blank" rel="noopener" data-bn="Google Maps-এ ঠিকানা খুলুন" data-en="Open address in Google Maps">Google Maps-এ ঠিকানা খুলুন</a></div>
     </div>
   </div>
 
   <!-- Mini cake 100% advance popup -->
   <div class="popup-overlay" id="mini-advance-popup" onclick="if(event.target===this)this.classList.remove('show')">
     <div class="popup" style="max-width:380px" role="alertdialog" aria-modal="true">
-      <div class="popup-header"><h3 style="font-size:16px">⚠️ মিনি কেক — ১০০% অগ্রিম</h3><button type="button" class="popup-close" onclick="closeMiniAdvancePopup()">×</button></div>
-      <div style="padding:16px 18px;font-size:13.5px;line-height:1.7;color:var(--text2)">মিনি কেকের জন্য <strong>১০০% অগ্রিম পেমেন্ট আবশ্যক</strong>।<br>অগ্রিম ১০০% পরিশোধ নির্বাচন করা হয়েছে।</div>
-      <div style="padding:0 18px 18px"><button type="button" class="btn-primary" style="margin-top:0" onclick="closeMiniAdvancePopup()">বুঝেছি</button></div>
+       <div class="popup-header"><h3 style="font-size:16px" data-bn="⚠️ মিনি কেক — ১০০% অগ্রিম" data-en="⚠️ Mini cake — full advance required">⚠️ মিনি কেক — ১০০% অগ্রিম</h3><button type="button" class="popup-close" onclick="closeMiniAdvancePopup()">×</button></div>
+       <div style="padding:16px 18px;font-size:13.5px;line-height:1.7;color:var(--text2)" data-bn="মিনি কেকের জন্য ১০০% অগ্রিম পেমেন্ট আবশ্যক। অগ্রিম ১০০% পরিশোধ নির্বাচন করা হয়েছে।" data-en="Mini cakes require full advance payment. Pay in full has been selected.">মিনি কেকের জন্য ১০০% অগ্রিম পেমেন্ট আবশ্যক। অগ্রিম ১০০% পরিশোধ নির্বাচন করা হয়েছে।</div>
+       <div style="padding:0 18px 18px"><button type="button" class="btn-primary" style="margin-top:0" onclick="closeMiniAdvancePopup()" data-bn="বুঝেছি" data-en="Got it">বুঝেছি</button></div>
     </div>
   </div>
 
@@ -489,13 +491,13 @@ html.t-gold .order-number-badge{color:#a5813e}
   <div class="section">
     <div class="section-title">💳 <span data-bn="পেমেন্ট" data-en="Payment">পেমেন্ট</span></div>
     <div class="field">
-      <label data-bn="কেকের নির্ধারিত মূল্য * (৳)" data-en="Total payment of the cake * (Tk)">কেকের নির্ধারিত মূল্য * (৳)</label>
+       <label for="f-cake-price" data-bn="কেকের নির্ধারিত মূল্য * (৳)" data-en="Total payment of the cake * (Tk)">কেকের নির্ধারিত মূল্য * (৳)</label>
       <input type="number" id="f-cake-price" min="0" placeholder="কেকের মূল্য লিখুন" data-bn-placeholder="কেকের মূল্য লিখুন" data-en-placeholder="Enter cake price" oninput="recalcPrice()">
     </div>
     <div class="calc-box" id="calc-box">
-      <div class="calc-row"><span>কেকের মূল্য:</span><span id="calc-base">৳0</span></div>
-      <div class="calc-row"><span>ডেলিভারি:</span><span id="calc-delivery">৳0</span></div>
-      <div class="calc-row total"><span>মোট পেমেন্ট:</span><span id="calc-total">৳0</span></div>
+       <div class="calc-row"><span data-bn="কেকের মূল্য:" data-en="Cake price:">কেকের মূল্য:</span><span id="calc-base">৳0</span></div>
+       <div class="calc-row"><span data-bn="ডেলিভারি:" data-en="Delivery:">ডেলিভারি:</span><span id="calc-delivery">৳0</span></div>
+       <div class="calc-row total"><span data-bn="মোট পেমেন্ট:" data-en="Total cake payment:">মোট পেমেন্ট:</span><span id="calc-total">৳0</span></div>
     </div>
     <div class="field">
       <label data-bn="পেমেন্ট পদ্ধতি *" data-en="Payment Method *">পেমেন্ট পদ্ধতি *</label>
@@ -505,21 +507,21 @@ html.t-gold .order-number-badge{color:#a5813e}
     </div>
     <div class="payment-info-box" id="payment-info"></div>
     <div class="field">
-      <label data-bn="আপনি কিভাবে পেমেন্ট করেছেন? *" data-en="Payment method *">আপনি কিভাবে পেমেন্ট করেছেন? *</label>
-      <div class="adv-method-grid" id="adv-method-grid">
-        <div class="adv-method-opt" id="adv-opt-bkash" onclick="chooseAdvanceMethod('bkash')">বিকাশ<small>চার্জ ১.৮২%</small></div>
-        <div class="adv-method-opt" id="adv-opt-nagad" onclick="chooseAdvanceMethod('nagad')">নগদ<small>চার্জ ১.৪৯%</small></div>
-        <div class="adv-method-opt" id="adv-opt-bank" onclick="chooseAdvanceMethod('bank')">ব্যাংক<small>চার্জ নেই</small></div>
+       <label id="payment-method-label" data-bn="আপনি কিভাবে পেমেন্ট করেছেন? *" data-en="Payment method *">আপনি কিভাবে পেমেন্ট করেছেন? *</label>
+       <div class="adv-method-grid" id="adv-method-grid" role="group" aria-labelledby="payment-method-label">
+         <button type="button" class="adv-method-opt" id="adv-opt-bkash" data-method="bkash" aria-pressed="false" onclick="chooseAdvanceMethod('bkash')"><span data-bn="বিকাশ" data-en="bKash">বিকাশ</span><small data-bn="চার্জ ১.৮২%" data-en="1.82% charge">চার্জ ১.৮২%</small></button>
+         <button type="button" class="adv-method-opt" id="adv-opt-nagad" data-method="nagad" aria-pressed="false" onclick="chooseAdvanceMethod('nagad')"><span data-bn="নগদ" data-en="Nagad">নগদ</span><small data-bn="চার্জ ১.৪৯%" data-en="1.49% charge">চার্জ ১.৪৯%</small></button>
+         <button type="button" class="adv-method-opt" id="adv-opt-bank" data-method="bank" aria-pressed="false" onclick="chooseAdvanceMethod('bank')"><span data-bn="ব্যাংক" data-en="Bank">ব্যাংক</span><small data-bn="চার্জ নেই" data-en="No charge">চার্জ নেই</small></button>
       </div>
     </div>
     <div class="field">
-      <label data-bn="আপনি কত টাকা পাঠাতে চান? *" data-en="How much do you want to send? *">আপনি কত টাকা পাঠাতে চান? *</label>
-      <div class="advance-options" id="advance-options">
-        <div class="advance-opt" id="opt-50" onclick="setAdvanceType('50')">৫০% অগ্রিম</div>
-        <div class="advance-opt" id="opt-full" onclick="setAdvanceType('full')">১০০% পরিশোধ</div>
+       <label for="f-advance" id="advance-type-label" data-bn="আপনি কত টাকা পাঠাতে চান? *" data-en="How much do you want to send? *">আপনি কত টাকা পাঠাতে চান? *</label>
+       <div class="advance-options" id="advance-options" role="group" aria-labelledby="advance-type-label">
+         <button type="button" class="advance-opt" id="opt-50" aria-pressed="false" data-bn="৫০% অগ্রিম" data-en="50% advance" onclick="setAdvanceType('50')">৫০% অগ্রিম</button>
+         <button type="button" class="advance-opt" id="opt-full" aria-pressed="false" data-bn="১০০% পরিশোধ" data-en="Pay in full" onclick="setAdvanceType('full')">১০০% পরিশোধ</button>
       </div>
       <div class="advance-input-label" style="margin-top:0;margin-bottom:6px">💳 <span data-bn="অগ্রিম পেমেন্টের পরিমাণ" data-en="Advance payment amount">অগ্রিম পেমেন্টের পরিমাণ</span></div>
-      <input type="number" id="f-advance" class="advance-input" placeholder="৳ পরিমাণ লিখুন" min="0" aria-label="অগ্রিম পেমেন্টের পরিমাণ" oninput="recalcPrice(true)" onclick="onAdvanceClick()" onfocus="onAdvanceClick()">
+       <input type="number" id="f-advance" class="advance-input" placeholder="৳ পরিমাণ লিখুন" data-bn-placeholder="৳ পরিমাণ লিখুন" data-en-placeholder="Amount to send (৳)" min="0" oninput="recalcPrice(true)" onclick="onAdvanceClick()" onfocus="onAdvanceClick()">
       <div class="hint-box" id="advance-hint"></div>
     </div>
 
@@ -535,13 +537,13 @@ html.t-gold .order-number-badge{color:#a5813e}
     <div class="field" style="margin-top:12px">
       <label data-bn="💳 পেমেন্টের স্ক্রিনশট *" data-en="Payment screenshot *">💳 পেমেন্টের স্ক্রিনশট *</label>
       <input type="file" id="f-payshot" accept="image/*" style="display:none" onchange="handlePayShot(event)">
-      <div class="photo-upload" onclick="document.getElementById('f-payshot').click()">📎<div>পেমেন্টের স্ক্রিনশট আপলোড করুন</div></div>
+       <div class="photo-upload" onclick="document.getElementById('f-payshot').click()">📎<div data-bn="পেমেন্টের স্ক্রিনশট আপলোড করুন" data-en="Upload payment screenshot">পেমেন্টের স্ক্রিনশট আপলোড করুন</div></div>
       <div class="photo-grid" id="payshot-grid"></div>
-      <div class="note-box">bKash / Nagad / ব্যাংক পেমেন্টের কনফার্মেশন পেজের ছবি দিন। এডমিন এটা দেখেই অর্ডার কনফার্ম করবেন।</div>
+       <div class="note-box" data-bn="bKash / Nagad / ব্যাংক পেমেন্টের কনফার্মেশন পেজের ছবি দিন। এডমিন এটা দেখেই অর্ডার কনফার্ম করবেন।" data-en="Upload the bKash, Nagad or bank payment confirmation screen. The admin will check it before confirming your order.">bKash / Nagad / ব্যাংক পেমেন্টের কনফার্মেশন পেজের ছবি দিন। এডমিন এটা দেখেই অর্ডার কনফার্ম করবেন।</div>
     </div>
     <div class="field">
       <label data-bn="অতিরিক্ত তথ্য (ঐচ্ছিক)" data-en="Additional Info (Optional)">অতিরিক্ত তথ্য (ঐচ্ছিক)</label>
-      <textarea id="f-notes" placeholder="কোনো বিশেষ অনুরোধ থাকলে লিখুন"></textarea>
+       <textarea id="f-notes" placeholder="কোনো বিশেষ অনুরোধ থাকলে লিখুন" data-bn-placeholder="কোনো বিশেষ অনুরোধ থাকলে লিখুন" data-en-placeholder="Add any special requests"></textarea>
     </div>
   </div>
 
@@ -591,9 +593,9 @@ html.t-gold .order-number-badge{color:#a5813e}
     <div class="popup-content" style="font-size:13.5px">
       <span data-bn="আপনার অগ্রিমের সাথে ক্যাশআউট চার্জ যোগ হয়। আপনি কোন মাধ্যমে টাকা পাঠাবেন?" data-en="A cash-out charge is added to your advance. How will you send the money?">আপনার অগ্রিমের সাথে ক্যাশআউট চার্জ যোগ হয়। আপনি কোন মাধ্যমে টাকা পাঠাবেন?</span>
       <div class="adv-method-grid" style="margin-top:12px">
-        <div class="adv-method-opt" onclick="chooseAdvanceMethod('bkash')">বিকাশ<small>চার্জ ১.৮২%</small></div>
-        <div class="adv-method-opt" onclick="chooseAdvanceMethod('nagad')">নগদ<small>চার্জ ১.৪৯%</small></div>
-        <div class="adv-method-opt" onclick="chooseAdvanceMethod('bank')">ব্যাংক<small>চার্জ নেই</small></div>
+         <button type="button" class="adv-method-opt" data-method="bkash" aria-pressed="false" onclick="chooseAdvanceMethod('bkash')"><span data-bn="বিকাশ" data-en="bKash">বিকাশ</span><small data-bn="চার্জ ১.৮২%" data-en="1.82% charge">চার্জ ১.৮২%</small></button>
+         <button type="button" class="adv-method-opt" data-method="nagad" aria-pressed="false" onclick="chooseAdvanceMethod('nagad')"><span data-bn="নগদ" data-en="Nagad">নগদ</span><small data-bn="চার্জ ১.৪৯%" data-en="1.49% charge">চার্জ ১.৪৯%</small></button>
+         <button type="button" class="adv-method-opt" data-method="bank" aria-pressed="false" onclick="chooseAdvanceMethod('bank')"><span data-bn="ব্যাংক" data-en="Bank">ব্যাংক</span><small data-bn="চার্জ নেই" data-en="No charge">চার্জ নেই</small></button>
       </div>
     </div>
   </div>
@@ -602,7 +604,7 @@ html.t-gold .order-number-badge{color:#a5813e}
 <!-- Advance-edit warning popup (payment auto-calculated incl. gateway charge) -->
 <div class="popup-overlay" id="advance-warn-popup" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="popup" style="max-width:380px" role="alertdialog" aria-modal="true">
-    <div class="popup-header"><h3 style="font-size:16px">⚠️ অটো হিসাব</h3><button type="button" class="popup-close" onclick="closeAdvanceWarn()">×</button></div>
+     <div class="popup-header"><h3 style="font-size:16px" data-bn="⚠️ অটো হিসাব" data-en="⚠️ Auto-calculated amount">⚠️ অটো হিসাব</h3><button type="button" class="popup-close" onclick="closeAdvanceWarn()">×</button></div>
     <div style="padding:16px 18px;font-size:13.5px;line-height:1.7;color:var(--text2)" id="advance-warn-msg"></div>
     <div style="padding:0 18px 18px"><button type="button" class="btn-primary" style="margin-top:0" id="advance-warn-ok" onclick="closeAdvanceWarn()">বুঝেছি</button></div>
   </div>
@@ -627,6 +629,7 @@ html.t-gold .order-number-badge{color:#a5813e}
 <!-- Firebase + Utils -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="./firebase-config.js"></script>
 <script src="./utils.js"></script>
 

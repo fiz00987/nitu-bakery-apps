@@ -50,6 +50,7 @@
       cursor: pointer;
     }
     button:disabled { opacity: .65; cursor: wait; }
+    button:focus-visible, a:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
     .hint { font-size: 13px; color: #756878; }
     .orders { display: grid; gap: 9px; }
     .order {
@@ -102,7 +103,7 @@
     <section class="card">
       <h2>১. ফোন নম্বর দিন / Enter your phone</h2>
       <label for="phone">ডেলিভারি অর্ডারের ফোন নম্বর</label>
-      <input id="phone" inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX">
+      <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX">
       <div class="hint">যে নম্বরে অর্ডারটি করা হয়েছিল / The number used for the order</div>
       <button id="find" type="button">ডেলিভারি অর্ডার খুঁজুন / Find orders</button>
       <div id="msg" class="error" role="alert" aria-live="polite"></div>

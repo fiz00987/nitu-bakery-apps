@@ -88,26 +88,10 @@ function setLang(l) {
   document.querySelectorAll('[data-bn][data-en]').forEach(el => {
     el.textContent = l === 'en' ? el.dataset.en : el.dataset.bn;
   });
-  renderCakeColumns();
-  const labelMap = l === 'en' ? {
-    'f-address': 'Delivery Address *',
-    'f-receiver': 'Receiver Name *',
-    'f-receiver-phone': 'Receiver Phone *',
-    'f-date': 'Delivery Date *',
-    'f-timeslot': 'Delivery Time *',
-    'f-alt-phone': 'Alternate phone number',
-    'f-surprise': 'Surprise Cake?',
-    'f-fulfilment': 'Fulfilment type *',
-    'f-payment-method': 'Payment Method *',
-    'f-notes': 'Additional Info (Optional)'
-  } : {};
-  Object.entries(labelMap).forEach(([id, text]) => {
-    const field = document.getElementById(id);
-    if (field && field.parentElement) {
-      const lab = field.parentElement.querySelector('label');
-      if (lab) lab.textContent = text;
-    }
+  document.querySelectorAll('[data-bn-placeholder][data-en-placeholder]').forEach(el => {
+    el.placeholder = l === 'en' ? el.dataset.enPlaceholder : el.dataset.bnPlaceholder;
   });
+  renderCakeColumns();
   if (l === 'en') {
     const cp = document.getElementById('f-cake-price'); if (cp) cp.placeholder = 'Enter cake price';
     const ts = document.getElementById('f-timeslot'); if (ts) ts.placeholder = 'Example: 3.00';
@@ -115,14 +99,26 @@ function setLang(l) {
     if (pmSel) { const d = pmSel.querySelector('option[value=""]'); if (d) d.textContent = 'Select payment method'; }
     const ful = document.getElementById('f-fulfilment');
     if (ful) {
-      const d2 = ful.querySelector('option[value="delivery"]'); if (d2) d2.textContent = 'Deliveryman';
+      const d2 = ful.querySelector('option[value="delivery"]'); if (d2) d2.textContent = 'Delivery';
       const d3 = ful.querySelector('option[value="pickup"]'); if (d3) d3.textContent = 'Self pickup';
     }
+    document.querySelector('#f-surprise option[value="no"]').textContent = 'No';
+    document.querySelector('#f-surprise option[value="yes"]').textContent = 'Yes — surprise 🎁';
   } else {
     const cp = document.getElementById('f-cake-price'); if (cp) cp.placeholder = 'কেকের মূল্য লিখুন';
     const ts = document.getElementById('f-timeslot'); if (ts) ts.placeholder = 'যেমন: 3.00';
     const ts2 = document.getElementById('f-timeslot-2'); if (ts2) ts2.placeholder = 'যেমন: 3.00';
+    document.querySelector('#f-payment-method option[value=""]').textContent = 'নির্বাচন করুন';
+    document.querySelector('#f-fulfilment option[value="delivery"]').textContent = 'ডেলিভারিম্যান';
+    document.querySelector('#f-fulfilment option[value="pickup"]').textContent = 'সেলফ পিকআপ';
+    document.querySelector('#f-surprise option[value="no"]').textContent = 'না';
+    document.querySelector('#f-surprise option[value="yes"]').textContent = 'হ্যাঁ — সারপ্রাইজ 🎁';
   }
+  PAYMENT_METHODS.forEach(method => {
+    const option = document.querySelector(`#f-payment-method option[value="${method.id}"]`);
+    if (option) option.textContent = l === 'en' ? method.nameEn : method.name;
+  });
+  onPaymentChange();
 }
 // ─── Multi-cake state & helpers ─────────────────────────────────
 const MAX_CAKES = 5;
@@ -785,27 +781,43 @@ function onPaymentChange() {
   const info = document.getElementById('payment-info');
   const method = getPaymentMethod(methodId);
   if (method && method.number) {
-    const copyField = (label, value) => `<div>${label}: <strong>${value}</strong> <button type="button" class="copy-button" onclick="copyValue('${value}')">কপি</button></div>`;
+    const copyField = (label, value) => `<div>${label}: <strong>${value}</strong> <button type="button" class="copy-button" onclick="copyValue('${value}')">${lang === 'en' ? 'Copy' : 'কপি'}</button></div>`;
     const plainField = (label, value) => `<div>${label}: <strong>${value}</strong></div>`;
-    const bank = methodId === 'bank' ? `${copyField('ব্যাংক', 'IFIC Bank')} ${copyField('শাখা', 'Hathazari')} ${copyField('রাউটিং', '120 153 224')} ${copyField('SWIFT', 'IFICBDDH')} ${copyField('অ্যাকাউন্টধারী', 'Sabrina Akter Bhuiyan')} ${copyField('যোগাযোগ', '01521400475')}` : '';
-    info.innerHTML = `📱 <strong>${method.name}</strong>${plainField(methodId === 'bank' ? 'অ্যাকাউন্ট নম্বর' : 'নম্বর', method.number)}${methodId !== 'bank' ? plainField('নাম', method.regName || '') : ''}${bank}<br><small>${methodId === 'bkash' ? 'বিকাশ Send Money করুন। আপনার অগ্রিমের উপর ১.৮২% চার্জ যোগ হবে।' : methodId === 'nagad' ? 'নগদ Send Money করুন। আপনার অগ্রিমের উপর ১.৪৯% চার্জ যোগ হবে।' : 'পেমেন্টের বিস্তারিত যাচাই করা হবে।'}</small>`;
+    const bank = methodId === 'bank' ? `${copyField(lang === 'en' ? 'Bank' : 'ব্যাংক', 'IFIC Bank')} ${copyField(lang === 'en' ? 'Branch' : 'শাখা', 'Hathazari')} ${copyField(lang === 'en' ? 'Routing number' : 'রাউটিং', '120 153 224')} ${copyField('SWIFT', 'IFICBDDH')} ${copyField(lang === 'en' ? 'Account holder' : 'অ্যাকাউন্টধারী', 'Sabrina Akter Bhuiyan')} ${copyField(lang === 'en' ? 'Contact' : 'যোগাযোগ', '01521400475')}` : '';
+    const instructions = lang === 'en'
+      ? (methodId === 'bkash' ? 'Send Money via bKash. A 1.82% charge is added to your advance.' : methodId === 'nagad' ? 'Send Money via Nagad. A 1.49% charge is added to your advance.' : 'Your bank payment details will be checked.')
+      : (methodId === 'bkash' ? 'বিকাশ Send Money করুন। আপনার অগ্রিমের উপর ১.৮২% চার্জ যোগ হবে।' : methodId === 'nagad' ? 'নগদ Send Money করুন। আপনার অগ্রিমের উপর ১.৪৯% চার্জ যোগ হবে।' : 'পেমেন্টের বিস্তারিত যাচাই করা হবে।');
+    info.innerHTML = `📱 <strong>${lang === 'en' ? method.nameEn : method.name}</strong>${plainField(methodId === 'bank' ? (lang === 'en' ? 'Account number' : 'অ্যাকাউন্ট নম্বর') : (lang === 'en' ? 'Number' : 'নম্বর'), method.number)}${methodId !== 'bank' && method.regName ? plainField(lang === 'en' ? 'Name' : 'নাম', method.regName) : ''}${bank}<br><small>${instructions}</small>`;
     info.classList.add('show');
   } else {
     info.classList.remove('show');
+    info.innerHTML = '';
   }
   // Keep the "How did you pay?" mirror in sync if the select was changed
   // manually (the select remains the source of truth for the charge).
-  if (advanceMethod && methodId && advanceMethod !== methodId) {
-    advanceMethod = methodId;
-    document.querySelectorAll('.adv-method-opt').forEach(el => el.classList.remove('active'));
-    const gridOpt = document.getElementById('adv-opt-' + methodId);
-    if (gridOpt) gridOpt.classList.add('active');
-  }
+  advanceMethod = methodId;
+  syncPaymentChoices(methodId);
   recalcPrice();
 }
 
+function syncPaymentChoices(methodId) {
+  document.querySelectorAll('.adv-method-opt').forEach(el => {
+    const selected = el.dataset.method === methodId;
+    el.classList.toggle('active', selected);
+    el.setAttribute('aria-pressed', String(selected));
+  });
+}
+
+function syncAdvanceChoices(type) {
+  document.querySelectorAll('.advance-opt').forEach(el => {
+    const selected = el.id === 'opt-' + type;
+    el.classList.toggle('active', selected);
+    el.setAttribute('aria-pressed', String(selected));
+  });
+}
+
 function copyValue(value) {
-  navigator.clipboard.writeText(value).then(() => showToast('কপি হয়েছে'));
+  navigator.clipboard.writeText(value).then(() => showToast(lang === 'en' ? 'Copied' : 'কপি হয়েছে'));
 }
 
 let popupText = '';
@@ -962,9 +974,9 @@ function getCakeWritingError(text) {
 }
 
 function setAdvanceType(type) {
+  if (type === '50' && isSurprise) return;
   advanceType = type;
-  document.querySelectorAll('.advance-opt').forEach(el => el.classList.remove('active'));
-  document.getElementById('opt-' + type).classList.add('active');
+  syncAdvanceChoices(type);
   lastAutoSend = 0; lastAutoBase = 0;
   const price = parseFloat(document.getElementById('f-cake-price').value) || 0;
   if (price <= 0) document.getElementById('f-advance').value = '';
@@ -1031,9 +1043,7 @@ function chooseAdvanceMethod(id) {
   if (!m) return;
   advanceMethod = id;
   document.getElementById('adv-method-popup').classList.remove('show');
-  document.querySelectorAll('.adv-method-opt').forEach(el => el.classList.remove('active'));
-  const gridOpt = document.getElementById('adv-opt-' + id);
-  if (gridOpt) gridOpt.classList.add('active');
+  syncPaymentChoices(id);
   // Keep the gateway select (number/name shown to the customer) in sync —
   // its rate is what recalcPrice adds on top of the advance, and submitting
   // needs the select filled anyway.
@@ -1129,7 +1139,7 @@ function recalcPrice(manualEdit) {
 
   // Top calc box (cake price / delivery / total)
   document.getElementById('calc-base').textContent = '৳' + Math.round(total);
-  document.getElementById('calc-delivery').textContent = '৳' + Math.round(delivery) + ' (আলাদা)';
+  document.getElementById('calc-delivery').textContent = '৳' + Math.round(delivery) + (lang === 'en' ? ' (separate)' : ' (আলাদা)');
   document.getElementById('calc-total').textContent = '৳' + Math.round(total);
   document.getElementById('calc-box').classList.add('show');
 
@@ -1254,10 +1264,9 @@ document.getElementById('f-surprise').addEventListener('change', function() {
   document.getElementById('surprise-note').classList.toggle('show', isSurprise);
   if (isSurprise) {
     setAdvanceType('full');
-    document.querySelectorAll('.advance-opt').forEach(el => el.style.opacity = '0.5');
-    document.getElementById('opt-full').style.opacity = '1';
+    document.getElementById('opt-50').disabled = true;
   } else {
-    document.querySelectorAll('.advance-opt').forEach(el => el.style.opacity = '1');
+    document.getElementById('opt-50').disabled = false;
   }
 });
 
@@ -1597,7 +1606,10 @@ async function submitOrder() {
   };
 
   showLoading(true);
-  db.ref('orders').push(order).then(() => {
+  (window.ensureAuthReady ? window.ensureAuthReady() : Promise.resolve(false)).then(authOk => {
+    if (!authOk) throw new Error('auth-unavailable');
+    return db.ref('orders').push(order);
+  }).then(() => {
     showLoading(false);
     try { fireNtfyAlert(order); } catch (e) { console.error(e); }
     showSuccess(order);
@@ -1937,15 +1949,16 @@ function resetForm() {
   document.getElementById('mode-multiple').classList.remove('active');
   const picker = document.getElementById('cake-count-picker');
   if (picker) picker.classList.remove('show');
-  document.querySelectorAll('.adv-method-opt').forEach(el => el.classList.remove('active'));
+  syncPaymentChoices('');
   updateWritingCount(1);
   document.getElementById('calc-box').classList.remove('show');
   document.getElementById('due-field').classList.remove('show');
   document.getElementById('surprise-note').classList.remove('show');
   document.getElementById('payment-info').classList.remove('show');
-  document.querySelectorAll('.advance-opt').forEach(el => { el.classList.remove('active'); el.style.opacity = '1'; });
+  syncAdvanceChoices('');
+  document.getElementById('opt-50').disabled = false;
   renderCakeColumns();
-  document.getElementById('entry-btn').textContent = 'অর্ডার শুরু করুন';
+  document.getElementById('entry-btn').textContent = lang === 'en' ? 'Start order' : 'অর্ডার শুরু করুন';
   document.getElementById('entry-btn').onclick = handleEntry;
   updateProgress();
 }
