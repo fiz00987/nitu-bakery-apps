@@ -476,7 +476,7 @@ html.t-gold .order-number-badge{color:#a5813e}
     </div>
   </div>
 
-  <!-- Weight unit popup (POUND / KG) -->
+  <!-- Weight unit popup (POUND / KG / GRAM) -->
   <div class="popup-overlay" id="weight-unit-popup" onclick="closeWeightUnitPopup(event)">
     <div class="popup" style="max-width:340px" role="alertdialog" aria-modal="true">
       <div class="popup-header"><h3 style="font-size:16px">ওজন একক</h3><button type="button" class="popup-close" onclick="closeWeightUnitPopup()">×</button></div>
@@ -484,6 +484,7 @@ html.t-gold .order-number-badge{color:#a5813e}
       <div style="display:flex;gap:10px;padding:0 18px 18px">
         <button type="button" class="btn-primary" style="flex:1" onclick="chooseWeightUnit('pound')">POUND</button>
         <button type="button" class="btn-primary" style="flex:1" onclick="chooseWeightUnit('kg')">KG</button>
+        <button type="button" class="btn-primary" style="flex:1" onclick="chooseWeightUnit('gram')">GRAM</button>
       </div>
     </div>
   </div>
@@ -493,6 +494,7 @@ html.t-gold .order-number-badge{color:#a5813e}
     <div class="field">
        <label for="f-cake-price" data-bn="কেকের নির্ধারিত মূল্য * (৳)" data-en="Total payment of the cake * (Tk)">কেকের নির্ধারিত মূল্য * (৳)</label>
       <input type="number" id="f-cake-price" min="0" placeholder="কেকের মূল্য লিখুন" data-bn-placeholder="কেকের মূল্য লিখুন" data-en-placeholder="Enter cake price" oninput="recalcPrice()">
+      <div class="hint-box" id="cake-price-hint" hidden></div>
     </div>
     <div class="calc-box" id="calc-box">
        <div class="calc-row"><span data-bn="কেকের মূল্য:" data-en="Cake price:">কেকের মূল্য:</span><span id="calc-base">৳0</span></div>

@@ -173,11 +173,12 @@ window.App = (() => {
   // real figure: the charge shows as ৳0 + the red ⚠️ footnote carrying the
   // area + estimate. A shop-typed charge is certain → shown plainly.
   const DC_AGENCY_FOOTNOTE = '⚠️ প্রকৃত ডেলিভারি চার্জ ডেলিভারি এজেন্সি প্রদান করেনি — চার্জ না জানা থাকলে খালি রাখুন।';
-  const dcIsApprox = o => !isPickupOrder(o) && (!!o.dcAuto || dcAmtOf(o) <= 0);
+  const dcIsApprox = o => !isPickupOrder(o) && !(o.deliveryChargeSharedWith && dcAmtOf(o) <= 0) && (!!o.dcAuto || dcAmtOf(o) <= 0);
   // Amount + optional approx suffix — used by the card, payment note and copies.
   // Approx/blank orders show ৳0 as the charge (the estimate lives in the red
   // ⚠️ footnote below); a shop-typed figure is the exact charge, shown plainly.
   const dcAmtLine = o => {
+    if (o.deliveryChargeSharedWith && dcAmtOf(o) <= 0) return `একই ডেলিভারি — চার্জ ${esc(o.deliveryChargeSharedWith)} অর্ডারে`;
     const amt = dcAmtOf(o);
     if (dcIsApprox(o)) return '৳0';
     return `৳${fmtMoney(amt)}/-`;
@@ -1023,6 +1024,9 @@ window.App = (() => {
           if (!o.firebaseKey) return;
           if (o.status === 'delivered' || o.status === 'cancelled') return;
           if (priceConflictOf(o)) return;
+          // These orders have an explicit cake-only allocation from one shared
+          // receipt; a legacy half-payment heuristic must not strip it again.
+          if (o.groupAdvanceTotal != null) return;
           // 🛠️ Money the admin hand-set (a non-50% advance, a manual charge)
           // must never be "stripped" or rewritten by this heuristic.
           if (ADMIN_ADV50_FIELDS.some(f => adminHas(o, f))) return;
@@ -1749,7 +1753,7 @@ window.App = (() => {
     const customerBadge = o.source === 'customer' ? `<span class="chip chip-customer">অনলাইন অর্ডার</span>` : '';
     const rewardChip = o.reviewRewardId ? `<span class="chip chip-green">⭐ Review reward −৳${fmtMoney(o.reviewDiscount || Math.round((Number(o.originalCakePrice || o.total) || 0) * .1))}</span>` : '';
     const adminEditedBadge = o.adminEdited
-       ? `<span class="chip chip-adminedit" title="${escAttr(adminEditTip(o))}">🛠️ ${lang === 'bn' ? 'অ্যাডমিন এডিট' : 'Admin edited'}${adminLogOf(o).length > 1 ? ` ×${adminLogOf(o).length}` : ''}</span>`
+       ? `<span class="chip chip-adminedit">🛠️ ${lang === 'bn' ? 'অ্যাডমিন এডিট' : 'Admin edited'}${adminLogOf(o).length > 1 ? ` ×${adminLogOf(o).length}` : ''}</span>`
       : '';
     const dcAmtChip = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
     const deliveryChip = o.deliveryPaid === 'paid'
@@ -1774,10 +1778,10 @@ window.App = (() => {
     <div class="card-stripe ${colClass(o)}"></div>
     <div class="card-head-body">
       ${o.orderId ? `<div class="card-order-id-row"><span class="card-order-id">🆔 ${esc(o.orderId)}</span><button class="id-copy-btn" type="button" onclick="event.stopPropagation();App.copyOrderId(${jsArg(fk)})" title="অর্ডার আইডি কপি করুন">📋</button></div>` : ''}
-       <div class="card-name"><span class="card-name-text">${esc(o.name)}</span>${tallyBadge}${customerBadge}<button class="chip chip-customer" type="button" onclick="event.stopPropagation();App.copyCardName(this)" title="Copy customer name">📋 Name · Copy</button><button class="chip chip-customer phone-copy-chip" type="button" onclick="event.stopPropagation();App.copyCustomerPhone(this)" title="Copy customer phone">📱 Phone number: ${esc(o.customerPhone || o.phone || o.receiverPhone || '—')} · Copy</button></div>
+       <div class="card-name"><span class="card-name-text">${esc(o.name)}</span><button class="name-copy-btn" type="button" aria-label="${lang === 'bn' ? 'নাম কপি করুন' : 'Copy customer name'}" onclick="event.stopPropagation();App.copyCardName(this)" title="${lang === 'bn' ? 'নাম কপি করুন' : 'Copy customer name'}">📋</button><button class="phone-copy-chip" type="button" data-phone="${escAttr(o.customerPhone || o.phone || o.receiverPhone || '')}" aria-label="${lang === 'bn' ? 'ফোন নম্বর কপি করুন' : 'Copy customer phone'}" onclick="event.stopPropagation();App.copyCustomerPhone(this)" title="${lang === 'bn' ? 'ফোন নম্বর কপি করুন' : 'Copy customer phone'}">📱</button>${tallyBadge}${customerBadge}</div>
       <div class="card-meta">${(o.cakes && o.cakes.length > 1) ? o.cakes.map(c => esc([c.weightLabel || c.weight, c.flavourName || c.flavour].filter(Boolean).join(' '))).join(' + ') + ' · <b>' + o.cakes.length + 'টি কেক</b>' : (esc(weightText(o)) + (weightText(o) && o.flavour ? ' · ' : '') + esc(flavourLabel(o)))}${o.time ? ' · ' + esc(o.time) : ''}</div>
       ${cdChip}
-      <div class="card-chips">${statusChip(o)}${dueChip}${rewardChip}${surpriseChip}${deliveryChip}${adminEditedBadge}</div>
+      <div class="card-chips">${statusChip(o)}${dueChip}${rewardChip}${surpriseChip}${deliveryChip}${adminEditedBadge}${o.splitGroupId ? `<span class="chip chip-customer">🎂 ${esc(o.splitOf)} · ${esc(o.splitGroupId)}</span>` : ''}</div>
       ${priceNotice(o) ? `<div class="pay-note">${esc(priceNotice(o))}</div>` : ''}
     </div>
     <div class="card-chevron-wrap" aria-hidden="true"><div class="card-chevron">⌄</div></div>
@@ -1790,7 +1794,6 @@ window.App = (() => {
     ${(o.photos && o.photos.length > 1) ? o.photos.slice(1).map((p, i) => safeImageUrl(p) ? `<div class="card-photo-wrap"><img class="card-photo"${imageSrcAttr(p)} alt="রেফারেন্স কেক ${i + 2}" loading="lazy" onclick="event.stopPropagation();App.openLightboxFor(this.src)"></div>` : '').join('') : ''}
 
     ${isOvdPay ? `<div class="overdue-alert">⚠️ বকেয়া পেমেন্ট: ৳${fmtMoney(d)} — ডেলিভারির তারিখ পেরিয়ে গেছে!</div>` : ''}
-    ${o.adminEdited ? `<div class="pay-note admin-edit-note">🛠️ <strong>${lang === 'bn' ? 'অ্যাডমিন এডিটেড' : 'Admin edited'}</strong> — ${esc(adminEditSummary(o))}</div>` : ''}
 
     <div class="detail-section">
       <div class="detail-title">🎂 কেক বিবরণ</div>
@@ -1840,7 +1843,8 @@ window.App = (() => {
       ${bkashCharge(o) > 0 ? `<div class="pay-note">💰 ${tr('bkashDeducted')}: অ্যাডভান্স ৳${fmtMoney(o.paid)} — ${o.paymentChargesLabel ? esc(o.paymentChargesLabel) : (o.paymentMethodName ? esc(o.paymentMethodName) : 'বিকাশ/নগদ')} চার্জ ৳${fmtMoney(bkashCharge(o))} আলাদা</div>` : ''}
       ${o.source === 'manual' && advanceOf(o) > 0 && (o.paymentMethodName || o.paymentMethod || o.paymentChargesLabel) ? `<div class="pay-note">💳 অগ্রিম পাওয়া গেছে: ${esc(o.paymentMethodName || ({bkash:'বিকাশ',nagad:'নগদ',bank:'ব্যাংক',cash:'ক্যাশ'})[String(o.paymentMethod||'').toLowerCase()] || o.paymentChargesLabel)}${o.trx ? ` | ট্রানজেকশন: ${esc(o.trx)}` : ''}</div>` : ''}
       ${o.paynote ? `<div class="pay-note">💳 ${esc(o.paynote)}</div>` : ''}
-      ${o.source === 'customer' && o.advance ? `<div class="pay-note">📱 কাস্টমার অগ্রিম: ৳${fmtMoney(o.advance)}${o.advanceCharge > 0 ? ` (+চার্জ ৳${fmtMoney(o.advanceCharge)})` : ''} = ৳${fmtMoney(o.advanceTotal)}${o.trx ? ` | ট্রানজেকশন: ${esc(o.trx)}` : ''}</div>` : ''}
+      ${o.source === 'customer' && o.advance ? `<div class="pay-note">📱 কাস্টমার অগ্রিম: ৳${fmtMoney(o.advance)}${o.deliveryAdvance > 0 ? ` (+ডেলিভারি ৳${fmtMoney(o.deliveryAdvance)})` : ''}${o.advanceCharge > 0 ? ` (+চার্জ ৳${fmtMoney(o.advanceCharge)})` : ''} = ৳${fmtMoney(o.advanceTotal)}${o.trx ? ` | ট্রানজেকশন: ${esc(o.trx)}` : ''}</div>` : ''}
+      ${o.groupAdvanceTotal != null ? `<div class="pay-note">💳 একই পেমেন্টের অংশ: ${esc(o.splitGroupId)} — ${esc(o.splitOf)}। পুরো গ্রুপে পাঠানো ৳${fmtMoney(o.groupAdvanceTotal)}; এই অর্ডারের বরাদ্দ উপরে দেখানো হয়েছে।</div>` : ''}
       ${o.source === 'customer' && o.advance
         ? (o.payShot
           ? `${o.payShotVerified === false
@@ -2838,7 +2842,7 @@ window.App = (() => {
     }
   };
   const copyCustomerPhone = btn => {
-    const phone = (btn.textContent || '').replace(/^📱\s*Phone number:\s*/i, '').replace(/\s*·\s*Copy\s*$/i, '').trim();
+    const phone = (btn.dataset.phone || '').trim();
     if (!phone || phone === '—') return showToast('⚠️ এই অর্ডারে ফোন নম্বর নেই');
     const done = () => showToast('✅ ফোন নম্বর কপি হয়েছে!');
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(phone).then(done).catch(() => fallbackCopyText(phone, done));

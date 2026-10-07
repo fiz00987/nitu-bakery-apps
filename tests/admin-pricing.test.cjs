@@ -19,7 +19,7 @@ const order = overrides => ({
 
 // Run the real HTML and app in a DOM. All Firebase calls are in-memory;
 // these tests never authenticate with or write to the production database.
-function harness(t, initial) {
+function harness(t, initial, initialOrders) {
   const errors = [];
   const virtualConsole = new VirtualConsole();
   virtualConsole.on('error', (...args) => errors.push(args.map(String).join(' ')));
@@ -28,7 +28,7 @@ function harness(t, initial) {
     pretendToBeVisual: true, virtualConsole
   });
   const w = dom.window;
-  const state = { orders: { test: copy(initial) } };
+  const state = { orders: initialOrders ? copy(initialOrders) : { test: copy(initial) } };
   const listeners = new Map();
   const writes = [];
   let authListener;
@@ -97,6 +97,32 @@ test('explicit cake price wins over a stale total, with a visible mismatch', t =
   assert.equal(h.el('f-total').value, '2500');
   assert.equal(h.el('f-due').value, '100');
   assert.equal(h.orderWrites().length, 0, 'displaying a conflict must not rewrite money');
+});
+
+test('customer multi-order submission renders independent admin cards immediately', async t => {
+  const { multiForm } = require('./customer-multi-harness.cjs');
+  const customer = multiForm(t, [500, 2000]);
+  customer.w.setCakeKind(1, 'mini');
+  customer.el('same-date-check').checked = false;
+  customer.el('f-date-2').value = '2099-10-05';
+  await customer.w.submitOrder();
+  const h = harness(t, null, customer.state.orders);
+  const cards = h.el('view-plan').querySelectorAll('.card');
+  assert.equal(cards.length, 2);
+  assert.equal(h.el('view-plan').querySelectorAll('.day-group').length, 2);
+  for (const [i, card] of [...cards].entries()) {
+    assert.equal(card.querySelector('.card-order-id').textContent.replace('🆔 ', ''), customer.orders()[i].orderId);
+    assert.equal(card.querySelector('.pay-val').textContent, money(customer.orders()[i].cakePrice));
+    assert.equal(card.querySelectorAll('.pay-val')[1].textContent, money(customer.orders()[i].advance));
+    assert.equal(card.querySelectorAll('.pay-val')[2].textContent, money(0));
+    assert.equal([...card.querySelectorAll('button')].some(button => button.textContent.includes('✂️')), false);
+    assert.match(card.textContent, /একই পেমেন্টের অংশ/);
+  }
+  assert.match(cards[1].textContent, /একই ডেলিভারি — চার্জ/);
+  assert.equal(h.orderWrites().length, 0, 'rendering new allocated payments must not rewrite them');
+  h.state.orders['cake-2'].deliveryAmount = h.state.orders['cake-2'].deliveryCharge = 200;
+  h.emit();
+  assert.doesNotMatch(h.el('card-cake-2').textContent, /একই ডেলিভারি — চার্জ/, 'a later separate delivery charge replaces the shared-trip label');
 });
 
 test('a price-only cloud update refreshes the card without updatedAt changing', t => {

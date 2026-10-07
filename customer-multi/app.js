@@ -18,6 +18,10 @@ let autoCloseTick = null;
 let flavourNoticeShown = false;
 let cakeCount = 1;            // how many cakes (1-5)
 let extraPhotos = {};         // { [i]: [photos] } for cakes 2-5 // "select the exact flavour" notice — once per session
+let orderSubmitting = false;
+const miniCakeKinds = {};     // { [i]: true } — a confirmed/selected mini cake
+const miniPendingCakes = {};  // { [i]: true } — <=300 g detected, waiting for OK
+let miniInfoTarget = null;    // cake index currently shown in the mini info popup
 
 // ─── Splash screen (~2.5s welcome, then fade to the entry screen) ──
 (function initSplash() {
@@ -132,6 +136,7 @@ function writingEl(i)    { return cakeEl('f-writing', i); }
 function writingCountEl(i){ return cakeEl('writing-count', i); }
 function photoNoteEl(i)  { return cakeEl('f-photo-note', i); }
 function photoGridEl(i)  { return cakeEl('photo-grid', i); }
+function cakePriceEl(i)  { return cakeEl('f-cake-price', i); }
 function timeSlotEl(i)   { return document.getElementById(i === 1 ? 'f-timeslot' : 'f-timeslot-' + i); }
 // ─── Order mode toggle (Single / Multiple) ─────────────────────
 function setOrderMode(mode) {
@@ -169,7 +174,9 @@ function renderCakeColumns() {
       weight: weightEl(i) ? weightEl(i).value : '',
       flavour: flavourEl(i) ? flavourEl(i).value : '',
       writing: writingEl(i) ? writingEl(i).value : '',
-      photoNote: photoNoteEl(i) ? photoNoteEl(i).value : ''
+      photoNote: photoNoteEl(i) ? photoNoteEl(i).value : '',
+      price: i === 1 && !document.getElementById('f-cake-price').readOnly
+        ? document.getElementById('f-cake-price').value : (cakePriceEl(i) ? cakePriceEl(i).value : '')
     };
   }
   for (let k in extraPhotos) photosSaved[k] = extraPhotos[k].slice();
@@ -193,24 +200,63 @@ function renderCakeColumns() {
     if (sv.weight) weightEl(i).value = sv.weight;
     if (sv.writing) writingEl(i).value = sv.writing;
     if (sv.photoNote) photoNoteEl(i).value = sv.photoNote;
+    cakePriceEl(i).value = sv.price || '';
     populateFlavourDropdown(i);
     if (sv.flavour) flavourEl(i).value = sv.flavour;
+    applyCakeKindState(i);
     wireWeightEvents(i);
     updateWeightHint(i);
     updateWritingCount(i);
     renderPhotos(i);
   }
   syncCake2DeliveryBlocks();
+  syncCakePrices();
+  syncFullOnlyPayment();
+  recalcPrice();
   updateProgress();
 }
+
+function syncCakePrices() {
+  const total = document.getElementById('f-cake-price');
+  const hint = document.getElementById('cake-price-hint');
+  if (cakeCount === 1 && total.readOnly) total.value = cakePriceEl(1).value;
+  total.readOnly = cakeCount > 1;
+  total.classList.toggle('locked-field', cakeCount > 1);
+  if (cakeCount > 1) {
+    let sum = 0;
+    for (let i = 1; i <= cakeCount; i++) sum += Math.max(0, Math.round(Number(cakePriceEl(i).value) || 0));
+    total.value = sum || '';
+  } else {
+    cakePriceEl(1).value = total.value;
+  }
+  if (hint) {
+    hint.hidden = cakeCount < 2;
+    hint.textContent = lang === 'en'
+      ? 'Enter each cake’s agreed price above. The total is added automatically; each cake becomes a separate order.'
+      : 'উপরে প্রতিটি কেকের নির্ধারিত দাম লিখুন। মোট দাম অটো যোগ হবে; প্রতিটি কেক আলাদা অর্ডার হবে।';
+  }
+}
+
+function onCakePriceInput() {
+  syncCakePrices();
+  recalcPrice();
+  updateProgress();
+}
+
 function cakeColumnHtml(i) {
   const isBn = lang !== 'en';
   const p = (bn, en) => isBn ? bn : en;
   const num = bnCake(i);
   const single = '-' + i;
+  return '<div class="cake-col">'
+    + '<div class="cake-col-title">🎂 ' + p('কেক ' + num, 'Cake ' + i) + '</div>'
+    + '<div class="form-group"' + (cakeCount < 2 ? ' style="display:none"' : '') + '>'
+    + '<label for="f-cake-price' + single + '">' + p('এই কেকের নির্ধারিত মূল্য * (৳)', 'This cake’s agreed price * (Tk)') + '</label>'
+    + '<input type="number" id="f-cake-price' + single + '" min="1" step="1" oninput="onCakePriceInput()">'
+    + '</div>'
     + '<div class="form-group">'
-    + '<label>' + p('ওজন * (পাউন্ড বা KG)', 'Weight * (pound or KG)') + '</label>'
-    + '<input type="text" id="f-weight' + single + '" placeholder="' + p('যেমন: 2 pound, 1 KG', 'e.g. 2 pound, 1 KG') + '" autocomplete="off" oninput="updateWeightHint(' + i + ');recalcPrice()" onchange="maybeAskWeightUnit(' + i + ')">'
+    + '<label>' + p('ওজন * (পাউন্ড, KG বা গ্রাম)', 'Weight * (pound, KG or gram)') + '</label>'
+    + '<input type="text" id="f-weight' + single + '" placeholder="' + p('যেমন: 2 pound, 1 KG, 250 gram', 'e.g. 2 pound, 1 KG, 250 gram') + '" autocomplete="off" oninput="updateWeightHint(' + i + ');recalcPrice()" onchange="maybeAskWeightUnit(' + i + ')">'
     + '<div class="weight-presets">'
     + '<button type="button" class="weight-preset weight-preset' + single + '" onclick="setWeightPreset(\'mini\', this, ' + i + ')">🍰 ' + p('মিনি কেক', 'Mini') + '</button>'
     + '<button type="button" class="weight-preset weight-preset' + single + '" onclick="setWeightPreset(\'medium\', this, ' + i + ')">🎂 ' + p('মিডিয়াম কেক', 'Medium') + '</button>'
@@ -257,14 +303,18 @@ function wireWeightEvents(i) {
   if (!el) return;
   el.addEventListener('input', function () {
     document.querySelectorAll('.weight-preset' + (i === 1 ? '' : '-' + i)).forEach(b => b.classList.remove('active'));
+    // A customer can correct a small weight while its information popup is open.
+    if (miniPendingCakes[i]) { delete miniPendingCakes[i]; syncFullOnlyPayment(); }
   });
   el.addEventListener('change', function () {
     const raw = (el.value || '').trim();
+    if (maybeConvertToMini(i)) return;
     if (isBareNumberWeight(raw)) { maybeAskWeightUnit(i); return; }
     if (parseWeightText(raw)) showTextPopup('base price.txt', 'বেস মূল্য নির্দেশিকা');
   });
   // Leaving the field with a bare number (e.g. "1" or "2.5") → ask the unit
   el.addEventListener('blur', function () {
+    if (maybeConvertToMini(i)) return;
     if (isBareNumberWeight((el.value || '').trim())) maybeAskWeightUnit(i);
   });
 }
@@ -333,7 +383,7 @@ function reconnectDeliveryListeners() {
   bind('receiver-same-cust-2', function () { onReceiverSameCust(2); });
 }
 
-// ─── Weight-unit popup (POUND / KG) ─────────────────────────────
+// ─── Weight-unit popup (POUND / KG / GRAM) ─────────────────────
 let weightUnitTarget = null;
 
 function isBareNumberWeight(raw) {
@@ -343,14 +393,16 @@ function isBareNumberWeight(raw) {
 
 function maybeAskWeightUnit(i) {
   const el = weightEl(i);
-  if (!el) return;
+  if (!el || isMiniCake(i)) return;
   const raw = (el.value || '').trim();
   if (!raw || isPresetWeight(raw) || !isBareNumberWeight(raw)) return;
+  const popup = document.getElementById('weight-unit-popup');
+  if (weightUnitTarget === i && popup && popup.classList.contains('show')) return;
   weightUnitTarget = i;
   const norm = raw.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
   document.getElementById('weight-unit-msg').textContent = lang === 'en'
-    ? 'You typed ' + norm + ' — is that ' + norm + ' POUND or ' + norm + ' KG?'
-    : 'আপনি ' + norm + ' লিখেছেন — এটি কি ' + norm + ' পাউন্ড, নাকি ' + norm + ' KG?';
+    ? 'You typed ' + norm + ' — is that ' + norm + ' POUND, ' + norm + ' KG, or ' + norm + ' GRAM?'
+    : 'আপনি ' + norm + ' লিখেছেন — এটি কি ' + norm + ' পাউন্ড, ' + norm + ' KG, নাকি ' + norm + ' গ্রাম?';
   document.getElementById('weight-unit-popup').classList.add('show');
 }
 
@@ -360,13 +412,11 @@ function chooseWeightUnit(unit) {
   const el = weightEl(i);
   const norm = (el.value || '').trim().replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
   const m = norm.match(/^(\d+(?:\.\d+)?)$/);
-  if (m) {
-    el.value = unit === 'kg' ? m[1] + ' KG' : m[1] + ' pound';
-    updateWeightHint(i);
-  }
-  weightUnitTarget = null;
-  document.getElementById('weight-unit-popup').classList.remove('show');
-  recalcPrice(); updateProgress();
+  if (m) el.value = unit === 'kg' ? m[1] + ' KG' : unit === 'gram' ? m[1] + ' gram' : m[1] + ' pound';
+  closeWeightUnitPopup();
+  // Explicit gram (or a small pound/KG equivalent) follows the same mini rule
+  // as the single-cake form.
+  if (!maybeConvertToMini(i)) { updateWeightHint(i); recalcPrice(); updateProgress(); }
 }
 
 function closeWeightUnitPopup(event) {
@@ -375,9 +425,108 @@ function closeWeightUnitPopup(event) {
   pop.classList.remove('show'); weightUnitTarget = null;
 }
 
+function isMiniCake(i) { return !!miniCakeKinds[i]; }
+function hasMiniCake() {
+  for (let i = 1; i <= cakeCount; i++) {
+    if (miniCakeKinds[i] || miniPendingCakes[i]) return true;
+  }
+  return false;
+}
+
+function isFullOnlyPayment() { return hasMiniCake(); }
+
+function applyCakeKindState(i) {
+  const el = weightEl(i);
+  const hint = weightHintEl(i);
+  if (!el) return;
+  if (isMiniCake(i)) {
+    el.value = lang === 'en' ? 'Mini cake' : 'মিনি কেক';
+    el.disabled = true;
+    el.style.display = 'none';
+    el.classList.add('locked-field');
+    if (hint) hint.textContent = '';
+  } else {
+    el.disabled = false;
+    el.style.display = '';
+    el.classList.remove('locked-field');
+  }
+}
+
+function setCakeKind(i, kind) {
+  if (kind === 'mini') {
+    miniCakeKinds[i] = true;
+    delete miniPendingCakes[i];
+  } else {
+    delete miniCakeKinds[i];
+    delete miniPendingCakes[i];
+  }
+  applyCakeKindState(i);
+  syncFullOnlyPayment();
+  if (kind === 'mini') {
+    setAdvanceType('full');
+  }
+  recalcPrice();
+  updateProgress();
+}
+
+function weightInGrams(parsed) {
+  if (!parsed) return null;
+  if (parsed.isGram) return parsed.num;
+  if (parsed.isKg) return parsed.num * 1000;
+  return parsed.num * 453.592;
+}
+
+function maybeConvertToMini(i) {
+  if (isMiniCake(i) || miniPendingCakes[i]) return isMiniCake(i) || miniPendingCakes[i];
+  const el = weightEl(i);
+  if (!el) return false;
+  const raw = String(el.value || '').trim();
+  // A bare number must ask for its unit first; it is not implicitly pounds
+  // while the customer is deciding between pound, KG and gram.
+  if (!raw || isPresetWeight(raw) || isBareNumberWeight(raw)) return false;
+  const parsed = parseWeightText(raw);
+  if (!parsed) return false;
+  const grams = weightInGrams(parsed);
+  if (grams == null || grams > 300) return false;
+  miniPendingCakes[i] = true;
+  syncFullOnlyPayment();
+  recalcPrice();
+  showMiniCakeInfo(i);
+  return true;
+}
+
 // ─── Mini cake → 100% advance popup ────────────────────────────
 function openMiniAdvancePopup() { document.getElementById('mini-advance-popup').classList.add('show'); }
 function closeMiniAdvancePopup() { document.getElementById('mini-advance-popup').classList.remove('show'); }
+
+async function showMiniCakeInfo(i) {
+  miniInfoTarget = i;
+  const p = WEIGHT_PRESETS.mini;
+  await showTextPopup(p.file, lang === 'en' ? p.titleEn : p.title);
+  const pop = document.querySelector('#text-popup .popup');
+  if (!pop || miniInfoTarget !== i || pop.querySelector('#mini-ok-btn')) return;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.id = 'mini-ok-btn';
+  btn.className = 'btn-primary';
+  btn.style.margin = '0 18px 18px';
+  btn.textContent = lang === 'en' ? 'OK — Mini cake' : 'ঠিক আছে — মিনি কেক';
+  btn.onclick = confirmMiniCake;
+  pop.appendChild(btn);
+}
+
+function confirmMiniCake() {
+  const i = miniInfoTarget;
+  if (i == null) return;
+  const pop = document.getElementById('text-popup');
+  if (pop) pop.classList.remove('show');
+  miniInfoTarget = null;
+  setCakeKind(i, 'mini');
+  showToast(lang === 'en'
+    ? 'Mini cake — 100% payment with delivery charge'
+    : 'মিনি কেক — ডেলিভারি চার্জসহ ১০০% পেমেন্ট');
+}
+
 function timeAmpmEl(i)   { return document.getElementById(i === 1 ? 'f-time-ampm' : 'f-time-ampm-' + i); }
 function photosFor(i)    { return i === 1 ? currentPhotos : (extraPhotos[i] || []); }
 function cakeWeightText(i) {
@@ -459,11 +608,19 @@ async function trackOrder() {
   const orderId = document.getElementById('entry-order-id').value.trim().toUpperCase();
   if (!orderId) { showToast('অর্ডার নম্বর লিখুন'); return; }
   try {
+    if (window.ensureAuthReady && !(await window.ensureAuthReady())) throw new Error('auth-unavailable');
     const snap = await db.ref('orders').orderByChild('orderId').equalTo(orderId).once('value');
-    if (!snap.exists()) { showToast('অর্ডার পাওয়া যায়নি'); return; }
-    const order = Object.values(snap.val())[0];
+    let orders = Object.values(snap.val() || {});
+    // A checkout group has no combined record. Its numbered order IDs remain
+    // readable through the same orderId-scoped queries as individual orders.
+    if (!orders.length) {
+      const children = await Promise.all(Array.from({ length: MAX_CAKES }, (_, i) =>
+        db.ref('orders').orderByChild('orderId').equalTo(orderId + '-' + (i + 1)).once('value')));
+      orders = children.flatMap(child => Object.values(child.val() || {}));
+    }
+    if (!orders.length) { showToast('অর্ডার পাওয়া যায়নি'); return; }
     document.getElementById('prev-title').textContent = 'আপনার অর্ডার';
-    document.getElementById('prev-list').innerHTML = `<div class="previous-order"><strong>${esc(order.orderId)}</strong><br>মোট ৳${order.total || 0}<br>ডেলিভারি: ${esc(fmtDate(order.deliveryDate || ''))}</div>`;
+    document.getElementById('prev-list').innerHTML = orders.map(order => `<div class="previous-order"><strong>${esc(order.orderId)}</strong><br>মোট ৳${order.total || 0}<br>ডেলিভারি: ${esc(fmtDate(order.deliveryDate || ''))}</div>`).join('');
     document.getElementById('previous-orders').classList.add('show');
   } catch (e) { showToast('অর্ডার খুঁজতে সমস্যা হয়েছে'); console.error(e); }
 }
@@ -515,10 +672,10 @@ function renderPreviousOrder() {
   // exclude it; for admin manual orders the charge is kept as a note only and
   // the advance already counts in full — never subtract it there (the bakery
   // never adds gateway charges to the due).
-  const total = Number(order.total != null ? order.total : order.cakePrice) || 0;
+  const total = Number(order.cakePrice != null ? order.cakePrice : order.total) || 0;
   const sent = Number(order.advanceTotal != null ? order.advanceTotal : (order.advance != null ? order.advance : order.paid)) || 0;
   const fee = Number(order.paymentCharges != null ? order.paymentCharges : order.bkashCharge) || 0;
-  const paid = Math.max(0, order.source === 'manual' ? sent : sent - fee);
+  const paid = Math.max(0, order.advance != null ? Number(order.advance) || 0 : (order.source === 'manual' ? sent : sent - fee - (Number(order.deliveryAdvance) || 0)));
   const due = Math.round(Math.max(0, total - paid));
   const cake = [order.weightLabel || order.weight, order.flavourName || order.flavour].filter(Boolean).join(' · ') || '—';
   const writing = order.writing || order.cakeWriting || '';
@@ -831,6 +988,8 @@ async function showTextPopup(fileName, title) {
       textPopupCache[fileName] = await response.text();
     }
     popupText = textPopupCache[fileName];
+    const oldMiniButton = document.getElementById('mini-ok-btn');
+    if (oldMiniButton) oldMiniButton.remove();
     document.getElementById('popup-title').textContent = title;
     document.getElementById('popup-content').textContent = popupText;
     document.getElementById('text-popup').classList.add('show');
@@ -973,8 +1132,27 @@ function getCakeWritingError(text) {
     : '';
 }
 
+function syncFullOnlyPayment() {
+  const lock = hasMiniCake();
+  const opt50 = document.getElementById('opt-50');
+  if (opt50) {
+    opt50.disabled = lock || isSurprise;
+    opt50.classList.toggle('adv-locked', lock || isSurprise);
+    opt50.style.pointerEvents = (lock || isSurprise) ? 'none' : '';
+  }
+  if (lock && advanceType === '50') {
+    advanceType = 'full';
+    syncAdvanceChoices('full');
+    lastAutoSend = 0; lastAutoBase = 0;
+  }
+  return lock;
+}
+
 function setAdvanceType(type) {
-  if (type === '50' && isSurprise) return;
+  if (type === '50' && (isSurprise || isFullOnlyPayment())) {
+    showToast(lang === 'en' ? 'Only full payment for a mini cake' : 'মিনি কেকে শুধু ১০০% পেমেন্ট');
+    return;
+  }
   advanceType = type;
   syncAdvanceChoices(type);
   lastAutoSend = 0; lastAutoBase = 0;
@@ -1089,14 +1267,20 @@ function recalcPrice(manualEdit) {
   const rate = getGatewayRate();
   const delivery = document.getElementById('f-fulfilment').value === 'pickup' ? 0 : getTotalDeliveryCharge();
   const paymentMethod = getPaymentMethod(methodId);
-  const total = cakePrice;
+  // A mini cake follows the single-cake form: 100% of cake + delivery is due
+  // now, and the 50% option is locked for the whole multi-cake order.
+  syncFullOnlyPayment();
+  const fullNow = isFullOnlyPayment();
+  const total = fullNow ? cakePrice + delivery : cakePrice;
 
   let base, charge, sendAmount, isAuto = false;
   if (advanceType && !manualEdit) {
     // AUTO: base = chosen % of the cake price; send = base + gateway charge
     // (charge rounded up, e.g. 50% of ৳1000 via bKash → 500 + 10 = 510)
     isAuto = true;
-    base = advanceType === '50' ? Math.round(cakePrice / 2) : Math.round(cakePrice);
+    base = fullNow
+      ? Math.round(cakePrice) + Math.round(delivery)
+      : advanceType === '50' ? Math.round(cakePrice / 2) : Math.round(cakePrice);
     charge = rate > 0 ? Math.ceil(base * rate) : 0;
     sendAmount = base + charge;
     lastAutoBase = base;
@@ -1111,16 +1295,19 @@ function recalcPrice(manualEdit) {
     charge = split.charge;
   }
 
-  const due = Math.max(0, total - base);
+  const due = fullNow ? 0 : Math.max(0, total - base);
   const methodName = paymentMethod ? paymentMethod.name : '';
 
   // Hint under the grey box showing where the bold figure came from
   const hint = document.getElementById('advance-hint');
   if (advanceType) {
-    const pctLabel = advanceType === '50' ? (lang === 'en' ? '50% advance' : '৫০% অগ্রিম') : (lang === 'en' ? 'full payment' : 'পুরো পেমেন্ট');
+    const pctLabel = fullNow
+      ? (lang === 'en' ? 'full payment (cake + delivery)' : 'পুরো পেমেন্ট (কেক + ডেলিভারি)')
+      : advanceType === '50' ? (lang === 'en' ? '50% advance' : '৫০% অগ্রিম') : (lang === 'en' ? 'full payment' : 'পুরো পেমেন্ট');
+    const baseLabel = fullNow ? `৳${Math.round(cakePrice)} + ৳${Math.round(delivery)}` : `৳${base}`;
     const chargePart = charge > 0 ? ` + ${methodName} ${lang === 'en' ? 'charge' : 'চার্জ'} ৳${charge}` : '';
     hint.textContent = (isAuto ? (lang === 'en' ? 'Auto-calculated: ' : 'অটো হিসাব: ') : (lang === 'en' ? 'Custom amount: ' : 'নিজের হিসাব: '))
-      + `${pctLabel} ৳${base}${chargePart} = ${lang === 'en' ? 'send' : 'পাঠাতে হবে'} ৳${sendAmount}`;
+      + `${pctLabel} ${baseLabel}${chargePart} = ${lang === 'en' ? 'send' : 'পাঠাতে হবে'} ৳${sendAmount}`;
   } else {
     hint.textContent = '';
   }
@@ -1138,8 +1325,8 @@ function recalcPrice(manualEdit) {
   else { footnote.classList.remove('show'); }
 
   // Top calc box (cake price / delivery / total)
-  document.getElementById('calc-base').textContent = '৳' + Math.round(total);
-  document.getElementById('calc-delivery').textContent = '৳' + Math.round(delivery) + (lang === 'en' ? ' (separate)' : ' (আলাদা)');
+  document.getElementById('calc-base').textContent = '৳' + Math.round(cakePrice);
+  document.getElementById('calc-delivery').textContent = '৳' + Math.round(delivery) + (lang === 'en' ? (fullNow ? ' (included)' : ' (separate)') : (fullNow ? ' (অন্তর্ভুক্ত)' : ' (আলাদা)'));
   document.getElementById('calc-total').textContent = '৳' + Math.round(total);
   document.getElementById('calc-box').classList.add('show');
 
@@ -1152,7 +1339,7 @@ function recalcPrice(manualEdit) {
       dueHint.textContent = lang === 'en'
         ? `৳${Math.round(due)} left to pay later` + (delivery > 0 ? ` · delivery charge ৳${Math.round(delivery)} is separate` : '')
         : `বাকি ৳${Math.round(due)} পরে দিতে হবে` + (delivery > 0 ? ` · ডেলিভারি চার্জ ৳${Math.round(delivery)} আলাদা` : '');
-    } else if (delivery > 0) {
+    } else if (delivery > 0 && !fullNow) {
       dueHint.textContent = lang === 'en' ? `Delivery charge ৳${Math.round(delivery)} is paid separately` : `ডেলিভারি চার্জ ৳${Math.round(delivery)} আলাদা`;
     } else {
       dueHint.textContent = '';
@@ -1172,12 +1359,22 @@ function resolveWeight(i) {
 
 function parseWeightText(raw) {
   const text = String(raw || '').trim().toLowerCase().replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
-  const m = text.match(/([\d]+(?:\.\d+)?)\s*(kg|কেজি|kilos?|kilograms?|pounds?|lbs|lb|পাউন্ড)?/);
+  const m = text.match(/([\d]+(?:\.\d+)?)\s*(grams?|gms?|gm|গ্রাম|kilograms?|kilos?|kg|কেজি|pounds?|lbs?|lb|পাউন্ড)?/);
   if (!m) return null;
   const num = parseFloat(m[1]);
-  if (!num || num <= 0 || num > 200) return null;
-  const isKg = /kg|কেজি|kilo/.test(m[2] || '');
-  return { num, isKg };
+  if (!num || num <= 0) return null;
+  let unitRaw = (m[2] || '').trim();
+  if (!unitRaw) {
+    if (/grams?|gms?\b|gm\b|গ্রাম/.test(text)) unitRaw = 'gram';
+    else if (/kilograms?|kilos?|kg|কেজি/.test(text)) unitRaw = 'kg';
+    else if (/pounds?|lbs?|lb|পাউন্ড/.test(text)) unitRaw = 'pound';
+  }
+  const isKg = /kg|কেজি|kilo/.test(unitRaw);
+  const isGram = !isKg && /gram|gms?|gm|গ্রাম/.test(unitRaw);
+  if (!isKg && !isGram && num > 200) return null;
+  if (isKg && num > 100) return null;
+  if (isGram && num > 100000) return null;
+  return { num, isKg, isGram };
 }
 
 function updateWeightHint(i) {
@@ -1186,7 +1383,27 @@ function updateWeightHint(i) {
   if (!el) return;
   const p = parseWeightText(weightEl(i).value || '');
   if (!p) { el.textContent = ''; return; }
-  el.textContent = p.isKg ? `${p.num} KG = ${(p.num * 2.20462).toFixed(1)} pound` : `${p.num} pound = ${(p.num / 2.20462).toFixed(2)} KG`;
+  if (p.isGram) {
+    const kg = p.num / 1000;
+    const lb = p.num / 453.592;
+    el.textContent = lang === 'en'
+      ? `${p.num} gram = ${kg.toFixed(2)} KG = ${lb.toFixed(2)} pound`
+      : `${p.num} গ্রাম = ${kg.toFixed(2)} KG = ${lb.toFixed(2)} পাউন্ড`;
+    return;
+  }
+  if (p.isKg) {
+    const lb = p.num * 2.20462;
+    const g = Math.round(p.num * 1000);
+    el.textContent = lang === 'en'
+      ? `${p.num} KG = ${lb.toFixed(2)} pound = ${g} gram`
+      : `${p.num} KG = ${lb.toFixed(2)} পাউন্ড = ${g} গ্রাম`;
+    return;
+  }
+  const kg = p.num / 2.20462;
+  const g = Math.round(p.num * 453.592);
+  el.textContent = lang === 'en'
+    ? `${p.num} pound = ${kg.toFixed(2)} KG = ${g} gram`
+    : `${p.num} পাউন্ড = ${kg.toFixed(2)} KG = ${g} গ্রাম`;
 }
 
 // ─── Mini / Medium cake quick-select ─────────────────────────
@@ -1211,7 +1428,13 @@ function setWeightPreset(kind, btn, i) {
   const p = WEIGHT_PRESETS[kind];
   if (!p) return;
   const el = weightEl(i);
-  el.value = lang === 'en' ? p.fillEn : p.fill;
+  if (kind === 'mini') {
+    setCakeKind(i, 'mini');
+  } else {
+    setCakeKind(i, 'normal');
+    el.value = lang === 'en' ? p.fillEn : p.fill;
+    applyCakeKindState(i);
+  }
   document.querySelectorAll('.weight-preset' + (i === 1 ? '' : '-' + i)).forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   updateWeightHint(i);
@@ -1219,20 +1442,17 @@ function setWeightPreset(kind, btn, i) {
   updateProgress();
   showTextPopup(p.file, lang === 'en' ? p.titleEn : p.title);
   // Mini cake requires 100% advance — auto-select full payment + notify
-  if (kind === 'mini') {
-    setAdvanceType('full');
-    openMiniAdvancePopup();
-  }
+  if (kind === 'mini') openMiniAdvancePopup();
 }
 // Total delivery charge = cake 1 charge + cake 2 charge (unless "same")
 function getTotalDeliveryCharge() {
-  let total = parseFloat(document.getElementById('f-delivery-charge').value) || 0;
+  let total = Math.max(0, Math.round(Number(document.getElementById('f-delivery-charge').value) || 0));
   if (cakeCount >= 2) {
     const sc = document.getElementById('same-charge-check');
     const sameCharge = sc ? sc.checked : true;
     if (!sameCharge) {
       const el2 = document.getElementById('f-delivery-charge-2');
-      if (el2) total += parseFloat(el2.value) || 0;
+      if (el2) total += Math.max(0, Math.round(Number(el2.value) || 0));
     }
   }
   return total;
@@ -1262,12 +1482,8 @@ function onFulfilmentChange() {
 document.getElementById('f-surprise').addEventListener('change', function() {
   isSurprise = this.value === 'yes';
   document.getElementById('surprise-note').classList.toggle('show', isSurprise);
-  if (isSurprise) {
-    setAdvanceType('full');
-    document.getElementById('opt-50').disabled = true;
-  } else {
-    document.getElementById('opt-50').disabled = false;
-  }
+  if (isSurprise) setAdvanceType('full');
+  syncFullOnlyPayment();
 });
 
 // Progress
@@ -1351,9 +1567,17 @@ function validate() {
     const pfx = i === 1 ? '' : (lang === 'en' ? 'Cake ' + i + ': ' : 'কেক ' + bnCake(i) + ': ');
     const wRaw = cakeWeightText(i);
     if (!wRaw) { showToast(pfx + 'ওজন নির্বাচন করুন'); weightEl(i).focus(); return false; }
-    if (isBareNumberWeight(wRaw)) { maybeAskWeightUnit(i); showToast(pfx + 'ওজনের একক বেছে নিন — পাউন্ড নাকি KG?'); return false; }
-    if (!isPresetWeight(wRaw) && !parseWeightText(wRaw)) { showToast(pfx + 'সঠিক ওজন লিখুন'); weightEl(i).focus(); return false; }
+    // A <=300 g typed weight opens the same mini-cake information/OK flow
+    // as the single-cake form; the current submit is stopped until the popup is handled.
+    if (!isMiniCake(i) && !miniPendingCakes[i] && maybeConvertToMini(i)) return false;
+    if (isBareNumberWeight(wRaw)) { maybeAskWeightUnit(i); showToast(pfx + 'ওজনের একক বেছে নিন — পাউন্ড, KG নাকি গ্রাম?'); return false; }
+    if (!isPresetWeight(wRaw) && !parseWeightText(wRaw)) { showToast(pfx + 'ওজন এককসহ লিখুন (যেমন: 2 pound, 1 KG বা 250 gram)'); weightEl(i).focus(); return false; }
     if (!flavourEl(i).value) { showToast(pfx + 'ফ্লেভার নির্বাচন করুন'); flavourEl(i).focus(); return false; }
+    if (cakeCount > 1 && (!Number.isSafeInteger(Number(cakePriceEl(i).value)) || Number(cakePriceEl(i).value) < 1)) {
+      showToast(pfx + (lang === 'en' ? 'Enter this cake’s agreed price' : 'এই কেকের নির্ধারিত দাম দিন'));
+      cakePriceEl(i).focus();
+      return false;
+    }
     const wErr = getCakeWritingError(writingEl(i).value);
     if (wErr) { showToast(pfx + wErr); writingEl(i).focus(); return false; }
   }
@@ -1388,6 +1612,15 @@ function validate() {
     openAdvanceMethodPopup();
     return false;
   }
+  if (isFullOnlyPayment()) {
+    const sent = Math.round(Number(document.getElementById('f-advance').value) || 0);
+    const base = advanceType && sent === lastAutoSend ? lastAutoBase : splitSend(sent, getGatewayRate()).base;
+    const required = Math.round(getOrderTotal()) + (isPickup ? 0 : getTotalDeliveryCharge());
+    if (base < required) {
+      showToast(lang === 'en' ? 'Mini cakes require full payment including delivery and gateway charges.' : 'মিনি কেকে ডেলিভারি ও পেমেন্ট চার্জসহ পুরো পেমেন্ট দিন।');
+      return false;
+    }
+  }
   if (isSurprise) {
     const adv = parseFloat(document.getElementById('f-advance').value) || 0;
     const total = getOrderTotal();
@@ -1404,18 +1637,35 @@ function getOrderTotal() {
 
 // Submit
 async function submitOrder() {
+  if (orderSubmitting) return;
+  syncCakePrices();
   if (!checkTerms()) return;
   if (!validate()) return;
-
-  // FINAL live door re-check right before writing: re-read /offDays and
-  // /dayBooks fresh for every delivery date in this order, so the last slot
-  // can never be double-booked by two customers at once. Offline → trust the
-  // last synced state.
-  const doorDates = [document.getElementById('f-date').value];
-  if (!document.getElementById('same-date-check').checked && document.getElementById('f-date-2').value) {
-    doorDates.push(document.getElementById('f-date-2').value);
+  orderSubmitting = true;
+  showLoading(true);
+  try {
+    await saveSubmittedOrder();
+  } catch (err) {
+    showToast('সমস্যা হয়েছে, আবার চেষ্টা করুন');
+    console.error(err);
+  } finally {
+    orderSubmitting = false;
+    showLoading(false);
   }
-  for (const dv of doorDates) {
+}
+
+async function saveSubmittedOrder() {
+  if (!window.ensureAuthReady || !(await window.ensureAuthReady())) throw new Error('auth-unavailable');
+
+  // Recheck capacity for the number of separate orders on each date.
+  const firstDate = document.getElementById('f-date').value;
+  const doorDates = { [firstDate]: cakeCount };
+  if (cakeCount > 1 && !document.getElementById('same-date-check').checked && document.getElementById('f-date-2').value) {
+    doorDates[firstDate]--;
+    const secondDate = document.getElementById('f-date-2').value;
+    doorDates[secondDate] = (doorDates[secondDate] || 0) + 1;
+  }
+  for (const [dv, requested] of Object.entries(doorDates)) {
     const k = offDayKey(dv);
     if (!k) continue;
     const liveOff = await db.ref('offDays').child(k).once('value').then(s => s.val()).catch(() => 'unreadable');
@@ -1431,7 +1681,7 @@ async function submitOrder() {
       checkDateClosed();
       return;
     }
-    if (lim != null && booked >= lim) {
+    if (lim != null && booked + requested > lim) {
       showToast(lang === 'en'
         ? `⛔ Sorry — orders can't be taken for ${fmtDate(k)}. Please choose another date.`
         : `⛔ দুঃখিত — ${fmtDate(k)} তারিখে অর্ডার নেওয়া যাবে না। অন্য তারিখ বেছে নিন।`);
@@ -1464,10 +1714,13 @@ async function submitOrder() {
     advance = split.base;
     charge = split.charge;
   }
-  const subtotal = cakePrice;
-  const total = cakePrice;
+  const paymentDelivery = isPickup ? 0 : getTotalDeliveryCharge();
+  const fullNow = isFullOnlyPayment();
+  const subtotal = fullNow ? cakePrice + paymentDelivery : cakePrice;
+  const total = subtotal;
   const advanceTotal = Math.round(sendAmount);
-  const dueAmount = Math.max(0, subtotal - advance);
+  // Mini cakes are paid in full, including the known delivery charge.
+  const dueAmount = fullNow ? 0 : Math.max(0, Math.round(cakePrice) - advance) + paymentDelivery;
 
   // Per-cake details (cakes 1..N). Delivery is stored INSIDE each cake with the
   // same field names the admin app reads (address/deliveryAddress, receiver,
@@ -1490,7 +1743,7 @@ async function submitOrder() {
     receiverPhone: document.getElementById('f-receiver-phone').value.trim(),
     date: document.getElementById('f-date').value,
     timeSlot: getSelectedTime(1),
-    deliveryCharge: isPickup ? 0 : (parseFloat(document.getElementById('f-delivery-charge').value) || 0)
+    deliveryCharge: isPickup ? 0 : Math.max(0, Math.round(Number(document.getElementById('f-delivery-charge').value) || 0))
   };
 
   const cakes = [];
@@ -1498,7 +1751,6 @@ async function submitOrder() {
     const fl = getFlavour(flavourEl(i) ? flavourEl(i).value : '');
     const store = photosFor(i);
     const writingText = (writingEl(i) ? writingEl(i).value : '').trim();
-    const isCake2 = i === 2;
     const sameAddress = i !== 2 || sameAddr;
     const sameReceiver = i !== 2 || sameRcv;
     const samePhone = i !== 2 || samePh;
@@ -1512,9 +1764,10 @@ async function submitOrder() {
     const rcp = samePhone ? cake1Delivery.receiverPhone : (document.getElementById('f-receiver-phone-2').value || '').trim();
     const dt = sameDate ? cake1Delivery.date : document.getElementById('f-date-2').value;
     const tm = sameTime ? cake1Delivery.timeSlot : getSelectedTime(2);
-    const chg = isPickup ? 0 : (sameCharge ? 0 : (parseFloat(document.getElementById('f-delivery-charge-2').value) || 0));
+    const chg = isPickup ? 0 : i === 1 ? cake1Delivery.deliveryCharge : (sameCharge ? 0 : Math.max(0, Math.round(Number(document.getElementById('f-delivery-charge-2').value) || 0)));
     cakes.push({
       cakeIndex: i,
+      cakePrice: cakeCount > 1 ? Math.round(Number(cakePriceEl(i).value)) : Math.round(cakePrice),
       weight: (cakeWeightText(i) || '').toLowerCase(),
       weightLabel: cakeWeightText(i),
       flavour: fl ? fl.value : '',
@@ -1543,7 +1796,7 @@ async function submitOrder() {
   }
   const altPhoneEl = document.getElementById('f-alt-phone');
   const altPhone = altPhoneEl ? altPhoneEl.value.trim() : '';
-  const delivery = isPickup ? 0 : getTotalDeliveryCharge();
+  const delivery = paymentDelivery;
   const firstCake = cakes[0];
 
   const order = {
@@ -1575,6 +1828,7 @@ async function submitOrder() {
     receiverPhone: firstCake.receiverPhone,
     altPhone: altPhone,
     receiverSameCust: rc1 ? rc1.checked : false,
+    surprise: isSurprise ? 'yes' : 'no',
     // One payment method for the whole order
     paymentMethod: method.id,
     paymentMethodName: method.name,
@@ -1605,18 +1859,98 @@ async function submitOrder() {
     updatedAt: Date.now()
   };
 
-  showLoading(true);
-  (window.ensureAuthReady ? window.ensureAuthReady() : Promise.resolve(false)).then(authOk => {
-    if (!authOk) throw new Error('auth-unavailable');
-    return db.ref('orders').push(order);
-  }).then(() => {
-    showLoading(false);
-    try { fireNtfyAlert(order); } catch (e) { console.error(e); }
-    showSuccess(order);
-  }).catch(err => {
-    showLoading(false);
-    showToast('সমস্যা হয়েছে, আবার চেষ্টা করুন');
-    console.error(err);
+  const submittedOrders = buildSubmittedOrders(order, fullNow);
+  const ordersRef = db.ref('orders');
+  if (submittedOrders.length === 1) {
+    await ordersRef.push(submittedOrders[0]);
+  } else {
+    const updates = {};
+    submittedOrders.forEach(record => { updates[ordersRef.push().key] = record; });
+    // One atomic write: either every cake is created, or none is created.
+    await ordersRef.update(updates);
+  }
+  try { fireNtfyAlert(order); } catch (e) { console.error(e); }
+  showSuccess(order, submittedOrders);
+}
+
+// Allocate whole taka without dropping or duplicating rounding remainders.
+function allocatePayment(amount, weights) {
+  amount = Math.max(0, Math.round(Number(amount) || 0));
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  if (!total) return weights.map((_, i) => i === 0 ? amount : 0);
+  const shares = weights.map(weight => amount * weight / total);
+  const result = shares.map(Math.floor);
+  const remainder = amount - result.reduce((sum, value) => sum + value, 0);
+  const ranked = shares.map((share, i) => ({ i, fraction: share - result[i] }))
+    .sort((a, b) => b.fraction - a.fraction || a.i - b.i);
+  for (let i = 0; i < remainder; i++) result[ranked[i].i]++;
+  return result;
+}
+
+function buildSubmittedOrders(order, fullNow) {
+  const cakes = order.cakes;
+  const prices = cakes.map(cake => cake.cakePrice);
+  const cakeTotal = prices.reduce((sum, price) => sum + price, 0);
+  const deliveryTotal = cakes.reduce((sum, cake) => sum + cake.deliveryCharge, 0);
+  const deliveryPaid = fullNow ? Math.min(deliveryTotal, Math.max(0, order.advance - cakeTotal)) : 0;
+  const advances = allocatePayment(order.advance - deliveryPaid, prices);
+  const deliveryAdvances = allocatePayment(deliveryPaid, cakes.map(cake => cake.deliveryCharge));
+  const paymentWeights = advances.map((amount, i) => amount + deliveryAdvances[i]);
+  const fees = allocatePayment(order.paymentCharges, paymentWeights);
+  const autoAmounts = order.advanceAutoTotal == null ? [] : allocatePayment(order.advanceAutoTotal, prices);
+  const sharedDeliveryPaid = cakes[0].deliveryCharge > 0 && deliveryAdvances[0] >= cakes[0].deliveryCharge ? 'paid' : 'unpaid';
+
+  return cakes.map((cake, i) => {
+    const record = {
+      ...order,
+      orderId: cakes.length > 1 ? order.orderId + '-' + (i + 1) : order.orderId,
+      cakeCount: 1,
+      multiCake: false,
+      weight: cake.weight,
+      weightLabel: cake.weightLabel,
+      flavour: cake.flavour,
+      flavourName: cake.flavourName,
+      writing: cake.writing,
+      cakeWriting: cake.cakeWriting,
+      photo: cake.photo,
+      photos: cake.photos,
+      photoNote: cake.photoNote,
+      address: cake.address,
+      deliveryAddress: cake.deliveryAddress,
+      receiver: cake.receiver,
+      receiverPhone: cake.receiverPhone,
+      receiverSameCust: cake.receiverPhone === order.customerPhone,
+      date: cake.date,
+      deliveryDate: cake.deliveryDate,
+      timeSlot: cake.timeSlot,
+      timeSlotLabel: cake.timeSlotLabel,
+      cakePrice: prices[i],
+      basePrice: prices[i],
+      subtotal: prices[i],
+      total: prices[i],
+      deliveryCharge: cake.deliveryCharge,
+      deliveryAmount: cake.deliveryCharge,
+      deliveryAdvance: deliveryAdvances[i],
+      deliveryPaid: order.fulfilment === 'pickup' ? 'na'
+        : cake.deliveryCharge > 0 && deliveryAdvances[i] >= cake.deliveryCharge ? 'paid' : 'unpaid',
+      advance: advances[i],
+      advanceCharge: fees[i],
+      paymentCharges: fees[i],
+      advanceTotal: advances[i] + deliveryAdvances[i] + fees[i],
+      advanceAutoTotal: order.advanceAutoTotal == null ? null : autoAmounts[i],
+      dueAmount: Math.max(0, prices[i] - advances[i]) + cake.deliveryCharge - deliveryAdvances[i]
+    };
+    delete record.cakes;
+    if (cakes.length > 1) {
+      record.splitGroupId = order.orderId;
+      record.splitOf = `${i + 1}/${cakes.length}`;
+      record.groupAdvanceTotal = order.advanceTotal;
+      if (i > 0 && cake.sameChargeAsCake1 && order.fulfilment !== 'pickup') {
+        record.deliveryChargeSharedWith = order.orderId + '-1';
+        record.deliveryPaid = sharedDeliveryPaid;
+      }
+    }
+    return record;
   });
 }
 
@@ -1755,7 +2089,7 @@ function getTimeError(i) {
 }
 
 // Success
-function showSuccess(order) {
+function showSuccess(order, submittedOrders) {
   document.getElementById('form-screen').classList.remove('active');
   document.getElementById('success-screen').classList.add('active');
   const summary = document.getElementById('order-summary');
@@ -1772,12 +2106,13 @@ function showSuccess(order) {
     <div class="row"><span>ফোন</span><span>${esc(order.customerPhone)}</span></div>
     ${cakesRows}
     ${writingRows}
+    ${many && submittedOrders ? submittedOrders.map(record => `<div class="row"><span>${lang === 'en' ? 'Separate order' : 'আলাদা অর্ডার'} ${esc(record.splitOf)}</span><span>${esc(record.orderId)}<br>${esc(fmtDate(record.deliveryDate))} · ${esc(record.timeSlotLabel)}<br>${esc(record.deliveryAddress)}</span></div>`).join('') : ''}
     <div class="row"><span>তারিখ</span><span>${esc(fmtDate(order.deliveryDate))} · ${esc(order.timeSlotLabel)}</span></div>
     <div class="row"><span>ঠিকানা</span><span>${esc(order.deliveryAddress)}${many && order.cakes.some(c => c.cakeIndex > 1 && !c.sameAddressAsCake1) ? ' · কেক ২ আলাদা ঠিকানায়' : ''}</span></div>
     ${order.notes ? `<div class="row"><span>📝 অতিরিক্ত তথ্য</span><span>${esc(order.notes)}</span></div>` : ''}
-    <div class="row"><span>মোট (আনুমানিক)</span><span>৳${Math.round(order.total)}</span></div>
-    <div class="row"><span>প্রদান</span><span style="color:var(--green)">৳${Math.round(order.advanceTotal)}</span></div>
-    ${order.dueAmount > 0 ? `<div class="due-alert">⚠️ বাকি: ৳${Math.round(order.dueAmount)}${order.deliveryCharge > 0 ? `<br>🚚 ডেলিভারি চার্জ (আলাদা): ৳${Math.round(order.deliveryCharge)}` : ''}</div>` : '<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ পূর্ণ পেমেন্ট সম্পন্ন</div>'}
+    <div class="row"><span>মোট (কেক + ডেলিভারি)</span><span>৳${Math.round(order.cakePrice + order.deliveryCharge)}</span></div>
+    <div class="row"><span>পাঠানো (পেমেন্ট চার্জসহ)</span><span style="color:var(--green)">৳${Math.round(order.advanceTotal)}</span></div>
+    ${order.dueAmount > 0 ? `<div class="due-alert">⚠️ বাকি: ৳${Math.round(order.dueAmount)}${order.deliveryCharge > 0 ? `<br>🚚 জানা ডেলিভারি চার্জ এই হিসাবের অন্তর্ভুক্ত: ৳${Math.round(order.deliveryCharge)}` : ''}</div>` : '<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ পূর্ণ পেমেন্ট সম্পন্ন</div>'}
   `;
 
   // Manual flow: no auto-download, no auto-close popup. The customer takes a
@@ -1927,9 +2262,13 @@ function resetForm() {
   document.getElementById('entry-security').value = '';
   document.querySelectorAll('#form-screen input:not(#entry-phone), #form-screen textarea').forEach(el => { if (!el.readOnly) el.value = ''; });
   document.querySelectorAll('#form-screen select').forEach(el => el.selectedIndex = 0);
+  document.getElementById('f-cake-price').value = '';
   currentPhotos = []; payShot = '';
   if (typeof renderPayShot === 'function') renderPayShot();
   extraPhotos = {};
+  Object.keys(miniCakeKinds).forEach(k => delete miniCakeKinds[k]);
+  Object.keys(miniPendingCakes).forEach(k => delete miniPendingCakes[k]);
+  miniInfoTarget = null;
   advanceType = ''; lastAutoSend = 0; lastAutoBase = 0; isSurprise = false; cakeWritingNoticeShown = false;
   advanceMethod = '';
   flavourNoticeShown = false;
@@ -1956,7 +2295,7 @@ function resetForm() {
   document.getElementById('surprise-note').classList.remove('show');
   document.getElementById('payment-info').classList.remove('show');
   syncAdvanceChoices('');
-  document.getElementById('opt-50').disabled = false;
+  syncFullOnlyPayment();
   renderCakeColumns();
   document.getElementById('entry-btn').textContent = lang === 'en' ? 'Start order' : 'অর্ডার শুরু করুন';
   document.getElementById('entry-btn').onclick = handleEntry;

@@ -56,6 +56,43 @@ test('mini cake disables 50% advance as a native button', t => {
   assert.equal(el('opt-50').getAttribute('aria-pressed'), 'false');
 });
 
+test('multi-cake weight units and <=300 gram mini rule match the single form', t => {
+  const { w, el } = form(t, 'customer-multi');
+  w.setLang('en');
+  w.setCakeCount(2);
+  const weight = el('f-weight-2');
+  weight.value = '1';
+  w.maybeAskWeightUnit(2);
+  assert.match(el('weight-unit-msg').textContent, /POUND.*KG.*GRAM/);
+  assert.equal(el('weight-unit-popup').classList.contains('show'), true);
+
+  w.chooseWeightUnit('gram');
+  assert.equal(weight.value, '1 gram');
+  assert.equal(el('weight-unit-popup').classList.contains('show'), false);
+  assert.equal(w.isFullOnlyPayment(), true, 'small gram weights require full payment while the notice is open');
+  assert.equal(el('opt-50').disabled, true);
+
+  // The real info file is intentionally offline in this DOM harness, but the
+  // OK action is still the same state transition the browser uses.
+  w.confirmMiniCake();
+  assert.equal(weight.value, 'Mini cake');
+  assert.equal(weight.disabled, true);
+  assert.equal(el('weight-hint-2').textContent, '');
+
+  const writing = el('f-writing-2');
+  writing.value = 'Happy';
+  w.updateWritingCount(2);
+  assert.match(el('writing-count-2').textContent, /^1 \/ 500$/);
+
+  const weight1 = el('f-weight-1');
+  weight1.value = '1 pound';
+  assert.equal(w.maybeConvertToMini(1), false, '1 pound remains a normal cake');
+  weight1.value = '300 gram';
+  assert.equal(w.maybeConvertToMini(1), true, 'the 300 gram boundary becomes a mini cake');
+  w.confirmMiniCake();
+  assert.equal(weight1.value, 'Mini cake');
+});
+
 test('multi-cake form waits for anonymous Firebase sign-in before database use', async t => {
   const dom = new JSDOM('', { url: 'https://example.invalid/', runScripts: 'outside-only' });
   const w = dom.window;
