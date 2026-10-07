@@ -5050,8 +5050,8 @@ window.App = (() => {
   };
 
   // Keep the sticky tabs offset in sync with the real topbar height
-  // (it changes when the daily-new button appears/disappears, language
-  // switches, or text wraps differently on small screens).
+  // (it changes when the language switches or text wraps differently
+  // on small screens).
   const syncTopbarHeight = () => {
     const tb = document.querySelector('.topbar');
     if (tb) document.documentElement.style.setProperty('--topbar-h', tb.offsetHeight + 'px');
@@ -5063,12 +5063,10 @@ window.App = (() => {
   setTimeout(syncTopbarHeight, 1500);
 
   const updateDailyBadge = () => {
-    const btn = document.getElementById('daily-log-btn');
     const cnt = document.getElementById('daily-count');
-    if (!btn || !cnt) return;
-    const n = todaysPlacedOrders().length;
-    cnt.textContent = n;
-    btn.style.display = n > 0 ? '' : 'none';
+    if (!cnt) return;
+    // Keep New Orders available even when today's list is empty or dismissed.
+    cnt.textContent = todaysPlacedOrders().length;
     syncTopbarHeight();
   };
 

@@ -2355,7 +2355,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
     <button class="action-btn" id="sort-btn" onclick="App.toggleSort()" aria-label="Change sort">⇅ <span id="sort-label">তারিখ</span></button>
     <button class="cal-btn" onclick="App.openCalendar()" aria-label="Order Calendar">📅 <span>ক্যালেন্ডার</span></button>
     <button class="cal-btn" onclick="App.openNotepad()" aria-label="বেকারি নোটবুক">📝 <span>বেকারি নোট</span></button>
-    <button class="cal-btn" id="daily-log-btn" onclick="App.showDailyPopup()" aria-label="আজকের নতুন অর্ডার" style="display:none">🆕 <span data-i18n="dailyNewShort">নতুন</span> <span id="daily-count" style="background:var(--red);color:#fff;border-radius:999px;padding:0 6px;font-size:11px;font-weight:700">0</span></button>
+    <button class="cal-btn" id="daily-log-btn" onclick="App.showDailyPopup()" aria-label="আজকের নতুন অর্ডার">🆕 <span data-i18n="dailyNewShort">নতুন</span> <span id="daily-count" style="background:var(--red);color:#fff;border-radius:999px;padding:0 6px;font-size:11px;font-weight:700">0</span></button>
   </div>
 </header>
 
@@ -2877,7 +2877,7 @@ function isIosDevice() {
 </script>
 
 <script src="./notepad.js?v=2026-10-04-bakery-notebook-v2"></script>
-<script src="./app.js?v=2026-10-04-bakery-notebook-v2"></script>
+<script src="./app.js?v=2026-10-07-new-orders-visible"></script>
 
 <!-- PUSH NOTIFICATION SYSTEM (Firebase Cloud Messaging / Web Push) — deferred so
      it never competes with the first orders download on slow networks. -->
