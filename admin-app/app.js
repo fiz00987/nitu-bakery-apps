@@ -1851,28 +1851,6 @@ T & C Applicable। ধন্যবাদ!`;
       return `<div class="card" id="card-${escAttr(o && o.firebaseKey)}"><div class="card-head"><div class="card-head-body"><div class="card-name">${name}</div><div class="card-meta">${oid}</div></div></div></div>`;
     }
   };
-  // The completed-orders tab is a review index, not the full working-order
-  // board. Keep each completed order on one compact row; tapping it opens the
-  // existing full order modal for the complete review/edit details.
-  const renderDoneRow = o => {
-    try {
-      const cake = (o.cakes && o.cakes.length > 1)
-        ? `${o.cakes.length}টি কেক`
-        : [weightText(o), flavourLabel(o)].filter(Boolean).join(' · ') || '—';
-      return `<button type="button" class="done-row" onclick="App.openModal(${jsArg(o.firebaseKey)})" aria-label="${escAttr((o.orderId || '') + ' ' + (o.name || o.customerName || ''))}">
-        <span class="done-row-status" aria-hidden="true">✅</span>
-        <span class="done-row-id">${esc(o.orderId || o.firebaseKey || '—')}</span>
-        <span class="done-row-name">${esc(o.name || o.customerName || '—')}</span>
-        <span class="done-row-cake">${esc(cake)}</span>
-        <span class="done-row-date">${esc(o.date ? fmtDate(o.date) : '—')}</span>
-        <strong class="done-row-price">৳${fmtMoney(cakePriceOf(o))}</strong>
-        <span class="done-row-open" aria-hidden="true">↗</span>
-      </button>`;
-    } catch (err) {
-      console.error('[done-row] failed for', o && (o.orderId || o.firebaseKey), err);
-      return `<button type="button" class="done-row" onclick="App.openModal(${jsArg(o.firebaseKey)})"><span class="done-row-status">✅</span><span class="done-row-id">${esc(o.orderId || 'অর্ডার')}</span><span class="done-row-name">${esc(o.name || o.customerName || '—')}</span><span class="done-row-open">↗</span></button>`;
-    }
-  };
   const renderCard = o => {
     const d          = dueAmt(o);
     const t          = today0();
@@ -2351,7 +2329,7 @@ T & C Applicable। ধন্যবাদ!`;
     try {
       const st = captureViewState(el);
       el.innerHTML = pool.length
-        ? `<div class="done-list">${pool.map(renderDoneRow).join('')}</div>`
+        ? pool.map(renderCardSafe).join('')
         : `<div class="empty"><div class="empty-icon">✅</div><h3>কোনো সম্পন্ন অর্ডার নেই</h3><p>ডেলিভার করা অর্ডার এখানে দেখাবে।</p></div>`;
       restoreViewState(el, st);
     } catch (e) { console.error('[done] render failed:', e); }
