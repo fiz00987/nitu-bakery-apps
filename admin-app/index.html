@@ -2314,18 +2314,17 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
 .cdb-section-head h3, .reward-filter-head h3, .rev-chart-heading h3 { color: var(--text); font-size: 14px; line-height: 1.2; }
 .cdb-section-head p, .rev-chart-heading p { color: var(--text3); font-size: 10px; margin-top: 3px; }
 .section-count, .chart-badge, .reward-filter-head > span { color: var(--pink); background: var(--pink-light); border-radius: 999px; font-size: 10px; font-weight: 800; padding: 4px 8px; white-space: nowrap; }
-.cdb-grid { display: grid; grid-template-columns: 1fr; gap: 7px; }
-.cdb-card { display: flex; align-items: center; min-width: 0; border: 1px solid #dfe8e5; border-radius: 12px; box-shadow: 0 2px 8px rgba(24,42,57,.05); transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
-.cdb-card:hover { transform: translateY(-1px); border-color: var(--pink-soft); box-shadow: 0 5px 14px rgba(24,42,57,.10); }
-.cdb-thumb-wrap { flex: 0 0 58px; width: 58px; height: 58px; aspect-ratio: auto; }
+.cdb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.cdb-card { display: block; min-width: 0; border: 1px solid #dfe8e5; border-radius: 16px; box-shadow: 0 4px 13px rgba(24,42,57,.06); transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
+.cdb-card:hover { transform: translateY(-2px); border-color: var(--pink-soft); box-shadow: 0 8px 20px rgba(24,42,57,.11); }
+.cdb-thumb-wrap { width: 100%; height: auto; aspect-ratio: 1 / .82; }
 .cdb-thumb { transition: transform .25s ease; }
-.cdb-card:hover .cdb-thumb { transform: scale(1.04); }
-.cdb-body { display: grid; grid-template-columns: minmax(68px, 1fr) minmax(72px, 1fr) minmax(90px, 1.35fr) auto auto; align-items: center; gap: 8px; min-width: 0; flex: 1; padding: 8px 10px; }
+.cdb-card:hover .cdb-thumb { transform: scale(1.03); }
+.cdb-body { display: block; min-width: 0; padding: 10px 11px 12px; }
 .cdb-order-ref { color: var(--pink); font-size: 9px; font-weight: 800; letter-spacing: .04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cdb-name, .cdb-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cdb-name { font-size: 12px; margin-top: 0; }
-.cdb-meta { font-size: 10px; margin-top: 0; }
-.cdb-foot { display: contents; }
+.cdb-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; margin-top: 3px; }
+.cdb-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; margin-top: 4px; }
+.cdb-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 6px; margin-top: 9px; }
 .cdb-price { font-size: 13px; }
 .cdb-date { font-size: 9px; }
 
@@ -2494,14 +2493,13 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
   .insight-stat-icon { width: 25px; height: 25px; flex-basis: 25px; font-size: 13px; }
   .insight-stat strong { font-size: 14px; }
   .insight-stat small { font-size: 8px; }
-  .cdb-grid { grid-template-columns: 1fr; gap: 6px; }
-  .cdb-card { border-radius: 10px; }
-  .cdb-thumb-wrap { flex-basis: 48px; width: 48px; height: 48px; }
-  .cdb-body { grid-template-columns: minmax(55px, .9fr) minmax(58px, .9fr) minmax(72px, 1.2fr) auto auto; gap: 5px; padding: 6px 7px; }
-  .cdb-name { font-size: 10px; }
-  .cdb-meta { font-size: 8px; }
-  .cdb-price { font-size: 10px; }
-  .cdb-date { font-size: 7.5px; }
+  .cdb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .cdb-card { border-radius: 13px; }
+  .cdb-body { padding: 8px 8px 10px; }
+  .cdb-name { font-size: 11px; }
+  .cdb-meta { font-size: 8.5px; }
+  .cdb-price { font-size: 11px; }
+  .cdb-date { font-size: 8px; }
   .cdb-add-photo { font-size: 0; width: 23px; height: 23px; padding: 0; display: grid; place-items: center; }
   .cdb-add-photo::before { content: '📷'; font-size: 12px; }
   .rev-hero { min-height: 132px; padding: 17px 17px; }
@@ -2516,7 +2514,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
 @media (max-width: 380px) {
   .tab { font-size: 8.5px; }
   .tab .tab-icon { font-size: 16px; }
-  .cdb-grid { grid-template-columns: 1fr; }
+  .cdb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .insight-stats { grid-template-columns: 1fr 1fr 1fr; }
   .insight-stat { display: block; text-align: center; }
   .insight-stat-icon { margin: 0 auto 5px; }
