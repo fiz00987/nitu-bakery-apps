@@ -89,7 +89,7 @@ window.App = (() => {
       monthEarn: 'আয় (মোট বিক্রি)',
       monthEarnNote: '💡 ডেলিভারি চার্জ ও bKash চার্জ বাদে কেকের মোট বিক্রি। ডেলিভারি চার্জ পুরোটা ডেলিভারি এজেন্ট পান।',
       chartMonthlyOrders: '📊 মাসিক অর্ডার — শেষ ৫ মাস',
-      tabPlan: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'আয়', tabCdb: 'ডেটাবেজ', tabReward: 'রিওয়ার্ড', tabDeliveryConfirm: 'ডেলিভারি কনফার্ম',
+      tabPlan: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'ড্যাশবোর্ড', tabCdb: 'ডেটাবেজ', tabReward: 'রিওয়ার্ড', tabDeliveryConfirm: 'ডেলিভারি কনফার্ম',
       sort_date: 'তারিখ', sort_name: 'নাম', sort_due: 'বকেয়া',
       secPayment: '💳 পেমেন্ট', fTotal: 'কেকের মূল্য (৳)', fPaid: 'অগ্রিম / প্রদান (৳)',
       live: 'লাইভ', offline: 'সংযোগ নেই', saving: 'সেভ হচ্ছে...', conn: 'সংযোগ...',
@@ -113,7 +113,7 @@ window.App = (() => {
       monthEarn: 'Earn (Total Sale)',
       monthEarnNote: '💡 Total cake sale excluding delivery & bKash charges. The delivery fee goes fully to the delivery agent.',
       chartMonthlyOrders: '📊 Orders per Month — Last 5',
-      tabPlan: 'Orders', tabDone: 'Done', tabRev: 'Revenue', tabCdb: 'Database', tabReward: 'Rewards', tabDeliveryConfirm: 'Delivery Confirm',
+      tabPlan: 'Orders', tabDone: 'Done', tabRev: 'Dashboard', tabCdb: 'Database', tabReward: 'Rewards', tabDeliveryConfirm: 'Delivery Confirm',
       sort_date: 'Date', sort_name: 'Name', sort_due: 'Due',
       secPayment: '💳 Payment', fTotal: 'Cake Price (৳)', fPaid: 'Advance / Paid (৳)',
       live: 'Live', offline: 'Offline', saving: 'Saving...', conn: 'Connecting...',
@@ -2386,7 +2386,7 @@ T & C Applicable। ধন্যবাদ!`;
     const MONTHS   = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
     const curMonth = `${MONTHS[m]} ${y}`;
 
-    // Monthly basis: orders taken in the CURRENT month only.
+    // Monthly sales basis: orders taken in the CURRENT month only.
     let planned = 0, completed = 0, earn = 0;
 
     orders.forEach(o => {
@@ -2400,27 +2400,41 @@ T & C Applicable। ধন্যবাদ!`;
 
     const completion = planned ? Math.min(100, Math.round((completed / planned) * 100)) : 0;
     const average = planned ? Math.round(earn / planned) : 0;
-    const revenueCopy = lang === 'bn'
-      ? { eyebrow: 'পারফরম্যান্স', title: 'আয় ও অর্ডার সারাংশ', total: 'এই মাসের কেক বিক্রি', average: 'গড় অর্ডার মূল্য', progress: 'সম্পন্ন অর্ডার', chart: 'গত ৫ মাসের অর্ডার', note: 'কেকের বিক্রির হিসাব। ডেলিভারি চার্জ ও bKash চার্জ এতে ধরা হয়নি।' }
-      : { eyebrow: 'PERFORMANCE', title: 'Revenue & order overview', total: 'Cake sales this month', average: 'Average order value', progress: 'Orders completed', chart: 'Orders across the last 5 months', note: 'Cake sales only. Delivery and bKash charges are excluded.' };
+    const active = orders.filter(isActiveOrder);
+    const todayOrders = orders.filter(o => o.date && o.status !== 'cancelled' && toDate(o.date).getTime() === t.getTime());
+    const cakeDue = orders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + dueAmt(o), 0);
+    const deliveryDue = orders.filter(o => o.status !== 'cancelled' && !isPickupOrder(o) && o.deliveryPaid !== 'paid' && dcAmtOf(o) > 0)
+      .reduce((sum, o) => sum + dcAmtOf(o), 0);
+    const pendingReviews = reviewClaims.filter(c => String(c.status || 'pending').toLowerCase() === 'pending').length;
+    const pendingConfirmations = orders.filter(o => o.status === 'delivered' && !o.deliveryConfirmationSentAt).length;
+    const flavourCounts = {};
+    orders.filter(o => o.status !== 'cancelled' && o.date && toDate(o.date).getFullYear() === y && toDate(o.date).getMonth() === m)
+      .forEach(o => { const name = flavourLabel(o) || 'অজানা'; flavourCounts[name] = (flavourCounts[name] || 0) + 1; });
+    const popularFlavours = Object.entries(flavourCounts).sort((a, b) => b[1] - a[1]).slice(0, 4);
+    const maxFlavourCount = Math.max(1, ...popularFlavours.map(([, count]) => count));
+    const dashCopy = lang === 'bn'
+      ? { eyebrow: 'দোকানের ড্যাশবোর্ড', title: 'আজকের কমান্ড সেন্টার', subtitle: `${curMonth} · কাজ, পেমেন্ট ও বিক্রির এক নজরের সারাংশ`, today: 'আজকের ডেলিভারি', action: 'কাজ বাকি', cakeDue: 'কেকের বকেয়া', deliveryDue: 'ডেলিভারি বাকি', reviewDue: 'রিভিউ যাচাই বাকি', confirmDue: 'কনফার্মেশন বাকি', quick: 'দ্রুত কাজ', sales: 'বিক্রির সারাংশ', salesTotal: 'এই মাসের কেক বিক্রি', average: 'গড় অর্ডার মূল্য', progress: 'অর্ডার সম্পন্ন', chart: 'গত ৫ মাসের অর্ডার', popular: 'এই মাসের জনপ্রিয় ফ্লেভার', noFlavours: 'এখনো কোনো ফ্লেভার ডেটা নেই', note: 'কেকের বিক্রি দেখানো হয়েছে; ডেলিভারি চার্জ ও পেমেন্ট গেটওয়ে চার্জ এতে নেই।', orders: 'অর্ডার', open: 'খুলুন' }
+      : { eyebrow: 'BAKERY DASHBOARD', title: 'Bakery command center', subtitle: `${curMonth} · work, payments, and sales at a glance`, today: "Today's deliveries", action: 'Needs action', cakeDue: 'Cake due', deliveryDue: 'Delivery due', reviewDue: 'Reviews to check', confirmDue: 'Confirmations waiting', quick: 'Quick actions', sales: 'Sales pulse', salesTotal: 'Cake sales this month', average: 'Average order value', progress: 'Orders completed', chart: 'Orders across the last 5 months', popular: 'Popular flavours this month', noFlavours: 'No flavour data yet', note: 'Cake sales only; delivery and payment gateway charges are excluded.', orders: 'orders', open: 'Open' };
 
     let html = `<div class="insight-shell revenue-shell">
       <div class="insight-heading revenue-heading">
-        <div><span class="insight-eyebrow">${revenueCopy.eyebrow}</span><h2>${revenueCopy.title}</h2><p>${curMonth}</p></div>
-        <div class="revenue-period">${lang === 'bn' ? 'মাসিক' : 'MONTHLY'}<span>⌄</span></div>
+        <div><span class="insight-eyebrow">${dashCopy.eyebrow}</span><h2>${dashCopy.title}</h2><p>${dashCopy.subtitle}</p></div>
+        <div class="revenue-period">${fmtMoney(active.length)} ${dashCopy.orders}</div>
       </div>
       <div class="rev-hero">
-        <div class="rev-hero-glow"></div><div class="rev-hero-content"><span class="rev-hero-label">💰 ${revenueCopy.total}</span><strong class="rev-num blue">৳${fmtMoney(earn)}</strong><span class="rev-hero-sub">${fmtMoney(planned)} ${lang === 'bn' ? 'টি অর্ডার থেকে' : 'orders'} · ${fmtMoney(completed)} ${lang === 'bn' ? 'টি সম্পন্ন' : 'completed'}</span></div>
+        <div class="rev-hero-glow"></div><div class="rev-hero-content"><span class="rev-hero-label">💰 ${dashCopy.salesTotal}</span><strong class="rev-num blue">৳${fmtMoney(earn)}</strong><span class="rev-hero-sub">${fmtMoney(planned)} ${dashCopy.orders} · ${fmtMoney(completed)} ${lang === 'bn' ? 'টি সম্পন্ন' : 'completed'} · ${fmtMoney(todayOrders.length)} ${dashCopy.today}</span></div>
         <div class="rev-hero-mark">৳</div>
       </div>
       <div class="rev-metrics">
-        <div class="rev-metric"><div class="rev-metric-top"><span class="rev-metric-icon orders-icon">🧾</span><span class="rev-metric-trend">${lang === 'bn' ? 'মাসে' : 'THIS MONTH'}</span></div><strong>${fmtMoney(planned)}</strong><span>${tr('monthPlanned')}</span></div>
-        <div class="rev-metric"><div class="rev-metric-top"><span class="rev-metric-icon done-icon">✓</span><span class="rev-metric-trend">${completion}%</span></div><strong>${fmtMoney(completed)}</strong><span>${tr('monthCompleted')}</span></div>
-        <div class="rev-metric"><div class="rev-metric-top"><span class="rev-metric-icon avg-icon">◉</span><span class="rev-metric-trend">৳</span></div><strong>${fmtMoney(average)}</strong><span>${revenueCopy.average}</span></div>
+        <div class="rev-metric"><div class="rev-metric-top"><span class="rev-metric-icon orders-icon">💰</span><span class="rev-metric-trend">৳</span></div><strong>${fmtMoney(cakeDue)}</strong><span>${dashCopy.cakeDue}</span></div>
+        <div class="rev-metric"><div class="rev-metric-top"><span class="rev-metric-icon avg-icon">🚚</span><span class="rev-metric-trend">৳</span></div><strong>${fmtMoney(deliveryDue)}</strong><span>${dashCopy.deliveryDue}</span></div>
+        <div class="rev-metric"><div class="rev-metric-top"><span class="rev-metric-icon done-icon">⏳</span><span class="rev-metric-trend">!</span></div><strong>${fmtMoney(active.length)}</strong><span>${dashCopy.action}</span></div>
       </div>
-      <div class="rev-progress-card"><div class="rev-progress-head"><span>${revenueCopy.progress}</span><strong>${completion}%</strong></div><div class="rev-progress-track"><i style="width:${completion}%"></i></div><small>${fmtMoney(completed)} / ${fmtMoney(planned)} ${lang === 'bn' ? 'টি অর্ডার সম্পন্ন' : 'orders completed'}</small></div>
-      <div class="rev-chart-card"><div class="rev-chart-heading"><div><h3>📊 ${revenueCopy.chart}</h3><p>${lang === 'bn' ? 'অর্ডার নেওয়ার ধারাবাহিকতা' : 'Order volume over time'}</p></div><span class="chart-badge">5 ${lang === 'bn' ? 'মাস' : 'MONTHS'}</span></div>${buildMonthlyChart()}</div>
-      <div class="earn-note">💡 ${revenueCopy.note}</div>
+      <div class="command-actions"><button type="button" class="command-action" onclick="App.switchTab('plan')">📅 ${dashCopy.today}<b>${fmtMoney(todayOrders.length)}</b></button><button type="button" class="command-action" onclick="App.switchTab('done')">✅ ${lang === 'bn' ? 'সম্পন্ন অর্ডার' : 'Completed orders'}<b>${fmtMoney(completed)}</b></button><button type="button" class="command-action" onclick="App.switchTab('delivery-confirm')">📦 ${dashCopy.confirmDue}<b>${fmtMoney(pendingConfirmations)}</b></button><button type="button" class="command-action" onclick="App.switchTab('rewards')">⭐ ${dashCopy.reviewDue}<b>${fmtMoney(pendingReviews)}</b></button></div>
+      <div class="command-panels"><section class="command-panel"><div class="command-panel-head"><h3>🍰 ${dashCopy.popular}</h3><span>${fmtMoney(planned)} ${dashCopy.orders}</span></div>${popularFlavours.length ? popularFlavours.map(([name, count]) => `<div class="command-bar-row"><span>${esc(name)}</span><b>${fmtMoney(count)}</b><i><em style="width:${Math.max(8, Math.round((count / maxFlavourCount) * 100))}%"></em></i></div>`).join('') : `<p class="command-empty">${dashCopy.noFlavours}</p>`}</section><section class="command-panel"><div class="command-panel-head"><h3>💰 ${dashCopy.sales}</h3><span>${curMonth}</span></div><div class="command-sales"><strong>৳${fmtMoney(earn)}</strong><span>${dashCopy.salesTotal}</span><small>${fmtMoney(planned)} ${dashCopy.orders} · ${fmtMoney(completed)} ${lang === 'bn' ? 'সম্পন্ন' : 'completed'} · ${completion}%</small></div></section></div>
+      <div class="rev-progress-card"><div class="rev-progress-head"><span>${dashCopy.progress}</span><strong>${completion}%</strong></div><div class="rev-progress-track"><i style="width:${completion}%"></i></div><small>${fmtMoney(completed)} / ${fmtMoney(planned)} ${lang === 'bn' ? 'টি অর্ডার সম্পন্ন' : 'orders completed'} · ${dashCopy.average}: ৳${fmtMoney(average)}</small></div>
+      <div class="rev-chart-card"><div class="rev-chart-heading"><div><h3>📊 ${dashCopy.chart}</h3><p>${lang === 'bn' ? 'অর্ডার নেওয়ার ধারাবাহিকতা' : 'Order volume over time'}</p></div><span class="chart-badge">5 ${lang === 'bn' ? 'মাস' : 'MONTHS'}</span></div>${buildMonthlyChart()}</div>
+      <div class="earn-note">💡 ${dashCopy.note}</div>
     </div>`;
 
     document.getElementById('view-revenue').innerHTML = html;
