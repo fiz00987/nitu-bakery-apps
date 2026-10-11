@@ -49,7 +49,8 @@ function multiForm(t, prices = [1000, 2000], options = {}) {
     + fs.readFileSync(path.join(root, 'customer-multi/utils.js'), 'utf8') + '\n'
     + fs.readFileSync(path.join(root, 'customer-multi/app.js'), 'utf8')
     + "\nwindow.testProof = () => { payShot = 'data:image/png;base64,cHJvb2Y='; payShotVerified = true; payAmountMatch = true; };"
-    + "\nwindow.testPhotos = () => { currentPhotos = ['data:image/png;base64,b25l']; extraPhotos[2] = ['data:image/png;base64,dHdv']; };");
+    + "\nwindow.testPhotos = () => { currentPhotos = ['data:image/png;base64,b25l']; extraPhotos[2] = ['data:image/png;base64,dHdv']; };"
+    + "\nwindow.testUnsafeReferencePhoto = () => { extraPhotos[2] = ['data:image/svg+xml;base64,PHN2Zy8+']; };");
   w.fireNtfyAlert = () => {};
   const el = id => w.document.getElementById(id);
   w.setLang('en');

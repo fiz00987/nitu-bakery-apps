@@ -142,6 +142,29 @@ test('editing a mini-cake payment below the full amount cannot create paid order
   assert.match(h.el('toast').textContent, /full payment/);
 });
 
+test('multi-cake validation rejects an unsafe injected reference image', async t => {
+  const h = multiForm(t);
+  h.w.testUnsafeReferencePhoto();
+  await h.w.submitOrder();
+  assert.equal(h.writes.length, 0);
+  assert.match(h.el('toast').textContent, /reference photo/);
+});
+
+test('multi-cake image input guard accepts supported images and rejects SVG', t => {
+  const h = multiForm(t);
+  assert.equal(h.w.isSafeImageFile({ size: 100, type: 'image/jpeg' }), true);
+  assert.equal(h.w.isSafeImageFile({ size: 100, type: 'image/svg+xml' }), false);
+  assert.equal(h.w.isSafeImageFile({ size: 5 * 1024 * 1024 + 1, type: 'image/png' }), false);
+});
+
+test('multi-cake previous-order lookup includes legacy international phone storage', async t => {
+  const h = multiForm(t, [1000]);
+  h.state.orders.legacy = { customerPhone: '+8801712345678', createdAt: 10 };
+  const orders = await h.w.loadPhoneScopedOrders('01712345678');
+  assert.equal(orders.length, 1);
+  assert.equal(orders[0].customerPhone, '+8801712345678');
+});
+
 test('per-cake prices survive language changes and a missing price stops submission', async t => {
   const h = multiForm(t, [1000, 0]);
   h.w.setLang('bn');

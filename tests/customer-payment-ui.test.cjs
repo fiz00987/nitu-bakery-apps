@@ -56,6 +56,20 @@ test('mini cake disables 50% advance as a native button', t => {
   assert.equal(el('opt-50').getAttribute('aria-pressed'), 'false');
 });
 
+test('single-cake automatic mini flow keeps the confirmation action available', async t => {
+  const { w, el } = form(t, 'customer-app');
+  w.setLang('en');
+  w.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve('Mini cake guide') });
+  el('f-weight').value = '300 gram';
+  assert.equal(w.maybeConvertToMini(), true);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  const confirm = w.document.getElementById('mini-ok-btn');
+  assert.ok(confirm, 'the mini-cake guide must provide an explicit confirmation button');
+  confirm.click();
+  assert.equal(el('f-weight').value, 'Mini cake');
+  assert.equal(el('opt-50').disabled, true);
+});
+
 test('multi-cake weight units and <=300 gram mini rule match the single form', t => {
   const { w, el } = form(t, 'customer-multi');
   w.setLang('en');
@@ -115,4 +129,12 @@ test('multi-cake form waits for anonymous Firebase sign-in before database use',
   assert.equal(await ready, true);
   dom.window.close();
   t.after(() => dom.window.close());
+});
+
+test('multi-cake phone entry accepts Bengali and international formats canonically', t => {
+  const { w } = form(t, 'customer-multi');
+  assert.equal(w.canonicalizeBangladeshPhone('০১৭১২-৩৪৫৬৭৮'), '01712345678');
+  assert.equal(w.canonicalizeBangladeshPhone('+8801712345678'), '01712345678');
+  assert.equal(w.canonicalizeBangladeshPhone('8801712345678'), '01712345678');
+  assert.equal(w.canonicalizeBangladeshPhone('01212345678'), '');
 });

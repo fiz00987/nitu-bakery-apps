@@ -538,7 +538,7 @@ function t(key) { return lang === 'en' ? (translationsEn[key] || key) : (transla
 
 // Entry handler
 async function handleEntry() {
-  const phone = document.getElementById('entry-phone').value.trim();
+  const phone = canonicalizeBangladeshPhone(document.getElementById('entry-phone').value);
   const err = document.getElementById('entry-error');
   err.classList.remove('show');
 
@@ -555,9 +555,31 @@ async function handleEntry() {
 
 async function checkReturningCustomer(phone) {
   try {
-    const snap = await db.ref('orders').orderByChild('customerPhone').equalTo(phone).limitToFirst(1).once('value');
-    return snap.exists();
+    const snapshots = await Promise.all(phoneQueryVariants(phone).map(value =>
+      db.ref('orders').orderByChild('customerPhone').equalTo(value).limitToFirst(1).once('value')
+    ));
+    return snapshots.some(snap => snap.exists());
   } catch (e) { console.error(e); return false; }
+}
+
+function phoneQueryVariants(phone) {
+  const canonical = canonicalizeBangladeshPhone(phone);
+  if (!canonical) return [];
+  return [canonical, '+880' + canonical.slice(1), '880' + canonical.slice(1)];
+}
+
+async function loadPhoneScopedOrders(phone) {
+  const snapshots = await Promise.all(phoneQueryVariants(phone).map(value =>
+    db.ref('orders').orderByChild('customerPhone').equalTo(value).once('value')
+  ));
+  const orders = [];
+  const seen = new Set();
+  snapshots.forEach(snapshot => snapshot.forEach(child => {
+    if (seen.has(child.key)) return;
+    seen.add(child.key);
+    orders.push(child.val());
+  }));
+  return orders;
 }
 
 const BN_DIGITS = { '০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9' };
@@ -627,9 +649,7 @@ async function trackOrder() {
 
 async function loadPreviousOrders(phone) {
   try {
-    const snap = await db.ref('orders').orderByChild('customerPhone').equalTo(phone).once('value');
-    const orders = [];
-    snap.forEach(c => orders.push(c.val()));
+    const orders = await loadPhoneScopedOrders(phone);
     orders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
     if (orders.length === 0) return;
@@ -717,9 +737,7 @@ async function showPreviousOrders() {
   document.getElementById('previous-orders-nav').hidden = true;
 
   try {
-    const snap = await db.ref('orders').orderByChild('customerPhone').equalTo(phone).once('value');
-    previousOrderHistory = [];
-    snap.forEach(child => previousOrderHistory.push(child.val()));
+    previousOrderHistory = await loadPhoneScopedOrders(phone);
     // Newest delivery date first; creation time is the fallback if a legacy order has no date.
     previousOrderHistory.sort((a, b) => previousOrderDateValue(b) - previousOrderDateValue(a));
     previousOrderCursor = 0;
@@ -746,7 +764,9 @@ function closePreviousOrders(event) {
 }
 
 function proceedToForm(phone) {
-  localStorage.setItem('nitu-cust-phone', phone);
+  const canonicalPhone = canonicalizeBangladeshPhone(phone);
+  if (!canonicalPhone) return;
+  localStorage.setItem('nitu-cust-phone', canonicalPhone);
   document.getElementById('entry-screen').classList.add('hidden');
   document.getElementById('form-screen').classList.add('active');
   currentOrderId = generateOrderId();
@@ -760,16 +780,35 @@ const MAX_PHOTOS = 4;
 
 function compressImage(file) {
   return new Promise((resolve, reject) => {
+    if (!isSafeImageFile(file, MAX_IMAGE_FILE_BYTES)) {
+      reject(new Error('unsupported-image'));
+      return;
+    }
     const reader = new FileReader();
     reader.onload = function(ev) {
       const img = new Image();
       img.onload = function() {
-        const canvas = document.createElement('canvas');
-        const MAX = 800; let w = img.width, h = img.height;
-        if (w > MAX) { h = h * MAX / w; w = MAX; }
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
+        const sourceWidth = Number(img.naturalWidth || img.width);
+        const sourceHeight = Number(img.naturalHeight || img.height);
+        if (!sourceWidth || !sourceHeight || !Number.isFinite(sourceWidth) || !Number.isFinite(sourceHeight) ||
+            sourceWidth > MAX_IMAGE_DIMENSION || sourceHeight > MAX_IMAGE_DIMENSION ||
+            sourceWidth * sourceHeight > MAX_IMAGE_PIXELS) {
+          reject(new Error('image-dimensions-too-large'));
+          return;
+        }
+        try {
+          const canvas = document.createElement('canvas');
+          const MAX = 800; let w = sourceWidth, h = sourceHeight;
+          if (w > MAX) { h = h * MAX / w; w = MAX; }
+          canvas.width = Math.max(1, Math.round(w));
+          canvas.height = Math.max(1, Math.round(h));
+          const context = canvas.getContext('2d');
+          if (!context) throw new Error('canvas-unavailable');
+          context.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          if (!isSafeImageDataUrl(dataUrl)) throw new Error('image-output-invalid');
+          resolve(dataUrl);
+        } catch (error) { reject(error); }
       };
       img.onerror = reject;
       img.src = ev.target.result;
@@ -789,7 +828,10 @@ async function handlePhoto(e, idx) {
   if (slots <= 0) { showToast(`সর্বোচ্চ ${MAX_PHOTOS}টি ছবি দেওয়া যাবে`); return; }
   if (files.length > slots) showToast(`প্রথম ${slots}টি ছবি নেওয়া হলো`);
   for (const file of files.slice(0, slots)) {
-    if (file.size > 5 * 1024 * 1024) { showToast(`${file.name || 'ছবি'}: ৫MB এর কম হতে হবে`); continue; }
+    if (!isSafeImageFile(file, MAX_IMAGE_FILE_BYTES)) {
+      showToast(`${file.name || 'ছবি'}: JPEG, PNG, WEBP বা GIF ছবি (৫MB-এর মধ্যে) দিন`);
+      continue;
+    }
     try { store.push(await compressImage(file)); } catch (_) { showToast('ছবি লোড করা যায়নি'); }
   }
   renderPhotos(idx);
@@ -896,7 +938,10 @@ async function handlePayShot(e) {
   const file = e.target.files && e.target.files[0];
   e.target.value = '';
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { showToast('ছবি ৫MB এর কম হতে হবে'); return; }
+  if (!isSafeImageFile(file, MAX_IMAGE_FILE_BYTES)) {
+    showToast('শুধু JPEG, PNG, WEBP বা GIF পেমেন্টের স্ক্রিনশট (৫MB-এর মধ্যে) দিন');
+    return;
+  }
   try { payShot = await compressImage(file); } catch (_) { showToast('ছবি লোড করা যায়নি'); return; }
   payShotVerified = null;
   payAmountMatch = null;
@@ -1556,9 +1601,15 @@ function validate() {
     return false;
   }
   // Payment screenshot is mandatory — the proof of payment
-  if (!payShot) {
+  if (!payShot || !isSafeImageDataUrl(payShot)) {
     showToast('💳 পেমেন্টের স্ক্রিনশট দিন — bKash / Nagad / ব্যাংক কনফার্মেশন পেজের ছবি');
     document.getElementById('f-payshot').scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return false;
+  }
+  const allReferencePhotos = [];
+  for (let i = 1; i <= cakeCount; i++) allReferencePhotos.push(...photosFor(i));
+  if (allReferencePhotos.some(photo => !isSafeImageDataUrl(photo))) {
+    showToast(lang === 'en' ? 'Please remove and re-upload the reference photo.' : 'রেফারেন্স ছবিটি সরিয়ে আবার আপলোড করুন।');
     return false;
   }
   const isPickup = document.getElementById('f-fulfilment').value === 'pickup';
@@ -1694,7 +1745,7 @@ async function saveSubmittedOrder() {
   renderOffdayBanner();
   checkDateClosed();
 
-  const phone = localStorage.getItem('nitu-cust-phone') || '';
+  const phone = canonicalizeBangladeshPhone(localStorage.getItem('nitu-cust-phone'));
   const customerName = document.getElementById('f-name').value.trim();
   localStorage.setItem('nitu-cust-name', customerName);
 
@@ -2434,8 +2485,11 @@ function loadOffDays() {
   populateDropdowns();
   setLang(lang);
   renderCakeColumns();
-  const savedPhone = localStorage.getItem('nitu-cust-phone');
-  if (savedPhone) document.getElementById('entry-phone').value = savedPhone;
+  const savedPhone = canonicalizeBangladeshPhone(localStorage.getItem('nitu-cust-phone'));
+  if (savedPhone) {
+    localStorage.setItem('nitu-cust-phone', savedPhone);
+    document.getElementById('entry-phone').value = savedPhone;
+  }
   setMinDate();
   loadOffDays();   // admin-crossed closed dates (syncs live)
 })();

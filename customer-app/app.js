@@ -305,31 +305,22 @@ async function validateQuoteLock() {
 }
 
 // ─── Customer profile keyed by PHONE (points-ready) ────────────
-// customers/<01XXXXXXXXX> = { phone, name, lastLoginAt, createdAt,
-//   pointsBalance, totalEarned, totalRedeemed }. Orders are NOT moved:
-// they keep customerPhone and are queried the same way as today.
+// customers/<01XXXXXXXXX> = { phone, name, lastLoginAt, ... }. The customer
+// app writes only the non-sensitive profile fields; the profile itself is
+// admin-readable under the database rules. Orders are NOT moved: they keep
+// customerPhone and are queried the same way as today.
 async function upsertCustomerProfile(phone) {
   const key = phoneKeyOf(phone);
   if (!key) return;
   try {
     const ref = db.ref('customers/' + key);
-    const snap = await ref.once('value');
-    const now = Date.now();
-    if (snap.exists()) {
-      const cur = snap.val() || {};
-      const patch = { phone: key, lastLoginAt: now };
-      if (!cur.createdAt) patch.createdAt = now;
-      if (cur.pointsBalance == null) patch.pointsBalance = 0;
-      if (cur.totalEarned == null) patch.totalEarned = 0;
-      if (cur.totalRedeemed == null) patch.totalRedeemed = 0;
-      await ref.update(patch);
-    } else {
-      await ref.set({
-        phone: key, name: (localStorage.getItem('nitu-cust-name') || ''),
-        createdAt: now, lastLoginAt: now,
-        pointsBalance: 0, totalEarned: 0, totalRedeemed: 0
-      });
-    }
+    const patch = { phone: key, lastLoginAt: Date.now() };
+    const name = localStorage.getItem('nitu-cust-name') || '';
+    if (name) patch.name = name;
+    // Customer profile reads are intentionally admin-only. Preserve existing
+    // points fields when the admin has initialized them; new profiles can be
+    // initialized by the admin without exposing balances to anonymous users.
+    await ref.update(patch);
   } catch (e) { console.error('customer profile upsert failed', e); }
 }
 
@@ -1414,9 +1405,9 @@ function maybeConvertToMini() {
 
 // Mini info popup with an explicit OK gate (instead of a passive popup):
 // OK converts the weight to the mini size name and locks 50% off.
-function showMiniCakeInfo() {
+async function showMiniCakeInfo() {
   const p = WEIGHT_PRESETS.mini;
-  showTextPopup(p.file, lang === 'en' ? p.titleEn : p.title);
+  await showTextPopup(p.file, lang === 'en' ? p.titleEn : p.title);
   miniNoticeShown = true;
   // Append an OK button to the currently open popup (re-render safe: only one).
   const pop = document.querySelector('#text-popup .popup');
@@ -1903,12 +1894,6 @@ const WEIGHT_PRESET_ALIASES = ['মিনিকেক', 'মিনি', 'মি�
 
 function isPresetWeight(raw) {
   return WEIGHT_PRESET_ALIASES.includes(String(raw || '').toLowerCase().replace(/\s+/g, ''));
-}
-
-// ─── Mini cake info popup (shown when the mini kind is picked) ──
-function showMiniCakeInfo() {
-  const p = WEIGHT_PRESETS.mini;
-  showTextPopup(p.file, lang === 'en' ? p.titleEn : p.title);
 }
 
 function setWeightPreset(kind, btn) {
