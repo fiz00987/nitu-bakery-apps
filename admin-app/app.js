@@ -89,7 +89,7 @@ window.App = (() => {
       monthEarn: 'আয় (মোট বিক্রি)',
       monthEarnNote: '💡 ডেলিভারি চার্জ ও bKash চার্জ বাদে কেকের মোট বিক্রি। ডেলিভারি চার্জ পুরোটা ডেলিভারি এজেন্ট পান।',
       chartMonthlyOrders: '📊 মাসিক অর্ডার — শেষ ৫ মাস',
-      tabPlan: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'আয়', tabCdb: 'ডেটাবেজ',
+      tabPlan: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'আয়', tabCdb: 'ডেটাবেজ', tabReward: 'রিওয়ার্ড', tabDeliveryConfirm: 'ডেলিভারি কনফার্ম',
       sort_date: 'তারিখ', sort_name: 'নাম', sort_due: 'বকেয়া',
       secPayment: '💳 পেমেন্ট', fTotal: 'কেকের মূল্য (৳)', fPaid: 'অগ্রিম / প্রদান (৳)',
       live: 'লাইভ', offline: 'সংযোগ নেই', saving: 'সেভ হচ্ছে...', conn: 'সংযোগ...',
@@ -113,7 +113,7 @@ window.App = (() => {
       monthEarn: 'Earn (Total Sale)',
       monthEarnNote: '💡 Total cake sale excluding delivery & bKash charges. The delivery fee goes fully to the delivery agent.',
       chartMonthlyOrders: '📊 Orders per Month — Last 5',
-      tabPlan: 'Orders', tabDone: 'Done', tabRev: 'Revenue', tabCdb: 'Database',
+      tabPlan: 'Orders', tabDone: 'Done', tabRev: 'Revenue', tabCdb: 'Database', tabReward: 'Rewards', tabDeliveryConfirm: 'Delivery Confirm',
       sort_date: 'Date', sort_name: 'Name', sort_due: 'Due',
       secPayment: '💳 Payment', fTotal: 'Cake Price (৳)', fPaid: 'Advance / Paid (৳)',
       live: 'Live', offline: 'Offline', saving: 'Saving...', conn: 'Connecting...',
@@ -166,7 +166,10 @@ window.App = (() => {
   // ─── Cake-only money (DC is NEVER part of these numbers) ──────
   // DC has its own row on the card, so advance/due/progress only ever
   // count cake money.
-  const dcAmtOf = o => Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
+  // The customer app writes `deliveryCharge`. `deliveryAmount` is the legacy
+  // alias used by older admin records, so prefer the customer-facing field
+  // whenever both are present and only fall back to the alias when necessary.
+  const dcAmtOf = o => Math.round(Number(o.deliveryCharge != null ? o.deliveryCharge : o.deliveryAmount) || 0);
   const isPickupOrder = o => (o.fulfilment === 'pickup' || o.deliveryPaid === 'na');
   // ─── Non-authoritative DC display ──────────────────────────────
   // dcAuto (or a blank amount) means the delivery agency hasn't given the
@@ -748,8 +751,11 @@ window.App = (() => {
       trx:            String(o.trx || ''),
       cakePrice:      cakePriceOf(o),
       advance:        Math.round(Number(o.advance != null ? o.advance : o.paid) || 0),
-      deliveryAmount: Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0),
+      deliveryAmount: Math.round(Number(o.deliveryCharge != null ? o.deliveryCharge : o.deliveryAmount) || 0),
       deliveryPaid:   String(o.deliveryPaid || ''),
+      deliveryAgentName:  String(o.deliveryAgentName || ''),
+      deliveryAgentPhone: String(o.deliveryAgentPhone || ''),
+      deliveryConfirmationSentAt: String(o.deliveryConfirmationSentAt || ''),
       cakes:          cakeSig(o.cakes),
       photos:         (Array.isArray(o.photos) && o.photos.filter(Boolean).length) || (o.photo ? 1 : 0),
       deliveredPhoto: o.deliveredPhoto ? 1 : 0
@@ -770,7 +776,8 @@ window.App = (() => {
     cakePrice:      ['total', 'basePrice', 'cakePrice', 'subtotal'],
     priceReconciliation: ['total', 'basePrice', 'cakePrice', 'subtotal'],
     advance:        ['advance', 'advanceTotal', 'paid', 'dueAmount'],
-    deliveryAmount: ['deliveryAmount', 'deliveryCharge']
+    deliveryAmount: ['deliveryAmount', 'deliveryCharge'],
+    deliveryAgent:  ['deliveryAgentName', 'deliveryAgentPhone']
   };
   const expandAdminFields = keys => {
     const out = [];
@@ -786,7 +793,8 @@ window.App = (() => {
     o.advance, o.advanceTotal, o.paid, o.dueAmount, o.bkashCharge,
     o.paymentCharges, o.advanceCharge, o.deliveryCharge, o.deliveryAmount,
     o.reviewDiscount, o.reviewRewardId, o.quoteToken, o.adminEditedFields,
-    o.dcAuto, o.dcAutoNote
+     o.dcAuto, o.dcAutoNote, o.deliveryAgentName, o.deliveryAgentPhone,
+     o.deliveryConfirmationSentAt, o.deliveryConfirmationSentBy
   ])).sort());
 
   // Used only on opening/saving an edit, not on every render. Normalize legacy
@@ -1558,6 +1566,112 @@ window.App = (() => {
     else fallbackCopy(msg, done);
   };
 
+  // ─── Delivered confirmation WhatsApp message ─────────────────
+  // This flow intentionally uses a normal wa.me link because the bakery does
+  // not have the WhatsApp Business API. The admin opens the customer's chat,
+  // attaches the delivered-cake photo, and taps Send manually.
+  const DELIVERY_REVIEW_LINK = 'https://nitu-review.web.app/';
+  const deliveryAgentDomKey = key => String(key || '').replace(/[^A-Za-z0-9_-]/g, '_');
+  const deliveryAgentFieldId = (field, key) => `dcf-agent-${field}-${deliveryAgentDomKey(key)}`;
+  const deliveryConfirmationPhoneOf = o => {
+    // Delivery confirmation must go to the phone used to place/log in to the
+    // order. Do not silently fall back to the receiver's phone.
+    const src = String(o && (o.customerPhone || o.phone) || '');
+    const local = canonicalizeBangladeshPhone(src);
+    return local ? `880${local.slice(1)}` : '';
+  };
+  const deliveryAgentPhoneText = o => String(o && o.deliveryAgentPhone || '').trim() || 'এজেন্ট নম্বর দেওয়া হয়নি';
+  const buildDeliveredConfirmationMsg = o => {
+    const name = String(o.name || o.customerName || 'কাস্টমার').trim();
+    const orderId = String(o.orderId || o.firebaseKey || '').trim();
+    const agent = String(o.deliveryAgentName || '').trim() || 'ডেলিভারি এজেন্ট';
+    const agentPhone = deliveryAgentPhoneText(o);
+    const imageLine = safeImageUrl(o.deliveredPhoto)
+      ? '📸 অনুগ্রহ করে ডেলিভারি করা কেকের ছবিটি এই মেসেজের সঙ্গে সংযুক্ত করুন।'
+      : '📸 ডেলিভারি করা কেকের ছবি খুব শিগগিরই পাঠানো হবে।';
+    return `আসসালামু আলাইকুম ${name}! 🌸
+
+আপনার কেকটি সফলভাবে ডেলিভারি করা হয়েছে 🎂
+${orderId ? `অর্ডার নম্বর: ${orderId}\n` : ''}
+🚚 ডেলিভারি এজেন্ট: ${agent}
+📞 এজেন্টের নম্বর: ${agentPhone}
+
+${imageLine}
+
+আপনার দিনটি সুন্দর হোক! নিতুবাবুর্চীর পোর্টফোলিও থেকে অর্ডার করার জন্য ধন্যবাদ। 💛
+
+⭐ আপনার মতামত আমাদের জন্য খুব গুরুত্বপূর্ণ। কেকের স্বাদ, ডিজাইন এবং আমাদের সার্ভিস সম্পর্কে একটি ছোট রিভিউ দিন:
+${DELIVERY_REVIEW_LINK}
+
+রিভিউ করলে আপনার পরবর্তী অর্ডারে ফ্ল্যাট ১০% ডিসকাউন্ট পাবেন।
+T & C Applicable। ধন্যবাদ!`;
+  };
+  const openDeliveryConfirmationWhatsApp = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) return;
+    const phone = deliveryConfirmationPhoneOf(o);
+    if (!phone) {
+      showToast(lang === 'bn' ? '⚠️ কাস্টমারের লগইন ফোন নম্বর পাওয়া যায়নি' : '⚠️ Customer login phone is missing');
+      return;
+    }
+    if (!String(o.deliveryAgentName || '').trim() || !String(o.deliveryAgentPhone || '').trim()) {
+      showToast(lang === 'bn' ? '⚠️ আগে ডেলিভারি ট্যাবে এজেন্টের নাম ও নম্বর সেভ করুন' : '⚠️ Save the delivery agent name and phone first');
+      return;
+    }
+    const img = safeImageUrl(o.deliveredPhoto);
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildDeliveredConfirmationMsg(o))}`, '_blank');
+    showToast(img
+      ? (lang === 'bn' ? 'WhatsApp খুলেছে — এখন ছবিটি attach করে Send করুন 📸' : 'WhatsApp opened — attach the photo and tap Send 📸')
+       : (lang === 'bn' ? 'WhatsApp খুলেছে — মেসেজটি দেখে Send করুন' : 'WhatsApp opened — review the message and tap Send'));
+  };
+  const saveDeliveryAgentDetails = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) return;
+    const nameEl = document.getElementById(deliveryAgentFieldId('name', key));
+    const phoneEl = document.getElementById(deliveryAgentFieldId('phone', key));
+    const name = String(nameEl && nameEl.value || '').trim();
+    const rawPhone = String(phoneEl && phoneEl.value || '').trim();
+    const phone = canonicalizeBangladeshPhone(rawPhone) || rawPhone;
+    if (!name) return showToast(lang === 'bn' ? '⚠️ ডেলিভারি এজেন্টের নাম দিন' : '⚠️ Enter the delivery agent name');
+    if (!phone) return showToast(lang === 'bn' ? '⚠️ ডেলিভারি এজেন্টের ফোন নম্বর দিন' : '⚠️ Enter the delivery agent phone');
+    const changed = name !== String(o.deliveryAgentName || '').trim() || phone !== String(o.deliveryAgentPhone || '').trim();
+    if (!changed) return showToast(lang === 'bn' ? '✅ এজেন্টের তথ্য আগেই সেভ আছে' : '✅ Agent details are already saved');
+    const patch = { deliveryAgentName: name, deliveryAgentPhone: phone, updatedAt: Date.now() };
+    // If the agent changes after a message was sent, the old message is no
+    // longer accurate. Put the order back into the pending follow-up queue.
+    if (o.deliveryConfirmationSentAt) {
+      patch.deliveryConfirmationSentAt = null;
+      patch.deliveryConfirmationSentBy = null;
+    }
+    setSyncStatus('syncing', lang === 'bn' ? 'এজেন্টের তথ্য সেভ হচ্ছে...' : 'Saving agent details...');
+    ordersRef.child(key).update(Object.assign({}, patch, stampAdminEdit(o, {
+      deliveryAgent: { from: `${o.deliveryAgentName || ''} / ${o.deliveryAgentPhone || ''}`, to: `${name} / ${phone}` }
+    }))).then(() => {
+      o.deliveryAgentName = name;
+      o.deliveryAgentPhone = phone;
+      o.updatedAt = patch.updatedAt;
+      if (patch.deliveryConfirmationSentAt === null) {
+        o.deliveryConfirmationSentAt = null;
+        o.deliveryConfirmationSentBy = null;
+      }
+      setSyncStatus('ok');
+      renderDeliveryConfirm();
+      showToast(lang === 'bn' ? '✅ ডেলিভারি এজেন্টের তথ্য সেভ হয়েছে' : '✅ Delivery agent details saved');
+    }).catch(err => {
+      console.error('Delivery agent save failed:', err);
+      setSyncStatus('error', lang === 'bn' ? '❌ এজেন্টের তথ্য সেভ হয়নি' : '❌ Agent details were not saved');
+      showToast(lang === 'bn' ? '❌ এজেন্টের তথ্য সেভ হয়নি' : '❌ Agent details were not saved');
+    });
+  };
+  const copyDeliveryConfirmation = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) return;
+    const msg = buildDeliveredConfirmationMsg(o);
+    const done = () => showToast(lang === 'bn' ? '✅ ডেলিভারি মেসেজ কপি হয়েছে!' : '✅ Delivery message copied!');
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(msg).then(done).catch(() => fallbackCopy(msg, done));
+    else fallbackCopy(msg, done);
+  };
+
   // ─── Full-details copy (order details + delivery charge status) ──
   const buildFullDetailsText = o => {
     const L = [];
@@ -1755,11 +1869,11 @@ window.App = (() => {
     const adminEditedBadge = o.adminEdited
        ? `<span class="chip chip-adminedit">🛠️ ${lang === 'bn' ? 'অ্যাডমিন এডিট' : 'Admin edited'}${adminLogOf(o).length > 1 ? ` ×${adminLogOf(o).length}` : ''}</span>`
       : '';
-    const dcAmtChip = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
+    const dcLineChip = dcAmtLine(o);
     const deliveryChip = o.deliveryPaid === 'paid'
-      ? `<span class="chip chip-green">🚚 ডেল. পরিশোধিত${dcAmtChip ? ` ৳${fmtMoney(dcAmtChip)}` : ''}</span>`
+      ? `<span class="chip chip-green">🚚 ডেল. পরিশোধিত${dcLineChip !== '৳0' ? ` ${dcLineChip}` : ''}</span>`
       : o.deliveryPaid === 'unpaid'
-      ? `<span class="chip chip-amber">🚚 ডেল. বাকি${dcAmtChip ? ` ৳${fmtMoney(dcAmtChip)}` : ''}</span>` : '';
+      ? `<span class="chip chip-amber">🚚 ডেল. বাকি${dcLineChip !== '৳0' ? ` ${dcLineChip}` : ''}</span>` : '';
     const cdChip = (o.status !== 'delivered' && o.status !== 'cancelled') ? countdownChip(o.date) : '';
 
     // WhatsApp link — customer's own phone is the primary contact
@@ -1781,7 +1895,8 @@ window.App = (() => {
        <div class="card-name"><span class="card-name-text">${esc(o.name)}</span><button class="name-copy-btn" type="button" aria-label="${lang === 'bn' ? 'নাম কপি করুন' : 'Copy customer name'}" onclick="event.stopPropagation();App.copyCardName(this)" title="${lang === 'bn' ? 'নাম কপি করুন' : 'Copy customer name'}">📋</button><button class="phone-copy-chip" type="button" data-phone="${escAttr(o.customerPhone || o.phone || o.receiverPhone || '')}" aria-label="${lang === 'bn' ? 'ফোন নম্বর কপি করুন' : 'Copy customer phone'}" onclick="event.stopPropagation();App.copyCustomerPhone(this)" title="${lang === 'bn' ? 'ফোন নম্বর কপি করুন' : 'Copy customer phone'}">📱</button>${tallyBadge}${customerBadge}</div>
       <div class="card-meta">${(o.cakes && o.cakes.length > 1) ? o.cakes.map(c => esc([c.weightLabel || c.weight, c.flavourName || c.flavour].filter(Boolean).join(' '))).join(' + ') + ' · <b>' + o.cakes.length + 'টি কেক</b>' : (esc(weightText(o)) + (weightText(o) && o.flavour ? ' · ' : '') + esc(flavourLabel(o)))}${o.time ? ' · ' + esc(o.time) : ''}</div>
       ${cdChip}
-      <div class="card-chips">${statusChip(o)}${dueChip}${rewardChip}${surpriseChip}${deliveryChip}${adminEditedBadge}${o.splitGroupId ? `<span class="chip chip-customer">🎂 ${esc(o.splitOf)} · ${esc(o.splitGroupId)}</span>` : ''}</div>
+       <div class="card-chips">${statusChip(o)}${dueChip}${rewardChip}${surpriseChip}${deliveryChip}${adminEditedBadge}${o.splitGroupId ? `<span class="chip chip-customer">🎂 ${esc(o.splitOf)} · ${esc(o.splitGroupId)}</span>` : ''}</div>
+       ${dcFootnoteHtml(o)}
       ${priceNotice(o) ? `<div class="pay-note">${esc(priceNotice(o))}</div>` : ''}
     </div>
     <div class="card-chevron-wrap" aria-hidden="true"><div class="card-chevron">⌄</div></div>
@@ -1816,10 +1931,6 @@ window.App = (() => {
       ${o.receiverPhone ? drow('📞', 'রিসিভার ফোন', o.receiverPhone) : ''}
       ${drow('📍', 'ঠিকানা', o.address)}
       ${o.surprise === 'yes' ? drow('🎁', 'সারপ্রাইজ', 'হ্যাঁ — গোপন রাখুন!') : ''}
-      ${o.deliveryPaid && o.deliveryPaid !== 'na'
-        ? drow('🚚', 'ডেলিভারি চার্জ', (o.deliveryPaid === 'paid' ? 'পরিশোধিত ✅' : 'বাকি ⏳') + ` — ${dcAmtLine(o)}`)
-        + dcFootnoteHtml(o)
-        : ''}
     </div>
 
     <div class="detail-section">
@@ -1830,20 +1941,16 @@ window.App = (() => {
         const cakeTotal = cakePriceOf(o);
         const advance   = advanceOf(o);
         const cakeDue   = dueAmt(o);
-        const dcNote = (o.fulfilment === 'pickup' || o.deliveryPaid === 'na')
-          ? '🚚 ডেলিভারি চার্জ: প্রযোজ্য নয় (সেলফ পিকআপ)'
-          : `🚚 ডেলিভারি চার্জ: ${dcAmtLine(o)} — ${o.deliveryPaid === 'paid' ? 'পরিশোধিত ✅' : 'বাকি ⏳'}`;
-        return `<div class="pay-box">
-        <div class="pay-cell"><div class="pay-lbl">${lang==='bn'?'কেকের মূল্য':'Cake price'}</div><div class="pay-val">৳${fmtMoney(cakeTotal)}</div></div>
-        <div class="pay-cell"><div class="pay-lbl">${lang==='bn'?'অগ্রিম / প্রদান':'Advance / Paid'}</div><div class="pay-val green">৳${fmtMoney(advance)}</div></div>
-        <div class="pay-cell"><div class="pay-lbl">${tr('due')}</div><div class="pay-val ${cakeDue > 0 ? 'red' : 'green'}">৳${fmtMoney(cakeDue)}</div></div>
-      </div>
-      <div class="pay-note">${dcNote}</div>${dcFootnoteHtml(o)}`;
+         return `<div class="pay-box">
+         <div class="pay-cell"><div class="pay-lbl">${lang==='bn'?'কেকের মূল্য':'Cake price'}</div><div class="pay-val">৳${fmtMoney(cakeTotal)}</div></div>
+         <div class="pay-cell"><div class="pay-lbl">${lang==='bn'?'অগ্রিম / প্রদান':'Advance / Paid'}</div><div class="pay-val green">৳${fmtMoney(advance)}</div></div>
+         <div class="pay-cell"><div class="pay-lbl">${tr('due')}</div><div class="pay-val ${cakeDue > 0 ? 'red' : 'green'}">৳${fmtMoney(cakeDue)}</div></div>
+       </div>`;
       })()}
       ${bkashCharge(o) > 0 ? `<div class="pay-note">💰 ${tr('bkashDeducted')}: অ্যাডভান্স ৳${fmtMoney(o.paid)} — ${o.paymentChargesLabel ? esc(o.paymentChargesLabel) : (o.paymentMethodName ? esc(o.paymentMethodName) : 'বিকাশ/নগদ')} চার্জ ৳${fmtMoney(bkashCharge(o))} আলাদা</div>` : ''}
       ${o.source === 'manual' && advanceOf(o) > 0 && (o.paymentMethodName || o.paymentMethod || o.paymentChargesLabel) ? `<div class="pay-note">💳 অগ্রিম পাওয়া গেছে: ${esc(o.paymentMethodName || ({bkash:'বিকাশ',nagad:'নগদ',bank:'ব্যাংক',cash:'ক্যাশ'})[String(o.paymentMethod||'').toLowerCase()] || o.paymentChargesLabel)}${o.trx ? ` | ট্রানজেকশন: ${esc(o.trx)}` : ''}</div>` : ''}
       ${o.paynote ? `<div class="pay-note">💳 ${esc(o.paynote)}</div>` : ''}
-      ${o.source === 'customer' && o.advance ? `<div class="pay-note">📱 কাস্টমার অগ্রিম: ৳${fmtMoney(o.advance)}${o.deliveryAdvance > 0 ? ` (+ডেলিভারি ৳${fmtMoney(o.deliveryAdvance)})` : ''}${o.advanceCharge > 0 ? ` (+চার্জ ৳${fmtMoney(o.advanceCharge)})` : ''} = ৳${fmtMoney(o.advanceTotal)}${o.trx ? ` | ট্রানজেকশন: ${esc(o.trx)}` : ''}</div>` : ''}
+       ${o.source === 'customer' && o.advance ? `<div class="pay-note">📱 কাস্টমার পেমেন্ট: ৳${fmtMoney(o.advance)}${o.advanceCharge > 0 ? ` (+চার্জ ৳${fmtMoney(o.advanceCharge)})` : ''} = ৳${fmtMoney(o.advanceTotal)}${o.trx ? ` | ট্রানজেকশন: ${esc(o.trx)}` : ''}</div>` : ''}
       ${o.groupAdvanceTotal != null ? `<div class="pay-note">💳 একই পেমেন্টের অংশ: ${esc(o.splitGroupId)} — ${esc(o.splitOf)}। পুরো গ্রুপে পাঠানো ৳${fmtMoney(o.groupAdvanceTotal)}; এই অর্ডারের বরাদ্দ উপরে দেখানো হয়েছে।</div>` : ''}
       ${o.source === 'customer' && o.advance
         ? (o.payShot
@@ -1987,7 +2094,7 @@ window.App = (() => {
   // ─── Completed Order Database (grid view) ─────────────────────
   // Shows every delivered order as a small card: the delivered cake
   // photo (compressed to ≤50KB when uploaded), price, flavour, weight
-  // and delivery date. Tap a card for a zoomable lightbox of the photo.
+  // and delivery date. Tap a card for a screen-fit lightbox of the photo.
   const renderCdb = () => {
     let db_ = [];
     try {
@@ -2007,8 +2114,22 @@ window.App = (() => {
       return;
     }
 
-    let html = `<div class="cdb-head">🗂️ কমপ্লিটেড অর্ডার ডেটাবেজ</div>
-      <div class="cdb-sub">অর্ডারে ট্যাপ করলে অর্ডার ফর্ম খুলবে · ছবিতে ট্যাপ করলে বড় করে দেখা যাবে (${db_.length}টি)</div>
+    const withPhoto = db_.filter(o => safeImageUrl(o.deliveredPhoto || o.photo)).length;
+    const withoutPhoto = db_.length - withPhoto;
+    const cdbCopy = lang === 'bn'
+      ? { eyebrow: 'আর্কাইভ', title: 'সম্পন্ন অর্ডার ডেটাবেজ', sub: 'ডেলিভারি হয়ে যাওয়া কেক, ছবি ও বিক্রির রেকর্ড এক জায়গায়।', total: 'মোট অর্ডার', photos: 'ছবিসহ', missing: 'ছবি যোগ করা বাকি', hint: 'কার্ডে ট্যাপ করে অর্ডার খুলুন · ছবিতে ট্যাপ করে বড় করে দেখুন' }
+      : { eyebrow: 'ARCHIVE', title: 'Completed order database', sub: 'Every delivered cake, photo, and sale record in one place.', total: 'Total orders', photos: 'With photos', missing: 'Photos needed', hint: 'Tap a card to open the order · tap a photo to view it larger' };
+    let html = `<div class="insight-shell cdb-shell">
+      <div class="insight-heading cdb-heading">
+        <div><span class="insight-eyebrow">${cdbCopy.eyebrow}</span><h2>${cdbCopy.title}</h2><p>${cdbCopy.sub}</p></div>
+        <div class="insight-total cdb-total"><strong>${fmtMoney(db_.length)}</strong><span>${cdbCopy.total}</span></div>
+      </div>
+      <div class="insight-stats cdb-stats">
+        <div class="insight-stat"><span class="insight-stat-icon">🗂️</span><span><strong>${fmtMoney(db_.length)}</strong><small>${cdbCopy.total}</small></span></div>
+        <div class="insight-stat"><span class="insight-stat-icon photo-stat">📷</span><span><strong>${fmtMoney(withPhoto)}</strong><small>${cdbCopy.photos}</small></span></div>
+        <div class="insight-stat"><span class="insight-stat-icon missing-stat">＋</span><span><strong>${fmtMoney(withoutPhoto)}</strong><small>${cdbCopy.missing}</small></span></div>
+      </div>
+      <div class="cdb-section-head"><div><h3>🎂 ${lang === 'bn' ? 'ডেলিভার করা কেক' : 'Delivered cakes'}</h3><p>${cdbCopy.hint}</p></div><span class="section-count">${fmtMoney(db_.length)}</span></div>
       <div class="cdb-grid">`;
     db_.forEach(o => {
       const price = cakePriceOf(o);
@@ -2023,6 +2144,7 @@ window.App = (() => {
                <button class="cdb-add-photo" onclick="event.stopPropagation();App.cdbAddPhoto(${keyArg})" title="ডেলিভার করা কেকের ছবি যোগ করুন">📷 ছবি যোগ করুন</button>`}
         </div>
         <div class="cdb-body">
+          <div class="cdb-order-ref">${esc(o.orderId || o.firebaseKey || '')}</div>
           <div class="cdb-name">${esc(o.name || '')}</div>
           <div class="cdb-meta">${esc(flavourLabel(o)) || '—'} · ${esc(weightText(o)) || '—'}</div>
           <div class="cdb-foot">
@@ -2032,11 +2154,158 @@ window.App = (() => {
         </div>
       </div>`;
     });
-    html += `</div>`;
+    html += `</div></div>`;
     try { el.innerHTML = html; } catch (e) { console.error('[cdb] render failed:', e); }
   };
 
-  // Completed-database photo lightbox (reuses the zoomable lightbox)
+  // ─── Delivered Confirmation tab ──────────────────────────────
+  // This is deliberately separate from the completed database: the database
+  // is an archive, while this view is an actionable queue for the follow-up
+  // WhatsApp message and review request.
+  const deliveredConfirmationOrders = () => orders
+    .filter(o => String(o.status || '').trim().toLowerCase() === 'delivered')
+    .sort((a, b) => {
+      const as = Number(a.deliveryConfirmationSentAt) || 0;
+      const bs = Number(b.deliveryConfirmationSentAt) || 0;
+      if (as !== bs) return as - bs; // unsent first
+      return (Number(b.updatedAt) || Number(b.createdAt) || 0) - (Number(a.updatedAt) || Number(a.createdAt) || 0);
+    });
+
+  const renderDeliveryConfirm = () => {
+    const el = document.getElementById('view-delivery-confirm');
+    const badge = document.getElementById('tc-delivery-confirm');
+    const list = deliveredConfirmationOrders();
+    const pending = list.filter(o => !o.deliveryConfirmationSentAt).length;
+    if (badge) badge.textContent = pending;
+    if (!el) return;
+
+    const copy = lang === 'bn'
+      ? {
+          eyebrow: 'ডেলিভারির পর ফলো-আপ', title: 'ডেলিভারি কনফার্মেশন',
+          sub: 'কাস্টমারের লগইন নম্বরে WhatsApp মেসেজ খুলুন, ছবি attach করে Send করুন, তারপর পাঠানো হয়েছে চিহ্নিত করুন।',
+          total: 'মোট ডেলিভারি', pending: 'পাঠানো বাকি', sent: 'পাঠানো হয়েছে', photos: 'ছবিসহ',
+          empty: 'এখনো কোনো delivered order নেই।', order: 'অর্ডার', login: 'কাস্টমারের লগইন নম্বর',
+          agent: 'ডেলিভারি এজেন্ট', agentName: 'এজেন্টের নাম', agentPhone: 'এজেন্টের ফোন নম্বর', saveAgent: 'এজেন্টের তথ্য সেভ করুন', noAgent: 'এজেন্টের তথ্য যোগ করুন', noPhoto: 'ডেলিভারির ছবি নেই — আগে Edit করে ছবি দিন',
+          open: 'WhatsApp খুলুন', copyMsg: 'মেসেজ কপি', photo: 'ছবি খুলুন', download: 'ছবি ডাউনলোড',
+          mark: 'পাঠানো হয়েছে', marked: 'পাঠানো হয়েছে', edit: 'এডিট', sentAt: 'পাঠানো হয়েছে',
+          attach: 'WhatsApp-এ ছবিটি manually attach করতে হবে', review: 'রিভিউ লিংক'
+        }
+      : {
+          eyebrow: 'POST-DELIVERY FOLLOW-UP', title: 'Delivery confirmation',
+          sub: 'Open WhatsApp for the customer login number, attach the photo, tap Send, then mark it sent.',
+          total: 'Total delivered', pending: 'Pending', sent: 'Sent', photos: 'With photo',
+          empty: 'No delivered orders yet.', order: 'Order', login: 'Customer login number',
+          agent: 'Delivery agent', agentName: 'Agent name', agentPhone: 'Agent phone', saveAgent: 'Save agent details', noAgent: 'Add agent details', noPhoto: 'No delivery photo — add one from Edit first',
+          open: 'Open WhatsApp', copyMsg: 'Copy message', photo: 'Open photo', download: 'Download photo',
+          mark: 'Mark as sent', marked: 'Sent', edit: 'Edit', sentAt: 'Sent',
+          attach: 'The photo must be attached manually in WhatsApp', review: 'Review link'
+        };
+    const withPhoto = list.filter(o => safeImageUrl(o.deliveredPhoto)).length;
+    const sent = list.length - pending;
+    const cards = list.map(o => {
+      const key = jsArg(o.firebaseKey);
+      const photo = safeImageUrl(o.deliveredPhoto);
+      const phone = deliveryConfirmationPhoneOf(o);
+      const displayPhone = String(o.customerPhone || o.phone || '').trim() || '—';
+      const agentName = String(o.deliveryAgentName || '').trim();
+      const agentPhone = String(o.deliveryAgentPhone || '').trim();
+      const sentAt = Number(o.deliveryConfirmationSentAt) || 0;
+      const sentBy = String(o.deliveryConfirmationSentBy || '').trim();
+      const reviewHref = safeHttpUrl(DELIVERY_REVIEW_LINK);
+      const agentNameId = deliveryAgentFieldId('name', o.firebaseKey);
+      const agentPhoneId = deliveryAgentFieldId('phone', o.firebaseKey);
+      return `<article class="dcf-card ${sentAt ? 'is-sent' : 'is-pending'}">
+        <div class="dcf-card-head">
+          <div><span class="dcf-order">${esc(o.orderId || o.firebaseKey || '')}</span><h3>${esc(o.name || o.customerName || '—')}</h3></div>
+          <span class="dcf-status ${sentAt ? 'sent' : 'pending'}">${sentAt ? '✅ ' + copy.marked : '⏳ ' + copy.pending}</span>
+        </div>
+        <div class="dcf-grid">
+          <div class="dcf-detail"><span>📞 ${copy.login}</span><b>${esc(displayPhone)}</b></div>
+          <div class="dcf-detail"><span>📅 ${lang === 'bn' ? 'ডেলিভারি' : 'Delivered'}</span><b>${esc(o.date ? fmtDate(o.date) : '—')}</b></div>
+          <div class="dcf-detail"><span>⭐ ${copy.review}</span><a href="${escAttr(reviewHref)}" target="_blank" rel="noopener noreferrer">nitu-review.web.app</a></div>
+        </div>
+        <div class="dcf-agent-box">
+          <div class="dcf-agent-title">🚚 ${copy.agent}</div>
+          <div class="dcf-agent-fields">
+            <label>${copy.agentName}<input id="${escAttr(agentNameId)}" type="text" value="${escAttr(agentName)}" placeholder="${escAttr(copy.agentName)}"></label>
+            <label>${copy.agentPhone}<input id="${escAttr(agentPhoneId)}" type="tel" value="${escAttr(agentPhone)}" placeholder="017xx-xxxxxx" maxlength="14"></label>
+          </div>
+          <button type="button" class="dcf-agent-save" onclick="App.saveDeliveryAgentDetails(${key})">💾 ${copy.saveAgent}</button>
+        </div>
+        <div class="dcf-photo ${photo ? '' : 'missing'}">
+          ${photo ? `<img${imageSrcAttr(photo)} alt="ডেলিভার করা কেক" loading="lazy" onclick="App.openDeliveredPhoto(${key})">` : `<span>📷</span><b>${copy.noPhoto}</b>`}
+        </div>
+        <div class="dcf-note">💬 ${copy.attach}</div>
+        <div class="dcf-actions">
+          ${phone ? `<button type="button" class="dcf-btn primary" onclick="App.openDeliveryConfirmationWhatsApp(${key})">📲 ${copy.open}</button>` : `<button type="button" class="dcf-btn disabled" disabled>📲 ${copy.open}</button>`}
+          <button type="button" class="dcf-btn" onclick="App.copyDeliveryConfirmation(${key})">📋 ${copy.copyMsg}</button>
+          ${photo ? `<button type="button" class="dcf-btn" onclick="App.openDeliveredPhoto(${key})">🖼️ ${copy.photo}</button><button type="button" class="dcf-btn" onclick="App.downloadDeliveredPhoto(${key})">⬇ ${copy.download}</button>` : ''}
+          <button type="button" class="dcf-btn" onclick="App.openModal(${key})">✏️ ${copy.edit}</button>
+          ${sentAt ? `<span class="dcf-sent-meta">✅ ${copy.sentAt}${sentBy ? ' · ' + esc(sentBy) : ''}</span>` : `<button type="button" class="dcf-btn confirm" onclick="App.markDeliveryConfirmationSent(${key})">✅ ${copy.mark}</button>`}
+        </div>
+        ${sentAt ? `<div class="dcf-sent-time">${esc(fmtEditWhen(sentAt))}</div>` : ''}
+      </article>`;
+    }).join('');
+
+    el.innerHTML = `<div class="insight-shell dcf-shell">
+      <div class="insight-heading dcf-heading"><div><span class="insight-eyebrow">${copy.eyebrow}</span><h2>📦 ${copy.title}</h2><p>${copy.sub}</p></div><div class="insight-total dcf-total"><strong>${fmtMoney(pending)}</strong><span>${copy.pending}</span></div></div>
+      <div class="insight-stats dcf-stats">
+        <div class="insight-stat"><span class="insight-stat-icon">📦</span><span><strong>${fmtMoney(list.length)}</strong><small>${copy.total}</small></span></div>
+        <div class="insight-stat"><span class="insight-stat-icon photo-stat">📷</span><span><strong>${fmtMoney(withPhoto)}</strong><small>${copy.photos}</small></span></div>
+        <div class="insight-stat"><span class="insight-stat-icon missing-stat">✅</span><span><strong>${fmtMoney(sent)}</strong><small>${copy.sent}</small></span></div>
+      </div>
+      ${cards ? `<div class="dcf-list">${cards}</div>` : `<div class="empty"><div class="empty-icon">📦</div><h3>${copy.empty}</h3></div>`}
+    </div>`;
+  };
+
+  const openDeliveredPhoto = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    const photo = o && safeImageUrl(o.deliveredPhoto);
+    if (!photo) return showToast(lang === 'bn' ? '📷 এই অর্ডারে ডেলিভারির ছবি নেই' : '📷 This order has no delivery photo');
+    openLightboxFor(photo);
+  };
+  const downloadDeliveredPhoto = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    const photo = o && safeImageUrl(o.deliveredPhoto);
+    if (!photo) return showToast(lang === 'bn' ? '📷 এই অর্ডারে ডেলিভারির ছবি নেই' : '📷 This order has no delivery photo');
+    const a = document.createElement('a');
+    a.href = photo;
+    a.download = `${o.orderId || 'delivered-cake'}.jpg`;
+    a.click();
+    showToast(lang === 'bn' ? '📷 ছবি ডাউনলোডের জন্য প্রস্তুত' : '📷 Photo download started');
+  };
+  const markDeliveryConfirmationSent = key => {
+    const o = orders.find(x => x.firebaseKey === key);
+    if (!o) return;
+    if (!safeImageUrl(o.deliveredPhoto)) return showToast(lang === 'bn' ? '⚠️ আগে ডেলিভারির ছবি যোগ করুন' : '⚠️ Add the delivery photo first');
+    if (!deliveryConfirmationPhoneOf(o)) return showToast(lang === 'bn' ? '⚠️ কাস্টমারের লগইন ফোন নম্বর নেই' : '⚠️ Customer login phone is missing');
+    if (!String(o.deliveryAgentName || '').trim() || !String(o.deliveryAgentPhone || '').trim()) {
+      return showToast(lang === 'bn' ? '⚠️ আগে ডেলিভারি ট্যাবে এজেন্টের নাম ও নম্বর সেভ করুন' : '⚠️ Save the delivery agent name and phone first');
+    }
+    const sentAt = Date.now();
+    const patch = {
+      deliveryConfirmationSentAt: sentAt,
+      deliveryConfirmationSentBy: (currentUser && (currentUser.email || currentUser.uid)) || 'admin',
+      updatedAt: sentAt
+    };
+    setSyncStatus('syncing', lang === 'bn' ? 'কনফার্মেশন সেভ হচ্ছে...' : 'Saving confirmation...');
+    ordersRef.child(key).update(Object.assign({}, patch, stampAdminEdit(o, {
+      deliveryConfirmationSentAt: { from: String(o.deliveryConfirmationSentAt || ''), to: String(sentAt) }
+    }))).then(() => {
+      o.deliveryConfirmationSentAt = sentAt;
+      o.deliveryConfirmationSentBy = patch.deliveryConfirmationSentBy;
+      o.updatedAt = sentAt;
+      setSyncStatus('ok');
+      renderDeliveryConfirm();
+      showToast(lang === 'bn' ? '✅ ডেলিভারি কনফার্মেশন পাঠানো হয়েছে হিসেবে সেভ হয়েছে' : '✅ Delivery confirmation marked as sent');
+    }).catch(err => {
+      console.error('Delivery confirmation save failed:', err);
+      setSyncStatus('error', lang === 'bn' ? '❌ সেভ হয়নি' : '❌ Save failed');
+      showToast(lang === 'bn' ? '❌ পাঠানো হয়েছে স্ট্যাটাস সেভ হয়নি' : '❌ Sent status was not saved');
+    });
+  };
+
+  // Completed-database photo lightbox (reuses the screen-fit lightbox)
   const openCdbLightbox = key => {
     const o = orders.find(x => x.firebaseKey === key);
     if (!o) return;
@@ -2107,10 +2376,7 @@ window.App = (() => {
       </div>`;
     }).join('');
 
-    return `<div class="mini-chart-wrap">
-      <div class="mini-chart-title">${tr('chartMonthlyOrders')}</div>
-      <div class="chart-bars">${bars}</div>
-    </div>`;
+    return `<div class="mini-chart-wrap"><div class="chart-bars">${bars}</div></div>`;
   };
 
   const renderRevenue = () => {
@@ -2132,16 +2398,30 @@ window.App = (() => {
       earn += earnOf(o);
     });
 
-    let html = buildMonthlyChart();
+    const completion = planned ? Math.min(100, Math.round((completed / planned) * 100)) : 0;
+    const average = planned ? Math.round(earn / planned) : 0;
+    const revenueCopy = lang === 'bn'
+      ? { eyebrow: 'পারফরম্যান্স', title: 'আয় ও অর্ডার সারাংশ', total: 'এই মাসের কেক বিক্রি', average: 'গড় অর্ডার মূল্য', progress: 'সম্পন্ন অর্ডার', chart: 'গত ৫ মাসের অর্ডার', note: 'কেকের বিক্রির হিসাব। ডেলিভারি চার্জ ও bKash চার্জ এতে ধরা হয়নি।' }
+      : { eyebrow: 'PERFORMANCE', title: 'Revenue & order overview', total: 'Cake sales this month', average: 'Average order value', progress: 'Orders completed', chart: 'Orders across the last 5 months', note: 'Cake sales only. Delivery and bKash charges are excluded.' };
 
-    html += `
-      <div class="rev-header">${curMonth}</div>
-      <div class="rev-grid rev-grid-3">
-        <div class="rev-card"><div class="rev-icon">🧾</div><div class="rev-num">${fmtMoney(planned)}</div><div class="rev-lbl">${tr('monthPlanned')}</div></div>
-        <div class="rev-card"><div class="rev-icon">✅</div><div class="rev-num green">${fmtMoney(completed)}</div><div class="rev-lbl">${tr('monthCompleted')}</div></div>
-        <div class="rev-card"><div class="rev-icon">💰</div><div class="rev-num blue">৳${fmtMoney(earn)}</div><div class="rev-lbl">${tr('monthEarn')}</div></div>
+    let html = `<div class="insight-shell revenue-shell">
+      <div class="insight-heading revenue-heading">
+        <div><span class="insight-eyebrow">${revenueCopy.eyebrow}</span><h2>${revenueCopy.title}</h2><p>${curMonth}</p></div>
+        <div class="revenue-period">${lang === 'bn' ? 'মাসিক' : 'MONTHLY'}<span>⌄</span></div>
       </div>
-      <div class="earn-note">${tr('monthEarnNote')}</div>`;
+      <div class="rev-hero">
+        <div class="rev-hero-glow"></div><div class="rev-hero-content"><span class="rev-hero-label">💰 ${revenueCopy.total}</span><strong class="rev-num blue">৳${fmtMoney(earn)}</strong><span class="rev-hero-sub">${fmtMoney(planned)} ${lang === 'bn' ? 'টি অর্ডার থেকে' : 'orders'} · ${fmtMoney(completed)} ${lang === 'bn' ? 'টি সম্পন্ন' : 'completed'}</span></div>
+        <div class="rev-hero-mark">৳</div>
+      </div>
+      <div class="rev-metrics">
+        <div class="rev-metric"><div class="rev-metric-top"><span class="rev-metric-icon orders-icon">🧾</span><span class="rev-metric-trend">${lang === 'bn' ? 'মাসে' : 'THIS MONTH'}</span></div><strong>${fmtMoney(planned)}</strong><span>${tr('monthPlanned')}</span></div>
+        <div class="rev-metric"><div class="rev-metric-top"><span class="rev-metric-icon done-icon">✓</span><span class="rev-metric-trend">${completion}%</span></div><strong>${fmtMoney(completed)}</strong><span>${tr('monthCompleted')}</span></div>
+        <div class="rev-metric"><div class="rev-metric-top"><span class="rev-metric-icon avg-icon">◉</span><span class="rev-metric-trend">৳</span></div><strong>${fmtMoney(average)}</strong><span>${revenueCopy.average}</span></div>
+      </div>
+      <div class="rev-progress-card"><div class="rev-progress-head"><span>${revenueCopy.progress}</span><strong>${completion}%</strong></div><div class="rev-progress-track"><i style="width:${completion}%"></i></div><small>${fmtMoney(completed)} / ${fmtMoney(planned)} ${lang === 'bn' ? 'টি অর্ডার সম্পন্ন' : 'orders completed'}</small></div>
+      <div class="rev-chart-card"><div class="rev-chart-heading"><div><h3>📊 ${revenueCopy.chart}</h3><p>${lang === 'bn' ? 'অর্ডার নেওয়ার ধারাবাহিকতা' : 'Order volume over time'}</p></div><span class="chart-badge">5 ${lang === 'bn' ? 'মাস' : 'MONTHS'}</span></div>${buildMonthlyChart()}</div>
+      <div class="earn-note">💡 ${revenueCopy.note}</div>
+    </div>`;
 
     document.getElementById('view-revenue').innerHTML = html;
   };
@@ -2542,10 +2822,14 @@ window.App = (() => {
       });
       const doneCount = getFiltered(donePool).length;
       const cdbCount = orders.filter(o => String(o.status || '').trim().toLowerCase() === 'delivered').length;
+      const deliveryConfirmCount = orders.filter(o =>
+        String(o.status || '').trim().toLowerCase() === 'delivered' && !o.deliveryConfirmationSentAt
+      ).length;
       const setTc = (id, n) => { const _e = document.getElementById(id); if (_e) _e.textContent = n; };
       setTc('tc-plan', ordersCount + (searchTerm ? '/' : ''));
       setTc('tc-done', doneCount);
       setTc('tc-cdb', cdbCount);
+      setTc('tc-delivery-confirm', deliveryConfirmCount);
     } catch (e) { console.error('[badges] failed:', e); }
 
     try { updateSummary(); } catch (e) { console.error('[summary] failed:', e); }
@@ -2556,6 +2840,7 @@ window.App = (() => {
     try { if (activeTab === 'plan' || activeTab === 'all' || activeTab === 'quotes') renderPlan(); } catch (e) { console.error('[orders] failed:', e); }
     try { if (activeTab === 'done')    renderDone(); } catch (e) { console.error('[done] failed:', e); }
     try { if (activeTab === 'cdb')     renderCdb(); } catch (e) { console.error('[cdb] failed:', e); }
+    try { if (activeTab === 'delivery-confirm') renderDeliveryConfirm(); } catch (e) { console.error('[delivery-confirm] failed:', e); }
     try { if (activeTab === 'revenue') renderRevenue(); } catch (e) { console.error('[revenue] failed:', e); }
   };
 
@@ -2721,32 +3006,54 @@ window.App = (() => {
     const el = document.getElementById('view-rewards'); if (!el) return;
     const groups = ['pending','approved','used','rejected','revoked'];
     const rows = reviewClaims.filter(c => reviewStatus(c) === reviewFilter);
-    const groupButtons = groups.map(s =>
-      `<button class="chip ${s === reviewFilter ? 'chip-green' : ''}" onclick="App.filterRewards(${jsArg(s)})">${esc(s)} (${reviewClaims.filter(c => reviewStatus(c) === s).length})</button>`
-    ).join('');
+    const statusInfo = {
+      pending: { icon: '⏳', bn: 'অপেক্ষমাণ', en: 'Pending', tone: 'pending' },
+      approved: { icon: '✓', bn: 'অনুমোদিত', en: 'Approved', tone: 'approved' },
+      used: { icon: '🎁', bn: 'ব্যবহৃত', en: 'Used', tone: 'used' },
+      rejected: { icon: '×', bn: 'প্রত্যাখ্যাত', en: 'Rejected', tone: 'rejected' },
+      revoked: { icon: '↺', bn: 'বাতিল', en: 'Cancelled', tone: 'revoked' }
+    };
+    const labelOf = s => statusInfo[s] || { icon: '•', bn: s, en: s, tone: 'pending' };
+    const rewardCopy = lang === 'bn'
+      ? { eyebrow: 'কাস্টমার কেয়ার', title: 'রিভিউ রিওয়ার্ড', sub: 'কাস্টমারের রিভিউ যাচাই করে ১০% কেক ডিসকাউন্ট পরিচালনা করুন।', total: 'অপেক্ষমাণ রিভিউ', all: 'সব রিওয়ার্ড', review: 'রিভিউ', open: 'রিভিউ খুলুন', approve: '১০% অনুমোদন', reject: 'প্রত্যাখ্যান', cancel: 'রিওয়ার্ড বাতিল', restore: 'রিস্টোর', empty: 'এই তালিকায় কোনো রিওয়ার্ড নেই', noText: 'কোনো রিভিউ লেখা নেই', linked: 'লিঙ্কড অর্ডার', policy: '১০% ছাড় শুধু কেকের দামে প্রযোজ্য · ডেলিভারি চার্জে নয়' }
+      : { eyebrow: 'CUSTOMER CARE', title: 'Review rewards', sub: 'Verify customer reviews and manage the 10% cake discount.', total: 'Pending reviews', all: 'All rewards', review: 'Review', open: 'Open review', approve: 'Approve 10%', reject: 'Reject', cancel: 'Cancel reward', restore: 'Restore', empty: 'No rewards in this list', noText: 'No review text', linked: 'Linked order', policy: '10% applies to cake price only · delivery is never discounted' };
+    const pendingCount = reviewClaims.filter(c => reviewStatus(c) === 'pending').length;
+    const approvedCount = reviewClaims.filter(c => reviewStatus(c) === 'approved').length;
+    const usedCount = reviewClaims.filter(c => reviewStatus(c) === 'used').length;
+    const groupButtons = groups.map(s => {
+      const info = labelOf(s);
+      return `<button class="reward-filter ${s === reviewFilter ? 'active' : ''}" data-tone="${info.tone}" onclick="App.filterRewards(${jsArg(s)})"><span class="reward-filter-icon">${info.icon}</span><span>${lang === 'bn' ? info.bn : info.en}</span><b>${reviewClaims.filter(c => reviewStatus(c) === s).length}</b></button>`;
+    }).join('');
     const cards = rows.map(c => {
       const status = reviewStatus(c);
-      const statusLabel = status === 'revoked' ? 'Cancelled' : status;
+      const info = labelOf(status);
+      const statusLabel = lang === 'bn' ? info.bn : info.en;
       const key = jsArg(c.firebaseKey);
       const link = safeHttpUrl(c.reviewLink);
       const image = safeImageUrl(c.screenshotUrl || c.screenshot || c.imageUrl || '');
-      return `<article class="card" style="padding:12px;margin:10px 0">
-        <strong>${esc(c.customerName || c.name || 'Customer')}</strong> · ${esc(c.orderId || c.orderKey || 'No order linked')}
-        <div>${c.customerPhone || c.phone ? `📞 ${esc(c.customerPhone || c.phone)}` : ''}</div>
-        <div style="margin-top:6px">${esc(c.reviewText || c.text || 'No review text')}</div>
-        ${link ? `<a href="${escAttr(link)}" target="_blank" rel="noopener noreferrer">Open review ↗</a>` : ''}
-        ${image ? `<img${imageSrcAttr(image)} alt="review screenshot" role="button" tabindex="0" onclick="App.openReviewScreenshot(${key})" style="display:block;max-width:240px;max-height:180px;margin-top:8px;border-radius:8px;object-fit:contain;cursor:zoom-in">` : ''}
-        <small>Status: ${esc(statusLabel)}${c.usedOrderId ? ` · used on ${esc(c.usedOrderId)}` : ''}</small>
-        ${status === 'pending' ? `<div style="margin-top:8px"><button class="btn-cnf-yes green" onclick="App.updateReview(${key},'approved')">Approve 10%</button> <button class="btn-cnf-no" onclick="App.updateReview(${key},'rejected')">Reject</button></div>` : ''}
-        ${status === 'approved' && !c.usedOrderKey && !c.usedOrderId ? `<button class="btn-cnf-no" style="margin-top:8px" onclick="App.revokeReview(${key})">Cancel 10% reward</button>` : ''}
-        ${status === 'used' ? `<button class="btn-cnf-no" onclick="App.restoreReview(${key})">Restore (only if order cancelled)</button>` : ''}
+      const customer = c.customerName || c.name || (lang === 'bn' ? 'কাস্টমার' : 'Customer');
+      const orderRef = c.orderId || c.orderKey || (lang === 'bn' ? 'অর্ডার লিঙ্ক নেই' : 'No order linked');
+      const phone = c.customerPhone || c.phone || '';
+      const initial = String(customer).trim().charAt(0).toUpperCase() || '★';
+      return `<article class="reward-card">
+        <div class="reward-card-head"><div class="reward-avatar">${esc(initial)}</div><div class="reward-person"><strong>${esc(customer)}</strong><span>${c.createdAt ? fmtDate(new Date(c.createdAt).toISOString().slice(0,10)) : rewardCopy.review}</span></div><span class="reward-status ${info.tone}"><i>${info.icon}</i>${esc(statusLabel)}</span></div>
+        <div class="reward-order"><span class="reward-order-icon">🧾</span><span><small>${rewardCopy.linked}</small><b>${esc(orderRef)}</b></span>${phone ? `<a class="reward-phone" href="tel:${escAttr(phone)}" aria-label="${escAttr(phone)}">📞</a>` : ''}</div>
+        <blockquote class="reward-quote">“${esc(c.reviewText || c.text || rewardCopy.noText)}”</blockquote>
+        <div class="reward-card-foot">${link ? `<a class="reward-link" href="${escAttr(link)}" target="_blank" rel="noopener noreferrer">🔗 ${rewardCopy.open}</a>` : '<span></span>'}${image ? `<button class="reward-proof" type="button" onclick="App.openReviewScreenshot(${key})">📷 ${lang === 'bn' ? 'ছবি দেখুন' : 'View proof'}</button>` : ''}</div>
+        ${image ? `<img class="reward-proof-img"${imageSrcAttr(image)} alt="review screenshot" role="button" tabindex="0" onclick="App.openReviewScreenshot(${key})">` : ''}
+        ${c.usedOrderId ? `<div class="reward-used-note">🎁 ${lang === 'bn' ? 'ব্যবহৃত অর্ডার' : 'Used on'} <b>${esc(c.usedOrderId)}</b></div>` : ''}
+        ${status === 'pending' ? `<div class="reward-actions"><button class="reward-btn approve" onclick="App.updateReview(${key},'approved')">✓ ${rewardCopy.approve}</button><button class="reward-btn reject" onclick="App.updateReview(${key},'rejected')">× ${rewardCopy.reject}</button></div>` : ''}
+        ${status === 'approved' && !c.usedOrderKey && !c.usedOrderId ? `<div class="reward-actions single"><button class="reward-btn neutral" onclick="App.revokeReview(${key})">↺ ${rewardCopy.cancel}</button></div>` : ''}
+        ${status === 'used' ? `<div class="reward-actions single"><button class="reward-btn neutral" onclick="App.restoreReview(${key})">↺ ${rewardCopy.restore}</button></div>` : ''}
       </article>`;
     }).join('');
-    el.innerHTML = `<div class="card" style="padding:16px">
-      <h2>⭐ Review rewards</h2>
-      <p style="color:var(--text2)">Approved reward: 10% off cake price only (delivery is never discounted).</p>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0">${groupButtons}</div>
-      ${cards || '<p style="padding:20px;color:var(--text2)">No claims in this group.</p>'}
+    el.innerHTML = `<div class="insight-shell rewards-shell">
+      <div class="insight-heading reward-heading"><div><span class="insight-eyebrow">${rewardCopy.eyebrow}</span><h2>⭐ ${rewardCopy.title}</h2><p>${rewardCopy.sub}</p></div><div class="insight-total reward-total"><strong>${fmtMoney(pendingCount)}</strong><span>${rewardCopy.total}</span></div></div>
+      <div class="reward-summary"><div><span class="reward-summary-dot pending"></span><strong>${fmtMoney(pendingCount)}</strong><small>${lang === 'bn' ? 'নতুন' : 'New'}</small></div><div><span class="reward-summary-dot approved"></span><strong>${fmtMoney(approvedCount)}</strong><small>${lang === 'bn' ? 'অনুমোদিত' : 'Approved'}</small></div><div><span class="reward-summary-dot used"></span><strong>${fmtMoney(usedCount)}</strong><small>${lang === 'bn' ? 'ব্যবহৃত' : 'Used'}</small></div></div>
+      <div class="reward-policy">💡 ${rewardCopy.policy}</div>
+      <div class="reward-filter-head"><h3>${rewardCopy.all}</h3><span>${fmtMoney(reviewClaims.length)} ${lang === 'bn' ? 'টি রেকর্ড' : 'records'}</span></div>
+      <div class="reward-filters">${groupButtons}</div>
+      <div class="reward-list">${cards || `<div class="reward-empty"><span>⭐</span><strong>${rewardCopy.empty}</strong><p>${lang === 'bn' ? 'নতুন কাস্টমার রিভিউ এলে এখানে দেখা যাবে।' : 'New customer reviews will appear here.'}</p></div>`}</div>
     </div>`;
   };
   const filterRewards = s => { reviewFilter = s; renderRewards(); };
@@ -2804,7 +3111,7 @@ window.App = (() => {
     if (t === 'all') t = 'plan';
     if (t === 'quotes') t = 'plan';
     activeTab = t;
-    ['plan','done','cdb','revenue','rewards'].forEach(n => {
+    ['plan','done','cdb','delivery-confirm','revenue','rewards'].forEach(n => {
       const view = document.getElementById(`view-${n}`);
       if (view) view.classList.toggle('hidden', n !== t);
       const btn = document.getElementById(`tab-${n === 'revenue' ? 'rev' : n}`);
@@ -2817,6 +3124,7 @@ window.App = (() => {
     if (t === 'plan' || t === 'all' || t === 'quotes') renderPlan();
     if (t === 'done')    renderDone();
     if (t === 'cdb')     renderCdb();
+    if (t === 'delivery-confirm') renderDeliveryConfirm();
     if (t === 'revenue') renderRevenue();
     if (t === 'rewards') { reconcileReviewRewards(); renderRewards(); }
   };
@@ -2859,71 +3167,13 @@ window.App = (() => {
     document.body.removeChild(ta);
   };
 
-  // ─── Lightbox with pinch-zoom / pan ──────────────────────────
-  // Zoom state (inline transform on #lightbox-img): scale 1..6,
-  // pan (lbX, lbY) clamped to the zoomed overflow.
-  let lbScale = 1, lbX = 0, lbY = 0;
-  let lbPinch = null;          // two-finger gesture in progress { d }
-  let lbPan   = null;          // one-finger / mouse drag { x, y, bx, by, mouse }
-  let lbLastTap = 0, lbLastTapX = 0, lbLastTapY = 0;
-  let lbMoved = false;         // a real gesture happened → suppress backdrop-close
-  let lbGestureUntil = 0;      // timestamp until which backdrop taps are ignored
-
-  const lbImgEl = () => document.getElementById('lightbox-img');
-
-  const lbClamp = () => {
-    lbScale = Math.min(6, Math.max(1, lbScale));
-    const img = lbImgEl();
-    if (!img) return;
-    // Pan is limited to the zoomed overflow — the photo can never be lost
-    // off-screen, and at scale 1 it always snaps back to center.
-    const mx = Math.max(0, (img.offsetWidth  * (lbScale - 1)) / 2);
-    const my = Math.max(0, (img.offsetHeight * (lbScale - 1)) / 2);
-    lbX = Math.min(mx, Math.max(-mx, lbX));
-    lbY = Math.min(my, Math.max(-my, lbY));
-  };
-
-  const applyLb = animate => {
-    const img = lbImgEl();
-    if (!img) return;
-    img.style.transition = animate ? 'transform .25s ease' : 'none';
-    if (lbScale === 1 && lbX === 0 && lbY === 0) {
-      // Neutral: hand control back to the CSS open/close animation
-      img.style.transform = '';
-      img.style.transition = '';
-      img.classList.remove('zoomed');
-    } else {
-      img.style.transform = `translate(${lbX}px, ${lbY}px) scale(${lbScale})`;
-      img.classList.add('zoomed');
-    }
-  };
-
-  const resetLbZoom = () => { lbScale = 1; lbX = 0; lbY = 0; applyLb(false); };
-
-  // Incremental zoom by factor k around a viewport point (vx, vy):
-  // the point under the finger/cursor stays fixed while zooming.
-  const lbZoomAt = (k, vx, vy) => {
-    const img = lbImgEl();
-    if (!img) return;
-    const next = Math.min(6, Math.max(1, lbScale * k));
-    k = next / lbScale;
-    if (k === 1) return;
-    const r  = img.getBoundingClientRect();
-    const cx = r.left + r.width / 2;
-    const cy = r.top  + r.height / 2;
-    lbX += (1 - k) * (vx - cx);
-    lbY += (1 - k) * (vy - cy);
-    lbScale = next;
-    lbClamp();
-    applyLb(false);
-  };
-
+  // ─── Screen-fit photo viewer ────────────────────────────────
   const openLightbox = key => {
     const o = orders.find(x => x.firebaseKey === key);
     if (!o?.photo) return;
     openLightboxFor(o.photo);
   };
-  // Payment proof screenshot — same shared lightbox, pinched to zoom
+  // Payment proof screenshot — same shared screen-fit lightbox
   const openPayShot = key => {
     const o = orders.find(x => x.firebaseKey === key);
     if (!o?.payShot) return;
@@ -2933,7 +3183,6 @@ window.App = (() => {
   const openLightboxFor = src => {
     const safe = safeImageUrl(src);
     if (!safe) return;
-    resetLbZoom();
     document.getElementById('lightbox-img').src = safe;
     document.getElementById('lightbox').classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -2950,125 +3199,14 @@ window.App = (() => {
   const closeLightbox = () => {
     document.getElementById('lightbox').classList.remove('open');
     document.body.style.overflow = '';
-    resetLbZoom();
   };
 
-  // ── Gesture wiring (touch + mouse, attached once) ──
+  // Photos remain fitted to the screen; tapping the backdrop closes the viewer.
   (() => {
     const lbEl = document.getElementById('lightbox');
     if (!lbEl) return;
-    const lbDist = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-    const lbMid  = (a, b) => ({ x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 });
-
-    lbEl.addEventListener('touchstart', e => {
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        lbPinch = { d: lbDist(e.touches[0], e.touches[1]) };
-        lbPan = null;
-      } else if (e.touches.length === 1 && lbScale > 1) {
-        lbPan = { x: e.touches[0].clientX, y: e.touches[0].clientY, bx: lbX, by: lbY };
-      }
-    }, { passive: false });
-
-    lbEl.addEventListener('touchmove', e => {
-      if (lbPinch && e.touches.length === 2) {
-        e.preventDefault();
-        const d = lbDist(e.touches[0], e.touches[1]);
-        const m = lbMid(e.touches[0], e.touches[1]);
-        lbZoomAt(d / lbPinch.d, m.x, m.y);
-        lbPinch.d = d;              // incremental — fingers may pause mid-gesture
-        lbMoved = true;
-      } else if (lbPan && e.touches.length === 1) {
-        e.preventDefault();
-        lbX = lbPan.bx + (e.touches[0].clientX - lbPan.x);
-        lbY = lbPan.by + (e.touches[0].clientY - lbPan.y);
-        lbClamp();
-        applyLb(false);
-        lbMoved = true;
-      }
-    }, { passive: false });
-
-    lbEl.addEventListener('touchend', e => {
-      if (lbPinch && e.touches.length < 2) {
-        lbPinch = null;
-        // If one finger is still down, it becomes the new pan anchor
-        if (e.touches.length === 1 && lbScale > 1) {
-          lbPan = { x: e.touches[0].clientX, y: e.touches[0].clientY, bx: lbX, by: lbY };
-        } else {
-          lbPan = null;
-        }
-      } else if (lbPan && !lbPan.mouse && e.touches.length === 0) {
-        lbPan = null;
-      }
-
-      // Double-tap toggles zoom in/out around the tapped point
-      if (!lbPinch && e.changedTouches.length === 1) {
-        const t   = e.changedTouches[0];
-        const now = Date.now();
-        if (now - lbLastTap < 300 && Math.hypot(t.clientX - lbLastTapX, t.clientY - lbLastTapY) < 44) {
-          if (lbScale > 1) {
-            lbScale = 1; lbX = 0; lbY = 0;
-            lbClamp();
-            applyLb(true);
-          } else if (lbImgEl()) {
-            const img = lbImgEl();
-            const r  = img.getBoundingClientRect();
-            const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-            const k  = 2.5;
-            lbX += (1 - k) * (t.clientX - cx);
-            lbY += (1 - k) * (t.clientY - cy);
-            lbScale = k;
-            lbClamp();
-            applyLb(true);
-          }
-          lbMoved = true;
-          lbLastTap = 0;
-        } else {
-          lbLastTap = now; lbLastTapX = t.clientX; lbLastTapY = t.clientY;
-        }
-      }
-      if (lbMoved) lbGestureUntil = Date.now() + 250;
-      lbMoved = false;
-    });
-
-    // Backdrop tap closes — but never right after a zoom/pan gesture, and
-    // taps on the photo itself no longer close (it is a zoom target now).
     lbEl.addEventListener('click', e => {
-      if (e.target === lbEl && Date.now() > lbGestureUntil) closeLightbox();
-    });
-
-    // Desktop: wheel zoom, drag-to-pan, double-click zoom
-    lbEl.addEventListener('wheel', e => {
-      if (!lbEl.classList.contains('open')) return;
-      e.preventDefault();
-      if (lbScale === 1 && e.deltaY > 0) return;   // already fully zoomed out
-      const k = e.deltaY < 0 ? 1.15 : 1 / 1.15;
-      lbZoomAt(k, e.clientX, e.clientY);
-    }, { passive: false });
-
-    lbEl.addEventListener('mousedown', e => {
-      if (e.target !== lbImgEl() || lbScale <= 1) return;
-      e.preventDefault();
-      lbPan = { x: e.clientX, y: e.clientY, bx: lbX, by: lbY, mouse: true };
-    });
-    window.addEventListener('mousemove', e => {
-      if (!lbPan || !lbPan.mouse) return;
-      lbX = lbPan.bx + (e.clientX - lbPan.x);
-      lbY = lbPan.by + (e.clientY - lbPan.y);
-      lbClamp();
-      applyLb(false);
-    });
-    window.addEventListener('mouseup', () => { if (lbPan && lbPan.mouse) lbPan = null; });
-
-    lbEl.addEventListener('dblclick', e => {
-      if (e.target !== lbImgEl()) return;
-      if (lbScale > 1) {
-        lbScale = 1; lbX = 0; lbY = 0;
-        lbClamp();
-        applyLb(true);
-      } else {
-        lbZoomAt(2.5, e.clientX, e.clientY);
-      }
+      if (e.target === lbEl) closeLightbox();
     });
   })();
 
@@ -4127,7 +4265,7 @@ window.App = (() => {
     });
   };
 
-  // Zoom a modal photo in the existing full-screen lightbox
+  // Open a modal photo in the existing screen-fit lightbox
   const openPhotoLightbox = i => {
     openLightboxFor(currentPhotos[i]);
   };
@@ -4479,6 +4617,15 @@ window.App = (() => {
       createdAt:      (existing && existing.createdAt) || Date.now(),
       updatedAt:      Date.now()
     };
+    // Keep the follow-up audit fields when an order is edited. They are
+    // separate from delivery status so editing a customer note or price does
+    // not make an already-sent confirmation appear unsent.
+    if (existing) {
+      if (existing.deliveryAgentName != null) o.deliveryAgentName = existing.deliveryAgentName;
+      if (existing.deliveryAgentPhone != null) o.deliveryAgentPhone = existing.deliveryAgentPhone;
+      if (existing.deliveryConfirmationSentAt != null) o.deliveryConfirmationSentAt = existing.deliveryConfirmationSentAt;
+      if (existing.deliveryConfirmationSentBy != null) o.deliveryConfirmationSentBy = existing.deliveryConfirmationSentBy;
+    }
 
     // ─ Approx (non-authoritative) DC ───────────────────────────────
     // The field opens blank: leaving it blank KEEPS the approx flag (the card
@@ -5121,6 +5268,12 @@ window.App = (() => {
     openMessenger,
     copyOrderId,
     openConfirmWhatsApp,
+    openDeliveryConfirmationWhatsApp,
+    saveDeliveryAgentDetails,
+    copyDeliveryConfirmation,
+    markDeliveryConfirmationSent,
+    openDeliveredPhoto,
+    downloadDeliveredPhoto,
     copyNotepad,
     openModal,
     closeModal,
@@ -5167,10 +5320,9 @@ window.App = (() => {
     notepadCalcKey: key => notepad.calculatorKey(key),
     notepadCalculate: () => notepad.calculateUi(),
     notepadInsertCalculation: () => notepad.insertCalculation(),
-    notepadScale: () => notepad.scaleUi(),
-    notepadInsertScale: () => notepad.insertScale(),
     notepadTemplate: () => notepad.template(),
     renderCdb,
+    renderDeliveryConfirm,
     openCdbLightbox,
   cdbAddPhoto,
     openLightboxFor,

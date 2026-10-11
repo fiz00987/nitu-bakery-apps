@@ -1,0 +1,8 @@
+/* Self-hosted Google Fonts. Bengali and Latin subsets, SIL Open Font License. */
+@font-face{font-family:'Cormorant Garamond';font-style:italic;font-weight:500;font-display:swap;src:url(font-5.woff2) format('woff2')}
+@font-face{font-family:'Hind Siliguri';font-style:normal;font-weight:400;font-display:swap;src:url(font-6.woff2) format('woff2');unicode-range:U+0951-0952,U+0964-0965,U+0980-09FE,U+1CD0,U+1CD2,U+1CD5-1CD6,U+1CD8,U+1CE1,U+1CEA,U+1CED,U+1CF2,U+1CF5-1CF7,U+200C-200D,U+20B9,U+25CC,U+A8F1,U+11DF0-11DF1}
+@font-face{font-family:'Hind Siliguri';font-style:normal;font-weight:400;font-display:swap;src:url(font-8.woff2) format('woff2')}
+@font-face{font-family:'Hind Siliguri';font-style:normal;font-weight:600;font-display:swap;src:url(font-9.woff2) format('woff2');unicode-range:U+0951-0952,U+0964-0965,U+0980-09FE,U+1CD0,U+1CD2,U+1CD5-1CD6,U+1CD8,U+1CE1,U+1CEA,U+1CED,U+1CF2,U+1CF5-1CF7,U+200C-200D,U+20B9,U+25CC,U+A8F1,U+11DF0-11DF1}
+@font-face{font-family:'Hind Siliguri';font-style:normal;font-weight:600;font-display:swap;src:url(font-11.woff2) format('woff2')}
+@font-face{font-family:'Noto Serif Bengali';font-style:normal;font-weight:500;font-display:swap;src:url(font-12.woff2) format('woff2');unicode-range:U+0951-0952,U+0964-0965,U+0980-09FE,U+1CD0,U+1CD2,U+1CD5-1CD6,U+1CD8,U+1CE1,U+1CEA,U+1CED,U+1CF2,U+1CF5-1CF7,U+200C-200D,U+20B9,U+25CC,U+A8F1,U+11DF0-11DF1}
+@font-face{font-family:'Noto Serif Bengali';font-style:normal;font-weight:500;font-display:swap;src:url(font-14.woff2) format('woff2')}

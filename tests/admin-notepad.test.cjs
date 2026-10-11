@@ -176,14 +176,11 @@ test('calculations handle precedence, decimal arithmetic and Bengali digits safe
   assert.equal(h.state.pages[0].text, 'Original\n\n250 + 125 = 375');
 });
 
-test('recipe scaling and outline append to a baking page without replacing its contents', async t => {
+test('a recipe outline appends to a baking page without replacing its contents', async t => {
   const h = await harness(t, { 0: page('Existing method', { category: 'baking' }) });
   await h.notebook.switchCategory('baking');
-  assert.equal(h.math.scale('২৫০', '২', '৩'), 375);
-  for (const args of [['250', '0', '3'], ['', '2', '3'], ['250', '2', '-1']]) assert.throws(() => h.math.scale(...args));
-  h.el('np-scale-name').value = 'Flour'; h.el('np-scale-quantity').value = '250'; h.el('np-scale-from').value = '2'; h.el('np-scale-to').value = '3';
-  h.notebook.insertScale(); h.notebook.template(); await h.notebook.flush();
-  assert.match(h.state.pages[0].text, /^Existing method\n\nFlour: 375 g/);
+  h.notebook.template(); await h.notebook.flush();
+  assert.match(h.state.pages[0].text, /^Existing method\n\nRecipe:/);
   assert.match(h.state.pages[0].text, /Oven temperature:/);
   assert.deepEqual(h.state.pages[0].photos, ['https://test.invalid/cake.png']);
 });
@@ -231,18 +228,23 @@ test('mobile shopping board shows every line without changing stored notes', asy
   assert.equal(h.state.pages[0].text, shopping + '\nItem 21');
 });
 
-test('calculator and recipe occupy separate tabs without changing note pages', async t => {
+test('the four-tab notebook calculator and keyboard navigation leave saved pages intact', async t => {
   const original = { 0: page('Shopping'), 1: page('Instructions', { category: 'baking' }) };
   const h = await harness(t, original);
   const tools = h.el('notepad-helper-aside').querySelectorAll('details');
+  assert.equal(h.w.document.querySelectorAll('.np-tab').length, 4);
+  assert.equal(h.el('notepad-tab-recipe'), null);
+  assert.equal(tools.length, 1);
   await h.notebook.switchCategory('calculator');
   assert.equal(h.el('notepad-panel').hidden, true);
   assert.equal(h.el('notepad-tool-host').hidden, false);
   assert.equal(tools[0].hidden, false);
-  assert.equal(tools[1].hidden, true);
-  await h.notebook.switchCategory('recipe');
-  assert.equal(tools[0].hidden, true);
-  assert.equal(tools[1].hidden, false);
+  h.input('np-calc-input', '250 + 125');
+  assert.equal(h.el('np-calc-result').textContent, '375');
+  h.el('notepad-tab-calculator').dispatchEvent(new h.w.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(h.el('notepad-tab-cake').getAttribute('aria-selected'), 'true');
+  assert.equal(h.w.document.activeElement, h.el('notepad-tab-cake'));
   await h.notebook.switchCategory('baking');
   assert.equal(h.el('notepad-panel').hidden, false);
   assert.equal(h.el('notepad-edit-details').open, true);

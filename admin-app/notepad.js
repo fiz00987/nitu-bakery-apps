@@ -2,8 +2,8 @@
 'use strict';
 window.NituNotepad = (() => {
   const CATEGORIES = ['cake', 'baking', 'other'];
-  const VIEWS = [...CATEGORIES, 'calculator', 'recipe'];
-  const isToolView = value => value === 'calculator' || value === 'recipe';
+  const VIEWS = [...CATEGORIES, 'calculator'];
+  const isToolView = value => value === 'calculator';
   const categoryOf = page => CATEGORIES.includes(page && page.category) ? page.category : 'cake';
   const entries = raw => Object.entries(raw || {}).filter(([, page]) => page && typeof page === 'object')
     .sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true }));
@@ -50,14 +50,6 @@ window.NituNotepad = (() => {
     };
     const result = sum();
     if (pos !== source.length || !Number.isFinite(result)) throw new Error('expression');
-    return Number(formatNumber(result));
-  };
-  const scale = (quantity, original, target) => {
-    const values = [quantity, original, target].map(v => String(v).trim());
-    if (values.some(v => !v || !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(digits(v)))) throw new Error('scale');
-    const [q, from, to] = values.map(v => Number(digits(v)));
-    const result = q * to / from;
-    if (q < 0 || from <= 0 || to <= 0 || !Number.isFinite(result)) throw new Error('scale');
     return Number(formatNumber(result));
   };
 
@@ -290,9 +282,9 @@ window.NituNotepad = (() => {
       const helper = el('notepad-helper-aside');
       if (helper) {
         (tool ? el('notepad-tool-host') : el('notepad-helper-slot')).appendChild(helper);
-        helper.querySelectorAll('details').forEach((detail, index) => {
-          detail.hidden = !tool || (activeView === 'calculator' ? index !== 0 : index !== 1);
-          detail.open = tool && !detail.hidden;
+        helper.querySelectorAll('details').forEach(detail => {
+          detail.hidden = !tool;
+          detail.open = tool;
         });
       }
       el('np-cake-board').hidden = tool || category !== 'cake' || !page;
@@ -421,15 +413,6 @@ window.NituNotepad = (() => {
       try { append(`${el('np-calc-input').value} = ${formatNumber(calculate(el('np-calc-input').value))}`); }
       catch (e) { calculateUi(); }
     };
-    const scaleUi = () => {
-      try {
-        const amount = scale(el('np-scale-quantity').value, el('np-scale-from').value, el('np-scale-to').value);
-        const text = `${el('np-scale-name').value.trim() || say('Ingredient', 'উপকরণ')}: ${formatNumber(amount)} ${el('np-scale-unit').value}`;
-        el('np-scale-result').textContent = text;
-        return text + ` (${el('np-scale-quantity').value} × ${el('np-scale-to').value} ÷ ${el('np-scale-from').value})`;
-      } catch (e) { el('np-scale-result').textContent = say('Enter quantity and positive original/target sizes.', 'পরিমাণ ও শূন্যের বেশি মূল/নতুন রেসিপির আকার দিন।'); return null; }
-    };
-    const insertScale = () => { const text = scaleUi(); if (text) append(text); };
     const template = () => append(say('Recipe:\nYield / cake size:\nIngredients:\nOven temperature:\nBaking time:\nMethod:\nCooling / decorating:', 'রেসিপি:\nপরিমাণ / কেকের আকার:\nউপকরণ:\nওভেনের তাপমাত্রা:\nবেকিং সময়:\nপদ্ধতি:\nঠান্ডা করা / সাজানো:'));
     const exportAll = () => {
       const content = JSON.stringify({ exportedAt: new Date().toISOString(), pages, drafts, legacyText: legacy?.text || null }, null, 2);
@@ -453,7 +436,7 @@ window.NituNotepad = (() => {
       el('notepad-tab-' + VIEWS[next]).focus();
     }));
     render();
-    return { activate, reset, receive, render, open, close, addPage, switchCategory, switchPage, movePage, addPhoto, removePhoto, addItem, toggleItem, calculatorKey, calculateUi, insertCalculation, scaleUi, insertScale, template, exportAll, recover, retry, flush };
+    return { activate, reset, receive, render, open, close, addPage, switchCategory, switchPage, movePage, addPhoto, removePhoto, addItem, toggleItem, calculatorKey, calculateUi, insertCalculation, template, exportAll, recover, retry, flush };
   };
-  return { create, calculate, scale, categoryOf, entries };
+  return { create, calculate, categoryOf, entries };
 })();

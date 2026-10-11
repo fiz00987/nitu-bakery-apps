@@ -11,7 +11,7 @@
    ============================================= */
 'use strict';
 
-const CACHE_NAME = 'nitu-bakery-v20';
+const CACHE_NAME = 'nitu-bakery-v28';
 
 const APP_SHELL = [
   './',
@@ -20,6 +20,7 @@ const APP_SHELL = [
   './app.js',
   './notepad.js',
   './notepad.css',
+  './viewport-lock.js?v=2026-10-11-delivery-agent-tab',
   './notifications.js',
   './manifest.json',
   './logo-splash.png',
@@ -51,7 +52,7 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+        keys.filter(k => k !== CACHE_NAME && k.startsWith('nitu-bakery-')).map(k => caches.delete(k))
       ))
       .then(() => self.clients.claim())
   );

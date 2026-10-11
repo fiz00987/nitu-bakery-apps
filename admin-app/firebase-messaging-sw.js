@@ -69,18 +69,19 @@ self.addEventListener('notificationclick', function (event) {
 });
 
 /* ─── Offline caching (bulletproof edition) ────────────────── */
-var CACHE_NAME = 'nitu-bakery-v20';
+var CACHE_NAME = 'nitu-bakery-v28';
 // Build stamp — bump on every deploy so you can confirm in DevTools which
 // version the browser is actually running.
-var ADMIN_BUILD = '2026-10-04-bakery-notebook';
+var ADMIN_BUILD = '2026-10-11-delivery-agent-tab';
 try { console.log('Nitu admin build:', ADMIN_BUILD); } catch (e) {}
 var INDEX_KEY  = './index.html';
 var APP_SHELL = [
   './index.html',
   './',
-  './notepad.js?v=2026-10-04-bakery-notebook-v2',
-  './notepad.css?v=2026-10-04-bakery-notebook-v2',
-  './app.js?v=2026-10-04-bakery-notebook-v2',
+  './notepad.js?v=2026-10-07-simple-notebook',
+  './notepad.css?v=2026-10-07-simple-notebook',
+  './app.js?v=2026-10-11-delivery-agent-tab',
+  './viewport-lock.js?v=2026-10-11-delivery-agent-tab',
   './manifest.json',
   './logo-splash.png',
   './splash-bg.jpg',
@@ -103,7 +104,7 @@ var APP_SHELL = [
 function offlineFallbackResponse() {
   var html =
     '<!doctype html><html lang="bn"><head><meta charset="utf-8">' +
-    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no">' +
     '<title>নিতুর বেকারি</title><style>' +
     'body{margin:0;font-family:-apple-system,sans-serif;background:#fff5f8;' +
     'display:flex;min-height:100vh;align-items:center;justify-content:center}' +
@@ -135,7 +136,7 @@ self.addEventListener('install', function (event) {
 self.addEventListener('activate', function (event) {
   event.waitUntil((async function () {
     var keys = await caches.keys();
-    var oldKeys = keys.filter(function (k) { return k !== CACHE_NAME; });
+    var oldKeys = keys.filter(function (k) { return k !== CACHE_NAME && k.indexOf('nitu-bakery-') === 0; });
     var cache = await caches.open(CACHE_NAME);
 
     // SALVAGE: if this fresh install missed index.html (bad network at
@@ -173,8 +174,12 @@ async function fontCacheFirst(req) {
 async function documentNetFirst(req) {
   try {
     var resp = await fetch(new Request(req, { cache: 'no-store' }));
-    var clone = resp.clone();
-    caches.open(CACHE_NAME).then(function (c) { c.put(INDEX_KEY, clone); }).catch(function () {});
+    // A recovery page must never replace the admin entry in the offline cache.
+    var pathname = new URL(req.url).pathname;
+    if (resp.ok && (pathname.endsWith('/') || pathname.endsWith('/index.html'))) {
+      var clone = resp.clone();
+      caches.open(CACHE_NAME).then(function (c) { c.put(INDEX_KEY, clone); }).catch(function () {});
+    }
     return resp;
   } catch (netErr) {
     var cache = await caches.open(CACHE_NAME);
