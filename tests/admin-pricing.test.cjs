@@ -43,12 +43,24 @@ function harness(t, initial, initialOrders) {
     for (const part of parts) parent = parent[part] ||= {};
     if (value == null) delete parent[key]; else parent[key] = copy(value);
   };
-  const ref = p => ({
+  const ref = (p, field, equal) => ({
     child: key => ref(p + '/' + key),
     on: (event, fn) => listeners.set(p, fn), off: () => listeners.delete(p),
-    once: () => Promise.resolve(snapshot(p)),
+    orderByChild: key => ref(p, key),
+    equalTo: value => ref(p, field, value),
+    once: () => Promise.resolve(field ? { val: () => Object.fromEntries(Object.entries(valueAt(p) || {}).filter(([, value]) => value[field] === equal)) } : snapshot(p)),
     set: value => { write(p, value); return Promise.resolve(); },
-    update: patch => { write(p, { ...valueAt(p), ...copy(patch) }); return Promise.resolve(); },
+    update: patch => {
+      const next = copy(valueAt(p)) || {};
+      for (const [key, value] of Object.entries(copy(patch))) {
+        const parts = key.split('/');
+        const leaf = parts.pop();
+        let target = next;
+        for (const part of parts) target = target[part] ||= {};
+        if (value == null) delete target[leaf]; else target[leaf] = value;
+      }
+      write(p, next); return Promise.resolve();
+    },
     push: value => { write(p + '/new', value); return Promise.resolve({ key: 'new' }); },
     transaction: async fn => {
       // A server change between opening the modal and committing must win.
@@ -64,10 +76,12 @@ function harness(t, initial, initialOrders) {
     database: () => ({ ref, goOnline() {} }),
     auth: () => ({ onAuthStateChanged: fn => { authListener = fn; } })
   };
+  w.firebase.database.ServerValue = { TIMESTAMP: { '.sv': 'timestamp' } };
   w.localStorage.setItem('nitu-lang', 'en');
   w.setTimeout = w.setInterval = () => 1;
   w.clearTimeout = w.clearInterval = () => {};
   w.requestAnimationFrame = () => 1;
+  w.requestIdleCallback = fn => fn();
   w.scrollTo = () => {};
   w.fetch = () => Promise.reject(new Error('Network disabled in tests'));
   w.eval(fs.readFileSync(path.join(root, 'admin-app/notepad.js'), 'utf8'));
@@ -80,7 +94,7 @@ function harness(t, initial, initialOrders) {
   emit();
   t.after(() => dom.window.close());
   return {
-    w, state, writes, emit,
+    w, state, writes, emit, listeners,
     orderWrites: () => writes.filter(write => write.path.startsWith('orders/')),
     el: id => w.document.getElementById(id),
     card: () => w.document.getElementById('card-test'),
@@ -361,4 +375,85 @@ test('completed-order database and daily popup display cake-only prices', t => {
   h.emit();
   h.w.App.showDailyPopup();
   assert.equal(h.w.document.querySelector('.d-price').textContent, money(2500));
+});
+
+test('new-order dismissal is permanent on this device and does not edit the order', t => {
+  const h = harness(t, order({ createdAt: 1, status: 'pending' }));
+  h.w.App.showDailyPopup();
+  assert.equal(h.el('daily-popup-list').querySelectorAll('.daily-item').length, 1);
+  h.w.App.dismissDailyOrder('test');
+  assert.equal(h.el('daily-popup-list').querySelectorAll('.daily-item').length, 0);
+  assert.equal(h.state.orders.test.status, 'pending');
+  assert.equal(h.orderWrites().length, 0);
+  assert.equal(h.w.localStorage.getItem('nitu_daily_dismissed_test'), '1');
+  h.w.App.showDailyPopup();
+  assert.match(h.el('daily-popup-list').textContent, /No new orders yet/);
+});
+
+test('revenue month selection filters plan cards by delivery month', t => {
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-20`;
+  const previous = new Date(now.getFullYear(), now.getMonth() - 1, 20);
+  const previousMonth = `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, '0')}-20`;
+  const h = harness(t, null, {
+    current: order({ orderId: 'CURRENT', date: thisMonth, deliveryDate: thisMonth, advance: 0, advanceTotal: 0 }),
+    previous: order({ orderId: 'PREVIOUS', date: previousMonth, deliveryDate: previousMonth, advance: 0, advanceTotal: 0 })
+  });
+  h.w.App.switchTab('revenue');
+  h.w.App.selectMonth(`${previous.getFullYear()}-${previous.getMonth()}`);
+  assert.equal(h.el('view-plan').querySelectorAll('.card').length, 1);
+  assert.match(h.el('view-plan').textContent, /PREVIOUS/);
+  assert.doesNotMatch(h.el('view-plan').textContent, /CURRENT/);
+  h.w.App.clearMonthFilter();
+  assert.equal(h.el('view-plan').querySelectorAll('.card').length, 2);
+});
+
+test('rendering before dayBooks loads never replaces stored capacity limits', t => {
+  const h = harness(t, order());
+  h.w.App.openCalendar();
+  assert.equal(h.writes.filter(w => w.path === 'dayBooks').length, 0);
+});
+
+test('capacity reconciliation preserves limits loaded after orders and changed by another admin', t => {
+  const h = harness(t, order());
+  h.state.dayBooks = { '2099-10-03': { limit: 4, booked: 0 }, '2099-10-04': { limit: 7, booked: 1 } };
+  const staleSnapshot = copy(h.state.dayBooks);
+  h.state.dayBooks['2099-10-03'].limit = 9; // concurrent change before stale listener callback
+  h.listeners.get('dayBooks')({ val: () => staleSnapshot });
+  assert.equal(h.state.dayBooks['2099-10-03'].limit, 9);
+  assert.equal(h.state.dayBooks['2099-10-04'].limit, 7);
+  assert.equal(h.state.dayBooks['2099-10-03'].booked, 1);
+  assert.equal(h.state.dayBooks['2099-10-04'].booked, 0);
+});
+
+test('legacy phone-scoped orders preserve contact data during admin edits', async t => {
+  const h = harness(t, order({ status: 'delivered', notes: 'Keep this note' }));
+  h.w.App.openModal('test');
+  await h.save();
+  assert.equal(h.state.orders.test.customerPhone, '01712345678');
+  assert.equal(h.state.orders.test.notes, 'Keep this note');
+  assert.equal(h.state.orders.test.status, 'delivered');
+});
+
+test('unrelated edits preserve every separate cake delivery setting', async t => {
+  const second = { cakeIndex: 2, weight: '2 pound', flavour: 'chocolate-sponge',
+    date: '2099-10-05', deliveryDate: '2099-10-05', address: 'Second address', receiver: 'Second receiver', receiverPhone: '01912345678',
+    timeSlot: '5:30 PM', deliveryCharge: 150, sameDateAsCake1: false,
+    sameAddressAsCake1: false, sameReceiverAsCake1: false, sameTimeAsCake1: false, sameChargeAsCake1: false };
+  const h = harness(t, order({ cakeCount: 2, cakes: [{ cakeIndex: 1 }, second] }));
+  h.w.App.openModal('test');
+  for (const field of ['date', 'address', 'receiver', 'time', 'charge']) assert.equal(h.el('cb-same-' + field + '-2').checked, false);
+  h.el('f-notes').value = 'An unrelated edit';
+  await h.save();
+  for (const field of ['date', 'address', 'receiver', 'receiverPhone', 'timeSlot', 'deliveryCharge']) assert.equal(h.state.orders.test.cakes[1][field], second[field]);
+});
+
+for (const surprise of [true, 'yes', false, 'no']) test(`surprise=${surprise} renders and survives admin edits`, async t => {
+  const h = harness(t, order({ surprise }));
+  const expected = surprise === true || surprise === 'yes';
+  assert.equal(h.card().textContent.includes('সারপ্রাইজ'), expected);
+  h.w.App.openModal('test');
+  assert.equal(h.el('f-surprise').value, expected ? 'yes' : 'no');
+  await h.save();
+  assert.equal(h.state.orders.test.surprise, expected);
 });

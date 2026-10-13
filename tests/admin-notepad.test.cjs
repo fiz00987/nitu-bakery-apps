@@ -48,6 +48,7 @@ async function harness(t, initial, legacy = '') {
   return {
     notebook, state, writes, w, math: w.NituNotepad,
     el: id => w.document.getElementById(id),
+    expenseInput: (itemKey, field) => w.document.querySelector(`#notepad-checklist input[data-item-key="${itemKey}"][data-expense-field="${field}"]`),
     input(id, value) { const node = w.document.getElementById(id); node.value = value; node.dispatchEvent(new w.Event('input')); },
     emit: () => notebook.receive(copy(state.pages)),
     race: fn => { before = fn; }, fail: () => { failure = true; },
@@ -234,6 +235,10 @@ test('the four-tab notebook calculator and keyboard navigation leave saved pages
   const tools = h.el('notepad-helper-aside').querySelectorAll('details');
   assert.equal(h.w.document.querySelectorAll('.np-tab').length, 4);
   assert.equal(h.el('notepad-tab-recipe'), null);
+  assert.equal(h.w.document.querySelector('[id^="np-scale-"]'), null);
+  assert.equal(h.math.scale, undefined);
+  assert.equal(h.notebook.scaleUi, undefined);
+  assert.equal(h.notebook.insertScale, undefined);
   assert.equal(tools.length, 1);
   await h.notebook.switchCategory('calculator');
   assert.equal(h.el('notepad-panel').hidden, true);
@@ -245,9 +250,133 @@ test('the four-tab notebook calculator and keyboard navigation leave saved pages
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(h.el('notepad-tab-cake').getAttribute('aria-selected'), 'true');
   assert.equal(h.w.document.activeElement, h.el('notepad-tab-cake'));
+  for (const [tab, key, selected] of [
+    ['cake', 'ArrowLeft', 'calculator'],
+    ['calculator', 'Home', 'cake'],
+    ['cake', 'End', 'calculator']
+  ]) {
+    h.el('notepad-tab-' + tab).dispatchEvent(new h.w.KeyboardEvent('keydown', { key, bubbles: true }));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.el('notepad-tab-' + selected).getAttribute('aria-selected'), 'true');
+    assert.equal(h.w.document.activeElement, h.el('notepad-tab-' + selected));
+  }
   await h.notebook.switchCategory('baking');
+  await h.notebook.switchCategory('recipe');
+  assert.equal(h.el('notepad-tab-baking').getAttribute('aria-selected'), 'true');
   assert.equal(h.el('notepad-panel').hidden, false);
   assert.equal(h.el('notepad-edit-details').open, true);
   assert.deepEqual(h.state.pages, original);
   assert.equal(h.writes.length, 0);
+});
+
+test('cake checklist expenses persist without losing item fields and are exposed by the API', async t => {
+  const original = page('Shopping', {
+    items: { flour: { name: 'Flour', detail: '2 kg', checked: false, extra: 'keep me' } }
+  });
+  const h = await harness(t, { 0: original });
+  assert.equal(await h.notebook.setItemExpense('flour', { amount: '125.50', date: '2026-10-13' }), true);
+  assert.deepEqual(h.state.pages[0].items.flour, {
+    name: 'Flour', detail: '2 kg', checked: false, extra: 'keep me',
+    expense: { amount: 125.5, date: '2026-10-13' }
+  });
+  assert.equal(JSON.stringify(h.notebook.getExpenses()), JSON.stringify([{
+    pageKey: '0', itemKey: 'flour', name: 'Flour', amount: 125.5, date: '2026-10-13'
+  }]));
+  assert.equal(await h.notebook.setItemExpense('flour', { amount: '-1' }), false);
+  assert.equal(h.state.pages[0].items.flour.expense.amount, 125.5);
+});
+
+test('checking a cake item defaults a missing expense date without inventing a price', async t => {
+  const h = await harness(t, { 0: page('Shopping', {
+    items: { sugar: { name: 'Sugar', detail: '1 kg', checked: false } }
+  }) });
+  await h.notebook.toggleItem('sugar', true);
+  const now = new Date();
+  const expected = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  assert.equal(h.state.pages[0].items.sugar.checked, true);
+  assert.equal(h.state.pages[0].items.sugar.expense.date, expected);
+  assert.equal(Object.hasOwn(h.state.pages[0].items.sugar.expense, 'amount'), false);
+  assert.equal(JSON.stringify(h.notebook.getExpenses()), '[]');
+});
+
+test('a price typed before blur survives live receives and preserves other-device fields', async t => {
+  const h = await harness(t, { 0: page('Shopping', {
+    items: { flour: { name: 'Flour', checked: false, expense: { amount: 10, date: '2026-10-10' } } }
+  }) });
+  const amount = h.expenseInput('flour', 'amount');
+  amount.focus(); amount.value = '125.50'; amount.dispatchEvent(new h.w.Event('input'));
+  h.state.pages[0].items.flour.detail = 'Updated elsewhere';
+  h.state.pages[0].items.flour.expense.date = '2026-10-12';
+  h.state.pages[0].items.flour.expense.receipt = 'Keep this receipt';
+  await h.emit();
+  assert.equal(h.expenseInput('flour', 'amount').value, '125.50');
+  assert.equal(h.w.document.activeElement, h.expenseInput('flour', 'amount'));
+  assert.equal(h.expenseInput('flour', 'date').value, '2026-10-12', 'untouched fields must follow the cloud');
+  assert.equal(h.state.pages[0].items.flour.expense.amount, 10, 'receiving must not save the draft');
+  assert.equal(await h.notebook.flush(), true);
+  assert.deepEqual(h.state.pages[0].items.flour, {
+    name: 'Flour', checked: false, detail: 'Updated elsewhere',
+    expense: { amount: 125.5, date: '2026-10-12', receipt: 'Keep this receipt' }
+  });
+});
+
+test('an expense date typed before blur survives rendering and retains a concurrent price', async t => {
+  const h = await harness(t, { 0: page('Shopping', {
+    items: { flour: { name: 'Flour', expense: { amount: 10, date: '2026-10-10' } } }
+  }) });
+  const date = h.expenseInput('flour', 'date');
+  date.focus(); date.value = '2026-10-13'; date.dispatchEvent(new h.w.Event('input'));
+  h.notebook.render();
+  assert.equal(h.expenseInput('flour', 'date').value, '2026-10-13');
+  h.race(() => { h.state.pages[0].items.flour.expense.amount = 99; });
+  assert.equal(await h.notebook.flush(), true);
+  assert.deepEqual(h.state.pages[0].items.flour.expense, { amount: 99, date: '2026-10-13' });
+});
+
+test('editing a second expense field uses its latest cloud value as the conflict base', async t => {
+  const h = await harness(t, { 0: page('Shopping', {
+    items: { flour: { name: 'Flour', expense: { amount: 10, date: '2026-10-10' } } }
+  }) });
+  const amount = h.expenseInput('flour', 'amount');
+  amount.value = '20'; amount.dispatchEvent(new h.w.Event('change'));
+  h.state.pages[0].items.flour.expense.date = '2026-10-12'; await h.emit();
+  assert.equal(h.expenseInput('flour', 'date').value, '2026-10-12');
+  const date = h.expenseInput('flour', 'date');
+  date.value = '2026-10-13'; date.dispatchEvent(new h.w.Event('change'));
+  assert.equal(await h.notebook.flush(), true);
+  assert.deepEqual(h.state.pages[0].items.flour.expense, { amount: 20, date: '2026-10-13' });
+});
+
+test('same-field expense conflicts preserve the cloud value and the account-scoped input draft', async t => {
+  const h = await harness(t, { 0: page('Shopping', {
+    items: { flour: { name: 'Flour', expense: { amount: 10, date: '2026-10-10' } } }
+  }) });
+  const amount = h.expenseInput('flour', 'amount');
+  amount.value = '20'; amount.dispatchEvent(new h.w.Event('input'));
+  h.race(() => { h.state.pages[0].items.flour.expense = { amount: 99, date: '2026-10-12' }; });
+  assert.equal(await h.notebook.flush(), false);
+  assert.deepEqual(h.state.pages[0].items.flour.expense, { amount: 99, date: '2026-10-12' });
+  assert.equal(h.expenseInput('flour', 'amount').value, '20');
+  h.notebook.activate('admin-two'); await h.emit();
+  assert.equal(h.expenseInput('flour', 'amount').value, '99');
+  h.notebook.activate('admin-one'); await h.emit();
+  assert.equal(h.expenseInput('flour', 'amount').value, '20');
+  assert.equal(h.expenseInput('flour', 'date').value, '2026-10-12');
+  assert.equal(await h.notebook.flush(), false);
+  assert.equal(h.state.pages[0].items.flour.expense.amount, 99);
+});
+
+test('invalid expense input is kept through live rendering until it is corrected', async t => {
+  const h = await harness(t, { 0: page('Shopping', {
+    items: { flour: { name: 'Flour', expense: { amount: 10, date: '2026-10-10' } } }
+  }) });
+  const amount = h.expenseInput('flour', 'amount');
+  amount.value = '-1'; amount.dispatchEvent(new h.w.Event('input')); await h.emit();
+  assert.equal(h.expenseInput('flour', 'amount').value, '-1');
+  assert.equal(await h.notebook.flush(), false);
+  assert.equal(h.state.pages[0].items.flour.expense.amount, 10);
+  const corrected = h.expenseInput('flour', 'amount');
+  corrected.value = '15'; corrected.dispatchEvent(new h.w.Event('input'));
+  assert.equal(await h.notebook.flush(), true);
+  assert.equal(h.state.pages[0].items.flour.expense.amount, 15);
 });

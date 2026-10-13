@@ -9,6 +9,30 @@ window.NituNotepad = (() => {
     .sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true }));
   const digits = value => String(value).replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
   const formatNumber = value => String(Number(value.toPrecision(12)));
+  const EXPENSE_CHANGE_EVENT = 'notepad-expenses-changed';
+  const amountPattern = /^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+  const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+  const normalizeAmount = value => {
+    if (typeof value === 'number') return Number.isFinite(value) && value >= 0 ? Number(formatNumber(value)) : null;
+    if (typeof value !== 'string') return null;
+    const source = digits(value.trim());
+    if (!source || !amountPattern.test(source)) return null;
+    const amount = Number(source);
+    return Number.isFinite(amount) && amount >= 0 ? Number(formatNumber(amount)) : null;
+  };
+  const normalizeDate = value => {
+    const source = digits(String(value ?? '').trim());
+    if (!datePattern.test(source)) return null;
+    const [year, month, day] = source.split('-').map(Number);
+    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    return year >= 1 && month >= 1 && month <= 12 && day >= 1 && day <= days[month - 1] ? source : null;
+  };
+  const today = () => {
+    const now = new Date();
+    const pad = value => String(value).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  };
 
   // Parse arithmetic, never JavaScript. Supports precedence, parentheses and Bangla digits.
   const calculate = expression => {
@@ -52,15 +76,111 @@ window.NituNotepad = (() => {
     if (pos !== source.length || !Number.isFinite(result)) throw new Error('expression');
     return Number(formatNumber(result));
   };
-
   const create = ({ pagesRef, notesRef, toast, sync, confirm, language, photoUrl, compressPhoto, openPhoto }) => {
     const el = id => document.getElementById(id);
     const say = (en, bn) => language() === 'bn' ? bn : en;
     let pages = {}, legacy = null, ready = false, active = null, category = 'cake', activeView = 'cake';
     let drafts = {}, user = '', epoch = 0, loadSequence = 0, timer = null;
     const saving = new Map();
+    const expenseDrafts = new Map();
+    const expenseSaving = new Map();
     const lastPage = {};
     const current = () => active == null ? null : pages[active];
+    const expenseDraftKey = (pageKey, itemKey) => `${pageKey}\u0000${itemKey}`;
+    const scopedExpenseDraftKey = () => 'nitu-note-expense-drafts-v1:' + user;
+    const persistExpenseDrafts = () => {
+      if (!user) return;
+      try {
+        if (!expenseDrafts.size) {
+          localStorage.removeItem(scopedExpenseDraftKey());
+          return;
+        }
+        const stored = {};
+        expenseDrafts.forEach((draft, key) => {
+          stored[key] = {
+            pageKey: String(draft.pageKey), itemKey: String(draft.itemKey),
+            values: {
+              amount: String(draft.values?.amount ?? ''),
+              date: String(draft.values?.date ?? '')
+            },
+            patch: Object.fromEntries(['amount', 'date']
+              .filter(field => Object.hasOwn(draft.patch || {}, field))
+              .map(field => [field, String(draft.patch[field] ?? '')])),
+            base: draft.base && typeof draft.base === 'object' ? {
+              amount: String(draft.base.amount ?? ''), date: String(draft.base.date ?? '')
+            } : null,
+            version: Number.isFinite(Number(draft.version)) ? Number(draft.version) : 0,
+            error: draft.error || null
+          };
+        });
+        localStorage.setItem(scopedExpenseDraftKey(), JSON.stringify(stored));
+      } catch (e) { toast(say('Expense draft storage is full — keep this window open until saved.', 'খরচের ড্রাফট স্টোরেজ পূর্ণ — সেভ না হওয়া পর্যন্ত এই উইন্ডো খোলা রাখুন।')); }
+    };
+    const restoreExpenseDrafts = () => {
+      expenseDrafts.clear();
+      if (!user) return;
+      try {
+        const stored = JSON.parse(localStorage.getItem(scopedExpenseDraftKey()) || '{}') || {};
+        Object.values(stored).forEach(raw => {
+          if (!raw || typeof raw !== 'object' || raw.pageKey == null || raw.itemKey == null) return;
+          const pageKey = String(raw.pageKey), itemKey = String(raw.itemKey), patch = {};
+          const rawPatch = raw.patch && typeof raw.patch === 'object' ? raw.patch : {};
+          ['amount', 'date'].forEach(field => {
+            if (Object.hasOwn(rawPatch, field)) patch[field] = String(rawPatch[field] ?? '');
+          });
+          const rawValues = raw.values && typeof raw.values === 'object' ? raw.values : {};
+          const rawBase = raw.base && typeof raw.base === 'object' ? raw.base : null;
+          expenseDrafts.set(expenseDraftKey(pageKey, itemKey), {
+            pageKey, itemKey,
+            values: { amount: String(rawValues.amount ?? patch.amount ?? ''), date: String(rawValues.date ?? patch.date ?? '') },
+            patch,
+            base: rawBase ? { amount: String(rawBase.amount ?? ''), date: String(rawBase.date ?? '') } : null,
+            version: Number.isFinite(Number(raw.version)) ? Number(raw.version) : 0,
+            timer: null,
+            error: typeof raw.error === 'string' ? raw.error : null
+          });
+        });
+      } catch (e) { expenseDrafts.clear(); }
+    };
+    const expenseSource = item => item && typeof item.expense === 'object' && item.expense !== null ? item.expense : null;
+    const expenseValues = item => {
+      const source = expenseSource(item);
+      const rawAmount = source && Object.hasOwn(source, 'amount') ? source.amount
+        : source && Object.hasOwn(source, 'price') ? source.price
+          : item?.price;
+      const rawDate = source && Object.hasOwn(source, 'date') ? source.date
+        : source && Object.hasOwn(source, 'purchaseDate') ? source.purchaseDate
+          : source && Object.hasOwn(source, 'expenseDate') ? source.expenseDate
+            : item?.purchaseDate ?? item?.expenseDate;
+      return { amount: normalizeAmount(rawAmount), date: normalizeDate(rawDate) };
+    };
+    const reconcileExpenseDrafts = raw => {
+      expenseDrafts.forEach(draft => {
+        const item = raw?.[draft.pageKey]?.items?.[draft.itemKey];
+        if (!item || typeof item !== 'object') return;
+        const values = expenseValues(item);
+        ['amount', 'date'].forEach(field => {
+          if (Object.hasOwn(draft.patch, field)) return;
+          const value = values[field] == null ? '' : String(values[field]);
+          draft.values[field] = value;
+          if (draft.base) draft.base[field] = value;
+        });
+      });
+    };
+    const getExpenses = () => entries(pages).filter(([, page]) => categoryOf(page) === 'cake').flatMap(([pageKey, page]) =>
+      entries(page.items).flatMap(([itemKey, item]) => {
+        const expense = expenseValues(item);
+        if (expense.amount == null || !expense.date) return [];
+        return [{ pageKey: String(pageKey), itemKey: String(itemKey), name: String(item.name || ''), amount: expense.amount, date: expense.date }];
+      })
+    );
+    const signalExpensesChanged = (reason, pageKey = null, itemKey = null) => {
+      try {
+        window.dispatchEvent(new CustomEvent(EXPENSE_CHANGE_EVENT, {
+          detail: { reason, pageKey: pageKey == null ? null : String(pageKey), itemKey: itemKey == null ? null : String(itemKey), expenses: getExpenses() }
+        }));
+      } catch (e) {}
+    };
     const scopedDraftKey = () => 'nitu-note-drafts-v1:' + user;
     const persist = () => {
       if (!user) return;
@@ -76,19 +196,23 @@ window.NituNotepad = (() => {
     };
     const reset = () => {
       persist();
+      persistExpenseDrafts();
       epoch++; loadSequence++;
       clearTimeout(timer);
+      expenseDrafts.forEach(draft => { if (draft.timer) clearTimeout(draft.timer); });
       pages = {}; legacy = null; ready = false; active = null; category = 'cake'; activeView = 'cake';
-      drafts = {}; user = ''; saving.clear();
+      drafts = {}; user = ''; saving.clear(); expenseDrafts.clear(); expenseSaving.clear();
       Object.keys(lastPage).forEach(key => delete lastPage[key]);
       el('notepad-overlay').classList.remove('open');
       document.body.style.overflow = '';
       render();
+      signalExpensesChanged('reset');
     };
     const activate = uid => {
       if (user === uid) return;
       reset(); user = uid;
       try { drafts = JSON.parse(localStorage.getItem(scopedDraftKey()) || '{}') || {}; } catch (e) { drafts = {}; }
+      restoreExpenseDrafts();
     };
     const receive = async raw => {
       const sequence = ++loadSequence, session = epoch;
@@ -107,8 +231,10 @@ window.NituNotepad = (() => {
           return;
         }
       }
+      reconcileExpenseDrafts(pages);
       ready = true;
       render();
+      signalExpensesChanged('receive');
     };
     const materializeLegacy = async () => {
       if (!legacy) return;
@@ -183,7 +309,9 @@ window.NituNotepad = (() => {
     };
     const flush = async () => {
       clearTimeout(timer);
-      return active == null || await saveDraft(active);
+      const key = active;
+      if (key == null || !await saveDraft(key)) return key == null;
+      return flushExpenseDrafts(key);
     };
     const addPage = async (source = null) => {
       if (!ready || (!source && !await flush())) return false;
@@ -205,6 +333,7 @@ window.NituNotepad = (() => {
         pages = result.snapshot.val() || {};
         category = categoryOf(newPage); active = key; lastPage[category] = key;
         render(true);
+        signalExpensesChanged('page', key);
         toast(say('New page saved', 'নতুন পেজ সেভ হয়েছে'));
         return true;
       } catch (e) { if (session === epoch) toast(say('Page could not be saved. Try again.', 'পেজ সেভ হয়নি। আবার চেষ্টা করুন।')); return false; }
@@ -227,6 +356,7 @@ window.NituNotepad = (() => {
       try {
         await commitPage(key, page => ({ ...page, category: value }));
         category = value; active = key; lastPage[value] = key; render(true);
+        signalExpensesChanged('page', key);
         toast(say('Page moved — text and photos preserved', 'পেজ সরানো হয়েছে — লেখা ও ছবি অক্ষত আছে'));
       } catch (e) { render(); toast(say('Move failed. Your original page is unchanged.', 'সরানো যায়নি। মূল পেজ অক্ষত আছে।')); }
     };
@@ -238,25 +368,36 @@ window.NituNotepad = (() => {
       if (await addPage(copy)) { delete drafts[key]; persist(); render(true); }
     };
     const retry = async () => {
-      if (!drafts[active] || drafts[active].error === 'conflict') return;
-      delete drafts[active].error;
-      await saveDraft(active);
+      const noteDraft = drafts[active];
+      if (noteDraft && noteDraft.error !== 'conflict') {
+        delete noteDraft.error;
+        await saveDraft(active);
+      }
+      if (active != null) await flushExpenseDrafts(active);
     };
     const renderStatus = () => {
       const draft = drafts[active];
+      const expenseDraft = active == null ? null : [...expenseDrafts.values()].find(item => item.pageKey === String(active) && (item.error || Object.keys(item.patch).length));
+      const expenseError = expenseDraft?.error;
       el('notepad-status').textContent = !ready ? say('Connecting to notes…', 'নোটে সংযোগ হচ্ছে…')
-        : draft ? draft.error ? say('Draft kept on this device · not saved to cloud', 'এই ডিভাইসে ড্রাফট রাখা আছে · ক্লাউডে সেভ হয়নি') : say('Saving your draft…', 'ড্রাফট সেভ হচ্ছে…')
-        : say('☁️ Shared notes · saved to cloud', '☁️ সবার জন্য নোট · ক্লাউডে সেভ আছে');
-      el('notepad-draft-alert').hidden = !draft?.error;
-      el('notepad-retry').hidden = draft?.error === 'conflict';
-      el('notepad-draft-message').textContent = draft?.error === 'conflict'
+        : draft?.error || expenseError ? say('Draft kept on this device · not saved to cloud', 'এই ডিভাইসে ড্রাফট রাখা আছে · ক্লাউডে সেভ হয়নি')
+          : draft ? say('Saving your draft…', 'ড্রাফট সেভ হচ্ছে…')
+            : expenseDraft ? say('Saving expense…', 'খরচ সেভ হচ্ছে…')
+              : say('☁️ Shared notes · saved to cloud', '☁️ সবার জন্য নোট · ক্লাউডে সেভ আছে');
+      el('notepad-draft-alert').hidden = !(draft?.error || expenseError);
+      el('notepad-retry').hidden = draft?.error === 'conflict' && !expenseError;
+      el('notepad-draft-message').textContent = expenseError
+        ? say('Your expense entry is kept on this device. Reconnect to retry.', 'আপনার খরচের লেখা এই ডিভাইসে রাখা আছে। সংযোগ দিয়ে আবার চেষ্টা করুন।')
+        : draft?.error === 'conflict'
         ? say('This page changed on another device. Your draft has not overwritten it. Save your draft as a new page.', 'অন্য ডিভাইসে এই পেজ বদলেছে। আপনার ড্রাফট সেটি মুছে দেয়নি। ড্রাফটটি নতুন পেজে সেভ করুন।')
         : say('Your draft is kept. Reconnect to retry, or save it as a new page.', 'আপনার ড্রাফট রাখা আছে। সংযোগ দিয়ে আবার চেষ্টা করুন বা নতুন পেজে সেভ করুন।');
     };
     const render = (force = false) => {
+      reconcileExpenseDrafts(pages);
       const visible = choosePage(), page = current(), draft = drafts[active], tool = isToolView(activeView);
       document.querySelectorAll('[data-np-en]').forEach(node => { node.textContent = say(node.dataset.npEn, node.dataset.npBn); });
       document.querySelectorAll('[data-np-placeholder-en]').forEach(node => { node.placeholder = say(node.dataset.npPlaceholderEn, node.dataset.npPlaceholderBn); });
+      document.querySelectorAll('[data-np-aria-en]').forEach(node => { node.setAttribute('aria-label', say(node.dataset.npAriaEn, node.dataset.npAriaBn)); });
       VIEWS.forEach(key => {
         const tab = el('notepad-tab-' + key), count = entries(pages).filter(([, p]) => categoryOf(p) === key).length;
         const selected = activeView === key;
@@ -351,17 +492,209 @@ window.NituNotepad = (() => {
         } catch (e) { toast(say('Photo changed. Please reopen this page.', 'ছবি বদলেছে। পেজটি আবার খুলুন।')); }
       });
     };
+    const normalizeExpensePatch = patch => {
+      const normalized = {};
+      for (const field of ['amount', 'date']) {
+        if (!Object.hasOwn(patch, field)) continue;
+        const raw = String(patch[field] ?? '').trim();
+        if (!raw) { normalized[field] = null; continue; }
+        const value = field === 'amount' ? normalizeAmount(raw) : normalizeDate(raw);
+        if (value == null) throw new Error(field);
+        normalized[field] = value;
+      }
+      return normalized;
+    };
+    const applyExpensePatch = (item, patch) => {
+      const expense = { ...(expenseSource(item) || {}) };
+      Object.entries(patch).forEach(([field, value]) => { expense[field] = value; });
+      return { ...item, expense };
+    };
+    const expenseDraftFor = (pageKey, itemKey, item) => {
+      const key = expenseDraftKey(pageKey, itemKey);
+      let draft = expenseDrafts.get(key);
+      if (!draft) {
+        const values = expenseValues(item);
+        draft = {
+          pageKey: String(pageKey), itemKey: String(itemKey),
+          values: { amount: values.amount == null ? '' : String(values.amount), date: values.date || '' },
+          patch: {}, base: { amount: values.amount == null ? '' : String(values.amount), date: values.date || '' },
+          version: 0, timer: null, error: null
+        };
+        expenseDrafts.set(key, draft);
+      }
+      return [key, draft];
+    };
+    const saveExpenseDraft = async key => {
+      const running = expenseSaving.get(key);
+      if (running) return running.then(() => expenseDrafts.has(key) ? saveExpenseDraft(key) : true);
+      const draft = expenseDrafts.get(key);
+      if (!draft || !Object.keys(draft.patch).length) return true;
+      if (draft.timer) { clearTimeout(draft.timer); draft.timer = null; }
+      const session = epoch, version = draft.version, rawPatch = { ...draft.patch }, base = draft.base ? { ...draft.base } : null, pageKey = draft.pageKey, itemKey = draft.itemKey;
+      let patch;
+      try { patch = normalizeExpensePatch(rawPatch); }
+      catch (error) {
+        draft.error = error.message;
+        render();
+        return false;
+      }
+      let appliedPatch = null;
+      const job = (async () => {
+        try {
+          const saved = await commitPage(pageKey, page => {
+            const item = page.items?.[itemKey];
+            if (!item || typeof item !== 'object') return;
+            if (base && Object.keys(rawPatch).some(field => {
+              const currentValue = expenseValues(item)[field];
+              return String(currentValue == null ? '' : currentValue) !== String(base[field] ?? '');
+            })) return;
+            const safePatch = { ...patch };
+            if (item.checked && !Object.hasOwn(safePatch, 'date') && !expenseValues(item).date) safePatch.date = today();
+            appliedPatch = safePatch;
+            return { ...page, items: { ...page.items, [itemKey]: applyExpensePatch(item, safePatch) } };
+          });
+          if (session !== epoch) return false;
+          const pending = expenseDrafts.get(key);
+          if (pending && pending.version === version) expenseDrafts.delete(key);
+          else if (pending) {
+            Object.entries(rawPatch).forEach(([field, value]) => { if (pending.patch[field] === value) delete pending.patch[field]; });
+            if (pending.base && saved?.items?.[itemKey]) {
+              const savedExpense = expenseValues(saved.items[itemKey]);
+              Object.keys(appliedPatch || rawPatch).forEach(field => { pending.base[field] = String(savedExpense[field] == null ? '' : savedExpense[field]); });
+            }
+            pending.error = null;
+            if (!Object.keys(pending.patch).length) expenseDrafts.delete(key);
+          }
+          persistExpenseDrafts();
+          render();
+          signalExpensesChanged('expense', pageKey, itemKey);
+          sync('ok');
+          return true;
+        } catch (error) {
+          if (session !== epoch) return false;
+          const pending = expenseDrafts.get(key);
+          if (pending) pending.error = error.message === 'conflict' ? 'conflict' : 'network';
+          persistExpenseDrafts();
+          sync('error', say('Expense not saved', 'খরচ সেভ হয়নি'));
+          toast(say('Expense not saved. Your entry is kept; please retry.', 'খরচ সেভ হয়নি। আপনার লেখা রাখা আছে; আবার চেষ্টা করুন।'));
+          render();
+          return false;
+        }
+      })().finally(() => { if (expenseSaving.get(key) === job) expenseSaving.delete(key); });
+      expenseSaving.set(key, job);
+      sync('syncing', say('Saving expense…', 'খরচ সেভ হচ্ছে…'));
+      return job;
+    };
+    const flushExpenseDrafts = async pageKey => {
+      const keys = [...expenseDrafts.entries()].filter(([, draft]) => draft.pageKey === String(pageKey)).map(([key]) => key);
+      let result = true;
+      for (const key of keys) {
+        const draft = expenseDrafts.get(key);
+        if (draft?.timer) { clearTimeout(draft.timer); draft.timer = null; }
+        let attempts = 0;
+        while (expenseDrafts.has(key) && attempts++ < 5) {
+          if (!await saveExpenseDraft(key)) { result = false; break; }
+        }
+        if (expenseDrafts.has(key)) result = false;
+      }
+      return result;
+    };
+    const queueExpenseSave = (itemKey, field, value, input = null, reportValidity = false) => {
+      const pageKey = active, item = current()?.items?.[itemKey];
+      if (pageKey == null || !item) return false;
+      const raw = String(value ?? '').trim();
+      const valid = !raw || (field === 'amount' ? normalizeAmount(raw) != null : normalizeDate(raw) != null);
+      if (input) {
+        input.setCustomValidity(valid ? '' : field === 'amount'
+          ? say('Enter a non-negative amount.', 'শূন্য বা তার বেশি টাকার পরিমাণ দিন।')
+          : say('Enter a valid expense date.', 'সঠিক খরচের তারিখ দিন।'));
+        input.setAttribute('aria-invalid', String(!valid));
+        if (!valid && reportValidity && input.reportValidity) input.reportValidity();
+      }
+      const [key, draft] = expenseDraftFor(pageKey, itemKey, item);
+      if (draft.error === 'conflict' && draft.base) {
+        const currentValue = expenseValues(item)[field];
+        draft.base[field] = currentValue == null ? '' : String(currentValue);
+      }
+      const changed = !Object.hasOwn(draft.patch, field) || draft.patch[field] !== raw;
+      draft.values[field] = raw;
+      draft.patch[field] = raw;
+      draft.error = null;
+      if (changed) {
+        draft.version++;
+        if (draft.timer) clearTimeout(draft.timer);
+        draft.timer = setTimeout(() => saveExpenseDraft(key), 700);
+      }
+      persistExpenseDrafts();
+      renderStatus();
+      return valid;
+    };
+    const setItemExpense = async (itemKey, patch = {}) => {
+      if (active == null || !current()?.items?.[itemKey] || !patch || typeof patch !== 'object') return false;
+      try { normalizeExpensePatch(patch); } catch (e) { return false; }
+      for (const field of ['amount', 'date']) {
+        if (Object.hasOwn(patch, field) && !queueExpenseSave(itemKey, field, patch[field])) return false;
+      }
+      return flushExpenseDrafts(active);
+    };
     const renderChecklist = () => {
-      const items = entries(current()?.items), list = el('notepad-checklist'); list.replaceChildren();
+      const pageKey = active, items = entries(current()?.items), list = el('notepad-checklist');
+      const focused = document.activeElement && list.contains(document.activeElement) ? {
+        itemKey: document.activeElement.dataset.itemKey,
+        field: document.activeElement.dataset.expenseField || 'checked',
+        start: document.activeElement.selectionStart,
+        end: document.activeElement.selectionEnd
+      } : null;
+      list.replaceChildren();
       const done = items.filter(([, item]) => item.checked).length;
       el('notepad-check-progress').textContent = `${done}/${items.length} ${say('bought', 'কেনা হয়েছে')}`;
       items.forEach(([key, item]) => {
-        const row = document.createElement('label'); row.className = 'np-check-row' + (item.checked ? ' checked' : '');
+        const row = document.createElement('div'); row.className = 'np-check-row' + (item.checked ? ' checked' : '');
+        const main = document.createElement('label'); main.className = 'np-check-main';
         const check = document.createElement('input'); check.type = 'checkbox'; check.checked = !!item.checked;
+        check.dataset.itemKey = String(key);
+        const name = String(item.name || '');
+        check.setAttribute('aria-label', say(`Mark ${name} as bought`, `${name} কেনা হয়েছে চিহ্নিত করুন`));
         check.onchange = () => toggleItem(key, check.checked);
-        const text = document.createElement('span'); text.textContent = item.name + (item.detail ? ' · ' + item.detail : '');
-        row.append(check, text); list.append(row);
+        const text = document.createElement('span'); text.className = 'np-check-copy'; text.textContent = name;
+        if (item.detail) { const detail = document.createElement('span'); detail.textContent = ' · ' + String(item.detail); text.append(detail); }
+        main.append(check, text);
+
+        const draft = expenseDrafts.get(expenseDraftKey(pageKey, key));
+        const storedExpense = expenseValues(item);
+        const fields = document.createElement('div'); fields.className = 'np-expense-fields';
+        const amountLabel = document.createElement('label'); amountLabel.className = 'np-expense-field';
+        const amountText = document.createElement('span'); amountText.className = 'np-expense-label'; amountText.textContent = say('Price', 'দাম');
+        const amountWrap = document.createElement('span'); amountWrap.className = 'np-expense-control';
+        const currency = document.createElement('span'); currency.className = 'np-expense-currency'; currency.textContent = '৳';
+        const amount = document.createElement('input'); amount.type = 'number'; amount.min = '0'; amount.step = '0.01'; amount.inputMode = 'decimal'; amount.className = 'np-expense-amount';
+        amount.value = draft && Object.hasOwn(draft.patch, 'amount') ? draft.values.amount : (storedExpense.amount == null ? '' : String(storedExpense.amount));
+        amount.setAttribute('aria-label', say(`Price for ${name}`, `${name}-এর দাম`)); amount.dataset.itemKey = String(key); amount.dataset.expenseField = 'amount';
+        amount.oninput = () => queueExpenseSave(key, 'amount', amount.value, amount);
+        amount.onchange = () => queueExpenseSave(key, 'amount', amount.value, amount, true);
+        amountWrap.append(currency, amount); amountLabel.append(amountText, amountWrap);
+
+        const dateLabel = document.createElement('label'); dateLabel.className = 'np-expense-field';
+        const dateText = document.createElement('span'); dateText.className = 'np-expense-label'; dateText.textContent = say('Expense date', 'খরচের তারিখ');
+        const date = document.createElement('input'); date.type = 'date'; date.className = 'np-expense-date';
+        date.value = draft && Object.hasOwn(draft.patch, 'date') ? draft.values.date : (storedExpense.date || '');
+        date.setAttribute('aria-label', say(`Expense date for ${name}`, `${name}-এর খরচের তারিখ`)); date.dataset.itemKey = String(key); date.dataset.expenseField = 'date';
+        date.oninput = () => queueExpenseSave(key, 'date', date.value, date);
+        date.onchange = () => queueExpenseSave(key, 'date', date.value, date, true);
+        dateLabel.append(dateText, date);
+        fields.append(amountLabel, dateLabel);
+        row.append(main, fields); list.append(row);
       });
+      if (focused?.itemKey != null) {
+        const target = [...list.querySelectorAll('input[data-item-key]')].find(input =>
+          input.dataset.itemKey === focused.itemKey && (input.dataset.expenseField || 'checked') === focused.field);
+        if (target) {
+          target.focus();
+          if (focused.start != null && target.setSelectionRange) {
+            try { target.setSelectionRange(focused.start, focused.end); } catch (e) {}
+          }
+        }
+      }
     };
     const renderQuickBoard = (page, draft) => {
       const board = el('np-cake-board'); if (!board) return;
@@ -383,15 +716,23 @@ window.NituNotepad = (() => {
       try {
         await commitPage(key, page => ({ ...page, items: { ...(page.items || {}), [id]: { name, detail, checked: false, createdAt: Date.now() } } }));
         el('notepad-item-name').value = ''; el('notepad-item-detail').value = ''; render();
+        signalExpensesChanged('item', key, id);
       } catch (e) { toast(say('Item not saved. Please retry.', 'আইটেম সেভ হয়নি। আবার চেষ্টা করুন।')); }
     };
     const toggleItem = async (id, checked) => {
       const key = active;
       try {
         await commitPage(key, page => {
-          if (!page.items?.[id]) return;
-          return { ...page, items: { ...page.items, [id]: { ...page.items[id], checked } } };
-        }); render();
+          const item = page.items?.[id];
+          if (!item) return;
+          const nextItem = { ...item, checked };
+          if (checked && !expenseValues(item).date) {
+            const expense = { ...(expenseSource(item) || {}), date: today() };
+            nextItem.expense = expense;
+          }
+          return { ...page, items: { ...page.items, [id]: nextItem } };
+        });
+        render(); signalExpensesChanged('checked', key, id);
       } catch (e) { render(); toast(say('Checklist not saved. Please retry.', 'তালিকা সেভ হয়নি। আবার চেষ্টা করুন।')); }
     };
     const append = text => {
@@ -436,7 +777,7 @@ window.NituNotepad = (() => {
       el('notepad-tab-' + VIEWS[next]).focus();
     }));
     render();
-    return { activate, reset, receive, render, open, close, addPage, switchCategory, switchPage, movePage, addPhoto, removePhoto, addItem, toggleItem, calculatorKey, calculateUi, insertCalculation, template, exportAll, recover, retry, flush };
+    return { activate, reset, receive, render, open, close, addPage, switchCategory, switchPage, movePage, addPhoto, removePhoto, addItem, toggleItem, setItemExpense, getExpenses, getExpenseItems: getExpenses, expenseChangeEvent: EXPENSE_CHANGE_EVENT, calculatorKey, calculateUi, insertCalculation, template, exportAll, recover, retry, flush };
   };
-  return { create, calculate, categoryOf, entries };
+  return { create, calculate, categoryOf, entries, expenseChangeEvent: EXPENSE_CHANGE_EVENT };
 })();

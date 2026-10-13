@@ -45,6 +45,7 @@ window.App = (() => {
   const dayBooksRef = db.ref('dayBooks');
   let dayBooks = {};
   let lastDayBooksFp = '';
+  let dayBooksReady = false;
 
   // ─── State ───────────────────────────────────────────────────
   let orders        = [];
@@ -69,6 +70,7 @@ window.App = (() => {
   let healedAdvance50 = {};         // 50%-advance orders already stripped of folded-in gateway charge
   let cleanedAutoDc  = {};         // orders whose auto-calculated DC figure was already cleared
   let sortMode      = 'date';       // 'date' | 'name' | 'due'
+  let planMonthFilter = '';         // YYYY-M; set by the revenue chart
   let quotes        = [];           // quotes/<TOKEN> live list
   let quotesReady   = false;
   let searchTimer   = null;
@@ -88,6 +90,9 @@ window.App = (() => {
       monthPlanned: 'এই মাসে অর্ডার', monthCompleted: 'এই মাসে সম্পন্ন',
       monthEarn: 'আয় (মোট বিক্রি)',
       monthEarnNote: '💡 ডেলিভারি চার্জ ও bKash চার্জ বাদে কেকের মোট বিক্রি। ডেলিভারি চার্জ পুরোটা ডেলিভারি এজেন্ট পান।',
+      monthExpense: 'এই মাসের খরচ', monthNet: 'মাসিক নেট লাভ',
+      monthExpenseNote: '💡 বেকারি নোটবুকের কেক আইটেমে দেওয়া দাম ও খরচের তারিখ থেকে হিসাব।',
+      expenseItems: 'খরচের আইটেম', noExpenses: 'এই মাসে কোনো খরচ যোগ করা হয়নি।',
       chartMonthlyOrders: '📊 মাসিক অর্ডার — শেষ ৫ মাস',
       tabPlan: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'ড্যাশবোর্ড', tabCdb: 'ডেটাবেজ', tabReward: 'রিওয়ার্ড', tabDeliveryConfirm: 'ডেলিভারি কনফার্ম',
       sort_date: 'তারিখ', sort_name: 'নাম', sort_due: 'বকেয়া',
@@ -99,7 +104,7 @@ window.App = (() => {
       call: '📞 কল', markPaid: '✅ সম্পূর্ণ পরিশোধ', copyPhone: '📱 ফোন কপি',
       due: 'বকেয়া', paidFull: 'পরিশোধিত ✅', delCharge: 'ডেলিভারি চার্জ',
       todayTitle: '🚚 আজকের ডেলিভারি ({n})',
-      dailyNew: 'আজকের নতুন', dailyNewShort: 'নতুন',
+      dailyNew: 'নতুন অর্ডার', dailyNewShort: 'নতুন',
     },
     en: {
       brand: 'Order Manager', connecting: 'Connecting to cloud...',
@@ -112,6 +117,9 @@ window.App = (() => {
       monthPlanned: 'Orders This Month', monthCompleted: 'Completed This Month',
       monthEarn: 'Earn (Total Sale)',
       monthEarnNote: '💡 Total cake sale excluding delivery & bKash charges. The delivery fee goes fully to the delivery agent.',
+      monthExpense: 'Expenses This Month', monthNet: 'Monthly Net Profit',
+      monthExpenseNote: '💡 Based on prices and expense dates entered for Cake Items in the bakery notebook.',
+      expenseItems: 'Expense items', noExpenses: 'No expenses added for this month.',
       chartMonthlyOrders: '📊 Orders per Month — Last 5',
       tabPlan: 'Orders', tabDone: 'Done', tabRev: 'Dashboard', tabCdb: 'Database', tabReward: 'Rewards', tabDeliveryConfirm: 'Delivery Confirm',
       sort_date: 'Date', sort_name: 'Name', sort_due: 'Due',
@@ -123,7 +131,7 @@ window.App = (() => {
       call: '📞 Call', markPaid: '✅ Mark Fully Paid', copyPhone: '📱 Copy Phone',
       due: 'Due', paidFull: 'Paid ✅', delCharge: 'Delivery Charge',
       todayTitle: "Today's deliveries ({n})",
-      dailyNew: "Today's New", dailyNewShort: 'New',
+      dailyNew: 'New Orders', dailyNewShort: 'New',
     }
   };
 
@@ -132,6 +140,12 @@ window.App = (() => {
   // ─── Date helpers ────────────────────────────────────────────
   const toDate  = s => new Date(s + 'T00:00:00');
   const today0  = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+  const deliveryDateOf = o => String(o && (o.date || o.deliveryDate) || '').slice(0, 10);
+  const monthKeyOf = o => {
+    const d = toDate(deliveryDateOf(o));
+    if (Number.isNaN(d.getTime())) return '';
+    return `${d.getFullYear()}-${d.getMonth()}`;
+  };
 
   const fmtDate = s => {
     const d = toDate(s);
@@ -249,6 +263,7 @@ window.App = (() => {
   const dueAmt = o => Math.max(0, cakePriceOf(o) - advanceOf(o));
 
   const normalizeCustomerOrder = o => {
+    o.surprise = o.surprise === true || o.surprise === 'yes';
     if (o.customerName && !o.name) o.name = o.customerName;
     if (o.customerPhone && !o.phone) o.phone = o.customerPhone;
     if (o.deliveryDate && !o.date) o.date = o.deliveryDate;
@@ -507,42 +522,8 @@ window.App = (() => {
     toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
   };
 
-  // ─── Instant ntfy.sh push bridge + heartbeat (channel #1 backup) ──
-  // NOTE: lives in the same closure as the Firebase listeners below
-  // (moved from script block #3 — cross-block calls were crashing render).
-  // ntfy.sh = free push service: the owner installs the ntfy app and
-  // subscribes to the private topic in notify-config.json. No Telegram,
-  // no account, no phone number. Alerts land in seconds even with the
-  // admin app fully closed.
-  var NTFY_CFG = null, ntfyCfgFetched = false;
-  function fetchNtfyConfig() {
-    if (!ntfyCfgFetched) {
-      ntfyCfgFetched = true;
-      fetch('./notify-config.json?cb=' + Date.now())
-        .then(r => r.ok ? r.json() : null)
-        .then(cfg => { NTFY_CFG = (cfg && cfg.ntfyTopic) ? cfg : null; })
-        .catch(() => { NTFY_CFG = null; });
-    }
-    return Promise.resolve(NTFY_CFG);
-  }
-  fetchNtfyConfig();
-  setInterval(fetchNtfyConfig, 6 * 60 * 60 * 1000);
-
-  function sendPushNow(title, message) {
-    return fetchNtfyConfig().then(cfg => {
-      if (!cfg) return false;
-      try {
-        var ctl = new AbortController();
-        setTimeout(() => ctl.abort(), 8000);
-        return fetch((cfg.ntfyServer || 'https://ntfy.sh').replace(/\/+$/, '') + '/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: cfg.ntfyTopic, title: title, message: message, priority: 4, tags: ['cake'] }),
-          signal: ctl.signal
-        }).then(r => r.ok).catch(() => false);
-      } catch (e) { return false; }
-    });
-  }
+  // Remote push is published only by the trusted notifier; the admin app
+  // retains its local in-app alerts without exposing a publisher credential.
   const HB_FLAV_EN = {
     'vanilla-sponge': 'Vanilla Sponge', 'chocolate-sponge': 'Chocolate Sponge',
     'double-layer-chocolate': 'Double Layered Chocolate', 'black-forest': 'Black Forest',
@@ -792,10 +773,10 @@ window.App = (() => {
     o.cakePrice, o.total, o.basePrice, o.subtotal, o.originalCakePrice,
     o.advance, o.advanceTotal, o.paid, o.dueAmount, o.bkashCharge,
     o.paymentCharges, o.advanceCharge, o.deliveryCharge, o.deliveryAmount,
-    o.reviewDiscount, o.reviewRewardId, o.quoteToken, o.adminEditedFields,
+     o.reviewDiscount, o.reviewRewardId, o.quoteToken, o.adminEditedFields,
      o.dcAuto, o.dcAutoNote, o.deliveryAgentName, o.deliveryAgentPhone,
      o.deliveryConfirmationSentAt, o.deliveryConfirmationSentBy
-  ])).sort());
+   ])).sort());
 
   // Used only on opening/saving an edit, not on every render. Normalize legacy
   // aliases and sort object keys so Firebase's property order is irrelevant.
@@ -913,6 +894,8 @@ window.App = (() => {
       quotesReady = false;
       offDays = {};
       dayBooks = {};
+      dayBooksReady = false;
+      lastDayBooksFp = '';
       if (notepad) notepad.reset();
       currentPhoto = '';
       currentPhotos = [];
@@ -1192,7 +1175,8 @@ window.App = (() => {
         if (session !== authSession || !currentUser || currentUser.uid !== user.uid) return;
         dayBooksRef.on('value', snap => {
          if (session !== authSession || !currentUser || currentUser.uid !== user.uid) return;
-         dayBooks = snap.val() || {};
+          dayBooks = snap.val() || {};
+          dayBooksReady = true;
          renderCalendar();
         }, err => {
           if (session === authSession && currentUser && currentUser.uid === user.uid) console.error('DayBooks listener error:', err);
@@ -1263,7 +1247,6 @@ window.App = (() => {
         trimHbMemory();
         try { localStorage.setItem('nitu_hb_known', JSON.stringify(hbKnownIds)); } catch (e) {}
         unseen.forEach(o => { console.log('[heartbeat] new order:', o.orderId || o.firebaseKey); });
-        unseen.forEach(o => { sendPushNow('🎂 নতুন অর্ডার', orderAlertText(o)); });
       }
     } catch (hbErr) { console.error('[heartbeat] fault contained:', hbErr); }
   }
@@ -1292,7 +1275,6 @@ window.App = (() => {
       });
       if (!missing.length) return;
       console.log('[heartbeat] repairing ' + missing.length + ' stuck order(s)');
-      missing.forEach(o => { sendPushNow('🎂 নতুন অর্ডার', orderAlertText(o)); });
       missing.forEach(o => { hbKnownIds[o.firebaseKey] = true; });
       trimHbMemory();
       try { localStorage.setItem('nitu_hb_known', JSON.stringify(hbKnownIds)); } catch (e) {}
@@ -1334,18 +1316,51 @@ window.App = (() => {
   // Delivery-time → minutes since midnight, or null when the stored time
   // is legacy free-text (e.g. "বিকাল ৪টা") that cannot be parsed.
   const timeMinutesOf = o => {
-    const raw = String(o.time || o.timeSlotLabel || o.timeSlot || '').trim();
-    if (!raw) return null;
-    const bn = raw.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
-    const m = bn.match(/(\d{1,2})(?:\s*[:.\-]\s*(\d{1,2}))?\s*(a\.?m\.?|p\.?m\.?)/i);
-    if (!m) return null;
-    let h = parseInt(m[1], 10);
-    const min = m[2] != null ? parseInt(m[2], 10) : 0;
-    if (h < 1 || h > 12 || min > 59) return null;
-    const pm = m[3][0].toLowerCase() === 'p';
-    if (pm && h !== 12) h += 12;
-    if (!pm && h === 12) h = 0;
-    return h * 60 + min;
+    // Customer orders normally carry the same value in all three fields, but
+    // older edits can leave `time` as the placeholder while the structured
+    // time remains in timeSlot/timeSlotLabel. Try every field and use the
+    // first parseable value instead of letting that placeholder hide a real
+    // delivery time.
+    const values = [o.timeSlotLabel, o.timeSlot, o.time]
+      .map(value => String(value || '').trim())
+      .filter(value => value && !/^time\s+not\s+confirmed$/i.test(value));
+    for (const raw of values) {
+      const bn = raw.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+      const m = bn.match(/(\d{1,2})(?:\s*[:.\-]\s*(\d{1,2}))?\s*(a\.?m\.?|p\.?m\.?|এএম|পিএম)/i);
+      if (!m) continue;
+      let h = parseInt(m[1], 10);
+      const min = m[2] != null ? parseInt(m[2], 10) : 0;
+      if (h < 1 || h > 12 || min > 59) continue;
+      const pm = /^p/i.test(m[3]) || m[3] === 'পিএম';
+      if (pm && h !== 12) h += 12;
+      if (!pm && h === 12) h = 0;
+      return h * 60 + min;
+    }
+    return null;
+  };
+  const stableOrderCompare = (a, b) => {
+    const ca = Number(a.createdAt) || 0, cb = Number(b.createdAt) || 0;
+    if (ca !== cb) return ca - cb;
+    const ka = String(a.firebaseKey || ''), kb = String(b.firebaseKey || '');
+    return ka < kb ? -1 : ka > kb ? 1 : 0;
+  };
+  // Delivery date is the primary organizer everywhere the plan cards are
+  // shown. A structured AM/PM time is the secondary key; legacy free-text
+  // times remain valid and are placed after parseable times on that date.
+  const deliveryDateTimeCompare = (a, b) => {
+    const da = toDate(deliveryDateOf(a)).getTime();
+    const db = toDate(deliveryDateOf(b)).getTime();
+    const dA = Number.isNaN(da) ? Infinity : da;
+    const dB = Number.isNaN(db) ? Infinity : db;
+    if (dA !== dB) return dA - dB;
+    const ta = timeMinutesOf(a), tb = timeMinutesOf(b);
+    if (ta != null && tb != null && ta !== tb) return ta - tb;
+    if ((ta != null) !== (tb != null)) return ta != null ? -1 : 1;
+    return 0;
+  };
+  const compareDeliveryOrder = (a, b) => {
+    const c = deliveryDateTimeCompare(a, b);
+    return c || stableOrderCompare(a, b);
   };
   // NEVER shuffle: every comparison ends in a stable, fully-deterministic
   // tie-break chain (date → time → createdAt → Firebase key). The old sort
@@ -1354,12 +1369,6 @@ window.App = (() => {
   // background write (healers, another device, a new order) re-sorted and
   // visibly moved cards while the admin was working on them.
   const sortOrders = () => {
-    const stableTie = (a, b) => {
-      const ca = Number(a.createdAt) || 0, cb = Number(b.createdAt) || 0;
-      if (ca !== cb) return ca - cb;
-      const ka = String(a.firebaseKey || ''), kb = String(b.firebaseKey || '');
-      return ka < kb ? -1 : ka > kb ? 1 : 0;
-    };
     orders.sort((a, b) => {
       if (sortMode === 'name') {
         const c = (a.name || '').localeCompare(b.name || '');
@@ -1368,15 +1377,7 @@ window.App = (() => {
         const c = dueAmt(b) - dueAmt(a);
         if (c) return c;
       }
-      const da = toDate(a.date || '2099-01-01').getTime();
-      const db = toDate(b.date || '2099-01-01').getTime();
-      const dA = Number.isNaN(da) ? Infinity : da;   // unparseable legacy dates sink last
-      const dB = Number.isNaN(db) ? Infinity : db;
-      if (dA !== dB) return dA - dB;
-      const ta = timeMinutesOf(a), tb = timeMinutesOf(b);
-      if (ta != null && tb != null && ta !== tb) return ta - tb;
-      if ((ta != null) !== (tb != null)) return ta != null ? -1 : 1;
-      return stableTie(a, b);
+      return compareDeliveryOrder(a, b);
     });
   };
 
@@ -1862,7 +1863,7 @@ T & C Applicable। ধন্যবাদ!`;
     const dueChip      = d > 0
       ? `<span class="chip chip-red">কেকের বকেয়া ৳${fmtMoney(d)}</span>`
       : `<span class="chip chip-green">কেক পরিশোধিত ✅</span>`;
-    const surpriseChip = o.surprise === 'yes' ? `<span class="chip chip-purple">🎁 সারপ্রাইজ</span>` : '';
+    const surpriseChip = o.surprise ? `<span class="chip chip-purple">🎁 সারপ্রাইজ</span>` : '';
     const tallyBadge   = o.source === 'tally'  ? `<span class="chip chip-tally">Tally</span>` : '';
     const customerBadge = o.source === 'customer' ? `<span class="chip chip-customer">অনলাইন অর্ডার</span>` : '';
     const rewardChip = o.reviewRewardId ? `<span class="chip chip-green">⭐ Review reward −৳${fmtMoney(o.reviewDiscount || Math.round((Number(o.originalCakePrice || o.total) || 0) * .1))}</span>` : '';
@@ -1930,7 +1931,11 @@ T & C Applicable। ধন্যবাদ!`;
       ${drow('👤', 'রিসিভার', o.receiver)}
       ${o.receiverPhone ? drow('📞', 'রিসিভার ফোন', o.receiverPhone) : ''}
       ${drow('📍', 'ঠিকানা', o.address)}
-      ${o.surprise === 'yes' ? drow('🎁', 'সারপ্রাইজ', 'হ্যাঁ — গোপন রাখুন!') : ''}
+      ${o.surprise ? drow('🎁', 'সারপ্রাইজ', 'হ্যাঁ — গোপন রাখুন!') : ''}
+      ${o.deliveryPaid && o.deliveryPaid !== 'na'
+        ? drow('🚚', 'ডেলিভারি চার্জ', (o.deliveryPaid === 'paid' ? 'পরিশোধিত ✅' : 'বাকি ⏳') + ` — ${dcAmtLine(o)}`)
+        + dcFootnoteHtml(o)
+        : ''}
     </div>
 
     <div class="detail-section">
@@ -2040,38 +2045,73 @@ T & C Applicable। ধন্যবাদ!`;
     const viewEl = document.getElementById('view-plan');
     if (!viewEl) return;
     let pool = [];
-    try { pool = getFiltered(orders.filter(o => isActiveOrder(o) && !isLogicallyComplete(o))); }
+    try {
+      pool = getFiltered(orders.filter(o => isActiveOrder(o) && !isLogicallyComplete(o)));
+      if (planMonthFilter) pool = pool.filter(o => monthKeyOf(o) === planMonthFilter);
+      // Keep date grouping authoritative even if the optional name/due sort
+      // button was used before entering this view. Within the same delivery
+      // slot its selected sort mode still decides ties.
+      pool.sort((a, b) => {
+        const byDelivery = deliveryDateTimeCompare(a, b);
+        if (byDelivery) return byDelivery;
+        if (sortMode === 'name') {
+          const c = String(a.name || '').localeCompare(String(b.name || ''));
+          if (c) return c;
+        } else if (sortMode === 'due') {
+          const c = dueAmt(b) - dueAmt(a);
+          if (c) return c;
+        }
+        return stableOrderCompare(a, b);
+      });
+    }
     catch (e) { console.error('[orders] filter failed:', e); }
     const t   = today0();
     const tm  = new Date(t); tm.setDate(tm.getDate() + 1);
 
     const groups = {};
     pool.forEach(o => {
-      if (!o.date) return;
-      const d = toDate(o.date);
+      const date = deliveryDateOf(o);
+      const d = toDate(date);
       let key, dot;
-      if (d.getTime() === t.getTime())  { key = '🚚 আজকে ডেলিভারি';    dot = 'dot-today'; }
-      else if (d.getTime() === tm.getTime()) { key = '🌙 আজ রাতে বেক — আগামীকাল ডেলিভারি'; dot = 'dot-tomorrow'; }
-      else if (d > t)  { key = fmtDate(o.date); dot = 'dot-later'; }
-      else { key = '⚠️ দেরি — ' + fmtDate(o.date); dot = 'dot-today'; }
-      if (!groups[key]) groups[key] = { orders: [], dot };
+      if (Number.isNaN(d.getTime())) {
+        key = '__no_delivery_date__'; dot = 'dot-later';
+      } else if (d.getTime() === t.getTime()) {
+        key = '🚚 আজকে ডেলিভারি'; dot = 'dot-today';
+      } else if (d.getTime() === tm.getTime()) {
+        key = '🌙 আজ রাতে বেক — আগামীকাল ডেলিভারি'; dot = 'dot-tomorrow';
+      } else if (d > t) {
+        key = fmtDate(date); dot = 'dot-later';
+      } else {
+        key = '⚠️ দেরি — ' + fmtDate(date); dot = 'dot-today';
+      }
+      if (!groups[key]) groups[key] = {
+        orders: [], dot,
+        label: key === '__no_delivery_date__' ? '📅 ডেলিভারির তারিখ নেই' : key
+      };
       groups[key].orders.push(o);
     });
 
-    let html = '';
+    let groupsHtml = '';
     Object.keys(groups).forEach(k => {
       const g = groups[k];
-      html += `<div class="day-group">
+      groupsHtml += `<div class="day-group">
         <div class="day-label">
           <div class="day-dot ${g.dot}"></div>
-          <span class="day-label-text">${k}</span>
+          <span class="day-label-text">${esc(g.label)}</span>
           <span class="day-count">${g.orders.length}</span>
         </div>
         ${g.orders.map(renderCardSafe).join('')}
       </div>`;
     });
 
-    if (!html) html = `<div class="empty">
+    const filterHtml = planMonthFilter
+      ? `<div class="pay-note" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 12px;padding:8px 10px;background:var(--blue-light);color:var(--blue)">
+          <span>📅 মাস ফিল্টার: ${esc(planMonthFilter)}</span>
+          <button type="button" class="card-btn btn-note" style="flex:0 0 auto;width:auto;padding:5px 9px" onclick="event.stopPropagation();App.clearMonthFilter()">✕</button>
+        </div>`
+      : '';
+    let html = filterHtml + groupsHtml;
+    if (!groupsHtml) html += `<div class="empty">
       <div class="empty-icon">🎂</div>
       <h3>কোনো আসন্ন অর্ডার নেই</h3>
       <p>+ বাটন চাপুন নতুন অর্ডার যোগ করতে।</p>
@@ -2344,6 +2384,28 @@ T & C Applicable। ধন্যবাদ!`;
   // them again made a ৳2500 cake with ৳600 delivery appear as ৳1900 in sales.
   const earnOf = o => cakePriceOf(o);
 
+  const expenseMonthKeyOf = date => {
+    const d = toDate(String(date || '').slice(0, 10));
+    if (Number.isNaN(d.getTime())) return '';
+    return `${d.getFullYear()}-${d.getMonth()}`;
+  };
+  const monthlyExpenseItems = monthKey => {
+    try {
+      const source = notepad && typeof notepad.getExpenseItems === 'function'
+        ? notepad.getExpenseItems() : [];
+      return (Array.isArray(source) ? source : [])
+        .filter(item => item && expenseMonthKeyOf(item.date) === monthKey)
+        .map(item => ({
+          name: String(item.name || '').trim() || '—',
+          amount: Math.max(0, Number(item.amount) || 0),
+          date: String(item.date || '').slice(0, 10)
+        }));
+    } catch (e) {
+      console.error('[revenue] expenses unavailable:', e);
+      return [];
+    }
+  };
+
   // ─── Monthly mini chart: orders taken per month ──────────────
   const buildMonthlyChart = () => {
     const now     = new Date();
@@ -2357,10 +2419,10 @@ T & C Applicable। ধন্যবাদ!`;
       data[key] = { label: months[d.getMonth()], n: 0 };
     }
 
+    Object.keys(data).forEach(key => { data[key].key = key; });
     orders.forEach(o => {
-      if (o.status === 'cancelled' || !o.date) return;
-      const d   = toDate(o.date);
-      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      if (o.status === 'cancelled') return;
+      const key = monthKeyOf(o);
       if (data[key]) data[key].n++;
     });
 
@@ -2369,30 +2431,57 @@ T & C Applicable। ধন্যবাদ!`;
 
     const bars = vals.map(v => {
       const pct = Math.max(4, Math.round((v.n / max) * 100));
+      const keyArg = jsArg(v.key);
       return `<div class="chart-bar-col">
+        <div role="button" tabindex="0" style="cursor:pointer;width:100%" title="${escAttr(v.label)} — অর্ডারগুলো দেখুন"
+          onclick="App.selectMonth(${keyArg})"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.selectMonth(${keyArg})}">
         <div class="chart-bar-val">${v.n > 0 ? v.n : ''}</div>
         <div class="chart-bar" style="height:${pct}%"></div>
         <div class="chart-bar-lbl">${v.label}</div>
+        </div>
       </div>`;
     }).join('');
 
     return `<div class="mini-chart-wrap"><div class="chart-bars">${bars}</div></div>`;
   };
 
+  // The chart already represents the same delivery-date month used by the
+  // revenue cards. Selecting a bar hands the selection to the existing Plan
+  // view instead of creating a second order-list workflow.
+  const selectMonth = key => {
+    const next = String(key || '').trim();
+    if (!/^\d{4}-\d{1,2}$/.test(next)) return;
+    const month = Number(next.split('-')[1]);
+    if (!Number.isInteger(month) || month < 0 || month > 11) return;
+    planMonthFilter = planMonthFilter === next ? '' : next;
+    switchTab('plan');
+    showToast(planMonthFilter
+      ? `📅 ${planMonthFilter} — অর্ডারগুলো ফিল্টার করা হয়েছে`
+      : '📅 মাস ফিল্টার সরানো হয়েছে');
+  };
+  const clearMonthFilter = () => {
+    if (!planMonthFilter) return;
+    planMonthFilter = '';
+    render();
+  };
+
   const renderRevenue = () => {
     const t        = today0();
-    const y        = t.getFullYear();
-    const m        = t.getMonth();
+    const selected = /^\d{4}-\d{1,2}$/.test(planMonthFilter) ? planMonthFilter : '';
+    const selectedParts = selected ? selected.split('-').map(Number) : [];
+    const y        = selected ? selectedParts[0] : t.getFullYear();
+    const m        = selected ? selectedParts[1] : t.getMonth();
     const MONTHS   = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
     const curMonth = `${MONTHS[m]} ${y}`;
 
-    // Monthly sales basis: orders taken in the CURRENT month only.
+    // Monthly basis: delivery-date month, matching the plan groups and chart.
     let planned = 0, completed = 0, earn = 0;
 
     orders.forEach(o => {
-      if (!o.date || o.status === 'cancelled') return;
-      const d = toDate(o.date);
-      if (d.getFullYear() !== y || d.getMonth() !== m) return;
+      const date = deliveryDateOf(o);
+      if (!date || o.status === 'cancelled') return;
+      if (monthKeyOf(o) !== `${y}-${m}`) return;
       planned++;
       if (o.status === 'delivered') completed++;
       earn += earnOf(o);
@@ -2415,6 +2504,21 @@ T & C Applicable। ধন্যবাদ!`;
     const dashCopy = lang === 'bn'
       ? { eyebrow: 'দোকানের ড্যাশবোর্ড', title: 'আজকের কমান্ড সেন্টার', subtitle: `${curMonth} · কাজ, পেমেন্ট ও বিক্রির এক নজরের সারাংশ`, today: 'আজকের ডেলিভারি', action: 'কাজ বাকি', cakeDue: 'কেকের বকেয়া', deliveryDue: 'ডেলিভারি বাকি', reviewDue: 'রিভিউ যাচাই বাকি', confirmDue: 'কনফার্মেশন বাকি', quick: 'দ্রুত কাজ', sales: 'বিক্রির সারাংশ', salesTotal: 'এই মাসের কেক বিক্রি', average: 'গড় অর্ডার মূল্য', progress: 'অর্ডার সম্পন্ন', chart: 'গত ৫ মাসের অর্ডার', popular: 'এই মাসের জনপ্রিয় ফ্লেভার', noFlavours: 'এখনো কোনো ফ্লেভার ডেটা নেই', note: 'কেকের বিক্রি দেখানো হয়েছে; ডেলিভারি চার্জ ও পেমেন্ট গেটওয়ে চার্জ এতে নেই।', orders: 'অর্ডার', open: 'খুলুন' }
       : { eyebrow: 'BAKERY DASHBOARD', title: 'Bakery command center', subtitle: `${curMonth} · work, payments, and sales at a glance`, today: "Today's deliveries", action: 'Needs action', cakeDue: 'Cake due', deliveryDue: 'Delivery due', reviewDue: 'Reviews to check', confirmDue: 'Confirmations waiting', quick: 'Quick actions', sales: 'Sales pulse', salesTotal: 'Cake sales this month', average: 'Average order value', progress: 'Orders completed', chart: 'Orders across the last 5 months', popular: 'Popular flavours this month', noFlavours: 'No flavour data yet', note: 'Cake sales only; delivery and payment gateway charges are excluded.', orders: 'orders', open: 'Open' };
+    const monthKey = `${y}-${m}`;
+    const expenseItems = monthlyExpenseItems(monthKey);
+    const expenses = expenseItems.reduce((sum, item) => sum + item.amount, 0);
+    const net = earn - expenses;
+    const expenseRows = expenseItems.map(item => `
+      <div class="expense-line">
+        <span><strong>${esc(item.name)}</strong><small>${esc(item.date)}</small></span>
+        <b>৳${fmtMoney(item.amount)}</b>
+      </div>`).join('');
+    const expenseBreakdown = expenseItems.length
+      ? `<div class="expense-breakdown">
+          <div class="expense-breakdown-title">${tr('expenseItems')} (${expenseItems.length})</div>
+          ${expenseRows}
+        </div>`
+      : `<div class="expense-breakdown expense-breakdown-empty">${tr('noExpenses')}</div>`;
 
     let html = `<div class="insight-shell revenue-shell">
       <div class="insight-heading revenue-heading">
@@ -2433,12 +2537,21 @@ T & C Applicable। ধন্যবাদ!`;
       <div class="command-actions"><button type="button" class="command-action" onclick="App.switchTab('plan')">📅 ${dashCopy.today}<b>${fmtMoney(todayOrders.length)}</b></button><button type="button" class="command-action" onclick="App.switchTab('done')">✅ ${lang === 'bn' ? 'সম্পন্ন অর্ডার' : 'Completed orders'}<b>${fmtMoney(completed)}</b></button><button type="button" class="command-action" onclick="App.switchTab('delivery-confirm')">📦 ${dashCopy.confirmDue}<b>${fmtMoney(pendingConfirmations)}</b></button><button type="button" class="command-action" onclick="App.switchTab('rewards')">⭐ ${dashCopy.reviewDue}<b>${fmtMoney(pendingReviews)}</b></button></div>
       <div class="command-panels"><section class="command-panel"><div class="command-panel-head"><h3>🍰 ${dashCopy.popular}</h3><span>${fmtMoney(planned)} ${dashCopy.orders}</span></div>${popularFlavours.length ? popularFlavours.map(([name, count]) => `<div class="command-bar-row"><span>${esc(name)}</span><b>${fmtMoney(count)}</b><i><em style="width:${Math.max(8, Math.round((count / maxFlavourCount) * 100))}%"></em></i></div>`).join('') : `<p class="command-empty">${dashCopy.noFlavours}</p>`}</section><section class="command-panel"><div class="command-panel-head"><h3>💰 ${dashCopy.sales}</h3><span>${curMonth}</span></div><div class="command-sales"><strong>৳${fmtMoney(earn)}</strong><span>${dashCopy.salesTotal}</span><small>${fmtMoney(planned)} ${dashCopy.orders} · ${fmtMoney(completed)} ${lang === 'bn' ? 'সম্পন্ন' : 'completed'} · ${completion}%</small></div></section></div>
       <div class="rev-progress-card"><div class="rev-progress-head"><span>${dashCopy.progress}</span><strong>${completion}%</strong></div><div class="rev-progress-track"><i style="width:${completion}%"></i></div><small>${fmtMoney(completed)} / ${fmtMoney(planned)} ${lang === 'bn' ? 'টি অর্ডার সম্পন্ন' : 'orders completed'} · ${dashCopy.average}: ৳${fmtMoney(average)}</small></div>
-      <div class="rev-chart-card"><div class="rev-chart-heading"><div><h3>📊 ${dashCopy.chart}</h3><p>${lang === 'bn' ? 'অর্ডার নেওয়ার ধারাবাহিকতা' : 'Order volume over time'}</p></div><span class="chart-badge">5 ${lang === 'bn' ? 'মাস' : 'MONTHS'}</span></div>${buildMonthlyChart()}</div>
-      <div class="earn-note">💡 ${dashCopy.note}</div>
-    </div>`;
+       <div class="rev-chart-card"><div class="rev-chart-heading"><div><h3>📊 ${dashCopy.chart}</h3><p>${lang === 'bn' ? 'অর্ডার নেওয়ার ধারাবাহিকতা' : 'Order volume over time'}</p></div><span class="chart-badge">5 ${lang === 'bn' ? 'মাস' : 'MONTHS'}</span></div>${buildMonthlyChart()}</div>
+       <div class="rev-grid rev-grid-finance">
+         <div class="rev-card"><div class="rev-icon">🧾</div><div class="rev-num red">৳${fmtMoney(expenses)}</div><div class="rev-lbl">${tr('monthExpense')}</div></div>
+         <div class="rev-card"><div class="rev-icon">📈</div><div class="rev-num ${net >= 0 ? 'green' : 'red'}">৳${fmtMoney(net)}</div><div class="rev-lbl">${tr('monthNet')}</div></div>
+       </div>
+       <div class="earn-note">💡 ${dashCopy.note}<br>${tr('monthExpenseNote')}</div>
+       ${expenseBreakdown}
+     </div>`;
 
     document.getElementById('view-revenue').innerHTML = html;
   };
+
+  window.addEventListener('notepad-expenses-changed', () => {
+    if (activeTab === 'revenue') renderRevenue();
+  });
 
   // ─── Title badge + pending counter ────────────────────────────
   // "Pending" = every order that still needs action (not delivered,
@@ -2577,30 +2690,25 @@ T & C Applicable। ধন্যবাদ!`;
   };
 
   // ─── Day booking counters → /dayBooks (customers read these) ───
-  // The admin app owns the counts (it has every order). Merge the live
-  // booked-counts with the stored limits, write only when something changed,
-  // and prune dates older than 7 days so the node stays tiny.
+  // Only publish counts after BOTH live snapshots arrive. Limits belong to
+  // explicit calendar actions and must never be rewritten by rendering/cache.
   const syncDayBooks = dayBookCounts => {
+    if (!currentUser || !liveSnapshotSeen || !dayBooksReady) return;
     try {
-      const now = new Date();
-      const weekAgo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate() - 7).padStart(2, '0')}`;
-      const merged = {};
-      Object.keys(dayBookCounts).forEach(iso => {
-        if (iso < weekAgo) return;
-        const prev = (dayBooks && dayBooks[iso]) || {};
-        merged[iso] = { booked: dayBookCounts[iso] };
-        if (typeof prev.limit === 'number') merged[iso].limit = prev.limit;
+      const updates = {};
+      new Set([...Object.keys(dayBookCounts), ...Object.keys(dayBooks)]).forEach(iso => {
+        const booked = dayBookCounts[iso] || 0;
+        if (Number(dayBooks[iso]?.booked) !== booked) updates[iso + '/booked'] = booked;
       });
-      Object.keys(dayBooks || {}).forEach(iso => {
-        if (iso < weekAgo) return;                    // prune old dates
-        if (merged[iso]) return;                      // already has fresh count
-        const prev = dayBooks[iso] || {};
-        if (typeof prev.limit === 'number') merged[iso] = { booked: 0, limit: prev.limit };
-      });
-      const fp = JSON.stringify(merged);
-      if (fp === lastDayBooksFp) return;              // nothing changed — skip write
+      const fp = JSON.stringify(updates);
+      if (!Object.keys(updates).length) { lastDayBooksFp = ''; return; }
+      if (fp === lastDayBooksFp) return;
       lastDayBooksFp = fp;
-      dayBooksRef.set(merged).catch(err => console.error('[dayBooks] sync failed:', err && err.message));
+      const session = authSession;
+      dayBooksRef.update(updates).catch(err => {
+        if (session === authSession) lastDayBooksFp = '';
+        console.error('[dayBooks] sync failed:', err && err.message);
+      });
     } catch (e) { console.error('[dayBooks] sync failed:', e && e.message); }
   };
 
@@ -2776,49 +2884,23 @@ T & C Applicable। ধন্যবাদ!`;
     openPhoto: src => openLightboxFor(src)
   });
 
-  // A tiny summary written to the database so widget apps (KWGT on
-  // Android, Scriptable on iOS) can show "today's + latest orders" on
-  // the real home screen. PRIVACY: contains ONLY names, item text,
-  // amounts, dates and status — never phone numbers, addresses or photos.
-  // Kept fresh by the admin app in real time AND by the GitHub notifier
-  // (blaze-free-notifier) every ≤15 min while the app is closed.
+  // Public projection contains counts only. Legacy /widgetFeed is private.
   let widgetFeedTimer = null;
   const buildWidgetFeed = () => {
     const bd  = new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
     const act = o => !['delivered', 'cancelled', 'completed', 'complete']
       .includes(String(o.status || '').toLowerCase());
-    const slim = o => ({
-      n:  String(o.customerName || o.name || '—').slice(0, 40),
-      i:  `${weightText(o)} ${flavourLabel(o)}`.trim().slice(0, 60),
-      t:  Math.round(Number(o.total) || 0),
-      d:  o.dueAmount != null
-            ? Math.max(0, Math.round(Number(o.dueAmount) || 0))
-            : Math.max(0, Math.round((Number(o.total) || 0) - (Number(o.advance) || 0))),
-      dt: String(o.deliveryDate || o.date || '').slice(0, 10),
-      tm: String(o.time || o.timeSlot || '').slice(0, 20),
-      st: String(o.status || 'pending').slice(0, 12)
-    });
     const active = orders.filter(act);
     const tod    = active.filter(o => String(o.deliveryDate || o.date || '').slice(0, 10) === bd);
-    const latest = active
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-      .slice(0, 5)
-      .map(slim);
-    return {
-      updatedAt: Date.now(),
-      today: {
-        date:  bd,
-        count: tod.length,
-        names: tod.slice(0, 10).map(o => String(o.customerName || o.name || '—').slice(0, 40))
-      },
-      latest
-    };
+    return { todayCount: tod.length, activeCount: active.length };
   };
   const syncWidgetFeed = () => {
-    if (!currentUser) return;                     // only meaningful when logged in
+    if (!currentUser || !liveSnapshotSeen) return;
+    const session = authSession;
     clearTimeout(widgetFeedTimer);
     widgetFeedTimer = setTimeout(() => {
-      try { db.ref('widgetFeed').set(buildWidgetFeed()).catch(() => {}); } catch (e) {}
+      if (!currentUser || authSession !== session) return;
+      try { db.ref('widgetCounts').set(buildWidgetFeed()).catch(() => {}); } catch (e) {}
     }, 1500);
   };
 
@@ -2890,6 +2972,9 @@ T & C Applicable। ধন্যবাদ!`;
   // QUOTE_CREATE
   const createQuoteFromModal = async () => {
     const g = id => document.getElementById(id);
+    const quotePhone = (g('f-phone').value || '').trim().replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d))
+      .replace(/[\s\-().]/g, '').replace(/^\+?880/, '0');
+    if (!/^01[3-9]\d{8}$/.test(quotePhone)) { showToast('কাস্টমারের ফোন নম্বর দিন / Enter the customer phone number'); return; }
     const fulfilmentVal = g('f-fulfilment') ? g('f-fulfilment').value : 'delivery';
     const rawDc = g('f-delivery-amount') ? String(g('f-delivery-amount').value || '').trim() : '';
     // Field opens blank → fall back to the stored amount so quotes keep the
@@ -2916,6 +3001,7 @@ T & C Applicable। ধন্যবাদ!`;
       }))
       .filter(c => c.weight && c.flavour);
     if (!cakes.length) { showToast('⚠️ অন্তত ১টি কেকের ওজন + ফ্লেভার দিন।'); return; }
+    if (cakes.length !== 1) { showToast('প্রতি কোটেশনে একটি কেক দিন / One cake per quote'); return; }
     // QUOTE_SAVE
     if (!(cakeTotal > 0)) { showToast('⚠️ কেকের মোট মূল্য দিন।'); return; }
     if (!(deliveryCharge >= 0)) { showToast('⚠️ ডেলিভারি চার্জ দিন (০ হলে ০ লিখুন)।'); return; }
@@ -2937,7 +3023,7 @@ T & C Applicable। ধন্যবাদ!`;
       expiresAt: now + 3 * 24 * 60 * 60 * 1000,
       status: 'open',
       customer: (g('f-name') ? g('f-name').value : '').trim(),
-      customerPhone: (g('f-phone') ? g('f-phone').value : '').trim().replace(/[\s-]/g, ''),
+      customerPhone: quotePhone,
       cakes, cakeTotal,
       // customer-multi redemption reads cakePrice ?? total — write both names
       // so a link created here always opens with the correct locked price.
@@ -3181,7 +3267,66 @@ T & C Applicable। ধন্যবাদ!`;
     document.body.removeChild(ta);
   };
 
-  // ─── Screen-fit photo viewer ────────────────────────────────
+  // ─── Lightbox with pinch-zoom / pan ──────────────────────────
+  // Zoom state (inline transform on #lightbox-img): scale 1..6,
+  // pan (lbX, lbY) clamped to the zoomed overflow.
+  let lbScale = 1, lbX = 0, lbY = 0;
+  let lbPinch = null;          // two-finger gesture in progress { d }
+  let lbPinchGesture = false;  // suppress tap handling until all pinch fingers lift
+  let lbPan   = null;          // one-finger / mouse drag { x, y, bx, by, mouse }
+  let lbLastTap = 0, lbLastTapX = 0, lbLastTapY = 0;
+  let lbMoved = false;         // a real gesture happened → suppress backdrop-close
+  let lbGestureUntil = 0;      // timestamp until which backdrop taps are ignored
+
+  const lbImgEl = () => document.getElementById('lightbox-img');
+
+  const lbClamp = () => {
+    lbScale = Math.min(6, Math.max(1, lbScale));
+    const img = lbImgEl();
+    if (!img) return;
+    // Pan is limited to the zoomed overflow — the photo can never be lost
+    // off-screen, and at scale 1 it always snaps back to center.
+    const mx = Math.max(0, (img.offsetWidth  * (lbScale - 1)) / 2);
+    const my = Math.max(0, (img.offsetHeight * (lbScale - 1)) / 2);
+    lbX = Math.min(mx, Math.max(-mx, lbX));
+    lbY = Math.min(my, Math.max(-my, lbY));
+  };
+
+  const applyLb = animate => {
+    const img = lbImgEl();
+    if (!img) return;
+    img.style.transition = animate ? 'transform .25s ease' : 'none';
+    if (lbScale === 1 && lbX === 0 && lbY === 0) {
+      // Neutral: hand control back to the CSS open/close animation
+      img.style.transform = '';
+      img.style.transition = '';
+      img.classList.remove('zoomed');
+    } else {
+      img.style.transform = `translate(${lbX}px, ${lbY}px) scale(${lbScale})`;
+      img.classList.add('zoomed');
+    }
+  };
+
+  const resetLbZoom = () => { lbScale = 1; lbX = 0; lbY = 0; applyLb(false); };
+
+  // Incremental zoom by factor k around a viewport point (vx, vy):
+  // the point under the finger/cursor stays fixed while zooming.
+  const lbZoomAt = (k, vx, vy) => {
+    const img = lbImgEl();
+    if (!img) return;
+    if (!Number.isFinite(k) || k <= 0) return;
+    const next = Math.min(6, Math.max(1, lbScale * k));
+    k = next / lbScale;
+    if (k === 1) return;
+    const r  = img.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top  + r.height / 2;
+    lbX += (1 - k) * (vx - cx);
+    lbY += (1 - k) * (vy - cy);
+    lbScale = next;
+    lbClamp();
+    applyLb(false);
+  };
   const openLightbox = key => {
     const o = orders.find(x => x.firebaseKey === key);
     if (!o?.photo) return;
@@ -3197,6 +3342,13 @@ T & C Applicable। ধন্যবাদ!`;
   const openLightboxFor = src => {
     const safe = safeImageUrl(src);
     if (!safe) return;
+    lbPinch = null;
+    lbPinchGesture = false;
+    lbPan = null;
+    lbMoved = false;
+    lbLastTap = 0;
+    lbGestureUntil = 0;
+    resetLbZoom();
     document.getElementById('lightbox-img').src = safe;
     document.getElementById('lightbox').classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -3213,14 +3365,198 @@ T & C Applicable। ধন্যবাদ!`;
   const closeLightbox = () => {
     document.getElementById('lightbox').classList.remove('open');
     document.body.style.overflow = '';
+    lbPinch = null;
+    lbPinchGesture = false;
+    lbPan = null;
+    lbMoved = false;
+    lbLastTap = 0;
+    lbGestureUntil = 0;
+    resetLbZoom();
   };
 
   // Photos remain fitted to the screen; tapping the backdrop closes the viewer.
   (() => {
     const lbEl = document.getElementById('lightbox');
     if (!lbEl) return;
+    const lbDist = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    const lbMid  = (a, b) => ({ x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 });
+
+    lbEl.addEventListener('touchstart', e => {
+      if (e.target !== lbImgEl()) return;
+      lbMoved = false;
+      if (e.touches.length >= 2) {
+        e.preventDefault();
+        lbPinch = { d: lbDist(e.touches[0], e.touches[1]) };
+        lbPinchGesture = true;
+        lbPan = null;
+        lbLastTap = 0;
+      } else if (e.touches.length === 1) {
+        // Keep an anchor even while fitted so a swipe cannot become a tap;
+        // lbClamp() keeps the image stationary until it is zoomed.
+        lbPan = { x: e.touches[0].clientX, y: e.touches[0].clientY, bx: lbX, by: lbY };
+      }
+    }, { passive: false });
+
+    lbEl.addEventListener('touchmove', e => {
+      if (e.target !== lbImgEl()) return;
+      if (lbPinch && e.touches.length >= 2) {
+        e.preventDefault();
+        const d = lbDist(e.touches[0], e.touches[1]);
+        if (!(d > 0) || !(lbPinch.d > 0)) return;
+        const m = lbMid(e.touches[0], e.touches[1]);
+        lbZoomAt(d / lbPinch.d, m.x, m.y);
+        lbPinch.d = d;              // incremental — fingers may pause mid-gesture
+        lbLastTap = 0;
+        lbMoved = true;
+      } else if (lbPan && e.touches.length === 1) {
+        const dx = e.touches[0].clientX - lbPan.x;
+        const dy = e.touches[0].clientY - lbPan.y;
+        if (Math.hypot(dx, dy) < 6) return;
+        e.preventDefault();
+        lbX = lbPan.bx + dx;
+        lbY = lbPan.by + dy;
+        lbClamp();
+        applyLb(false);
+        lbLastTap = 0;
+        lbMoved = true;
+      }
+    }, { passive: false });
+
+    const finishTouch = e => {
+      const wasPinching = lbPinchGesture;
+      const gestureMoved = lbMoved;
+      const wasCancelled = e.type === 'touchcancel';
+      if (wasCancelled) {
+        // A cancelled contact is not a tap. Clear all anchors so a browser's
+        // follow-up click cannot reset zoom or close the backdrop.
+        lbPinch = null;
+        lbPinchGesture = false;
+        lbPan = null;
+        lbLastTap = 0;
+        lbMoved = false;
+        lbGestureUntil = Date.now() + 450;
+        return;
+      }
+      if (lbPinch && e.touches.length < 2) {
+        lbPinch = null;
+        // If one finger is still down, it becomes the new pan anchor
+        if (e.touches.length === 1 && lbScale > 1) {
+          lbPan = { x: e.touches[0].clientX, y: e.touches[0].clientY, bx: lbX, by: lbY };
+        } else {
+          lbPan = null;
+        }
+      } else if (lbPan && !lbPan.mouse && e.touches.length === 0) {
+        lbPan = null;
+      }
+
+      // A mobile browser may synthesize a click after the fingers lift. Do
+      // not let that click become a double-tap reset or a backdrop close.
+      if (wasPinching) {
+        if (e.touches.length === 0) {
+          lbPinch = null;
+          lbPinchGesture = false;
+          lbPan = null;
+          lbLastTap = 0;
+          lbGestureUntil = Date.now() + 450;
+        }
+        lbMoved = false;
+        return;
+      }
+
+      // Controls and backdrop own their taps; only the photo can change zoom.
+      if (e.target !== lbImgEl()) {
+        lbLastTap = 0;
+        lbMoved = false;
+        return;
+      }
+
+      // Double-tap toggles zoom in/out around the tapped point
+      if (!gestureMoved && e.changedTouches.length === 1) {
+        const t   = e.changedTouches[0];
+        const now = Date.now();
+        if (now - lbLastTap < 300 && Math.hypot(t.clientX - lbLastTapX, t.clientY - lbLastTapY) < 44) {
+          if (lbScale > 1) {
+            lbScale = 1; lbX = 0; lbY = 0;
+            lbClamp();
+            applyLb(true);
+          } else if (lbImgEl()) {
+            const img = lbImgEl();
+            const r  = img.getBoundingClientRect();
+            const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+            const k  = 2.5;
+            lbX += (1 - k) * (t.clientX - cx);
+            lbY += (1 - k) * (t.clientY - cy);
+            lbScale = k;
+            lbClamp();
+            applyLb(true);
+          }
+          lbMoved = true;
+          lbGestureUntil = Date.now() + 450;
+          lbLastTap = 0;
+        } else {
+          lbLastTap = now; lbLastTapX = t.clientX; lbLastTapY = t.clientY;
+        }
+      }
+      if (gestureMoved || lbMoved) {
+        lbLastTap = 0;
+        lbGestureUntil = Date.now() + 450;
+      }
+      lbMoved = false;
+    };
+    lbEl.addEventListener('touchend', finishTouch);
+    lbEl.addEventListener('touchcancel', finishTouch);
+
+    // Backdrop tap closes — but never right after a zoom/pan gesture, and
+    // taps on the photo itself no longer close (it is a zoom target now).
     lbEl.addEventListener('click', e => {
-      if (e.target === lbEl) closeLightbox();
+      if (e.target === lbEl && Date.now() > lbGestureUntil) closeLightbox();
+    });
+
+    // Desktop: wheel zoom, drag-to-pan, double-click zoom
+    lbEl.addEventListener('wheel', e => {
+      if (!lbEl.classList.contains('open') || e.target !== lbImgEl()) return;
+      e.preventDefault();
+      if (lbScale === 1 && e.deltaY > 0) return;   // already fully zoomed out
+      const k = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      lbZoomAt(k, e.clientX, e.clientY);
+    }, { passive: false });
+
+    lbEl.addEventListener('mousedown', e => {
+      if (e.target !== lbImgEl() || lbScale <= 1) return;
+      e.preventDefault();
+      lbMoved = false;
+      lbPan = { x: e.clientX, y: e.clientY, bx: lbX, by: lbY, mouse: true };
+    });
+    window.addEventListener('mousemove', e => {
+      if (!lbPan || !lbPan.mouse) return;
+      if (e.clientX !== lbPan.x || e.clientY !== lbPan.y) {
+        lbMoved = true;
+        lbLastTap = 0;
+      }
+      lbX = lbPan.bx + (e.clientX - lbPan.x);
+      lbY = lbPan.by + (e.clientY - lbPan.y);
+      lbClamp();
+      applyLb(false);
+    });
+    window.addEventListener('mouseup', () => {
+      if (!lbPan || !lbPan.mouse) return;
+      if (lbMoved) lbGestureUntil = Date.now() + 450;
+      lbPan = null;
+      lbMoved = false;
+    });
+
+    lbEl.addEventListener('dblclick', e => {
+      if (e.target !== lbImgEl()) return;
+      // Touch double-tap already handled this gesture; ignore the synthetic
+      // desktop-style dblclick some mobile browsers dispatch afterward.
+      if (Date.now() < lbGestureUntil) return;
+      if (lbScale > 1) {
+        lbScale = 1; lbX = 0; lbY = 0;
+        lbClamp();
+        applyLb(true);
+      } else {
+        lbZoomAt(2.5, e.clientX, e.clientY);
+      }
     });
   })();
 
@@ -3648,7 +3984,7 @@ T & C Applicable। ধন্যবাদ!`;
     g('f-receiver').value       = o.receiver  || '';
     g('f-receiver-phone').value = o.receiverPhone || '';
     g('f-address').value        = o.address   || '';
-    g('f-surprise').value       = o.surprise  || 'no';
+    g('f-surprise').value       = o.surprise === true || o.surprise === 'yes' ? 'yes' : 'no';
     g('f-delivery-paid').value  = o.deliveryPaid    || 'unpaid';
     // DC field opens BLANK (non-authoritative): the actual figure comes from
     // the delivery agency. Keep the stored amount + approx flag in data-*
@@ -4239,7 +4575,12 @@ T & C Applicable। ধন্যবাদ!`;
       const i = Number(c.cakeIndex) || 0;
       if (i < 2 || i > MAX_CAKES) return;
       const g = id => document.getElementById(id);
-      const set = (id, v) => { const el = g(id); if (el && v != null) el.value = v; };
+      const set = (id, v) => {
+        const el = g(id);
+        if (!el || v == null) return;
+        if (el.type === 'checkbox') el.checked = !!v;
+        else el.value = v;
+      };
       set(`f-weight-${i}`, c.weightLabel || c.weight);
       if (c.flavour) set(`f-flavour-${i}`, c.flavour);
       set(`f-writing-${i}`, c.writing || c.cakeWriting);
@@ -4606,7 +4947,7 @@ T & C Applicable। ধন্যবাদ!`;
       receiverPhone:  g('f-receiver-phone').value.trim(),
       address:        g('f-address').value.trim(),
       deliveryAddress: g('f-address').value.trim(),
-      surprise:       g('f-surprise').value,
+      surprise:       g('f-surprise').value === 'yes',
       fulfilment:     fulfilmentVal,
       // Blank delivery charge on a delivery order = NOT PAID (agent collects later).
       deliveryPaid:   fulfilmentVal === 'pickup' ? 'na' : (totalDeliveryAmt > 0 ? g('f-delivery-paid').value : 'unpaid'),
@@ -5170,17 +5511,12 @@ T & C Applicable। ধন্যবাদ!`;
     return `NB${dateStr}${random}`;
   };
 
-  // ─── Daily "orders placed today" popup ───────────────────────────
-  // Every time the app is opened it lists all orders created TODAY
-  // (Bangladesh time, UTC+6). The list accumulates through the day and
-  // resets automatically at 12 AM because createdAt moves to yesterday.
+  // ─── New-order popup ─────────────────────────────────────────────
+  // Every time the app is opened it lists active orders that have not been
+  // dismissed by the admin. It is intentionally not limited to a 24-hour
+  // window: an order stays here until its own ✕ is pressed or its real order
+  // status becomes archived.
   let dailyPopupShownThisSession = false;
-  const bdTodayStr = () => new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const bdCreatedToday = o => {
-    const ts = Number(o.createdAt);
-    if (!ts) return false;
-    return new Date(ts + 6 * 60 * 60 * 1000).toISOString().slice(0, 10) === bdTodayStr();
-  };
   const MONTHS_EN_D = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const DAYS_EN_D   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const MONTHS_BN_D = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
@@ -5193,23 +5529,47 @@ T & C Applicable। ধন্যবাদ!`;
       : `${d.getDate()} ${MONTHS_EN_D[d.getMonth()]} ${DAYS_EN_D[d.getDay()]} ${d.getFullYear()}`;
   };
   const todaysPlacedOrders = () => orders
-    .filter(o => bdCreatedToday(o)
-      && !isArchivedOrder(o)                 // delivered/cancelled orders are NOT "new"
-      && !isLogicallyComplete(o)             // past date + fully paid is not "new" either
-      && !isDailyDismissed(o))               // hidden by the admin on this device
-    .sort((a, b) => (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0));
+    .filter(o => !isArchivedOrder(o) && !isDailyDismissed(o))
+    .sort(compareDeliveryOrder);
 
-  // ── Dismiss ("remove from today's list") ─────────────────────
-  // Per-device, per-day hide — the order itself is untouched. The
-  // marker key contains today's BD date, so it expires automatically
-  // at 12 AM when the list resets anyway.
-  const dailyDismissKey = fk => `nitu_daily_seen_${bdTodayStr()}_${fk}`;
+  // ── Dismiss ("remove from the new-orders list") ───────────────
+  // Per-order localStorage state is durable across reloads and date changes;
+  // the order itself is never edited, re-statused, or deleted. The in-memory
+  // set also keeps the open popup correct if storage is temporarily blocked.
+  const dailyDismissedOrders = new Set();
+  const dailyDismissKey = fk => `nitu_daily_dismissed_${String(fk || '')}`;
+  const legacyDailyDismissPrefix = 'nitu_daily_seen_';
   const isDailyDismissed = o => {
-    try { return !!localStorage.getItem(dailyDismissKey(o.firebaseKey)); } catch (e) { return false; }
+    const fk = String(o && o.firebaseKey || '');
+    if (!fk) return false;
+    if (dailyDismissedOrders.has(fk)) return true;
+    try {
+      if (localStorage.getItem(dailyDismissKey(fk))) {
+        dailyDismissedOrders.add(fk);
+        return true;
+      }
+      // Migrate every marker written by the old per-day implementation, not
+      // just today's marker. A dismissal made yesterday must not reappear
+      // merely because this permanent-list version was deployed today.
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(legacyDailyDismissPrefix)) continue;
+        const legacyParts = key.slice(legacyDailyDismissPrefix.length).split('_');
+        if (legacyParts.length < 2 || legacyParts.slice(1).join('_') !== fk) continue;
+        if (!localStorage.getItem(key)) continue;
+        localStorage.setItem(dailyDismissKey(fk), '1');
+        dailyDismissedOrders.add(fk);
+        return true;
+      }
+    } catch (e) {}
+    return false;
   };
   const dismissDailyOrder = fk => {
-    try { localStorage.setItem(dailyDismissKey(fk), '1'); } catch (e) {}
-    showToast(lang === 'bn' ? '✅ আজকের তালিকা থেকে সরানো হয়েছে' : 'Removed from today\'s list');
+    const id = String(fk || '');
+    if (!id) return;
+    dailyDismissedOrders.add(id);
+    try { localStorage.setItem(dailyDismissKey(id), '1'); } catch (e) {}
+    showToast(lang === 'bn' ? '✅ নতুন অর্ডারের তালিকা থেকে সরানো হয়েছে' : 'Removed from the new-orders list');
     updateDailyBadge();
     showDailyPopup();   // re-render the open popup
   };
@@ -5230,7 +5590,7 @@ T & C Applicable। ধন্যবাদ!`;
   const updateDailyBadge = () => {
     const cnt = document.getElementById('daily-count');
     if (!cnt) return;
-    // Keep New Orders available even when today's list is empty or dismissed.
+    // Keep New Orders available even when the list is empty or dismissed.
     cnt.textContent = todaysPlacedOrders().length;
     syncTopbarHeight();
   };
@@ -5242,13 +5602,13 @@ T & C Applicable। ধন্যবাদ!`;
     if (!wrap || !body) return;
     const list = todaysPlacedOrders();
     title.textContent = lang === 'bn'
-      ? `🎉 আজকের নতুন অর্ডার (${list.length}টি)`
-      : `🎉 New orders placed today (${list.length})`;
+      ? `🎉 নতুন অর্ডার (${list.length}টি)`
+      : `🎉 New orders (${list.length})`;
     body.innerHTML = list.length ? list.map((o, i) => {
       const nm = o.customerName || o.name || '—';
       const wt = weightText(o) || '';
       const fl = flavourLabel(o) || '';
-      const dstr = o.deliveryDate || o.date || '';
+       const dstr = deliveryDateOf(o);
       return `<div class="daily-item">
         <span class="d-num">${i + 1}</span>
         <div>
@@ -5256,9 +5616,9 @@ T & C Applicable। ধন্যবাদ!`;
           <div class="d-meta">${lang === 'bn' ? 'অর্ডার করেছে' : 'Ordered'} ${esc(wt)} ${esc(fl)} ${lang === 'bn' ? 'কেক' : 'cake'}</div>
           <div class="d-meta">${lang === 'bn' ? 'মূল্য' : 'price'}: <span class="d-price">৳${fmtMoney(cakePriceOf(o))}</span> · ${lang === 'bn' ? 'ডেলিভারির তারিখ' : 'delivery date'}: ${esc(dailyFmtDate(dstr))}</div>
         </div>
-         <button class="daily-dismiss" onclick="App.dismissDailyOrder(${jsArg(o.firebaseKey)})" title="${lang === 'bn' ? 'আজকের তালিকা থেকে সরান' : 'Remove from today\'s list'}">✕</button>
-      </div>`;
-    }).join('') : `<div style="text-align:center;color:var(--text3);padding:22px 0">${lang === 'bn' ? 'আজ কোনো নতুন অর্ডার আসেনি।' : 'No new orders placed today yet.'}</div>`;
+         <button class="daily-dismiss" onclick="App.dismissDailyOrder(${jsArg(o.firebaseKey)})" title="${lang === 'bn' ? 'নতুন অর্ডারের তালিকা থেকে সরান' : 'Remove from the new-orders list'}">✕</button>
+       </div>`;
+     }).join('') : `<div style="text-align:center;color:var(--text3);padding:22px 0">${lang === 'bn' ? 'কোনো নতুন অর্ডার নেই।' : 'No new orders yet.'}</div>`;
     wrap.classList.add('open');
   };
   const closeDailyPopup = () => {
@@ -5307,6 +5667,8 @@ T & C Applicable। ধন্যবাদ!`;
     confirmDelete,
     toggleSort,
     clearSearch,
+    selectMonth,
+    clearMonthFilter,
     calPrev: () => calShift(-1),
     calNext: () => calShift(1),
     openCalendar,

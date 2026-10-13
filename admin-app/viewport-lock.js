@@ -44,7 +44,11 @@
   window.addEventListener('touchend', function (event) {
     var started = tapStart;
     tapStart = null;
-    if (!started || started.moved || event.touches.length || !event.changedTouches.length) return;
+    if (!started || event.touches.length || !event.changedTouches.length) return;
+    if (started.moved) {
+      lastTap = null;
+      return;
+    }
     var target = event.target && (event.target.nodeType === 1 ? event.target : event.target.parentElement);
     if (!target || !target.closest) return;
     // Keep native text selection available in editable fields.
@@ -56,6 +60,14 @@
     var now = Date.now();
     var repeated = lastTap && now - lastTap.time < 300 && now - started.time < 300 &&
       Math.abs(touch.clientX - lastTap.x) < 25 && Math.abs(touch.clientY - lastTap.y) < 25;
+    var inLightbox = target.closest('#lightbox');
+    if (inLightbox) {
+      // The lightbox owns photo gestures and its controls' native clicks.
+      // Native viewport zoom is already blocked by the lightbox touch-action,
+      // gesture listeners, and viewport policy; never replay a control click.
+      lastTap = null;
+      return;
+    }
     if (repeated && event.cancelable) {
       preventZoom(event);
       lastTap = null;

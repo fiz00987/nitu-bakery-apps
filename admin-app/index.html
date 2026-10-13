@@ -1312,6 +1312,7 @@ button { cursor: pointer; }
 .rev-num.blue  { color: var(--blue); }
 .rev-lbl { font-size: 10.5px; color: var(--text3); margin-top: 3px; font-weight: 500; }
 .rev-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.rev-grid-finance { grid-template-columns: repeat(2, 1fr); }
 .earn-note {
   font-size: 10.5px;
   color: var(--text3);
@@ -1320,6 +1321,22 @@ button { cursor: pointer; }
   padding: 0 10px;
   margin-bottom: 8px;
 }
+.expense-breakdown {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+.expense-breakdown-title { color: var(--text2); font-size: 11.5px; font-weight: 700; margin-bottom: 6px; }
+.expense-breakdown-empty { color: var(--text3); font-size: 11px; text-align: center; }
+.expense-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--border); font-size: 11.5px; color: var(--text); }
+.expense-line:last-child { border-bottom: 0; padding-bottom: 0; }
+.expense-line:first-of-type { padding-top: 4px; }
+.expense-line span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.expense-line strong { overflow-wrap: anywhere; }
+.expense-line small { color: var(--text3); font-size: 9.5px; }
+.expense-line b { color: var(--red); white-space: nowrap; font-size: 11.5px; }
 
 /* Mini chart */
 .mini-chart-wrap {
@@ -1544,6 +1561,7 @@ button { cursor: pointer; }
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--dur-base);
@@ -1555,9 +1573,14 @@ button { cursor: pointer; }
 .lightbox.open { opacity: 1; pointer-events: all; }
 .lightbox-img {
   max-width: 100%;
-  max-height: 88vh;
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
   border-radius: var(--radius);
   object-fit: contain;
+  position: relative;
+  z-index: 1;
+  transform-origin: center center;
+  will-change: transform;
   touch-action: none;
   -webkit-user-drag: none;
   user-select: none;
@@ -1574,6 +1597,7 @@ button { cursor: pointer; }
   width: 40px; height: 40px;
   font-size: 20px;
   cursor: pointer;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2774,10 +2798,11 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
             <div id="notepad-photos" class="np-photos"></div>
             <details class="np-section" id="notepad-shopping">
               <summary class="np-section-title"><span data-np-en="🛒 Edit shopping checklist" data-np-bn="🛒 কেনাকাটার তালিকা এডিট করুন">🛒 কেনাকাটার তালিকা এডিট করুন</span><small id="notepad-check-progress">0/0</small></summary>
+              <p class="np-expense-hint" data-np-en="Add a price and expense date beside each item for monthly totals." data-np-bn="মাসিক মোট হিসাবের জন্য প্রতিটি আইটেমের পাশে দাম ও খরচের তারিখ দিন।">মাসিক মোট হিসাবের জন্য প্রতিটি আইটেমের পাশে দাম ও খরচের তারিখ দিন।</p>
               <div class="np-add-item">
-                <input id="notepad-item-name" maxlength="120" aria-label="Shopping item" data-np-placeholder-en="Butter, flour…" data-np-placeholder-bn="বাটার, ময়দা…" placeholder="বাটার, ময়দা…">
-                <input id="notepad-item-detail" maxlength="80" aria-label="Quantity or detail" data-np-placeholder-en="2 kg / brand" data-np-placeholder-bn="২ কেজি / ব্র্যান্ড" placeholder="২ কেজি / ব্র্যান্ড">
-                <button type="button" class="np-btn" onclick="App.notepadAddItem()" aria-label="Add shopping item">＋</button>
+                <input id="notepad-item-name" maxlength="120" aria-label="Shopping item" data-np-aria-en="Shopping item" data-np-aria-bn="কেনাকাটার আইটেম" data-np-placeholder-en="Butter, flour…" data-np-placeholder-bn="বাটার, ময়দা…" placeholder="বাটার, ময়দা…">
+                <input id="notepad-item-detail" maxlength="80" aria-label="Quantity or detail" data-np-aria-en="Quantity or detail" data-np-aria-bn="পরিমাণ বা বিস্তারিত" data-np-placeholder-en="2 kg / brand" data-np-placeholder-bn="২ কেজি / ব্র্যান্ড" placeholder="২ কেজি / ব্র্যান্ড">
+                <button type="button" class="np-btn" onclick="App.notepadAddItem()" aria-label="কেনাকাটার আইটেম যোগ করুন" data-np-aria-en="Add shopping item" data-np-aria-bn="কেনাকাটার আইটেম যোগ করুন">＋</button>
               </div>
               <div id="notepad-checklist"></div>
             </details>
@@ -2863,7 +2888,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
 
 <!-- LIGHTBOX -->
 <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="রেফারেন্স ছবি">
-  <img class="lightbox-img" id="lightbox-img" src="" alt="রেফারেন্স কেক">
+  <img class="lightbox-img" id="lightbox-img" src="" alt="রেফারেন্স কেক" draggable="false">
   <button class="lightbox-close" onclick="App.closeLightbox()" aria-label="বন্ধ করুন">✕</button>
 </div>
 

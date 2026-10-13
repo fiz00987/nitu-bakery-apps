@@ -34,10 +34,22 @@
 .np-section { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-top: 12px; background: var(--surface2); }
 .np-section-title { display: flex; justify-content: space-between; gap: 6px; color: var(--text); font-size: 12px; font-weight: 700; margin-bottom: 9px; }
 .np-section-title small { font-size: 10px; font-weight: 500; color: var(--text3); }
-.np-check-row { display: flex; align-items: flex-start; gap: 9px; padding: 9px 0; border-bottom: 1px dashed var(--border); color: var(--text); font-size: 13px; line-height: 1.5; }
+.np-expense-hint { color: var(--text3); font-size: 10.5px; line-height: 1.4; margin: -3px 0 9px; }
+.np-check-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px dashed var(--border); color: var(--text); font-size: 13px; line-height: 1.5; }
 .np-check-row:last-child { border-bottom: 0; }
-.np-check-row input { accent-color: var(--pink); width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
-.np-check-row.checked span { text-decoration: line-through; color: var(--text3); }
+.np-check-main { display: flex; align-items: flex-start; gap: 9px; min-width: 0; flex: 1 1 auto; cursor: pointer; }
+.np-check-main input { accent-color: var(--pink); width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
+.np-check-copy { min-width: 0; overflow-wrap: anywhere; }
+.np-check-copy span { color: var(--text2); }
+.np-check-row.checked .np-check-copy { text-decoration: line-through; color: var(--text3); }
+.np-expense-fields { display: grid; grid-template-columns: 92px 132px; gap: 7px; flex: 0 0 auto; }
+.np-expense-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.np-expense-label { color: var(--text3); font-size: 10px; line-height: 1.1; }
+.np-expense-control { display: flex; align-items: center; position: relative; }
+.np-expense-currency { position: absolute; left: 8px; color: var(--text3); font-size: 12px; pointer-events: none; }
+.np-expense-amount { width: 100%; padding-left: 21px !important; }
+.np-expense-date { width: 100%; }
+.np-expense-field input[aria-invalid="true"] { border-color: var(--red); outline-color: var(--red); }
 .np-add-item { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .8fr) auto; gap: 5px; }
 .np-add-item input { width: 100%; font-size: 12px; }
 .np-tools { border: 1px solid var(--border); border-radius: 12px; background: var(--surface2); overflow: hidden; }
@@ -70,6 +82,8 @@
   .np-workspace #notepad-shopping { margin-top: 8px; }
   #notepad-tool-host #notepad-helper-aside { grid-template-columns: minmax(0, 1fr); }
   .np-add-item { grid-template-columns: minmax(0, 1fr) minmax(0, .7fr) auto; }
+  .np-check-row { display: block; }
+  .np-expense-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); margin: 8px 0 0 27px; }
   .np-footer { align-items: flex-start; }
   .np-footer .notepad-status { text-align: left; }
 }
