@@ -69,10 +69,10 @@ self.addEventListener('notificationclick', function (event) {
 });
 
 /* ─── Offline caching (bulletproof edition) ────────────────── */
-var CACHE_NAME = 'nitu-bakery-v28';
+var CACHE_NAME = 'nitu-bakery-v29';
 // Build stamp — bump on every deploy so you can confirm in DevTools which
 // version the browser is actually running.
-var ADMIN_BUILD = '2026-10-11-delivery-agent-tab';
+var ADMIN_BUILD = '2026-10-15-hide-delivery-confirm';
 try { console.log('Nitu admin build:', ADMIN_BUILD); } catch (e) {}
 var INDEX_KEY  = './index.html';
 var APP_SHELL = [
@@ -80,7 +80,7 @@ var APP_SHELL = [
   './',
   './notepad.js?v=2026-10-07-simple-notebook',
   './notepad.css?v=2026-10-07-simple-notebook',
-  './app.js?v=2026-10-11-delivery-agent-tab',
+  './app.js?v=2026-10-15-hide-delivery-confirm',
   './viewport-lock.js?v=2026-10-11-delivery-agent-tab',
   './manifest.json',
   './logo-splash.png',

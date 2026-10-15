@@ -6,6 +6,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const reviewHtml = fs.readFileSync(path.join(root, 'review-app/index.html'), 'utf8');
 const adminHtml = fs.readFileSync(path.join(root, 'admin-app/index.html'), 'utf8');
+const adminJs = fs.readFileSync(path.join(root, 'admin-app/app.js'), 'utf8');
 
 test('review instructions lead with the unlocked-profile warning and screenshot', () => {
   const important = reviewHtml.indexOf('instruction-important');
@@ -16,7 +17,9 @@ test('review instructions lead with the unlocked-profile warning and screenshot'
   assert.match(reviewHtml, /do not count|will not count/i);
 });
 
-test('delivery confirmation tab remains hidden while its implementation stays present', () => {
-  assert.match(adminHtml, /id="tab-delivery-confirm"[^>]*\bhidden\b/);
+test('delivery confirmation has no visible admin entry point while its implementation stays present', () => {
+  assert.doesNotMatch(adminHtml, /id="tab-delivery-confirm"/);
+  assert.doesNotMatch(adminJs, /class="command-action"[^>]*onclick="App\.switchTab\('delivery-confirm'\)"/);
   assert.match(adminHtml, /id="view-delivery-confirm"/);
+  assert.match(adminJs, /const renderDeliveryConfirm/);
 });
