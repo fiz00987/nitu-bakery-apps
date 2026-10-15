@@ -2250,7 +2250,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
 
 /* Every tab stays reachable without a sideways swipe on phones. */
 @media (max-width: 600px) {
-  .tabs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); overflow-x: hidden; max-width: 100%; }
+  .tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); overflow-x: hidden; max-width: 100%; }
   .tab { min-width: 0; white-space: normal; overflow-wrap: anywhere; padding-inline: 4px; }
   .row2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .field { min-width: 0; }
@@ -2266,7 +2266,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
    ============================================= */
 .tabs {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   padding: 7px 10px;
   background: rgba(255,255,255,.96);
@@ -2868,7 +2868,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
   <button class="tab active" id="tab-plan" role="tab" aria-selected="true"  aria-controls="view-plan"    onclick="App.switchTab('plan')"><span class="tab-icon">📅</span><span class="tab-label" data-i18n="tabPlan">অর্ডার</span><span class="tab-count" id="tc-plan">0</span></button>
   <button class="tab"        id="tab-done" role="tab" aria-selected="false" aria-controls="view-done"    onclick="App.switchTab('done')"><span class="tab-icon">✅</span><span class="tab-label" data-i18n="tabDone">সম্পন্ন</span><span class="tab-count" id="tc-done">0</span></button>
   <button class="tab"        id="tab-cdb"  role="tab" aria-selected="false" aria-controls="view-cdb"     onclick="App.switchTab('cdb')"><span class="tab-icon">🗂️</span><span class="tab-label" data-i18n="tabCdb">ডেটাবেজ</span><span class="tab-count" id="tc-cdb">0</span></button>
-  <button class="tab"        id="tab-delivery-confirm" role="tab" aria-selected="false" aria-controls="view-delivery-confirm" onclick="App.switchTab('delivery-confirm')"><span class="tab-icon">📦</span><span class="tab-label" data-i18n="tabDeliveryConfirm">ডেলিভারি কনফার্ম</span><span class="tab-count" id="tc-delivery-confirm">0</span></button>
+  <button class="tab"        id="tab-delivery-confirm" hidden role="tab" aria-selected="false" aria-controls="view-delivery-confirm" onclick="App.switchTab('delivery-confirm')"><span class="tab-icon">📦</span><span class="tab-label" data-i18n="tabDeliveryConfirm">ডেলিভারি কনফার্ম</span><span class="tab-count" id="tc-delivery-confirm">0</span></button>
   <button class="tab"        id="tab-rev"  role="tab" aria-selected="false" aria-controls="view-revenue" onclick="App.switchTab('revenue')"><span class="tab-icon">💰</span><span class="tab-label" data-i18n="tabRev">আয়</span><span class="tab-count tab-count-empty" aria-hidden="true"></span></button>
   <button class="tab" id="tab-rewards" role="tab" aria-selected="false" aria-controls="view-rewards" onclick="App.switchTab('rewards')"><span class="tab-icon">⭐</span><span class="tab-label" data-i18n="tabReward">রিওয়ার্ড</span><span class="tab-count" id="tc-rewards">0</span></button>
 </nav>

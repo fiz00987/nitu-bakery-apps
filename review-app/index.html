@@ -81,6 +81,9 @@
     .instruction-step { margin-top: 14px; }
     .instruction-step strong { display: block; margin-bottom: 7px; color: var(--dark); }
     .instruction-step img { display: block; width: 100%; max-height: 560px; object-fit: contain; background: #fff; border: 1px solid #e4d9df; border-radius: 12px; }
+    .instruction-important { margin: 12px 0 16px; padding: 13px; border: 2px solid #d08b1f; border-radius: 12px; background: #fff8df; color: #5f4315; line-height: 1.55; }
+    .instruction-important strong { display: block; margin-bottom: 7px; color: #8a5700; }
+    .instruction-important img { display: block; width: 100%; max-height: 560px; object-fit: contain; margin-top: 10px; background: #fff; border: 1px solid #e7cf91; border-radius: 12px; }
     .status { float: right; color: #287d55; }
     .claim { padding: 11px; border-bottom: 1px solid #eadde4; }
     .hidden { display: none !important; }
@@ -115,8 +118,14 @@
 
       <div id="form" class="hidden">
         <div class="instructions">
-          <b>Facebook অ্যাপে নিচের ৩টি ধাপ অনুসরণ করুন:</b><br>
-          Follow these three steps in the Facebook app, write your honest review, take a screenshot of the published review, then upload it below.
+          <div class="instruction-important">
+            <strong>⚠️ গুরুত্বপূর্ণ নোট / Important note</strong>
+            Reviewer-এর Facebook profile অবশ্যই unlocked/public হতে হবে। Locked Facebook profile থেকে করা review Facebook Page-এর Reviews-এ দেখা যায় না, তাই সেটি গণনা হবে না। নিচের ছবির মতো locked profile ব্যবহার করবেন না; আগে profile unlock করে তারপর review দিন।<br>
+            The reviewer’s Facebook profile must be unlocked/public. Reviews from a locked profile do not appear in the Page Reviews, so they will not count. Do not use a locked profile like the example below; unlock the profile before posting your review.
+            <img src="instructions/locked-profile.png" alt="Example of a locked Facebook profile that should not be used for a review" loading="lazy">
+          </div>
+          <b>গুরুত্বপূর্ণ নোট পড়ে Facebook অ্যাপে নিচের ৩টি ধাপ অনুসরণ করুন:</b><br>
+          After reading the important note, follow these three steps in the Facebook app, write your honest review, take a screenshot of the published review, then upload it below.
           <div class="instruction-step"><strong>১. “নিতুবাবুর্চীর পোর্টফোলিও” প্রোফাইলে গিয়ে “100% recommend” চাপুন।</strong><img src="instructions/1.jpg" alt="Step 1: open the profile and tap 100% recommend" loading="lazy"></div>
           <div class="instruction-step"><strong>২. Reviews পেজে “Yes” চাপুন।</strong><img src="instructions/2.jpg" alt="Step 2: tap Yes on the recommendation page" loading="lazy"></div>
           <div class="instruction-step"><strong>৩. আপনার honest review লিখে “Share” চাপুন।</strong><img src="instructions/3.jpg" alt="Step 3: write the review and tap Share" loading="lazy"></div>
