@@ -155,6 +155,17 @@ test('adding and checking shopping items retains old notes and photos', async t 
   assert.match(h.el('notepad-check-progress').textContent, /1\/1 bought/);
 });
 
+test('additional info renders below the baking item list', async t => {
+  const h = await harness(t, { 0: page('Additional note') });
+  const shopping = h.el('notepad-shopping');
+  const additional = h.el('notepad-edit-details');
+  assert.equal(additional.parentElement, shopping.parentElement);
+  assert.ok(
+    shopping.compareDocumentPosition(additional) & h.w.Node.DOCUMENT_POSITION_FOLLOWING,
+    'Additional Info must render below the baking item list'
+  );
+});
+
 test('baking item rows save name, quantity and total price for the monthly expense list', async t => {
   const h = await harness(t, { 0: page('Keep this additional info') });
   h.el('notepad-item-name').value = 'Everwhip whipped cream';

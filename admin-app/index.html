@@ -2784,12 +2784,6 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
         </div>
         <div class="np-layout">
           <div>
-            <details class="np-edit-details np-additional-info" id="notepad-edit-details" open>
-              <summary data-np-en="✏️ Additional Info" data-np-bn="✏️ অতিরিক্ত তথ্য">✏️ অতিরিক্ত তথ্য</summary>
-              <label for="notepad-text"><span class="np-label" data-np-en="Additional Info" data-np-bn="অতিরিক্ত তথ্য">অতিরিক্ত তথ্য</span></label>
-              <p class="np-expense-hint" data-np-en="Use this box for snacks, vegetables, or other shop notes that do not need a separate baking-item row." data-np-bn="স্ন্যাকস, সবজি বা আলাদা বেকিং আইটেমের সারি দরকার নেই—এমন দোকানের নোট এখানে লিখুন।">স্ন্যাকস, সবজি বা আলাদা বেকিং আইটেমের সারি দরকার নেই—এমন দোকানের নোট এখানে লিখুন।</p>
-              <textarea id="notepad-text" data-np-placeholder-en="e.g. Snacks or vegetables for the shop…" data-np-placeholder-bn="যেমন: দোকানের স্ন্যাকস বা সবজি…" placeholder="যেমন: দোকানের স্ন্যাকস বা সবজি…"></textarea>
-            </details>
             <div id="np-cake-board" class="np-cake-board" hidden aria-hidden="true" aria-label="All baking-item notes"></div>
             <div class="np-toolbar" style="margin-top:8px">
               <button type="button" class="np-btn" onclick="document.getElementById('notepad-photo-input').click()" data-np-en="🖼 Add photo" data-np-bn="🖼 ছবি যোগ করুন">🖼 ছবি যোগ করুন</button>
@@ -2807,6 +2801,12 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
                 <button type="button" class="np-btn" onclick="App.notepadAddItem()" aria-label="Add baking item" data-np-aria-en="Add baking item" data-np-aria-bn="বেকিং আইটেম যোগ করুন">＋</button>
               </div>
               <div id="notepad-checklist"></div>
+            </details>
+            <details class="np-edit-details np-additional-info" id="notepad-edit-details" open>
+              <summary data-np-en="✏️ Additional Info" data-np-bn="✏️ অতিরিক্ত তথ্য">✏️ অতিরিক্ত তথ্য</summary>
+              <label for="notepad-text"><span class="np-label" data-np-en="Additional Info" data-np-bn="অতিরিক্ত তথ্য">অতিরিক্ত তথ্য</span></label>
+              <p class="np-expense-hint" data-np-en="Use this box for snacks, vegetables, or other shop notes that do not need a separate baking-item row." data-np-bn="স্ন্যাকস, সবজি বা আলাদা বেকিং আইটেমের সারি দরকার নেই—এমন দোকানের নোট এখানে লিখুন।">স্ন্যাকস, সবজি বা আলাদা বেকিং আইটেমের সারি দরকার নেই—এমন দোকানের নোট এখানে লিখুন।</p>
+              <textarea id="notepad-text" data-np-placeholder-en="e.g. Snacks or vegetables for the shop…" data-np-placeholder-bn="যেমন: দোকানের স্ন্যাকস বা সবজি…" placeholder="যেমন: দোকানের স্ন্যাকস বা সবজি…"></textarea>
             </details>
           </div>
           <div id="notepad-helper-slot"></div><aside id="notepad-helper-aside" aria-label="Baking helpers">
