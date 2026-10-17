@@ -33,6 +33,20 @@ window.NituNotepad = (() => {
     const pad = value => String(value).padStart(2, '0');
     return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   };
+  const MAX_ITEMS_PER_PAGE = 30;
+  const itemQuantityOf = item => {
+    if (!item || typeof item !== 'object') return '';
+    // `detail` is the original shopping-list field. New rows use the more
+    // precise quantity name, while old rows must continue to display as-is.
+    const quantity = Object.hasOwn(item, 'quantity') ? String(item.quantity ?? '').trim() : '';
+    return quantity || String(item.detail ?? '');
+  };
+  const appendPageText = (text, addition) => {
+    const source = String(text ?? '');
+    const extra = String(addition ?? '').trim();
+    if (!extra) return source;
+    return source.trim() ? `${source}\n\n${extra}` : extra;
+  };
 
   // Parse arithmetic, never JavaScript. Supports precedence, parentheses and Bangla digits.
   const calculate = expression => {
@@ -79,8 +93,58 @@ window.NituNotepad = (() => {
   const create = ({ pagesRef, notesRef, toast, sync, confirm, language, photoUrl, compressPhoto, openPhoto }) => {
     const el = id => document.getElementById(id);
     const say = (en, bn) => language() === 'bn' ? bn : en;
+    const firstElement = ids => ids.map(id => el(id)).find(Boolean) || null;
+    const addEntryRow = () => document.querySelector('.np-add-item');
+    const ensureAddInput = (id, options = {}) => {
+      const existing = el(id);
+      if (existing) return existing;
+      const row = addEntryRow();
+      if (!row) return null;
+      const input = document.createElement('input');
+      input.id = id;
+      input.type = options.type || 'text';
+      input.className = options.className || '';
+      if (options.maxLength) input.maxLength = options.maxLength;
+      if (options.min != null) input.min = String(options.min);
+      if (options.step != null) input.step = String(options.step);
+      if (options.inputMode) input.inputMode = options.inputMode;
+      if (options.placeholderEn) {
+        input.dataset.npPlaceholderEn = options.placeholderEn;
+        input.dataset.npPlaceholderBn = options.placeholderBn || options.placeholderEn;
+        input.placeholder = say(options.placeholderEn, options.placeholderBn || options.placeholderEn);
+      }
+      if (options.ariaEn) {
+        input.dataset.npAriaEn = options.ariaEn;
+        input.dataset.npAriaBn = options.ariaBn || options.ariaEn;
+        input.setAttribute('aria-label', say(options.ariaEn, options.ariaBn || options.ariaEn));
+      }
+      const button = row.querySelector('button');
+      row.insertBefore(input, button || null);
+      return input;
+    };
+    const addEntryControls = () => {
+      const name = el('notepad-item-name');
+      const quantity = firstElement(['notepad-item-quantity', 'notepad-item-detail']);
+      if (quantity) {
+        quantity.classList.add('np-add-quantity');
+        quantity.dataset.npPlaceholderEn ||= 'Quantity';
+        quantity.dataset.npPlaceholderBn ||= 'পরিমাণ';
+        quantity.dataset.npAriaEn ||= 'Shopping quantity';
+        quantity.dataset.npAriaBn ||= 'কেনাকাটার পরিমাণ';
+      }
+      const price = firstElement(['notepad-item-price', 'notepad-item-amount']) || ensureAddInput('notepad-item-price', {
+        type: 'number', className: 'np-add-price', min: 0, step: 0.01, inputMode: 'decimal',
+        placeholderEn: 'Price (optional)', placeholderBn: 'দাম (ঐচ্ছিক)',
+        ariaEn: 'Shopping item price', ariaBn: 'কেনাকাটার আইটেমের দাম'
+      });
+      if (price) price.classList.add('np-add-price');
+      const additional = firstElement(['notepad-item-additional', 'notepad-item-additional-info', 'notepad-item-info']);
+      if (additional) additional.classList.add('np-add-additional');
+      return { name, quantity, price, additional };
+    };
     let pages = {}, legacy = null, ready = false, active = null, category = 'cake', activeView = 'cake';
     let drafts = {}, user = '', epoch = 0, loadSequence = 0, timer = null;
+    let addingItem = null;
     const saving = new Map();
     const expenseDrafts = new Map();
     const expenseSaving = new Map();
@@ -151,7 +215,7 @@ window.NituNotepad = (() => {
       const rawDate = source && Object.hasOwn(source, 'date') ? source.date
         : source && Object.hasOwn(source, 'purchaseDate') ? source.purchaseDate
           : source && Object.hasOwn(source, 'expenseDate') ? source.expenseDate
-            : item?.purchaseDate ?? item?.expenseDate;
+            : item?.purchaseDate ?? item?.expenseDate ?? item?.priceDate ?? item?.date;
       return { amount: normalizeAmount(rawAmount), date: normalizeDate(rawDate) };
     };
     const reconcileExpenseDrafts = raw => {
@@ -201,7 +265,7 @@ window.NituNotepad = (() => {
       clearTimeout(timer);
       expenseDrafts.forEach(draft => { if (draft.timer) clearTimeout(draft.timer); });
       pages = {}; legacy = null; ready = false; active = null; category = 'cake'; activeView = 'cake';
-      drafts = {}; user = ''; saving.clear(); expenseDrafts.clear(); expenseSaving.clear();
+      drafts = {}; user = ''; addingItem = null; saving.clear(); expenseDrafts.clear(); expenseSaving.clear();
       Object.keys(lastPage).forEach(key => delete lastPage[key]);
       el('notepad-overlay').classList.remove('open');
       document.body.style.overflow = '';
@@ -429,10 +493,11 @@ window.NituNotepad = (() => {
         });
       }
       el('np-cake-board').hidden = tool || category !== 'cake' || !page;
-      el('notepad-edit-details').open = !tool && category !== 'cake';
+      const editDetails = el('notepad-edit-details');
+      if (editDetails) editDetails.open = !tool;
       renderQuickBoard(page, draft);
       el('notepad-category-description').textContent = category === 'cake'
-        ? say('Shopping comes first. Keep ingredients, packaging and things to buy here.', 'সবার আগে কেনাকাটা। উপকরণ, প্যাকেজিং ও কেনার তালিকা এখানে রাখুন।')
+        ? say('Add baking items with a quantity and total price. Use Additional Info for snacks, vegetables and other shop notes.', 'বেকিং আইটেমের নাম, পরিমাণ ও মোট দাম যোগ করুন। স্ন্যাকস, সবজি ও অন্য দোকানের নোট Additional Info-তে লিখুন।')
         : category === 'baking' ? say('Recipes, oven settings and baking methods — each on its own page.', 'রেসিপি, ওভেনের সেটিং ও বেকিং পদ্ধতি — আলাদা আলাদা পেজে।')
         : say('Ideas, supplier details and everything else.', 'আইডিয়া, সরবরাহকারীর তথ্য ও অন্যান্য নোট।');
       if (page) {
@@ -494,9 +559,11 @@ window.NituNotepad = (() => {
     };
     const normalizeExpensePatch = patch => {
       const normalized = {};
+      const amountField = Object.hasOwn(patch, 'amount') ? 'amount' : Object.hasOwn(patch, 'price') ? 'price' : null;
       for (const field of ['amount', 'date']) {
-        if (!Object.hasOwn(patch, field)) continue;
-        const raw = String(patch[field] ?? '').trim();
+        const sourceField = field === 'amount' ? amountField : field;
+        if (!sourceField || (field === 'date' && !Object.hasOwn(patch, 'date'))) continue;
+        const raw = String(patch[sourceField] ?? '').trim();
         if (!raw) { normalized[field] = null; continue; }
         const value = field === 'amount' ? normalizeAmount(raw) : normalizeDate(raw);
         if (value == null) throw new Error(field);
@@ -505,9 +572,22 @@ window.NituNotepad = (() => {
       return normalized;
     };
     const applyExpensePatch = (item, patch) => {
-      const expense = { ...(expenseSource(item) || {}) };
+      const next = { ...item };
+      const source = expenseSource(item);
+      const compact = Object.hasOwn(item, 'quantity') || Object.hasOwn(item, 'price');
+      const expense = { ...(source || {}) };
       Object.entries(patch).forEach(([field, value]) => { expense[field] = value; });
-      return { ...item, expense };
+      if (source && Object.hasOwn(source, 'price') && Object.hasOwn(patch, 'amount')) expense.price = patch.amount;
+      // Compact rows keep their price at the item level so older consumers can
+      // read them without understanding the expense envelope. Keep the
+      // envelope too when it already exists (or when a new compact row needs
+      // an expense date), retaining receipts and any other unknown fields.
+      if (compact && Object.hasOwn(patch, 'amount')) {
+        if (patch.amount == null) delete next.price;
+        else next.price = patch.amount;
+      }
+      if (source || !compact || Object.keys(expense).length) next.expense = expense;
+      return next;
     };
     const expenseDraftFor = (pageKey, itemKey, item) => {
       const key = expenseDraftKey(pageKey, itemKey);
@@ -549,7 +629,12 @@ window.NituNotepad = (() => {
               return String(currentValue == null ? '' : currentValue) !== String(base[field] ?? '');
             })) return;
             const safePatch = { ...patch };
-            if (item.checked && !Object.hasOwn(safePatch, 'date') && !expenseValues(item).date) safePatch.date = today();
+            const existingExpense = expenseValues(item);
+            // A price first entered in the notebook belongs to today. An
+            // existing purchase date is authoritative and must survive price
+            // edits, including edits made from the compact price input.
+            if (Object.hasOwn(safePatch, 'amount') && safePatch.amount != null && !Object.hasOwn(rawPatch, 'date') && !existingExpense.date) safePatch.date = today();
+            else if (item.checked && !Object.hasOwn(safePatch, 'date') && !existingExpense.date) safePatch.date = today();
             appliedPatch = safePatch;
             return { ...page, items: { ...page.items, [itemKey]: applyExpensePatch(item, safePatch) } };
           });
@@ -632,8 +717,10 @@ window.NituNotepad = (() => {
     const setItemExpense = async (itemKey, patch = {}) => {
       if (active == null || !current()?.items?.[itemKey] || !patch || typeof patch !== 'object') return false;
       try { normalizeExpensePatch(patch); } catch (e) { return false; }
+      const expensePatch = { ...patch };
+      if (!Object.hasOwn(expensePatch, 'amount') && Object.hasOwn(expensePatch, 'price')) expensePatch.amount = expensePatch.price;
       for (const field of ['amount', 'date']) {
-        if (Object.hasOwn(patch, field) && !queueExpenseSave(itemKey, field, patch[field])) return false;
+        if (Object.hasOwn(expensePatch, field) && !queueExpenseSave(itemKey, field, expensePatch[field])) return false;
       }
       return flushExpenseDrafts(active);
     };
@@ -647,7 +734,14 @@ window.NituNotepad = (() => {
       } : null;
       list.replaceChildren();
       const done = items.filter(([, item]) => item.checked).length;
-      el('notepad-check-progress').textContent = `${done}/${items.length} ${say('bought', 'কেনা হয়েছে')}`;
+      el('notepad-check-progress').textContent = `${done}/${items.length} ${say('bought', 'কেনা হয়েছে')} · ${items.length}/30`;
+      const addButton = document.querySelector('.np-add-item button');
+      if (addButton) {
+        addButton.disabled = items.length >= MAX_ITEMS_PER_PAGE;
+        addButton.title = addButton.disabled
+          ? say('Maximum 30 items reached', 'সর্বোচ্চ ৩০টি আইটেম যোগ হয়েছে')
+          : say('Add baking item', 'বেকিং আইটেম যোগ করুন');
+      }
       items.forEach(([key, item]) => {
         const row = document.createElement('div'); row.className = 'np-check-row' + (item.checked ? ' checked' : '');
         const main = document.createElement('label'); main.className = 'np-check-main';
@@ -657,7 +751,8 @@ window.NituNotepad = (() => {
         check.setAttribute('aria-label', say(`Mark ${name} as bought`, `${name} কেনা হয়েছে চিহ্নিত করুন`));
         check.onchange = () => toggleItem(key, check.checked);
         const text = document.createElement('span'); text.className = 'np-check-copy'; text.textContent = name;
-        if (item.detail) { const detail = document.createElement('span'); detail.textContent = ' · ' + String(item.detail); text.append(detail); }
+        const quantity = itemQuantityOf(item);
+        if (quantity) { const detail = document.createElement('span'); detail.textContent = ' · ' + quantity; text.append(detail); }
         main.append(check, text);
 
         const draft = expenseDrafts.get(expenseDraftKey(pageKey, key));
@@ -674,7 +769,7 @@ window.NituNotepad = (() => {
         amount.onchange = () => queueExpenseSave(key, 'amount', amount.value, amount, true);
         amountWrap.append(currency, amount); amountLabel.append(amountText, amountWrap);
 
-        const dateLabel = document.createElement('label'); dateLabel.className = 'np-expense-field';
+        const dateLabel = document.createElement('label'); dateLabel.className = 'np-expense-field np-expense-date-field'; dateLabel.hidden = true;
         const dateText = document.createElement('span'); dateText.className = 'np-expense-label'; dateText.textContent = say('Expense date', 'খরচের তারিখ');
         const date = document.createElement('input'); date.type = 'date'; date.className = 'np-expense-date';
         date.value = draft && Object.hasOwn(draft.patch, 'date') ? draft.values.date : (storedExpense.date || '');
@@ -702,22 +797,138 @@ window.NituNotepad = (() => {
       if (!page) return;
       const text = draft && Object.hasOwn(draft.patch, 'text') ? draft.patch.text : String(page.text || '');
       const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-      const items = entries(page.items).map(([, item]) => `${item.checked ? '✓ ' : '○ '}${item.name}${item.detail ? ' · ' + item.detail : ''}`);
+      const items = entries(page.items).map(([, item]) => `${item.checked ? '✓ ' : '○ '}${item.name}${itemQuantityOf(item) ? ' · ' + itemQuantityOf(item) : ''}`);
       [...lines, ...items].forEach((line, index) => {
         const node = document.createElement('div'); node.className = 'np-board-line' + (line.startsWith('✓') ? ' done' : '');
         node.textContent = line; node.title = line; node.dataset.index = String(index); board.append(node);
       });
       if (!board.children.length) { const empty = document.createElement('div'); empty.className = 'np-board-empty'; empty.textContent = say('No shopping items yet — use Edit full note below.', 'এখনো কেনাকাটার আইটেম নেই — নিচে পূর্ণ নোট এডিট করুন।'); board.append(empty); }
     };
-    const addItem = async () => {
-      const name = el('notepad-item-name').value.trim(), detail = el('notepad-item-detail').value.trim(), key = active;
-      if (!name || !current()) return;
-      const id = pagesRef.push().key;
+    const clearAddEntry = controls => {
+      Object.values(controls || {}).forEach(input => {
+        if (!input) return;
+        input.value = '';
+        input.setCustomValidity?.('');
+        input.removeAttribute('aria-invalid');
+      });
+    };
+    const addItem = async (values = null, quantityArg, priceArg, additionalArg) => {
+      if (addingItem) return addingItem;
+      const controls = addEntryControls();
+      const supplied = values && typeof values === 'object' ? values : {};
+      const positionalName = typeof values === 'string' ? values : null;
+      const name = String(supplied.name ?? positionalName ?? controls.name?.value ?? '').trim();
+      const quantityValue = supplied.quantity ?? supplied.detail ?? quantityArg
+        ?? controls.quantity?.value ?? '';
+      const quantity = String(quantityValue ?? '').trim();
+      const priceValue = supplied.price ?? supplied.amount ?? priceArg ?? controls.price?.value ?? '';
+      const priceRaw = String(priceValue ?? '').trim();
+      const additionalValue = supplied.additional ?? supplied.additionalInfo ?? supplied.info ?? additionalArg ?? controls.additional?.value ?? '';
+      const additional = String(additionalValue ?? '').trim();
+      if (!name || !current()) return false;
+      let price = null;
+      if (priceRaw) {
+        price = normalizeAmount(priceRaw);
+        if (price == null) {
+          if (controls.price) {
+            controls.price.setCustomValidity(say('Enter a non-negative price.', 'শূন্য বা তার বেশি দাম দিন।'));
+            controls.price.setAttribute('aria-invalid', 'true');
+            if (controls.price.reportValidity) controls.price.reportValidity();
+          }
+          return false;
+        }
+      }
+      const key = active, id = pagesRef.push().key;
+      let limitReached = false;
+      const job = (async () => {
+        try {
+          // Additional information belongs to the page note, so settle an
+          // in-flight text draft before appending to that same text value.
+          if (additional && !await flush()) return false;
+          const saved = await commitPage(key, page => {
+            const existingItems = entries(page.items);
+            // This check deliberately runs in the Firebase page transaction;
+            // two admins cannot race the page past the 30-object limit.
+            if (existingItems.length >= MAX_ITEMS_PER_PAGE) {
+              limitReached = true;
+              return;
+            }
+            const item = { name, quantity, checked: false, createdAt: Date.now() };
+            if (price != null) {
+              item.price = price;
+              item.expense = { amount: price, date: today() };
+            }
+            const next = { ...page, items: { ...(page.items || {}), [id]: item } };
+            if (additional) next.text = appendPageText(page.text, additional);
+            return next;
+          });
+          if (additional) notesRef.set(saved.text || '').catch(() => {});
+          clearAddEntry(controls);
+          render();
+          signalExpensesChanged('item', key, id);
+          return true;
+        } catch (e) {
+          if (limitReached) toast(say('A page can contain at most 30 shopping items.', 'একটি পেজে সর্বোচ্চ ৩০টি কেনাকাটার আইটেম রাখা যায়।'));
+          else toast(say('Item not saved. Please retry.', 'আইটেম সেভ হয়নি। আবার চেষ্টা করুন।'));
+          return false;
+        }
+      })().finally(() => { if (addingItem === job) addingItem = null; });
+      addingItem = job;
+      return job;
+    };
+    const updateItem = async (itemKey, values = {}, quantityArg) => {
+      if (typeof values === 'string') values = { name: values, quantity: quantityArg };
+      if (!values || typeof values !== 'object' || active == null || !current()?.items?.[itemKey]) return false;
+      const patch = values;
+      const hasName = Object.hasOwn(patch, 'name');
+      const hasQuantity = Object.hasOwn(patch, 'quantity') || Object.hasOwn(patch, 'detail');
+      const hasPrice = Object.hasOwn(patch, 'price') || Object.hasOwn(patch, 'amount');
+      const additional = String(patch.additional ?? patch.additionalInfo ?? patch.info ?? '').trim();
+      const nextName = hasName ? String(patch.name ?? '').trim() : null;
+      const nextQuantity = hasQuantity ? String(patch.quantity ?? patch.detail ?? '').trim() : null;
+      if (hasName && !nextName) return false;
+      let price = null;
+      if (hasPrice) {
+        const rawPrice = String(patch.price ?? patch.amount ?? '').trim();
+        if (rawPrice) {
+          price = normalizeAmount(rawPrice);
+          if (price == null) return false;
+        }
+      }
+      const pageKey = active;
+      let changed = false;
+      let saved = null;
       try {
-        await commitPage(key, page => ({ ...page, items: { ...(page.items || {}), [id]: { name, detail, checked: false, createdAt: Date.now() } } }));
-        el('notepad-item-name').value = ''; el('notepad-item-detail').value = ''; render();
-        signalExpensesChanged('item', key, id);
-      } catch (e) { toast(say('Item not saved. Please retry.', 'আইটেম সেভ হয়নি। আবার চেষ্টা করুন।')); }
+        if (additional && !await flush()) return false;
+        saved = await commitPage(pageKey, page => {
+          const item = page.items?.[itemKey];
+          if (!item || typeof item !== 'object') return;
+          const nextItem = { ...item };
+          if (hasName) { nextItem.name = nextName; changed = true; }
+          if (hasQuantity) { nextItem.quantity = nextQuantity; changed = true; }
+          if (hasPrice) {
+            const existingExpense = expenseValues(item);
+            const expensePatch = { amount: price };
+            if (price != null && !existingExpense.date) expensePatch.date = today();
+            const pricedItem = applyExpensePatch(nextItem, expensePatch);
+            Object.assign(nextItem, pricedItem);
+            if (!Object.hasOwn(pricedItem, 'price')) delete nextItem.price;
+            changed = true;
+          }
+          const next = { ...page, items: { ...page.items, [itemKey]: nextItem } };
+          if (additional) { next.text = appendPageText(page.text, additional); changed = true; }
+          return next;
+        });
+        if (changed) {
+          if (additional) notesRef.set(saved?.text || '').catch(() => {});
+          render();
+          if (hasPrice) signalExpensesChanged('expense', pageKey, itemKey);
+        }
+        return changed;
+      } catch (e) {
+        toast(say('Item not saved. Please retry.', 'আইটেম সেভ হয়নি। আবার চেষ্টা করুন।'));
+        return false;
+      }
     };
     const toggleItem = async (id, checked) => {
       const key = active;
@@ -765,6 +976,16 @@ window.NituNotepad = (() => {
     el('notepad-title').addEventListener('input', event => edit('title', event.target.value));
     el('np-calc-input').addEventListener('input', calculateUi);
     el('np-calc-input').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); calculateUi(); } });
+    const addControls = addEntryControls();
+    [addControls.name, addControls.quantity, addControls.price, addControls.additional].forEach(input => {
+      if (!input || input.dataset.npAddBound === '1') return;
+      input.dataset.npAddBound = '1';
+      input.addEventListener('keydown', event => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        addItem();
+      });
+    });
     VIEWS.forEach((key, index) => el('notepad-tab-' + key).addEventListener('keydown', async event => {
       let next;
       if (event.key === 'ArrowRight') next = (index + 1) % VIEWS.length;
@@ -777,7 +998,14 @@ window.NituNotepad = (() => {
       el('notepad-tab-' + VIEWS[next]).focus();
     }));
     render();
-    return { activate, reset, receive, render, open, close, addPage, switchCategory, switchPage, movePage, addPhoto, removePhoto, addItem, toggleItem, setItemExpense, getExpenses, getExpenseItems: getExpenses, expenseChangeEvent: EXPENSE_CHANGE_EVENT, calculatorKey, calculateUi, insertCalculation, template, exportAll, recover, retry, flush };
+    return {
+      activate, reset, receive, render, open, close, addPage, switchCategory, switchPage, movePage,
+      addPhoto, removePhoto, addItem, updateItem, updateItemNameQuantity: updateItem,
+      updateItemDetails: updateItem, updateItemFields: updateItem, editItem: updateItem,
+      toggleItem, setItemExpense, setItemPrice: (itemKey, price) => setItemExpense(itemKey, { amount: price }),
+      getExpenses, getExpenseItems: getExpenses, expenseChangeEvent: EXPENSE_CHANGE_EVENT,
+      calculatorKey, calculateUi, insertCalculation, template, exportAll, recover, retry, flush
+    };
   };
   return { create, calculate, categoryOf, entries, expenseChangeEvent: EXPENSE_CHANGE_EVENT };
 })();

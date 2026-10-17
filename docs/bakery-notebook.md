@@ -1,13 +1,14 @@
 # Bakery notebook
 
-The admin notebook opens **Cake Items** first, followed by **Baking Instructions**
+The admin notebook opens **Baking Items** first, followed by **Baking Instructions**
 and **Other**. Every category has its own page list. Give pages a title, add pages,
 or use **Move page to** to organize an existing page.
 
 ## Existing notes
 
 - The original `shopNotepad/pages` path and page keys are retained.
-- Pages without a category display under Cake Items. Opening the notebook does
+- Pages without a category display under Baking Items. The visible category name is
+  Baking Items, while the existing stored category value remains `cake`; opening the notebook does
   not rewrite, reorder, delete, or automatically classify their text or photos.
 - `category`, `title`, and shopping `items` are additive page fields.
 - Legacy single-string `shopNotepad/text` is displayed without a migration write.
@@ -20,10 +21,29 @@ or use **Move page to** to organize an existing page.
 - The legacy text mirror is updated only after a successful text edit.
 - **Backup all notes** downloads pages, photos, extra fields, and local drafts.
 
+## Baking items and expense totals
+
+- The Baking Items page has one add row with **name**, **quantity**, and total
+  **price**. Press **＋** to save the row and add another; a page accepts at
+  most 30 items. For example: `Everwhip whipped cream · 4 piece · ৳2300`, then
+  `Baking powder · 500 gram · ৳400`.
+- A newly entered price is dated automatically for the day it is saved, so the
+  price is included in that month's dashboard total. Editing the price keeps
+  its existing expense date.
+- The dashboard's **Total Expense** card adds every dated Baking Items price
+  once and shows the itemized monthly breakdown. A notepad
+  `notepad-expenses-changed` event refreshes the totals without changing the
+  existing event payload contract.
+- **Additional Info** is an editable free-text box for snacks, vegetables, or
+  other shop reminders that do not need a Baking Items row. Text in this box is
+  not automatically treated as a priced expense; add a separate Baking Items
+  row when a purchase should be included in Total Expense.
+
 ## Helpers
 
-- Shopping checklist: add an item/quantity and check it as bought. It sits beside
-  existing free-text notes; old notes are not parsed or replaced.
+- Baking-item list: add a name, quantity, and optional price, then check an
+  item as bought if useful. Existing free-text notes remain in Additional Info;
+  old notes are not parsed or replaced.
 - Calculator: addition, subtraction, multiplication, division, decimals,
   parentheses and Bengali digits. Results can be appended to a note.
 - Recipe scaling: `ingredient quantity × target size ÷ original size`. Use the

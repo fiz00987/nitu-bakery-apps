@@ -157,6 +157,27 @@ test('cake-only sales do not lose the delivery charge a second time', t => {
   assert.equal(h.el('view-revenue').querySelector('.rev-num.blue').textContent, money(2500));
 });
 
+test('dashboard Total Expense sums current-month Baking Items prices and refreshes from the notebook', t => {
+  const now = new Date();
+  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-15`;
+  const h = harness(t, order({ date }));
+  h.state.shopNotepad = { pages: { 0: {
+    category: 'cake', text: 'Snacks for the shop', items: {
+      cream: { name: 'Everwhip whipped cream', quantity: '4 piece', price: 2300, expense: { amount: 2300, date }, checked: false },
+      powder: { name: 'Baking powder', quantity: '500 gram', price: 400, expense: { amount: 400, date }, checked: false }
+    }
+  } } };
+  h.listeners.get('shopNotepad/pages')({ val: () => copy(h.state.shopNotepad.pages) });
+  h.w.App.switchTab('revenue');
+  assert.equal(h.el('view-revenue').querySelector('.rev-grid-finance .rev-num.red').textContent, money(2700));
+  assert.match(h.el('view-revenue').textContent, /Baking-item prices/);
+
+  h.state.shopNotepad.pages[0].items.powder.price = 500;
+  h.state.shopNotepad.pages[0].items.powder.expense.amount = 500;
+  h.listeners.get('shopNotepad/pages')({ val: () => copy(h.state.shopNotepad.pages) });
+  assert.equal(h.el('view-revenue').querySelector('.rev-grid-finance .rev-num.red').textContent, money(2800));
+});
+
 test('customer total including delivery still opens with the cake-only price', t => {
   const h = harness(t, order({ total: 3100, subtotal: 3100, deliveryAmount: 600, deliveryCharge: 600 }));
   assert.equal(h.card().querySelector('.pay-val').textContent, money(2500));

@@ -64,6 +64,8 @@ window.App = (() => {
   let savedScrollY  = 0;            // list scroll pos to restore after the modal closes
   let currentDelPhoto = '';         // completed-cake photo (≤50KB data URL)
   let notepad = null;
+  let notebookExpenseItems = [];
+  let notebookExpensesReady = false;
   let offDays       = {};           // 'YYYY-MM-DD' → { reason, ... }
   let offdayCbDate  = null;         // date currently open in the off-day dialog
   let healedDelivered = {};         // delivered orders already money-healed this session
@@ -90,9 +92,12 @@ window.App = (() => {
       monthPlanned: 'এই মাসে অর্ডার', monthCompleted: 'এই মাসে সম্পন্ন',
       monthEarn: 'আয় (মোট বিক্রি)',
       monthEarnNote: '💡 ডেলিভারি চার্জ ও bKash চার্জ বাদে কেকের মোট বিক্রি। ডেলিভারি চার্জ পুরোটা ডেলিভারি এজেন্ট পান।',
-      monthExpense: 'এই মাসের খরচ', monthNet: 'মাসিক নেট লাভ',
-      monthExpenseNote: '💡 বেকারি নোটবুকের কেক আইটেমে দেওয়া দাম ও খরচের তারিখ থেকে হিসাব।',
-      expenseItems: 'খরচের আইটেম', noExpenses: 'এই মাসে কোনো খরচ যোগ করা হয়নি।',
+      monthExpense: 'মোট খরচ', monthNet: 'মাসিক নেট লাভ',
+      monthExpenseNote: '💡 Baking Items-এর দেওয়া দাম ও স্বয়ংক্রিয়ভাবে রাখা খরচের তারিখ অনুযায়ী এই মাসের মোট। Additional Info শুধু নোটের জন্য।',
+      expenseItems: 'বেকিং আইটেমের দাম',
+      expenseBreakdown: 'খরচের বিবরণ',
+      bakingItemExpenses: 'বেকিং আইটেমের দাম',
+      noExpenses: 'এই মাসে কোনো বেকিং আইটেমের দাম যোগ করা হয়নি।',
       chartMonthlyOrders: '📊 মাসিক অর্ডার — শেষ ৫ মাস',
       tabPlan: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'ড্যাশবোর্ড', tabCdb: 'ডেটাবেজ', tabReward: 'রিওয়ার্ড', tabDeliveryConfirm: 'ডেলিভারি কনফার্ম',
       sort_date: 'তারিখ', sort_name: 'নাম', sort_due: 'বকেয়া',
@@ -117,9 +122,12 @@ window.App = (() => {
       monthPlanned: 'Orders This Month', monthCompleted: 'Completed This Month',
       monthEarn: 'Earn (Total Sale)',
       monthEarnNote: '💡 Total cake sale excluding delivery & bKash charges. The delivery fee goes fully to the delivery agent.',
-      monthExpense: 'Expenses This Month', monthNet: 'Monthly Net Profit',
-      monthExpenseNote: '💡 Based on prices and expense dates entered for Cake Items in the bakery notebook.',
-      expenseItems: 'Expense items', noExpenses: 'No expenses added for this month.',
+      monthExpense: 'Total Expense', monthNet: 'Monthly Net Profit',
+      monthExpenseNote: '💡 Monthly total of Baking Items prices, using the automatically recorded expense date. Additional Info is for notes only.',
+      expenseItems: 'Baking-item prices',
+      expenseBreakdown: 'Expense breakdown',
+      bakingItemExpenses: 'Baking-item prices',
+      noExpenses: 'No baking-item prices added for this month.',
       chartMonthlyOrders: '📊 Orders per Month — Last 5',
       tabPlan: 'Orders', tabDone: 'Done', tabRev: 'Dashboard', tabCdb: 'Database', tabReward: 'Rewards', tabDeliveryConfirm: 'Delivery Confirm',
       sort_date: 'Date', sort_name: 'Name', sort_due: 'Due',
@@ -904,6 +912,8 @@ window.App = (() => {
       activeCacheKey = nextCacheKey;
       liveSnapshotSeen = false;
       lastOrdersFp = '';
+      notebookExpenseItems = [];
+      notebookExpensesReady = false;
       healedDelivered = {};
       healedAdvance50 = {};
       cleanedAutoDc = {};
@@ -2389,17 +2399,39 @@ T & C Applicable। ধন্যবাদ!`;
     if (Number.isNaN(d.getTime())) return '';
     return `${d.getFullYear()}-${d.getMonth()}`;
   };
+  const expenseValuesOf = item => {
+    const nested = [item?.expense]
+      .find(value => value && typeof value === 'object');
+    const source = nested || {};
+    const amount = source.amount ?? source.price ?? item?.amount ?? item?.price;
+    const date = source.date ?? source.purchaseDate ?? source.expenseDate
+      ?? item?.date ?? item?.purchaseDate ?? item?.expenseDate ?? item?.priceDate;
+    return { amount, date };
+  };
+  const normalizeNotebookExpense = (item, defaults = {}) => {
+    if (!item || typeof item !== 'object') return null;
+    const values = expenseValuesOf(item);
+    const amount = Number(values.amount);
+    const date = String(values.date || '').slice(0, 10);
+    if (!Number.isFinite(amount) || amount < 0 || !date) return null;
+    return {
+      pageKey: String(item.pageKey ?? defaults.pageKey ?? ''),
+      itemKey: String(item.itemKey ?? defaults.itemKey ?? ''),
+      name: String(item.name ?? item.label ?? item.description ?? item.title ?? defaults.name ?? '').trim() || '—',
+      amount,
+      date,
+      kind: 'baking'
+    };
+  };
   const monthlyExpenseItems = monthKey => {
     try {
-      const source = notepad && typeof notepad.getExpenseItems === 'function'
-        ? notepad.getExpenseItems() : [];
+      const source = notebookExpensesReady
+        ? notebookExpenseItems
+        : (notepad && typeof notepad.getExpenseItems === 'function' ? notepad.getExpenseItems() : []);
       return (Array.isArray(source) ? source : [])
-        .filter(item => item && expenseMonthKeyOf(item.date) === monthKey)
-        .map(item => ({
-          name: String(item.name || '').trim() || '—',
-          amount: Math.max(0, Number(item.amount) || 0),
-          date: String(item.date || '').slice(0, 10)
-        }));
+        .map(item => normalizeNotebookExpense(item))
+        .filter(Boolean)
+        .filter(item => expenseMonthKeyOf(item.date) === monthKey);
     } catch (e) {
       console.error('[revenue] expenses unavailable:', e);
       return [];
@@ -2509,12 +2541,12 @@ T & C Applicable। ধন্যবাদ!`;
     const net = earn - expenses;
     const expenseRows = expenseItems.map(item => `
       <div class="expense-line">
-        <span><strong>${esc(item.name)}</strong><small>${esc(item.date)}</small></span>
+        <span><strong>${esc(item.name)}</strong><small>${esc(tr('bakingItemExpenses'))} · ${esc(item.date)}</small></span>
         <b>৳${fmtMoney(item.amount)}</b>
       </div>`).join('');
     const expenseBreakdown = expenseItems.length
       ? `<div class="expense-breakdown">
-          <div class="expense-breakdown-title">${tr('expenseItems')} (${expenseItems.length})</div>
+          <div class="expense-breakdown-title">${tr('expenseBreakdown')} · ${tr('expenseItems')} (${expenseItems.length})</div>
           ${expenseRows}
         </div>`
       : `<div class="expense-breakdown expense-breakdown-empty">${tr('noExpenses')}</div>`;
@@ -2548,7 +2580,17 @@ T & C Applicable। ধন্যবাদ!`;
     document.getElementById('view-revenue').innerHTML = html;
   };
 
-  window.addEventListener('notepad-expenses-changed', () => {
+  window.addEventListener('notepad-expenses-changed', event => {
+    // Keep the existing notepad event contract as the live dashboard source.
+    // Caching the payload also avoids a render racing the notepad's next
+    // internal repaint, and preserves totals when the dashboard is reopened.
+    const expenses = event && event.detail && event.detail.expenses;
+    if (Array.isArray(expenses)) {
+      notebookExpenseItems = expenses.map(item => normalizeNotebookExpense(item)).filter(Boolean);
+      notebookExpensesReady = true;
+    } else {
+      notebookExpensesReady = false;
+    }
     if (activeTab === 'revenue') renderRevenue();
   });
 

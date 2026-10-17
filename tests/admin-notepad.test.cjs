@@ -155,6 +155,59 @@ test('adding and checking shopping items retains old notes and photos', async t 
   assert.match(h.el('notepad-check-progress').textContent, /1\/1 bought/);
 });
 
+test('baking item rows save name, quantity and total price for the monthly expense list', async t => {
+  const h = await harness(t, { 0: page('Keep this additional info') });
+  h.el('notepad-item-name').value = 'Everwhip whipped cream';
+  h.el('notepad-item-detail').value = '4 piece';
+  h.el('notepad-item-price').value = '2300';
+  assert.equal(await h.notebook.addItem(), true);
+  h.el('notepad-item-name').value = 'Baking powder';
+  h.el('notepad-item-detail').value = '500 gram';
+  h.el('notepad-item-price').value = '400';
+  assert.equal(await h.notebook.addItem(), true);
+
+  const items = Object.values(h.state.pages[0].items);
+  assert.deepEqual(items.map(item => ({ name: item.name, quantity: item.quantity, price: item.price })), [
+    { name: 'Everwhip whipped cream', quantity: '4 piece', price: 2300 },
+    { name: 'Baking powder', quantity: '500 gram', price: 400 }
+  ]);
+  assert.equal(items.every(item => item.expense?.amount === item.price && item.expense?.date), true);
+  assert.equal(h.el('notepad-checklist').querySelectorAll('.np-check-row').length, 2);
+  assert.equal(JSON.stringify(h.notebook.getExpenses().map(item => item.amount)), JSON.stringify([2300, 400]));
+  assert.equal(h.state.pages[0].text, 'Keep this additional info');
+});
+
+test('additional info is an editable note and does not create a fake baking item', async t => {
+  const h = await harness(t, { 0: page('Old note') });
+  h.input('notepad-text', 'Snacks and vegetables for the shop');
+  assert.equal(await h.notebook.flush(), true);
+  assert.equal(h.state.pages[0].text, 'Snacks and vegetables for the shop');
+  assert.equal(h.state.pages[0].items, undefined);
+  assert.equal(h.state.text, 'Snacks and vegetables for the shop');
+  assert.equal(h.el('notepad-text').value, 'Snacks and vegetables for the shop');
+});
+
+test('baking item pages enforce the 30-item limit inside the transaction', async t => {
+  const items = Object.fromEntries(Array.from({ length: 30 }, (_, i) => [`item-${i}`, {
+    name: `Item ${i + 1}`, quantity: '1 piece', price: i + 1,
+    expense: { amount: i + 1, date: '2026-10-15' }, checked: false
+  }]));
+  const h = await harness(t, { 0: page('Full list', { items }) });
+  h.el('notepad-item-name').value = 'Too many';
+  h.el('notepad-item-detail').value = '1 piece';
+  h.el('notepad-item-price').value = '999';
+  assert.equal(await h.notebook.addItem(), false);
+  assert.equal(Object.keys(h.state.pages[0].items).length, 30);
+  assert.equal(h.el('notepad-shopping').querySelector('.np-add-item button').disabled, true);
+
+  const h2 = await harness(t, { 0: page('Race', { items: Object.fromEntries(Array.from({ length: 29 }, (_, i) => [`item-${i}`, { name: `Item ${i}`, quantity: '1', checked: false }])) }) });
+  h2.race(() => {
+    h2.state.pages[0].items['item-29'] = { name: 'Concurrent item', quantity: '1', checked: false };
+  });
+  assert.equal(await h2.notebook.addItem({ name: 'Racing item', quantity: '1', price: '1' }), false);
+  assert.equal(Object.keys(h2.state.pages[0].items).length, 30);
+});
+
 test('asynchronous photo upload stays on the originating page after switching tabs', async t => {
   const h = await harness(t, { 0: page('Shopping'), 1: page('Recipe', { category: 'baking' }) });
   h.notebook.addPhoto({ files: [{}], value: 'image.png' });
@@ -189,7 +242,7 @@ test('a recipe outline appends to a baking page without replacing its contents',
 test('switching language updates notebook tabs and labels', async t => {
   const h = await harness(t, { 0: page('Old notes') });
   h.language('bn');
-  assert.match(h.el('notepad-tab-cake').textContent, /কেক আইটেম/);
+  assert.match(h.el('notepad-tab-cake').textContent, /বেকিং আইটেম/);
   h.language('en');
   assert.match(h.el('notepad-tab-baking').textContent, /Baking Instructions/);
   assert.equal(h.writes.length, 0);
@@ -221,7 +274,7 @@ test('mobile shopping board shows every line without changing stored notes', asy
   const board = h.el('np-cake-board');
   assert.equal(board.children.length, 20);
   assert.equal(board.children[19].textContent, 'Item 20 with a long ingredient name');
-  assert.equal(h.el('notepad-shopping').open, false);
+  assert.equal(h.el('notepad-shopping').open, true);
   h.input('notepad-text', shopping + '\nItem 21');
   assert.equal(board.children.length, 21, 'preview updates as the note is typed');
   assert.equal(h.state.pages[0].text, shopping, 'preview does not write until the draft is saved');

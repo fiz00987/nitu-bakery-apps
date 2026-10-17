@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="admin-build" content="2026-10-15-hide-delivery-confirm">
+<meta name="admin-build" content="2026-10-15-baking-notebook">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2568,7 +2568,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
   .reward-summary strong { font-size: 15px; }
 }
 </style>
-<link rel="stylesheet" href="./notepad.css?v=2026-10-07-simple-notebook">
+<link rel="stylesheet" href="./notepad.css?v=2026-10-15-baking-notebook">
 </head>
 <body>
 
@@ -2760,7 +2760,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
       <button class="cal-popup-close" onclick="App.closeNotepad()" aria-label="Close notebook">✕</button>
     </div>
     <div class="np-tabs" role="tablist" aria-label="Note categories and tools">
-      <button type="button" id="notepad-tab-cake" class="np-tab active" role="tab" aria-selected="true" aria-controls="notepad-panel" onclick="App.notepadTab('cake')"><span class="np-tab-count">0</span><span class="np-tab-icon">🛒</span><span data-np-en="Cake Items" data-np-bn="কেক আইটেম">কেক আইটেম</span><small data-np-en="Shopping & supplies" data-np-bn="কেনাকাটা ও উপকরণ">কেনাকাটা ও উপকরণ</small></button>
+      <button type="button" id="notepad-tab-cake" class="np-tab active" role="tab" aria-selected="true" aria-controls="notepad-panel" onclick="App.notepadTab('cake')"><span class="np-tab-count">0</span><span class="np-tab-icon">🛒</span><span data-np-en="Baking Items" data-np-bn="বেকিং আইটেম">বেকিং আইটেম</span><small data-np-en="Ingredients & supplies" data-np-bn="উপকরণ ও কেনাকাটা">উপকরণ ও কেনাকাটা</small></button>
       <button type="button" id="notepad-tab-baking" class="np-tab" role="tab" aria-selected="false" aria-controls="notepad-panel" onclick="App.notepadTab('baking')"><span class="np-tab-count">0</span><span class="np-tab-icon">🥣</span><span data-np-en="Baking Instructions" data-np-bn="বেকিং নির্দেশনা">বেকিং নির্দেশনা</span><small data-np-en="Recipes & methods" data-np-bn="রেসিপি ও পদ্ধতি">রেসিপি ও পদ্ধতি</small></button>
       <button type="button" id="notepad-tab-other" class="np-tab" role="tab" aria-selected="false" aria-controls="notepad-panel" onclick="App.notepadTab('other')"><span class="np-tab-count">0</span><span class="np-tab-icon">📌</span><span data-np-en="Other" data-np-bn="অন্যান্য">অন্যান্য</span><small data-np-en="Ideas & reminders" data-np-bn="আইডিয়া ও মনে রাখার নোট">আইডিয়া ও মনে রাখার নোট</small></button>
       <button type="button" id="notepad-tab-calculator" class="np-tab np-tool-tab" role="tab" aria-selected="false" aria-controls="notepad-tool-host" onclick="App.notepadTab('calculator')"><span class="np-tab-icon">🧮</span><span data-np-en="Calculator" data-np-bn="ক্যালকুলেটর">ক্যালকুলেটর</span><small data-np-en="Add / subtract / multiply" data-np-bn="যোগ / বিয়োগ / গুণ">যোগ / বিয়োগ / গুণ</small></button>
@@ -2780,29 +2780,31 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
       <div id="notepad-editor" hidden>
         <div class="np-page-meta">
           <label><span class="np-label" data-np-en="Page title (optional)" data-np-bn="পেজের নাম (ঐচ্ছিক)">পেজের নাম (ঐচ্ছিক)</span><input id="notepad-title" maxlength="100" data-np-placeholder-en="e.g. Weekly shopping" data-np-placeholder-bn="যেমন: সাপ্তাহিক কেনাকাটা" placeholder="যেমন: সাপ্তাহিক কেনাকাটা"></label>
-          <label><span class="np-label" data-np-en="Move page to" data-np-bn="পেজ সরান এখানে">পেজ সরান এখানে</span><select id="notepad-move" onchange="App.notepadMove(this.value)"><option value="cake" data-np-en="Cake Items" data-np-bn="কেক আইটেম">কেক আইটেম</option><option value="baking" data-np-en="Baking Instructions" data-np-bn="বেকিং নির্দেশনা">বেকিং নির্দেশনা</option><option value="other" data-np-en="Other" data-np-bn="অন্যান্য">অন্যান্য</option></select></label>
+          <label><span class="np-label" data-np-en="Move page to" data-np-bn="পেজ সরান এখানে">পেজ সরান এখানে</span><select id="notepad-move" onchange="App.notepadMove(this.value)"><option value="cake" data-np-en="Baking Items" data-np-bn="বেকিং আইটেম">বেকিং আইটেম</option><option value="baking" data-np-en="Baking Instructions" data-np-bn="বেকিং নির্দেশনা">বেকিং নির্দেশনা</option><option value="other" data-np-en="Other" data-np-bn="অন্যান্য">অন্যান্য</option></select></label>
         </div>
         <div class="np-layout">
           <div>
-            <label for="notepad-text"><span class="np-label" data-np-en="Your notes" data-np-bn="আপনার নোট">আপনার নোট</span></label>
-            <div id="np-cake-board" class="np-cake-board" aria-label="All cake shopping notes"></div>
-            <details class="np-edit-details" id="notepad-edit-details">
-              <summary data-np-en="✏️ Edit full note" data-np-bn="✏️ পূর্ণ নোট এডিট করুন">✏️ পূর্ণ নোট এডিট করুন</summary>
-              <textarea id="notepad-text" data-np-placeholder-en="Write shopping notes, recipes or reminders…" data-np-placeholder-bn="কেনাকাটা, রেসিপি বা মনে রাখার কথা লিখুন…" placeholder="কেনাকাটা, রেসিপি বা মনে রাখার কথা লিখুন…"></textarea>
+            <details class="np-edit-details np-additional-info" id="notepad-edit-details" open>
+              <summary data-np-en="✏️ Additional Info" data-np-bn="✏️ অতিরিক্ত তথ্য">✏️ অতিরিক্ত তথ্য</summary>
+              <label for="notepad-text"><span class="np-label" data-np-en="Additional Info" data-np-bn="অতিরিক্ত তথ্য">অতিরিক্ত তথ্য</span></label>
+              <p class="np-expense-hint" data-np-en="Use this box for snacks, vegetables, or other shop notes that do not need a separate baking-item row." data-np-bn="স্ন্যাকস, সবজি বা আলাদা বেকিং আইটেমের সারি দরকার নেই—এমন দোকানের নোট এখানে লিখুন।">স্ন্যাকস, সবজি বা আলাদা বেকিং আইটেমের সারি দরকার নেই—এমন দোকানের নোট এখানে লিখুন।</p>
+              <textarea id="notepad-text" data-np-placeholder-en="e.g. Snacks or vegetables for the shop…" data-np-placeholder-bn="যেমন: দোকানের স্ন্যাকস বা সবজি…" placeholder="যেমন: দোকানের স্ন্যাকস বা সবজি…"></textarea>
             </details>
+            <div id="np-cake-board" class="np-cake-board" hidden aria-hidden="true" aria-label="All baking-item notes"></div>
             <div class="np-toolbar" style="margin-top:8px">
               <button type="button" class="np-btn" onclick="document.getElementById('notepad-photo-input').click()" data-np-en="🖼 Add photo" data-np-bn="🖼 ছবি যোগ করুন">🖼 ছবি যোগ করুন</button>
               <button type="button" class="np-btn" id="notepad-recipe-template" onclick="App.notepadTemplate()" data-np-en="＋ Recipe outline" data-np-bn="＋ রেসিপির ছক">＋ রেসিপির ছক</button>
               <input type="file" id="notepad-photo-input" accept="image/*" hidden onchange="App.notepadAddPhoto(this)">
             </div>
             <div id="notepad-photos" class="np-photos"></div>
-            <details class="np-section" id="notepad-shopping">
-              <summary class="np-section-title"><span data-np-en="🛒 Edit shopping checklist" data-np-bn="🛒 কেনাকাটার তালিকা এডিট করুন">🛒 কেনাকাটার তালিকা এডিট করুন</span><small id="notepad-check-progress">0/0</small></summary>
-              <p class="np-expense-hint" data-np-en="Add a price and expense date beside each item for monthly totals." data-np-bn="মাসিক মোট হিসাবের জন্য প্রতিটি আইটেমের পাশে দাম ও খরচের তারিখ দিন।">মাসিক মোট হিসাবের জন্য প্রতিটি আইটেমের পাশে দাম ও খরচের তারিখ দিন।</p>
+            <details class="np-section" id="notepad-shopping" open>
+              <summary class="np-section-title"><span data-np-en="🛒 Baking Items" data-np-bn="🛒 বেকিং আইটেম">🛒 বেকিং আইটেম</span><small id="notepad-check-progress">0/30</small></summary>
+              <p class="np-expense-hint" data-np-en="Add one row at a time: name, quantity, and total price. Prices are added to this month's Total Expense." data-np-bn="একবারে একটি সারি যোগ করুন: নাম, পরিমাণ ও মোট দাম। দাম এই মাসের মোট খরচে যোগ হবে।">একবারে একটি সারি যোগ করুন: নাম, পরিমাণ ও মোট দাম। দাম এই মাসের মোট খরচে যোগ হবে।</p>
               <div class="np-add-item">
-                <input id="notepad-item-name" maxlength="120" aria-label="Shopping item" data-np-aria-en="Shopping item" data-np-aria-bn="কেনাকাটার আইটেম" data-np-placeholder-en="Butter, flour…" data-np-placeholder-bn="বাটার, ময়দা…" placeholder="বাটার, ময়দা…">
-                <input id="notepad-item-detail" maxlength="80" aria-label="Quantity or detail" data-np-aria-en="Quantity or detail" data-np-aria-bn="পরিমাণ বা বিস্তারিত" data-np-placeholder-en="2 kg / brand" data-np-placeholder-bn="২ কেজি / ব্র্যান্ড" placeholder="২ কেজি / ব্র্যান্ড">
-                <button type="button" class="np-btn" onclick="App.notepadAddItem()" aria-label="কেনাকাটার আইটেম যোগ করুন" data-np-aria-en="Add shopping item" data-np-aria-bn="কেনাকাটার আইটেম যোগ করুন">＋</button>
+                <input id="notepad-item-name" maxlength="120" aria-label="Baking item name" data-np-aria-en="Baking item name" data-np-aria-bn="বেকিং আইটেমের নাম" data-np-placeholder-en="Everwhip whipped cream" data-np-placeholder-bn="এভারহুইপ হুইপড ক্রিম" placeholder="এভারহুইপ হুইপড ক্রিম">
+                <input id="notepad-item-detail" maxlength="80" aria-label="Quantity" data-np-aria-en="Quantity" data-np-aria-bn="পরিমাণ" data-np-placeholder-en="4 piece / 500 gram" data-np-placeholder-bn="৪ পিস / ৫০০ গ্রাম" placeholder="৪ পিস / ৫০০ গ্রাম">
+                <input id="notepad-item-price" type="number" min="0" step="0.01" inputmode="decimal" maxlength="14" aria-label="Baking item price" data-np-aria-en="Baking item price" data-np-aria-bn="বেকিং আইটেমের দাম" data-np-placeholder-en="Price" data-np-placeholder-bn="দাম" placeholder="দাম">
+                <button type="button" class="np-btn" onclick="App.notepadAddItem()" aria-label="Add baking item" data-np-aria-en="Add baking item" data-np-aria-bn="বেকিং আইটেম যোগ করুন">＋</button>
               </div>
               <div id="notepad-checklist"></div>
             </details>
@@ -3211,8 +3213,8 @@ function isIosDevice() {
 }
 </script>
 
-<script src="./notepad.js?v=2026-10-07-simple-notebook"></script>
-<script src="./app.js?v=2026-10-15-hide-delivery-confirm"></script>
+<script src="./notepad.js?v=2026-10-15-baking-notebook"></script>
+<script src="./app.js?v=2026-10-15-baking-notebook"></script>
 
 <!-- PUSH NOTIFICATION SYSTEM (Firebase Cloud Messaging / Web Push) — deferred so
      it never competes with the first orders download on slow networks. -->
