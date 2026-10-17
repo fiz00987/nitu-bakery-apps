@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -11,6 +11,7 @@
 <link rel="icon" type="image/png" href="logo.png">
 <link rel="apple-touch-icon" href="logo.png">
 <link rel="manifest" href="manifest.json">
+<script src="./viewport-lock.js?v=2026-10-17-customer-zoom-lock"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -30,6 +31,8 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{scroll-behavior:smooth}
+/* Keep the form at one viewport scale while preserving normal vertical scrolling. */
+html,body{width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none;touch-action:pan-y}
 /* Bengali numerals (০-৯) render in Noto Sans Bengali — plain, unambiguous digit
    shapes (Baloo Da 2's ১/৪/৮ were hard to tell apart at small sizes).
    Listed FIRST in the body stack so digits always use it; everything else stays
@@ -98,6 +101,10 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--pink);outline-offse
 .req{color:var(--red)}
 .field input,.field select,.field textarea{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;background:var(--surface2);color:var(--text);transition:border-color .14s,box-shadow .14s}
 .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-glow)}
+/* iOS otherwise zooms the viewport when a form control smaller than 16px is focused. */
+@media (hover: none), (pointer: coarse) {
+  input,select,textarea,[contenteditable="true"]{font-size:16px !important}
+}
 /* Hide native number-input spinner arrows (cake price, delivery charge, payment amount) */
 #f-cake-price::-webkit-outer-spin-button,#f-cake-price::-webkit-inner-spin-button,
 #f-delivery-charge::-webkit-outer-spin-button,#f-delivery-charge::-webkit-inner-spin-button,

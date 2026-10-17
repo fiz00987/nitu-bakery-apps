@@ -46,6 +46,20 @@ for (const app of ['customer-app', 'customer-multi']) {
   });
 }
 
+test('customer app keeps mobile customers at one viewport scale', () => {
+  const html = fs.readFileSync(path.join(root, 'customer-app', 'index.html'), 'utf8');
+  const dom = new JSDOM(html);
+  const viewport = dom.window.document.querySelector('meta[name="viewport"]');
+  assert.equal(viewport && viewport.getAttribute('content'),
+    'width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no');
+  assert.match(html, /viewport-lock\.js\?v=/);
+  assert.match(html, /input,select,textarea,\[contenteditable="true"\]\{font-size:16px !important\}/);
+
+  const serviceWorker = fs.readFileSync(path.join(root, 'customer-app', 'sw.js'), 'utf8');
+  assert.match(serviceWorker, /minimum-scale=1,maximum-scale=1,user-scalable=no/);
+  dom.window.close();
+});
+
 test('mini cake disables 50% advance as a native button', t => {
   const { w, el } = form(t, 'customer-app');
   el('f-cake-price').value = '1000';

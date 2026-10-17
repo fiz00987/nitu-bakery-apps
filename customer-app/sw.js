@@ -26,7 +26,7 @@ self.addEventListener('fetch', function (event) {
       if (event.request.mode === 'navigate' || event.request.destination === 'document') {
         var html =
           '<!doctype html><html lang="bn"><head><meta charset="utf-8">' +
-          '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+          '<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no">' +
           '<title>নিতুর বেকারি</title><style>' +
           'body{margin:0;font-family:-apple-system,sans-serif;background:#fff5f8;' +
           'display:flex;min-height:100vh;align-items:center;justify-content:center}' +
