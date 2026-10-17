@@ -69,7 +69,7 @@ let flavourNoticeShown = false; // "select the exact flavour" notice — once pe
   } catch (e) {}
 })();
 
-// ─── Splash screen (short welcome, then fade to the entry screen) ──
+// ─── Splash screen (~2.5s welcome, then fade to the entry screen) ──
 (function initSplash() {
   const splash = document.getElementById('splash-screen');
   if (!splash) return;
@@ -116,9 +116,9 @@ let flavourNoticeShown = false; // "select the exact flavour" notice — once pe
       efx.appendChild(s);
     }
   }
-  // Keep the welcome animation short; the entry form is already ready below it.
+  // Let the full welcome animation play before showing the entry form.
   if (!splash.classList.contains('gone')) {
-    setTimeout(() => splash.classList.add('gone'), 1800);
+    setTimeout(() => splash.classList.add('gone'), 4500);
   }
 })();
 

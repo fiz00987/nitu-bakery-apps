@@ -5402,11 +5402,10 @@ T & C Applicable। ধন্যবাদ!`;
       }
       fx.appendChild(orbit);
     }
-    // Fade out as soon as the logo is actually painted, after a short brand
-    // beat — with a hard cap so a slow connection can never make the splash
-    // linger (it used to sit there for a fixed 4.5s no matter what).
-    const MIN_MS = 900;      // keep the brand beat without blocking the login screen
-    const MAX_MS = 1800;     // absolute ceiling
+    // Fade out as soon as the full logo animation and brand beat have played,
+    // while keeping a hard cap for a failed or unusually slow image request.
+    const MIN_MS = 1800;     // let the FULL logo-drop animation play + the brand beat
+    const MAX_MS = 3200;     // absolute ceiling
     const startedAt = Date.now();
     let hidden = false;
     const hideSplash = () => {
