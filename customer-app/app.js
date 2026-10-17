@@ -2045,20 +2045,122 @@ function checkTerms() {
   return true;
 }
 
+let missingFieldsFocusId = '';
+
+function requiredFieldLabel(id, fallbackBn, fallbackEn, labelId) {
+  const node = labelId
+    ? document.getElementById(labelId)
+    : document.querySelector(`label[for="${id}"]`);
+  const attr = node && node.getAttribute(lang === 'en' ? 'data-en' : 'data-bn');
+  if (attr) return attr.replace(/\s*\*\s*$/, '').trim();
+  return lang === 'en' ? fallbackEn : fallbackBn;
+}
+
+function collectMissingRequiredFields() {
+  const missing = [];
+  const addValue = (id, fallbackBn, fallbackEn, focusId = id, labelId) => {
+    const field = document.getElementById(id);
+    if (field && !String(field.value || '').trim()) {
+      missing.push({
+        label: requiredFieldLabel(id, fallbackBn, fallbackEn, labelId),
+        focusId
+      });
+    }
+  };
+
+  [
+    ['f-name', 'আপনার নাম', 'Your Name'],
+    ['f-weight', 'ওজন', 'Weight'],
+    ['f-cake-price', 'কেকের মূল মূল্য', 'Original cake price'],
+    ['f-flavour', 'ফ্লেভার', 'Flavour'],
+    ['f-date', 'ডেলিভারির তারিখ', 'Delivery Date'],
+    ['f-receiver', 'রিসিভারের নাম', 'Receiver Name'],
+    ['f-receiver-phone', 'রিসিভারের ফোন', 'Receiver Phone'],
+    ['f-advance', 'অগ্রিম পেমেন্টের পরিমাণ', 'Advance payment amount']
+  ].forEach(spec => addValue(...spec));
+
+  const delivery = document.getElementById('f-fulfilment');
+  if (delivery && delivery.value === 'delivery') {
+    addValue('f-address', 'ডেলিভারি ঠিকানা', 'Delivery Address');
+  }
+
+  const time = document.getElementById('f-timeslot');
+  const ampm = document.getElementById('f-time-ampm');
+  if ((time && !time.value.trim()) || (ampm && !ampm.value)) {
+    missing.push({
+      label: lang === 'en' ? 'Delivery Time' : 'ডেলিভারির সময়',
+      focusId: 'f-timeslot'
+    });
+  }
+
+  const paymentMethod = advanceMethod || (document.getElementById('f-payment-method') || {}).value || '';
+  if (!paymentMethod) {
+    missing.push({
+      label: requiredFieldLabel('f-payment-method', 'পেমেন্ট পদ্ধতি', 'Payment Method', 'payment-method-label'),
+      focusId: 'adv-opt-bkash'
+    });
+  }
+
+  if (!payShot) {
+    missing.push({
+      label: lang === 'en' ? 'Payment screenshot' : 'পেমেন্টের স্ক্রিনশট',
+      focusId: 'pay-shot-upload'
+    });
+  }
+
+  const terms = document.getElementById('f-terms');
+  if (terms && !terms.checked) {
+    const termsLabel = document.querySelector('#terms-box [data-bn]');
+    missing.push({
+      label: (termsLabel && termsLabel.getAttribute(lang === 'en' ? 'data-en' : 'data-bn') || (lang === 'en' ? 'Terms & conditions' : 'নিয়ম ও শর্তাবলী')).replace(/\s*\*\s*$/, '').trim(),
+      focusId: 'f-terms'
+    });
+    document.getElementById('terms-box').classList.add('error');
+  }
+  return missing;
+}
+
+function showMissingFieldsPopup(missing) {
+  const popup = document.getElementById('missing-fields-popup');
+  const list = document.getElementById('missing-fields-list');
+  if (!popup || !list || !missing.length) return;
+  missingFieldsFocusId = missing[0].focusId;
+  const english = lang === 'en';
+  document.getElementById('missing-fields-title').textContent = english ? 'Required information is missing' : 'প্রয়োজনীয় তথ্য বাকি আছে';
+  document.getElementById('missing-fields-intro').textContent = english
+    ? 'Please complete these fields before placing your order:'
+    : 'অর্ডার দেওয়ার আগে অনুগ্রহ করে নিচের তথ্যগুলো পূরণ করুন:';
+  document.getElementById('missing-fields-ok').textContent = english ? 'Okay' : 'ঠিক আছে';
+  list.replaceChildren(...missing.map(item => {
+    const li = document.createElement('li');
+    li.textContent = item.label;
+    return li;
+  }));
+  popup.classList.add('show');
+}
+
+function closeMissingFieldsPopup(event) {
+  const popup = document.getElementById('missing-fields-popup');
+  if (!popup || (event && event.target !== popup)) return;
+  popup.classList.remove('show');
+  const focusId = missingFieldsFocusId;
+  missingFieldsFocusId = '';
+  if (!focusId) return;
+  const target = document.getElementById(focusId);
+  if (!target) return;
+  setTimeout(() => {
+    target.focus();
+    if (typeof target.scrollIntoView === 'function') target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, 0);
+}
+
+const missingFieldsOkay = document.getElementById('missing-fields-ok');
+if (missingFieldsOkay) missingFieldsOkay.addEventListener('click', () => closeMissingFieldsPopup());
+
 // Validate
 function validate() {
-  const req = [
-    ['f-name', 'নাম দিন'], ['f-weight', 'ওজন নির্বাচন করুন'], ['f-cake-price', 'কেকের মূল্য দিন'], ['f-flavour', 'ফ্লেভার নির্বাচন করুন'],
-    ['f-date', 'তারিখ দিন'],
-    ['f-receiver', 'রিসিভারের নাম দিন'],
-    ['f-receiver-phone', 'রিসিভারের ফোন দিন'],
-    ['f-payment-method', 'পেমেন্ট পদ্ধতি নির্বাচন করুন'],
-    ['f-advance', 'অগ্রিম পরিমাণ দিন']
-  ];
-  for (const [id, msg] of req) {
-    const el = document.getElementById(id);
-    if (!el || !el.value.trim()) { showToast(msg); el.focus(); return false; }
-  }
+  const missing = collectMissingRequiredFields();
+  if (missing.length) { showMissingFieldsPopup(missing); return false; }
   // Admin-crossed closed day: the ONLY message the customer ever sees is this
   // submit-time refusal (the form itself shows no banners, warnings or hints).
   // The final LIVE re-check happens in submitOrder, so the last slot can
@@ -2159,6 +2261,12 @@ async function submitOrder() {
   orderSubmitInFlight = true;
   const submitButton = document.getElementById('submit-btn');
   if (submitButton) submitButton.disabled = true;
+  const missing = collectMissingRequiredFields();
+  if (missing.length) {
+    showMissingFieldsPopup(missing);
+    releaseOrderSubmit();
+    return;
+  }
   // Do not let a fast submit race the phone-scoped reward lookup.  The lookup
   // binds the approved reward to this order before the final live re-check.
   if (reviewRewardLoadPromise) {

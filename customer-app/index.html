@@ -206,6 +206,9 @@ input.due-input:focus{outline:none;border-color:#dcdcdc;box-shadow:none}
 .popup-header{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border);color:var(--pink-dark);flex-shrink:0}
 .popup-header h3{font-size:18px}.popup-close{border:0;background:none;font-size:24px;color:var(--text2)}
 .popup-content{flex:1 1 auto;min-height:0;padding:18px;white-space:pre-wrap;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;line-height:1.65;font-size:14px}
+.missing-fields-intro{margin:0 0 10px;color:var(--text2);font-size:13.5px;line-height:1.6}
+.missing-fields-list{margin:0;padding-left:22px;color:var(--text);font-size:14px;line-height:1.8}
+.missing-fields-list li::marker{color:var(--red)}
 .copy-button{margin:0;padding:4px 10px;border:1px solid currentColor;border-radius:var(--radius-xs);background:transparent;color:var(--green);font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0}
 .copy-button:active{transform:scale(.95)}
 .pay-line{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 0}
@@ -515,7 +518,7 @@ html.t-gold .order-number-badge{color:#a5813e}
     <div class="field" style="margin-top:12px">
       <label data-bn="💳 পেমেন্টের স্ক্রিনশট *" data-en="Payment screenshot *">💳 পেমেন্টের স্ক্রিনশট *</label>
       <input type="file" id="f-payshot" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="handlePayShot(event)">
-       <div class="photo-upload" onclick="document.getElementById('f-payshot').click()">📎<div data-bn="পেমেন্টের স্ক্রিনশট আপলোড করুন" data-en="Upload payment screenshot">পেমেন্টের স্ক্রিনশট আপলোড করুন</div></div>
+       <div class="photo-upload" id="pay-shot-upload" tabindex="-1" onclick="document.getElementById('f-payshot').click()">📎<div data-bn="পেমেন্টের স্ক্রিনশট আপলোড করুন" data-en="Upload payment screenshot">পেমেন্টের স্ক্রিনশট আপলোড করুন</div></div>
       <div class="photo-grid" id="payshot-grid"></div>
        <div class="note-box" data-bn="⚠️ bKash / Nagad / ব্যাংক পেমেন্টের কনফার্মেশন পেজের ছবি দিন। এডমিন এটা দেখেই অর্ডার কনফার্ম করবেন।" data-en="⚠️ Upload the bKash, Nagad or bank payment confirmation screen. The admin will check it before confirming your order.">⚠️ bKash / Nagad / ব্যাংক পেমেন্টের কনফার্মেশন পেজের ছবি দিন। এডমিন এটা দেখেই অর্ডার কনফার্ম করবেন।</div>
     </div>
@@ -578,6 +581,18 @@ html.t-gold .order-number-badge{color:#a5813e}
 
 <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
 <div class="toast" id="toast"></div>
+
+<!-- Required-field validation: collect every missing item before submission. -->
+<div class="popup-overlay" id="missing-fields-popup" onclick="closeMissingFieldsPopup(event)">
+  <div class="popup" style="max-width:400px" role="alertdialog" aria-modal="true" aria-labelledby="missing-fields-title">
+    <div class="popup-header"><h3 id="missing-fields-title" style="font-size:17px">প্রয়োজনীয় তথ্য বাকি আছে</h3><button type="button" class="popup-close" onclick="closeMissingFieldsPopup()" aria-label="Close">×</button></div>
+    <div class="popup-content">
+      <p class="missing-fields-intro" id="missing-fields-intro"></p>
+      <ul class="missing-fields-list" id="missing-fields-list"></ul>
+    </div>
+    <div style="padding:0 18px 18px"><button type="button" class="btn-primary" style="margin-top:0" id="missing-fields-ok">ঠিক আছে</button></div>
+  </div>
+</div>
 
 <!-- "How did you pay?" popup — DISABLED (gateway is picked from the inline
      payment section). Block kept hidden so no popup can ever open. -->

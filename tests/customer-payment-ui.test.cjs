@@ -60,6 +60,34 @@ test('customer app keeps mobile customers at one viewport scale', () => {
   dom.window.close();
 });
 
+test('customer submit shows every missing required field and Okay focuses the first one', async t => {
+  const { w, el } = form(t, 'customer-app');
+  w.setLang('en');
+  await w.submitOrder();
+
+  const popup = el('missing-fields-popup');
+  assert.equal(popup.classList.contains('show'), true);
+  assert.match(el('missing-fields-list').textContent, /Your Name/);
+  assert.match(el('missing-fields-list').textContent, /Delivery Address/);
+  assert.match(el('missing-fields-list').textContent, /Delivery Time/);
+  assert.match(el('missing-fields-list').textContent, /Payment screenshot/);
+  assert.match(el('missing-fields-list').textContent, /terms & conditions/);
+
+  el('missing-fields-ok').click();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(popup.classList.contains('show'), false);
+  assert.equal(w.document.activeElement, el('f-name'));
+});
+
+test('pickup validation does not list delivery address as missing', async t => {
+  const { w, el } = form(t, 'customer-app');
+  el('f-fulfilment').value = 'pickup';
+  w.onFulfilmentChange();
+  await w.submitOrder();
+  assert.doesNotMatch(el('missing-fields-list').textContent, /Delivery Address/);
+  assert.equal(el('missing-fields-popup').classList.contains('show'), true);
+});
+
 test('mini cake disables 50% advance as a native button', t => {
   const { w, el } = form(t, 'customer-app');
   el('f-cake-price').value = '1000';
