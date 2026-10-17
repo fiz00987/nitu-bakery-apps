@@ -121,7 +121,7 @@ body[data-lang="en"] {
 body {
   font-family: 'Poppins', 'Hind Siliguri', 'BN-Digits', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg);
-  background-image: url('https://images.unsplash.com/photo-1517433670267-08bbd4be890f?w=1200&q=60');
+  background-image: url('bg-1.jpg');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -1403,7 +1403,7 @@ button { cursor: pointer; }
    LOGIN SCREEN
    ============================================= */
 /* SPLASH (welcome, ~2.5s) */
-.splash-screen{position:fixed;inset:0;z-index:5000;background:#fbf4e8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .6s ease,visibility .6s}
+.splash-screen{position:fixed;inset:0;z-index:5000;background:#fbf4e8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .35s ease,visibility .35s}
 /* Splash photo layer — sits UNDER the fx/logo/chip, slightly faded */
 .splash-bg{position:absolute;inset:0;background:url('splash-bg.jpg') center/cover no-repeat;opacity:.30;pointer-events:none}
 .splash-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(251,244,232,.25),rgba(251,244,232,.05) 45%,rgba(251,244,232,.35))}
@@ -3151,7 +3151,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 
 <script>
 /* =============================================================

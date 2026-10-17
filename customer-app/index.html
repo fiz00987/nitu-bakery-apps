@@ -11,6 +11,7 @@
 <link rel="icon" type="image/png" href="logo.png">
 <link rel="apple-touch-icon" href="logo.png">
 <link rel="manifest" href="manifest.json">
+<link rel="preload" as="image" href="logo.png" fetchpriority="high">
 <script src="./viewport-lock.js?v=2026-10-17-customer-zoom-lock"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,14 +39,14 @@ html,body{width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none
    Listed FIRST in the body stack so digits always use it; everything else stays
    in Hind Siliguri / Poppins. */
 @font-face{font-family:'BN-Digits';font-style:normal;font-display:swap;font-weight:400 700;src:url('https://fonts.gstatic.com/s/notosansbengali/v33/Cn-fJsCGWQxOjaGwMQ6fIiMywrNJIky6nvd8BjzVMvJx2mc4I3mYvNY.woff2') format('woff2');unicode-range:U+09E6-09EF}
-body{font-family:'BN-Digits','Hind Siliguri','Poppins',-apple-system,sans-serif;background:linear-gradient(rgba(247,244,246,.91),rgba(247,244,246,.96)),url('https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=75') center/cover fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+body{font-family:'BN-Digits','Hind Siliguri','Poppins',-apple-system,sans-serif;background-color:#f7f4f6;background-image:linear-gradient(rgba(247,244,246,.91),rgba(247,244,246,.96));background-position:center;background-size:cover;background-attachment:fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
 body:lang(en),body:lang(en) input,body:lang(en) select,body:lang(en) textarea,body:lang(en) button{font-family:'Poppins',-apple-system,sans-serif}
 input,select,textarea,button{font-family:inherit;font-size:inherit}
 button{cursor:pointer}
 button:focus-visible,a:focus-visible{outline:3px solid var(--pink);outline-offset:3px}
 
 /* SPLASH (welcome, ~2.5s) */
-.splash-screen{position:fixed;inset:0;z-index:5000;background:#fbf4e8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .6s ease,visibility .6s}
+.splash-screen{position:fixed;inset:0;z-index:5000;background:#fbf4e8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .35s ease,visibility .35s}
 /* Client photo layer — random bakery photo behind the splash, slightly faded */
 .splash-bg{position:absolute;inset:0;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:.30;pointer-events:none}
 .splash-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(251,244,232,.25),rgba(251,244,232,.05) 45%,rgba(251,244,232,.35))}
@@ -288,7 +289,7 @@ html.t-gold{
   --shadow-sm:0 1px 4px rgba(90,70,35,.07),0 0 0 1px rgba(90,70,35,.04);
   --shadow-md:0 4px 18px rgba(90,70,35,.10),0 1px 4px rgba(90,70,35,.05);
 }
-html.t-gold body{background:linear-gradient(rgba(246,241,231,.92),rgba(246,241,231,.96)),url('https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=75') center/cover fixed}
+html.t-gold body{background-color:#f6f1e7;background-image:linear-gradient(rgba(246,241,231,.92),rgba(246,241,231,.96));background-position:center;background-size:cover;background-attachment:fixed}
 /* Gold button text — dark ink on gold reads best */
 html.t-gold .btn-primary,html.t-gold .weight-preset.active,html.t-gold .lang .on{color:#2a2317}
 /* Keep the login (entry) + splash screens exactly as designed */
