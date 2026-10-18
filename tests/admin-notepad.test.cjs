@@ -219,6 +219,69 @@ test('baking item pages enforce the 30-item limit inside the transaction', async
   assert.equal(Object.keys(h2.state.pages[0].items).length, 30);
 });
 
+test('items can be added without a price, then show a green priced tick without disappearing', async t => {
+  const h = await harness(t, { 0: page('Pending prices') });
+  h.el('notepad-item-name').value = 'Fresh cream';
+  h.el('notepad-item-detail').value = '2 packs';
+  h.el('notepad-item-price').value = '';
+  assert.equal(await h.notebook.addItem(), true);
+  assert.equal(h.state.pages[0].items['item-1'].price, undefined);
+  assert.equal(h.state.pages[0].items['item-1'].expense, undefined);
+  assert.equal(h.el('notepad-checklist').querySelectorAll('.np-check-row').length, 1);
+  assert.equal(h.el('notepad-checklist').querySelector('.np-priced-badge').hidden, true);
+
+  const price = h.expenseInput('item-1', 'amount');
+  price.value = '2300';
+  price.dispatchEvent(new h.w.Event('input'));
+  const pendingBadge = h.el('notepad-checklist').querySelector('.np-priced-badge');
+  assert.equal(pendingBadge.hidden, false, 'a valid typed price shows the tick immediately');
+  assert.equal(pendingBadge.parentElement.className, 'np-item-main', 'the tick sits beside the item');
+  assert.equal(h.el('notepad-checklist').querySelectorAll('.np-check-row').length, 1, 'pricing never removes the row');
+  assert.equal(h.state.pages[0].items['item-1'].price, undefined, 'typing alone remains a local draft until flushed');
+
+  assert.equal(await h.notebook.flush(), true);
+  assert.equal(h.state.pages[0].items['item-1'].price, 2300);
+  assert.equal(h.state.pages[0].items['item-1'].expense.amount, 2300);
+  assert.equal(h.el('notepad-checklist').querySelectorAll('.np-check-row').length, 1);
+  assert.equal(h.el('notepad-checklist').querySelector('.np-priced-badge').hidden, false);
+});
+
+test('a baking item can be removed one at a time without changing the rest of the page', async t => {
+  const h = await harness(t, { 0: page('Keep this note', {
+    items: {
+      first: { name: 'Fresh cream', quantity: '2 packs', checked: false, extra: 'preserve this' },
+      second: { name: 'Flour', quantity: '1 kg', checked: false }
+    }, pageField: 'preserve this too'
+  }) });
+  const button = h.el('notepad-checklist').querySelector('.np-item-remove');
+  assert.ok(button, 'each row has a manual remove control');
+  button.click();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(h.state.pages[0].items.first, undefined);
+  assert.deepEqual(h.state.pages[0].items.second, { name: 'Flour', quantity: '1 kg', checked: false });
+  assert.equal(h.state.pages[0].text, 'Keep this note');
+  assert.equal(h.state.pages[0].pageField, 'preserve this too');
+  assert.equal(h.el('notepad-checklist').querySelectorAll('.np-check-row').length, 1);
+});
+
+test('Remove all clears only the current page item rows and leaves the page available', async t => {
+  const h = await harness(t, { 0: page('Keep this note', {
+    items: {
+      first: { name: 'Fresh cream', quantity: '2 packs', checked: false },
+      second: { name: 'Flour', quantity: '1 kg', checked: false }
+    }, pageField: 'preserve this too'
+  }) });
+  const removeAll = h.el('notepad-remove-all-items');
+  assert.equal(removeAll.disabled, false);
+  removeAll.click();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(h.state.pages[0].items, {});
+  assert.equal(h.state.pages[0].text, 'Keep this note');
+  assert.equal(h.state.pages[0].pageField, 'preserve this too');
+  assert.equal(h.el('notepad-checklist').querySelectorAll('.np-check-row').length, 0);
+  assert.equal(removeAll.disabled, true);
+});
+
 test('asynchronous photo upload stays on the originating page after switching tabs', async t => {
   const h = await harness(t, { 0: page('Shopping'), 1: page('Recipe', { category: 'baking' }) });
   h.notebook.addPhoto({ files: [{}], value: 'image.png' });

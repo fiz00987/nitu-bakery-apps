@@ -23,10 +23,15 @@ or use **Move page to** to organize an existing page.
 
 ## Baking items and expense totals
 
-- The Baking Items page has one add row with **name**, **quantity**, and total
-  **price**. Press **＋** to save the row and add another; a page accepts at
-  most 30 items. For example: `Everwhip whipped cream · 4 piece · ৳2300`, then
-  `Baking powder · 500 gram · ৳400`.
+- The Baking Items page has one add row with **name**, **quantity**, and an
+  optional total **price**. Press **＋** to save the row and add another; a page
+  accepts at most 30 items even when their prices are still blank. For example:
+  `Everwhip whipped cream · 4 piece · ৳2300`, then
+  `Baking powder · 500 gram · [price pending]`.
+- Entering a valid price shows a green **✓ Priced** mark beside that row and
+  adds the price to the expense list. Pricing never removes or hides the row:
+  rows remain until the admin removes one with its **×** control or uses
+  **Remove all** for the current page.
 - A newly entered price is dated automatically for the day it is saved, so the
   price is included in that month's dashboard total. Editing the price keeps
   its existing expense date.

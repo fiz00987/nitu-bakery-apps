@@ -2568,7 +2568,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
   .reward-summary strong { font-size: 15px; }
 }
 </style>
-<link rel="stylesheet" href="./notepad.css?v=2026-10-15-baking-notebook">
+<link rel="stylesheet" href="./notepad.css?v=2026-10-18-pending-items">
 </head>
 <body>
 
@@ -2793,12 +2793,15 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
             <div id="notepad-photos" class="np-photos"></div>
             <details class="np-section" id="notepad-shopping" open>
               <summary class="np-section-title"><span data-np-en="🛒 Baking Items" data-np-bn="🛒 বেকিং আইটেম">🛒 বেকিং আইটেম</span><small id="notepad-check-progress">0/30</small></summary>
-              <p class="np-expense-hint" data-np-en="Add one row at a time: name, quantity, and total price. Prices are added to this month's Total Expense." data-np-bn="একবারে একটি সারি যোগ করুন: নাম, পরিমাণ ও মোট দাম। দাম এই মাসের মোট খরচে যোগ হবে।">একবারে একটি সারি যোগ করুন: নাম, পরিমাণ ও মোট দাম। দাম এই মাসের মোট খরচে যোগ হবে।</p>
+              <p class="np-expense-hint" data-np-en="Add up to 30 items even without a price. A green tick appears when a price is entered. Items stay until you remove them manually." data-np-bn="দাম ছাড়াই সর্বোচ্চ ৩০টি আইটেম যোগ করুন। দাম দিলে সবুজ টিক দেখা যাবে। আপনি হাতে না সরানো পর্যন্ত আইটেম থাকবে।">দাম ছাড়াই সর্বোচ্চ ৩০টি আইটেম যোগ করুন। দাম দিলে সবুজ টিক দেখা যাবে। আপনি হাতে না সরানো পর্যন্ত আইটেম থাকবে।</p>
               <div class="np-add-item">
                 <input id="notepad-item-name" maxlength="120" aria-label="Baking item name" data-np-aria-en="Baking item name" data-np-aria-bn="বেকিং আইটেমের নাম" data-np-placeholder-en="Everwhip whipped cream" data-np-placeholder-bn="এভারহুইপ হুইপড ক্রিম" placeholder="এভারহুইপ হুইপড ক্রিম">
                 <input id="notepad-item-detail" maxlength="80" aria-label="Quantity" data-np-aria-en="Quantity" data-np-aria-bn="পরিমাণ" data-np-placeholder-en="4 piece / 500 gram" data-np-placeholder-bn="৪ পিস / ৫০০ গ্রাম" placeholder="৪ পিস / ৫০০ গ্রাম">
-                <input id="notepad-item-price" type="number" min="0" step="0.01" inputmode="decimal" maxlength="14" aria-label="Baking item price" data-np-aria-en="Baking item price" data-np-aria-bn="বেকিং আইটেমের দাম" data-np-placeholder-en="Price" data-np-placeholder-bn="দাম" placeholder="দাম">
+                <input id="notepad-item-price" type="number" min="0" step="0.01" inputmode="decimal" maxlength="14" aria-label="Baking item price (optional)" data-np-aria-en="Baking item price (optional)" data-np-aria-bn="বেকিং আইটেমের দাম (ঐচ্ছিক)" data-np-placeholder-en="Price (optional)" data-np-placeholder-bn="দাম (ঐচ্ছিক)" placeholder="দাম (ঐচ্ছিক)">
                 <button type="button" class="np-btn" onclick="App.notepadAddItem()" aria-label="Add baking item" data-np-aria-en="Add baking item" data-np-aria-bn="বেকিং আইটেম যোগ করুন">＋</button>
+              </div>
+              <div class="np-list-actions" role="group" aria-label="Baking item list actions" data-np-aria-en="Baking item list actions" data-np-aria-bn="বেকিং আইটেম তালিকার কাজ">
+                <button type="button" id="notepad-remove-all-items" class="np-btn np-remove-all-items" aria-label="Remove all baking items" data-np-en="Remove all" data-np-bn="সব আইটেম সরান" data-np-aria-en="Remove all baking items" data-np-aria-bn="সব বেকিং আইটেম সরান">সব আইটেম সরান</button>
               </div>
               <div id="notepad-checklist"></div>
             </details>
@@ -3213,7 +3216,7 @@ function isIosDevice() {
 }
 </script>
 
-<script src="./notepad.js?v=2026-10-15-baking-notebook"></script>
+<script src="./notepad.js?v=2026-10-18-pending-items"></script>
 <script src="./app.js?v=2026-10-15-baking-notebook"></script>
 
 <!-- PUSH NOTIFICATION SYSTEM (Firebase Cloud Messaging / Web Push) — deferred so

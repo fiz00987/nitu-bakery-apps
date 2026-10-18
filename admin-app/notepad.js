@@ -144,7 +144,7 @@ window.NituNotepad = (() => {
     };
     let pages = {}, legacy = null, ready = false, active = null, category = 'cake', activeView = 'cake';
     let drafts = {}, user = '', epoch = 0, loadSequence = 0, timer = null;
-    let addingItem = null;
+    let addingItem = null, removeAllJob = null;
     const saving = new Map();
     const expenseDrafts = new Map();
     const expenseSaving = new Map();
@@ -218,6 +218,12 @@ window.NituNotepad = (() => {
             : item?.purchaseDate ?? item?.expenseDate ?? item?.priceDate ?? item?.date;
       return { amount: normalizeAmount(rawAmount), date: normalizeDate(rawDate) };
     };
+    const itemIsPriced = (item, draft = null) => {
+      const rawAmount = draft && Object.hasOwn(draft.patch || {}, 'amount')
+        ? draft.values?.amount
+        : expenseValues(item).amount;
+      return normalizeAmount(rawAmount) != null;
+    };
     const reconcileExpenseDrafts = raw => {
       expenseDrafts.forEach(draft => {
         const item = raw?.[draft.pageKey]?.items?.[draft.itemKey];
@@ -245,6 +251,44 @@ window.NituNotepad = (() => {
         }));
       } catch (e) {}
     };
+    const askConfirm = (title, message, isGreen = false) => new Promise(resolve => {
+      let settled = false;
+      const done = result => {
+        if (settled) return;
+        settled = true;
+        resolve(!!result);
+      };
+      try {
+        if (typeof confirm !== 'function') done(false);
+        else confirm(title, message, isGreen, done);
+      } catch (e) { done(false); }
+    });
+    const matchesExpenseDraft = (draft, pageKey, itemKey = null) => draft
+      && String(draft.pageKey) === String(pageKey)
+      && (itemKey == null || String(draft.itemKey) === String(itemKey));
+    const settleExpenseDrafts = async (pageKey, itemKey = null) => {
+      const keys = [...expenseDrafts.entries()]
+        .filter(([, draft]) => matchesExpenseDraft(draft, pageKey, itemKey))
+        .map(([key]) => key);
+      keys.forEach(key => {
+        const draft = expenseDrafts.get(key);
+        if (draft?.timer) clearTimeout(draft.timer);
+        if (draft) draft.timer = null;
+      });
+      const jobs = keys.map(key => expenseSaving.get(key)).filter(Boolean);
+      if (jobs.length) await Promise.allSettled(jobs);
+    };
+    const forgetExpenseDrafts = (pageKey, itemKey = null) => {
+      let changed = false;
+      [...expenseDrafts.entries()]
+        .filter(([, draft]) => matchesExpenseDraft(draft, pageKey, itemKey))
+        .forEach(([key, draft]) => {
+          if (draft?.timer) clearTimeout(draft.timer);
+          expenseDrafts.delete(key);
+          changed = true;
+        });
+      if (changed) persistExpenseDrafts();
+    };
     const scopedDraftKey = () => 'nitu-note-drafts-v1:' + user;
     const persist = () => {
       if (!user) return;
@@ -265,7 +309,7 @@ window.NituNotepad = (() => {
       clearTimeout(timer);
       expenseDrafts.forEach(draft => { if (draft.timer) clearTimeout(draft.timer); });
       pages = {}; legacy = null; ready = false; active = null; category = 'cake'; activeView = 'cake';
-      drafts = {}; user = ''; addingItem = null; saving.clear(); expenseDrafts.clear(); expenseSaving.clear();
+      drafts = {}; user = ''; addingItem = null; removeAllJob = null; saving.clear(); expenseDrafts.clear(); expenseSaving.clear();
       Object.keys(lastPage).forEach(key => delete lastPage[key]);
       el('notepad-overlay').classList.remove('open');
       document.body.style.overflow = '';
@@ -459,6 +503,9 @@ window.NituNotepad = (() => {
     const render = (force = false) => {
       reconcileExpenseDrafts(pages);
       const visible = choosePage(), page = current(), draft = drafts[active], tool = isToolView(activeView);
+      bindRemoveAllButton();
+      const removeAllButton = el('notepad-remove-all-items');
+      if (removeAllButton && (!page || category !== 'cake')) removeAllButton.disabled = true;
       document.querySelectorAll('[data-np-en]').forEach(node => { node.textContent = say(node.dataset.npEn, node.dataset.npBn); });
       document.querySelectorAll('[data-np-placeholder-en]').forEach(node => { node.placeholder = say(node.dataset.npPlaceholderEn, node.dataset.npPlaceholderBn); });
       document.querySelectorAll('[data-np-aria-en]').forEach(node => { node.setAttribute('aria-label', say(node.dataset.npAriaEn, node.dataset.npAriaBn)); });
@@ -604,6 +651,19 @@ window.NituNotepad = (() => {
       }
       return [key, draft];
     };
+    const refreshPricedBadge = itemKey => {
+      const list = el('notepad-checklist');
+      const row = list && [...list.querySelectorAll('.np-check-row')]
+        .find(node => node.dataset.itemKey === String(itemKey));
+      const badge = row?.querySelector('.np-priced-badge');
+      const item = current()?.items?.[itemKey];
+      if (!badge || !item) return;
+      const draft = expenseDrafts.get(expenseDraftKey(active, itemKey));
+      const priced = itemIsPriced(item, draft);
+      badge.hidden = !priced;
+      badge.textContent = say('✓ Priced', '✓ দাম দেওয়া হয়েছে');
+      badge.setAttribute('aria-label', say('Price entered', 'দাম দেওয়া হয়েছে'));
+    };
     const saveExpenseDraft = async key => {
       const running = expenseSaving.get(key);
       if (running) return running.then(() => expenseDrafts.has(key) ? saveExpenseDraft(key) : true);
@@ -712,6 +772,7 @@ window.NituNotepad = (() => {
       }
       persistExpenseDrafts();
       renderStatus();
+      refreshPricedBadge(itemKey);
       return valid;
     };
     const setItemExpense = async (itemKey, patch = {}) => {
@@ -742,8 +803,11 @@ window.NituNotepad = (() => {
           ? say('Maximum 30 items reached', 'সর্বোচ্চ ৩০টি আইটেম যোগ হয়েছে')
           : say('Add baking item', 'বেকিং আইটেম যোগ করুন');
       }
+      const removeAllButton = el('notepad-remove-all-items');
+      if (removeAllButton) removeAllButton.disabled = category !== 'cake' || !items.length || !!removeAllJob;
       items.forEach(([key, item]) => {
         const row = document.createElement('div'); row.className = 'np-check-row' + (item.checked ? ' checked' : '');
+        row.dataset.itemKey = String(key);
         const main = document.createElement('label'); main.className = 'np-check-main';
         const check = document.createElement('input'); check.type = 'checkbox'; check.checked = !!item.checked;
         check.dataset.itemKey = String(key);
@@ -778,7 +842,20 @@ window.NituNotepad = (() => {
         date.onchange = () => queueExpenseSave(key, 'date', date.value, date, true);
         dateLabel.append(dateText, date);
         fields.append(amountLabel, dateLabel);
-        row.append(main, fields); list.append(row);
+
+        const actions = document.createElement('div'); actions.className = 'np-item-actions';
+        const badge = document.createElement('span'); badge.className = 'np-priced-badge';
+        badge.hidden = !itemIsPriced(item, draft);
+        badge.textContent = say('✓ Priced', '✓ দাম দেওয়া হয়েছে');
+        badge.setAttribute('aria-label', say('Price entered', 'দাম দেওয়া হয়েছে'));
+        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'np-item-remove';
+        remove.textContent = '×'; remove.dataset.itemKey = String(key);
+        remove.setAttribute('aria-label', say(`Remove ${name}`, `${name} সরান`));
+        remove.onclick = event => { event?.preventDefault?.(); event?.stopPropagation?.(); void removeItem(key); };
+        const itemMain = document.createElement('div'); itemMain.className = 'np-item-main';
+        itemMain.append(main, badge);
+        actions.append(remove);
+        row.append(itemMain, fields, actions); list.append(row);
       });
       if (focused?.itemKey != null) {
         const target = [...list.querySelectorAll('input[data-item-key]')].find(input =>
@@ -930,6 +1007,82 @@ window.NituNotepad = (() => {
         return false;
       }
     };
+    const removeItem = async itemKey => {
+      const pageKey = active, item = current()?.items?.[itemKey], session = epoch;
+      if (pageKey == null || !item || typeof item !== 'object') return false;
+      const name = String(item.name || say('this item', 'এই আইটেমটি'));
+      if (!await askConfirm(
+        say('Remove this baking item?', 'এই বেকিং আইটেমটি সরাবেন?'),
+        say(`Only “${name}” will be removed.`, `শুধু “${name}” সরানো হবে।`),
+        false
+      )) return false;
+      try {
+        await settleExpenseDrafts(pageKey, itemKey);
+        await commitPage(pageKey, page => {
+          const existing = page.items?.[itemKey];
+          if (!existing || typeof existing !== 'object') return;
+          const items = { ...(page.items || {}) };
+          delete items[itemKey];
+          return { ...page, items };
+        });
+        forgetExpenseDrafts(pageKey, itemKey);
+        render();
+        signalExpensesChanged('item-removed', pageKey, itemKey);
+        sync('ok');
+        return true;
+      } catch (e) {
+        if (session !== epoch) return false;
+        render();
+        sync('error', say('Item not removed', 'আইটেম সরানো যায়নি'));
+        toast(say('Item not removed. Please retry.', 'আইটেম সরানো হয়নি। আবার চেষ্টা করুন।'));
+        return false;
+      }
+    };
+    const removeAllItems = async () => {
+      if (removeAllJob) return removeAllJob;
+      const pageKey = active, items = entries(current()?.items), session = epoch;
+      if (pageKey == null || !items.length) return false;
+      const job = (async () => {
+        if (!await askConfirm(
+          say('Remove all baking items?', 'সব বেকিং আইটেম সরাবেন?'),
+          say('Every baking-item row on this page will be removed.', 'এই পেজের সব বেকিং আইটেমের সারি সরানো হবে।'),
+          false
+        )) return false;
+        try {
+          await settleExpenseDrafts(pageKey);
+          await commitPage(pageKey, page => {
+            if (!entries(page.items).length) return;
+            return { ...page, items: {} };
+          });
+          forgetExpenseDrafts(pageKey);
+          render();
+          signalExpensesChanged('items-removed', pageKey);
+          sync('ok');
+          return true;
+        } catch (e) {
+          if (session !== epoch) return false;
+          render();
+          sync('error', say('Items not removed', 'আইটেমগুলো সরানো যায়নি'));
+          toast(say('Items not removed. Please retry.', 'আইটেমগুলো সরানো হয়নি। আবার চেষ্টা করুন।'));
+          return false;
+        }
+      })().finally(() => {
+        if (removeAllJob === job) removeAllJob = null;
+        if (session === epoch) render();
+      });
+      removeAllJob = job;
+      render();
+      return job;
+    };
+    const bindRemoveAllButton = () => {
+      const button = el('notepad-remove-all-items');
+      if (!button || button.dataset.npRemoveAllBound === '1') return;
+      button.dataset.npRemoveAllBound = '1';
+      button.onclick = event => {
+        event?.preventDefault?.();
+        if (!button.disabled) void removeAllItems();
+      };
+    };
     const toggleItem = async (id, checked) => {
       const key = active;
       try {
@@ -1000,7 +1153,7 @@ window.NituNotepad = (() => {
     render();
     return {
       activate, reset, receive, render, open, close, addPage, switchCategory, switchPage, movePage,
-      addPhoto, removePhoto, addItem, updateItem, updateItemNameQuantity: updateItem,
+      addPhoto, removePhoto, addItem, removeItem, removeAllItems, updateItem, updateItemNameQuantity: updateItem,
       updateItemDetails: updateItem, updateItemFields: updateItem, editItem: updateItem,
       toggleItem, setItemExpense, setItemPrice: (itemKey, price) => setItemExpense(itemKey, { amount: price }),
       getExpenses, getExpenseItems: getExpenses, expenseChangeEvent: EXPENSE_CHANGE_EVENT,
