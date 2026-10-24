@@ -3,6 +3,24 @@
 .np-workspace [hidden] { display: none !important; }
 .np-workspace .cal-popup-title { font-size: 18px; }
 .np-eyebrow { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--text3); margin-bottom: 3px; }
+.np-mode-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0 12px; }
+.np-mode-tab { border: 1.5px solid var(--border); border-radius: 12px; padding: 11px 12px; background: var(--surface2); color: var(--text2); cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 700; line-height: 1.35; text-align: left; }
+.np-mode-tab.active { border-color: var(--pink); background: var(--pink-light); color: var(--pink); box-shadow: 0 0 0 2px var(--pink-glow); }
+.np-mode-icon { font-size: 20px; display: inline-block; margin-right: 6px; vertical-align: middle; }
+.np-mode-tab small { display: block; margin-top: 4px; padding-left: 31px; font-size: 10px; font-weight: 500; opacity: .8; }
+.np-basic-view { min-height: 330px; }
+.np-basic-hint { font-size: 11.5px; color: var(--text3); margin: 2px 0 10px; line-height: 1.5; }
+.np-basic-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 9px; }
+.np-basic-toolbar select { flex: 1; min-width: 0; }
+.np-basic-toolbar .np-btn { flex: 0 0 auto; }
+.np-basic-clear { border-color: rgba(198, 40, 40, .35) !important; background: var(--red-light) !important; color: var(--red) !important; }
+#notepad-basic-text { width: 100%; min-height: 46vh; max-height: 65vh; resize: vertical; border: 1.5px solid var(--pink-soft); border-radius: 10px; padding: 12px; font-size: 15px; line-height: 1.7; font-family: inherit; color: var(--text); background: var(--surface2); outline: none; }
+#notepad-basic-text:focus { border-color: var(--pink); }
+#notepad-basic-text:disabled { opacity: .65; cursor: not-allowed; }
+#notepad-basic-photos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 9px; }
+.np-basic-photo-wrap { position: relative; width: 78px; height: 78px; }
+.np-basic-photo-wrap .np-thumb { width: 100%; height: 100%; object-fit: cover; }
+.np-basic-photo-remove { position: absolute; right: -6px; top: -6px; border-radius: 50%; border: 0; background: var(--red); color: #fff; width: 23px; height: 23px; cursor: pointer; }
 .np-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin: 16px 0 12px; }
 .np-tab { border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 8px; background: var(--surface2); color: var(--text2); cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 700; line-height: 1.5; text-align: left; }
 .np-tab.active { border-color: var(--pink); background: var(--pink-light); color: var(--pink); box-shadow: 0 0 0 2px var(--pink-glow); }
@@ -85,6 +103,13 @@
 .np-footer { display: flex; justify-content: space-between; gap: 10px; align-items: center; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 14px; }
 @media (max-width: 640px) {
   #notepad-overlay .np-workspace { padding: 14px 12px; }
+  .np-mode-tabs { gap: 5px; }
+  .np-mode-tab { padding: 9px 7px; font-size: 10px; }
+  .np-mode-icon { font-size: 17px; margin-right: 3px; }
+  .np-mode-tab small { padding-left: 24px; font-size: 8.5px; }
+  .np-basic-toolbar { flex-wrap: wrap; }
+  .np-basic-toolbar select { flex-basis: 100%; }
+  .np-basic-toolbar .np-btn { flex: 1 1 auto; }
   .np-layout { grid-template-columns: minmax(0, 1fr); }
   .np-page-meta { grid-template-columns: minmax(0, 1fr) 135px; gap: 7px; }
   .np-tab { padding: 8px 4px; font-size: 9.5px; line-height: 1.25; }

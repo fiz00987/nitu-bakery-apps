@@ -1,8 +1,11 @@
 # Bakery notebook
 
-The admin notebook opens **Baking Items** first, followed by **Baking Instructions**
-and **Other**. Every category has its own page list. Give pages a title, add pages,
-or use **Move page to** to organize an existing page.
+The admin notebook opens the original **Basic notebook** first: a simple shopping
+notepad with page switching, photos, and free text. The **Advanced notebook** tab
+opens the current workspace, which starts on **Baking Items**, followed by
+**Baking Instructions** and **Other**. Only one notebook surface is shown at a
+time. Every advanced category has its own page list. Give pages a title, add
+pages, or use **Move page to** to organize an existing page.
 
 ## Existing notes
 

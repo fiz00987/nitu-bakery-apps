@@ -11,12 +11,13 @@
    ============================================= */
 'use strict';
 
-const CACHE_NAME = 'nitu-bakery-v28';
+const CACHE_NAME = 'nitu-bakery-v29-basic-advanced-notebook';
 
 const APP_SHELL = [
   './',
   './index.html',
   './utils.js',
+  './basic-notepad.js?v=2026-10-24-basic-advanced-notebook',
   './app.js',
   './notepad.js',
   './notepad.css',

@@ -64,6 +64,8 @@ window.App = (() => {
   let savedScrollY  = 0;            // list scroll pos to restore after the modal closes
   let currentDelPhoto = '';         // completed-cake photo (≤50KB data URL)
   let notepad = null;
+  let basicNotepad = null;
+  let activeNotepadMode = 'basic';
   let notebookExpenseItems = [];
   let notebookExpensesReady = false;
   let offDays       = {};           // 'YYYY-MM-DD' → { reason, ... }
@@ -461,6 +463,7 @@ window.App = (() => {
     applyI18n();
     render();
     if (notepad) notepad.render();
+    if (basicNotepad) basicNotepad.render();
     syncTopbarHeight();  // labels change → re-measure the sticky offset
   };
 
@@ -905,6 +908,7 @@ window.App = (() => {
       dayBooksReady = false;
       lastDayBooksFp = '';
       if (notepad) notepad.reset();
+      if (basicNotepad) basicNotepad.reset();
       currentPhoto = '';
       currentPhotos = [];
       adminExtraPhotos = {};
@@ -921,6 +925,7 @@ window.App = (() => {
     currentUser = user;
     if (user) {
       if (notepad) notepad.activate(user.uid);
+      if (basicNotepad) basicNotepad.activate(user.uid);
       // User is signed in - show main app
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('last-sync-text').textContent = user.email;
@@ -1163,6 +1168,7 @@ window.App = (() => {
         pagesRef.on('value', snap => {
           if (session !== authSession || !currentUser || currentUser.uid !== user.uid) return;
           notepad.receive(snap.val());
+          if (basicNotepad) basicNotepad.receive(snap.val());
         }, err => {
           if (session === authSession && currentUser && currentUser.uid === user.uid) console.error('Notepad listener error:', err);
         });
@@ -1474,6 +1480,8 @@ window.App = (() => {
     // Cake due comes from dueAmt() (cake money ONLY — the delivery charge
     // never folds into it). Delivery counts as paid ONLY on an explicit
     // 'paid' (missing/blank/unpaid = still owed, the agent collects it).
+    // When the agency has not provided the charge, keep the SRS amount blank
+    // instead of inventing a visible 0/-.
     //   cake due + delivery due → ⚠️ Due- Cake 560 + Delivery Charge : 200/-
     //   everything paid         → Full Paid ✅
     //   cake paid, delivery due → Full Paid ✅ ⚠️ Delivery Charge - 170/-
@@ -1483,13 +1491,15 @@ window.App = (() => {
     const mny = n => String(Math.round(Number(n) || 0));
     const cakeDue = Math.max(0, Math.round(dueAmt(o)));
     const dcDue   = !isPickupOrder(o) && o.deliveryPaid !== 'paid';
-    const dcAmt   = dcIsApprox(o) ? 0 : dcAmtOf(o);   // approx = agency hasn't confirmed → 0/- until typed
+    const dcUnknown = dcIsApprox(o);
+    const dcAmt   = dcUnknown ? 0 : dcAmtOf(o);
+    const dcText  = dcUnknown ? '' : `${mny(dcAmt)}/-`;
     if (cakeDue > 0 && dcDue) {
-      msg += `⚠️ Due- Cake ${mny(cakeDue)} + Delivery Charge : ${mny(dcAmt)}/-`;
+      msg += `⚠️ Due- Cake ${mny(cakeDue)} + Delivery Charge : ${dcText}`;
     } else if (cakeDue > 0) {
       msg += `⚠️ Due- Cake ${mny(cakeDue)}`;
     } else if (dcDue) {
-      msg += `Full Paid ✅ ⚠️ Delivery Charge - ${mny(dcAmt)}/-`;
+      msg += `Full Paid ✅ ⚠️ Delivery Charge - ${dcText}`;
     } else {
       // Paid in full — when a delivery charge was really paid, name it here.
       msg += dcAmt > 0 ? `Full Paid ✅ & Delivery Charge - ${mny(dcAmt)}/-` : `Full Paid ✅`;
@@ -2924,6 +2934,46 @@ T & C Applicable। ধন্যবাদ!`;
     photoUrl: safeImageUrl, compressPhoto: compressNotepadPhoto,
     openPhoto: src => openLightboxFor(src)
   });
+  if (window.NituBasicNotepad) {
+    basicNotepad = window.NituBasicNotepad.create({
+      pagesRef, notesRef, toast: showToast, sync: setSyncStatus,
+      confirm: (...args) => showConfirm(...args), language: () => lang,
+      photoUrl: safeImageUrl, compressPhoto: compressNotepadPhoto,
+      openPhoto: src => openLightboxFor(src)
+    });
+  }
+  const renderNotepadMode = () => {
+    if (window.NituNotebookModes) window.NituNotebookModes.show(activeNotepadMode);
+  };
+  const switchNotepadMode = async mode => {
+    const next = mode === 'advanced' ? 'advanced' : 'basic';
+    if (next === activeNotepadMode) {
+      renderNotepadMode();
+      return true;
+    }
+    const flushed = activeNotepadMode === 'basic'
+      ? (!basicNotepad || await basicNotepad.flush())
+      : await notepad.flush();
+    if (!flushed) return false;
+    activeNotepadMode = next;
+    if (next === 'basic' && basicNotepad) await basicNotepad.open();
+    else notepad.render(true);
+    renderNotepadMode();
+    return true;
+  };
+  const openNotepad = async () => {
+    activeNotepadMode = 'basic';
+    await notepad.open();
+    if (basicNotepad) await basicNotepad.open();
+    renderNotepadMode();
+  };
+  const closeNotepad = () => {
+    if (basicNotepad) basicNotepad.close();
+    notepad.close();
+  };
+  const closeNotepadBg = event => {
+    if (event.target.id === 'notepad-overlay') closeNotepad();
+  };
 
   // Public projection contains counts only. Legacy /widgetFeed is private.
   let widgetFeedTimer = null;
@@ -5721,9 +5771,14 @@ T & C Applicable। ধন্যবাদ!`;
     openOffdayDialog,
     offdayPickMode,
     offdayLimitStep,
-    openNotepad: () => notepad.open(),
-    closeNotepad: () => notepad.close(),
-    closeNotepadBg: e => { if (e.target.id === 'notepad-overlay') notepad.close(); },
+    openNotepad,
+    closeNotepad,
+    closeNotepadBg,
+    notepadMode: mode => switchNotepadMode(mode),
+    notepadBasicSwitchPage: key => basicNotepad?.switchPage(key),
+    notepadBasicAddPage: () => basicNotepad?.addPage(),
+    notepadBasicAddPhoto: input => basicNotepad?.addPhoto(input),
+    notepadBasicClearPage: () => basicNotepad?.clearPage(),
     addNotepadPage: () => notepad.addPage(),
     notepadSwitchPage: key => notepad.switchPage(key),
     notepadTab: category => notepad.switchCategory(category),

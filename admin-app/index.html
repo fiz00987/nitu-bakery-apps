@@ -2568,7 +2568,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
   .reward-summary strong { font-size: 15px; }
 }
 </style>
-<link rel="stylesheet" href="./notepad.css?v=2026-10-18-pending-items">
+<link rel="stylesheet" href="./notepad.css?v=2026-10-24-basic-advanced-notebook">
 </head>
 <body>
 
@@ -2752,13 +2752,39 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
   </div>
 </div>
 
-<!-- BAKERY NOTEBOOK: additive categories on the original shared pages -->
+<!-- BAKERY NOTEBOOK: the original simple notepad plus the current workspace -->
 <div class="cal-popup-overlay" id="notepad-overlay" onclick="App.closeNotepadBg(event)">
   <div class="cal-popup np-workspace" role="dialog" aria-modal="true" aria-labelledby="notepad-heading">
     <div class="cal-popup-head">
       <div><span class="np-eyebrow" data-np-en="YOUR BAKING WORKSPACE" data-np-bn="আপনার বেকিং ওয়ার্কস্পেস">আপনার বেকিং ওয়ার্কস্পেস</span><div class="cal-popup-title" id="notepad-heading" data-np-en="📝 Bakery Notebook" data-np-bn="📝 বেকারি নোটবুক">📝 বেকারি নোটবুক</div></div>
       <button class="cal-popup-close" onclick="App.closeNotepad()" aria-label="Close notebook">✕</button>
     </div>
+
+    <div class="np-mode-tabs" role="tablist" aria-label="Notebook mode">
+      <button type="button" id="notepad-mode-basic" class="np-mode-tab active" role="tab" aria-selected="true" aria-controls="notepad-basic-view" onclick="App.notepadMode('basic')">
+        <span class="np-mode-icon">📝</span><span data-np-en="Basic notebook" data-np-bn="বেসিক নোটবুক">বেসিক নোটবুক</span><small data-np-en="Simple shopping notes" data-np-bn="সহজ শপিং নোট">সহজ শপিং নোট</small>
+      </button>
+      <button type="button" id="notepad-mode-advanced" class="np-mode-tab" role="tab" aria-selected="false" aria-controls="notepad-advanced-view" onclick="App.notepadMode('advanced')">
+        <span class="np-mode-icon">🧰</span><span data-np-en="Advanced notebook" data-np-bn="অ্যাডভান্স নোটবুক">অ্যাডভান্স নোটবুক</span><small data-np-en="Current workspace" data-np-bn="বর্তমান ওয়ার্কস্পেস">বর্তমান ওয়ার্কস্পেস</small>
+      </button>
+    </div>
+
+    <div id="notepad-basic-view" class="np-basic-view" role="tabpanel" aria-labelledby="notepad-mode-basic">
+      <p class="np-basic-hint" data-np-en="The simple notebook from the original bakery app. Write shopping notes, add pages, and attach photos without the extra tools." data-np-bn="বেকারি অ্যাপের আগের সহজ নোটবুক। অতিরিক্ত টুল ছাড়াই শপিং নোট লিখুন, পেজ যোগ করুন এবং ছবি রাখুন।">বেকারি অ্যাপের আগের সহজ নোটবুক। অতিরিক্ত টুল ছাড়াই শপিং নোট লিখুন, পেজ যোগ করুন এবং ছবি রাখুন।</p>
+      <div class="np-basic-toolbar">
+        <select id="notepad-basic-page-sel" aria-label="Page in basic notebook" onchange="App.notepadBasicSwitchPage(this.value)"></select>
+        <button type="button" class="np-btn" id="notepad-basic-new-page" onclick="App.notepadBasicAddPage()" data-np-en="＋ New page" data-np-bn="＋ নতুন পেজ">＋ নতুন পেজ</button>
+        <button type="button" class="np-btn" id="notepad-basic-add-photo" onclick="document.getElementById('notepad-basic-photo-input').click()" data-np-en="🖼️ Photo" data-np-bn="🖼️ ছবি">🖼️ ছবি</button>
+        <button type="button" class="np-btn np-basic-clear" id="notepad-basic-clear" onclick="App.notepadBasicClearPage()" aria-label="Clear basic notebook page" data-np-en="🗑️ Clear" data-np-bn="🗑️ মুছুন">🗑️ মুছুন</button>
+        <input type="file" id="notepad-basic-photo-input" accept="image/*" hidden onchange="App.notepadBasicAddPhoto(this)">
+      </div>
+      <div id="notepad-basic-empty" class="np-empty" hidden><span data-np-en="No pages here yet. Use ＋ New page to start." data-np-bn="এখানে এখনো পেজ নেই। ＋ নতুন পেজ দিয়ে শুরু করুন।">এখানে এখনো পেজ নেই। ＋ নতুন পেজ দিয়ে শুরু করুন।</span></div>
+      <textarea id="notepad-basic-text" data-np-placeholder-en="e.g.\n• Butter 2 kg needed\n• Chocolate chips are finished\n• Cream 1 packet" data-np-placeholder-bn="যেমন:\n• বাটার ২ কেজি লাগবে\n• চকলেট চিপস শেষ\n• ক্রিম ১ প্যাকেট" placeholder="যেমন:\n• বাটার ২ কেজি লাগবে\n• চকলেট চিপস শেষ\n• ক্রিম ১ প্যাকেট"></textarea>
+      <div id="notepad-basic-photos" class="np-photos"></div>
+      <div class="notepad-status" id="notepad-basic-status" role="status"></div>
+    </div>
+
+    <div id="notepad-advanced-view" hidden>
     <div class="np-tabs" role="tablist" aria-label="Note categories and tools">
       <button type="button" id="notepad-tab-cake" class="np-tab active" role="tab" aria-selected="true" aria-controls="notepad-panel" onclick="App.notepadTab('cake')"><span class="np-tab-count">0</span><span class="np-tab-icon">🛒</span><span data-np-en="Baking Items" data-np-bn="বেকিং আইটেম">বেকিং আইটেম</span><small data-np-en="Ingredients & supplies" data-np-bn="উপকরণ ও কেনাকাটা">উপকরণ ও কেনাকাটা</small></button>
       <button type="button" id="notepad-tab-baking" class="np-tab" role="tab" aria-selected="false" aria-controls="notepad-panel" onclick="App.notepadTab('baking')"><span class="np-tab-count">0</span><span class="np-tab-icon">🥣</span><span data-np-en="Baking Instructions" data-np-bn="বেকিং নির্দেশনা">বেকিং নির্দেশনা</span><small data-np-en="Recipes & methods" data-np-bn="রেসিপি ও পদ্ধতি">রেসিপি ও পদ্ধতি</small></button>
@@ -2836,6 +2862,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
     <div class="np-footer">
       <div class="notepad-status" id="notepad-status" role="status"></div>
       <button type="button" class="np-btn" onclick="App.notepadExport()" data-np-en="↓ Backup all notes" data-np-bn="↓ সব নোটের ব্যাকআপ">↓ সব নোটের ব্যাকআপ</button>
+    </div>
     </div>
   </div>
 </div>
@@ -3216,8 +3243,9 @@ function isIosDevice() {
 }
 </script>
 
-<script src="./notepad.js?v=2026-10-18-pending-items"></script>
-<script src="./app.js?v=2026-10-15-baking-notebook"></script>
+<script src="./basic-notepad.js?v=2026-10-24-basic-advanced-notebook"></script>
+<script src="./notepad.js?v=2026-10-24-basic-advanced-notebook"></script>
+<script src="./app.js?v=2026-10-24-basic-advanced-notebook"></script>
 
 <!-- PUSH NOTIFICATION SYSTEM (Firebase Cloud Messaging / Web Push) — deferred so
      it never competes with the first orders download on slow networks. -->

@@ -84,6 +84,7 @@ function harness(t, initial, initialOrders) {
   w.requestIdleCallback = fn => fn();
   w.scrollTo = () => {};
   w.fetch = () => Promise.reject(new Error('Network disabled in tests'));
+  w.eval(fs.readFileSync(path.join(root, 'admin-app/basic-notepad.js'), 'utf8'));
   w.eval(fs.readFileSync(path.join(root, 'admin-app/notepad.js'), 'utf8'));
   w.eval(fs.readFileSync(path.join(root, 'admin-app/app.js'), 'utf8'));
   authListener({ uid: 'test-admin', email: 'admin111@gmail.com' });
@@ -477,4 +478,16 @@ for (const surprise of [true, 'yes', false, 'no']) test(`surprise=${surprise} re
   assert.equal(h.el('f-surprise').value, expected ? 'yes' : 'no');
   await h.save();
   assert.equal(h.state.orders.test.surprise, expected);
+});
+
+test('SRS copy leaves the delivery charge blank when the agency has not provided it', t => {
+  const h = harness(t, order({ advance: 2500, advanceTotal: 2500, deliveryAmount: 0, deliveryCharge: 0, deliveryPaid: 'unpaid' }));
+  let copied = '';
+  Object.defineProperty(h.w.navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: value => { copied = value; return Promise.resolve(); } }
+  });
+  h.w.App.copySrsMessage('test');
+  assert.match(copied, /Delivery Charge -\s*\nPickup Time/);
+  assert.doesNotMatch(copied, /Delivery Charge -\s*0\/-/);
 });
