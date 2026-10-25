@@ -56,6 +56,7 @@ window.App = (() => {
   let editingId     = null;
   let editingRevision = null;       // order as it was when the edit form opened
   let activeTab     = 'plan';
+  let dashboardSection = 'overview';
   let isConnected   = false;
   let confirmCb     = null;
   let currentPhoto  = '';
@@ -103,7 +104,7 @@ window.App = (() => {
       bakingItemExpenses: 'বেকিং আইটেমের দাম',
       noExpenses: 'এই মাসে কোনো বেকিং আইটেমের দাম যোগ করা হয়নি।',
       chartMonthlyOrders: '📊 মাসিক অর্ডার — শেষ ৫ মাস',
-      tabPlan: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'ড্যাশবোর্ড', tabCosting: 'মাসিক খরচ', tabCdb: 'ডেটাবেজ', tabReward: 'রিওয়ার্ড', tabDeliveryConfirm: 'ডেলিভারি কনফার্ম',
+      tabPlan: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'ড্যাশবোর্ড', dashboardOverview: 'ওভারভিউ', tabCosting: 'মাসিক খরচ', tabCdb: 'ডেটাবেজ', tabReward: 'রিওয়ার্ড', tabDeliveryConfirm: 'ডেলিভারি কনফার্ম',
       sort_date: 'তারিখ', sort_name: 'নাম', sort_due: 'বকেয়া',
       secPayment: '💳 পেমেন্ট', fTotal: 'কেকের মূল্য (৳)', fPaid: 'অগ্রিম / প্রদান (৳)',
       live: 'লাইভ', offline: 'সংযোগ নেই', saving: 'সেভ হচ্ছে...', conn: 'সংযোগ...',
@@ -133,7 +134,7 @@ window.App = (() => {
       bakingItemExpenses: 'Baking-item prices',
       noExpenses: 'No baking-item prices added for this month.',
       chartMonthlyOrders: '📊 Orders per Month — Last 5',
-      tabPlan: 'Orders', tabDone: 'Done', tabRev: 'Dashboard', tabCosting: 'Monthly costing', tabCdb: 'Database', tabReward: 'Rewards', tabDeliveryConfirm: 'Delivery Confirm',
+      tabPlan: 'Orders', tabDone: 'Done', tabRev: 'Dashboard', dashboardOverview: 'Overview', tabCosting: 'Monthly costing', tabCdb: 'Database', tabReward: 'Rewards', tabDeliveryConfirm: 'Delivery Confirm',
       sort_date: 'Date', sort_name: 'Name', sort_due: 'Due',
       secPayment: '💳 Payment', fTotal: 'Cake Price (৳)', fPaid: 'Advance / Paid (৳)',
       live: 'Live', offline: 'Offline', saving: 'Saving...', conn: 'Connecting...',
@@ -1135,7 +1136,7 @@ window.App = (() => {
         Object.keys(data).forEach(k => reviewClaims.push(Object.assign({firebaseKey:k}, data[k] || {})));
         const pending = reviewClaims.filter(c => (c.status || 'pending') === 'pending').length;
         const badge = document.getElementById('tc-rewards'); if (badge) badge.textContent = pending;
-        if (activeTab === 'rewards') renderRewards();
+        if (activeTab === 'revenue' && dashboardSection === 'rewards') renderRewards();
       });
 
       // Non-critical listeners wait until the browser is idle (or 2.5s max) so
@@ -2568,36 +2569,51 @@ T & C Applicable। ধন্যবাদ!`;
           ${expenseRows}
         </div>`
       : `<div class="expense-breakdown expense-breakdown-empty">${tr('noExpenses')}</div>`;
-    const costingPanel = costingSummary ? `<div class="costing-dashboard-card"><h3>🧾 ${lang === 'bn' ? 'মাসিক খরচ ও নেট আয়' : 'Monthly costing & net income'}</h3><p>${lang === 'bn' ? 'বেকারি, কারেন্ট, গ্রোসারি ও অন্যান্য খরচ আলাদা করে হিসাব করুন।' : 'Track bakery, electricity, grocery, and other costs separately.'}</p><div class="costing-dashboard-grid"><div class="costing-dashboard-stat"><span>${lang === 'bn' ? 'মোট আয়' : 'Total income'}</span><b>৳${fmtMoney(costingSummary.totalIncome)}</b></div><div class="costing-dashboard-stat"><span>${lang === 'bn' ? 'সব খরচ' : 'All expenses'}</span><b>৳${fmtMoney(costingSummary.totalExpenses)}</b></div><div class="costing-dashboard-stat"><span>${lang === 'bn' ? 'প্রজেক্টেড নেট' : 'Projected net'}</span><b>৳${fmtMoney(costingSummary.projectedNet)}</b></div></div><button type="button" onclick="App.switchTab('costing')">🧾 ${lang === 'bn' ? 'মাসিক খরচ খুলুন' : 'Open monthly costing'}</button></div>` : '';
+    const costingPanel = costingSummary ? `<div class="costing-dashboard-card"><h3>🧾 ${lang === 'bn' ? 'মাসিক খরচ ও নেট আয়' : 'Monthly costing & net income'}</h3><p>${lang === 'bn' ? 'বেকারি, কারেন্ট, গ্রোসারি ও অন্যান্য খরচ আলাদা করে হিসাব করুন।' : 'Track bakery, electricity, grocery, and other costs separately.'}</p><div class="costing-dashboard-grid"><div class="costing-dashboard-stat"><span>${lang === 'bn' ? 'মোট আয়' : 'Total income'}</span><b>৳${fmtMoney(costingSummary.totalIncome)}</b></div><div class="costing-dashboard-stat"><span>${lang === 'bn' ? 'সব খরচ' : 'All expenses'}</span><b>৳${fmtMoney(costingSummary.totalExpenses)}</b></div><div class="costing-dashboard-stat"><span>${lang === 'bn' ? 'প্রজেক্টেড নেট' : 'Projected net'}</span><b>৳${fmtMoney(costingSummary.projectedNet)}</b></div></div><button type="button" onclick="App.dashboardTab('costing')">🧾 ${lang === 'bn' ? 'মাসিক খরচ খুলুন' : 'Open monthly costing'}</button></div>` : '';
 
+    const dashboardTabButton = (key, icon, label, count = '') => `<button type="button" class="dashboard-subtab ${dashboardSection === key ? 'active' : ''}" role="tab" aria-selected="${dashboardSection === key ? 'true' : 'false'}" aria-controls="${key === 'overview' ? 'dashboard-overview' : `view-${key}`}" onclick="App.dashboardTab('${key}')"><span>${icon}</span><b>${label}</b>${count ? `<em${key === 'rewards' ? ' id="tc-rewards"' : ''}>${count}</em>` : ''}</button>`;
+    const overviewHidden = dashboardSection === 'overview' ? '' : ' hidden';
+    const costingHidden = dashboardSection === 'costing' ? '' : ' hidden';
+    const rewardsHidden = dashboardSection === 'rewards' ? '' : ' hidden';
     let html = `<div class="insight-shell revenue-shell">
-      <div class="insight-heading revenue-heading">
-        <div><span class="insight-eyebrow">${dashCopy.eyebrow}</span><h2>${dashCopy.title}</h2><p>${dashCopy.subtitle}</p></div>
-        <div class="revenue-period">${fmtMoney(active.length)} ${dashCopy.orders}</div>
+      <div class="dashboard-subtabs" role="tablist" aria-label="${lang === 'bn' ? 'ড্যাশবোর্ডের অংশ' : 'Dashboard sections'}">
+        ${dashboardTabButton('overview', '📊', tr('dashboardOverview'))}
+        ${dashboardTabButton('costing', '🧾', tr('tabCosting'))}
+        ${dashboardTabButton('rewards', '⭐', tr('tabReward'), fmtMoney(pendingReviews))}
       </div>
-      <div class="rev-hero">
-        <div class="rev-hero-glow"></div><div class="rev-hero-content"><span class="rev-hero-label">💰 ${dashCopy.salesTotal}</span><strong class="rev-num blue">৳${fmtMoney(earn)}</strong><span class="rev-hero-sub">${fmtMoney(planned)} ${dashCopy.orders} · ${fmtMoney(completed)} ${lang === 'bn' ? 'টি সম্পন্ন' : 'completed'} · ${fmtMoney(todayOrders.length)} ${dashCopy.today}</span></div>
-        <div class="rev-hero-mark">৳</div>
-      </div>
-      <div class="rev-metrics">
-        <div class="rev-metric"><div class="rev-metric-top"><span class="rev-metric-icon orders-icon">💰</span><span class="rev-metric-trend">৳</span></div><strong>${fmtMoney(cakeDue)}</strong><span>${dashCopy.cakeDue}</span></div>
-        <div class="rev-metric"><div class="rev-metric-top"><span class="rev-metric-icon avg-icon">🚚</span><span class="rev-metric-trend">৳</span></div><strong>${fmtMoney(deliveryDue)}</strong><span>${dashCopy.deliveryDue}</span></div>
-        <div class="rev-metric"><div class="rev-metric-top"><span class="rev-metric-icon done-icon">⏳</span><span class="rev-metric-trend">!</span></div><strong>${fmtMoney(active.length)}</strong><span>${dashCopy.action}</span></div>
-      </div>
-       <div class="command-actions"><button type="button" class="command-action" onclick="App.switchTab('plan')">📅 ${dashCopy.today}<b>${fmtMoney(todayOrders.length)}</b></button><button type="button" class="command-action" onclick="App.switchTab('done')">✅ ${lang === 'bn' ? 'সম্পন্ন অর্ডার' : 'Completed orders'}<b>${fmtMoney(completed)}</b></button><button type="button" class="command-action" onclick="App.switchTab('rewards')">⭐ ${dashCopy.reviewDue}<b>${fmtMoney(pendingReviews)}</b></button></div>
-      <div class="command-panels"><section class="command-panel"><div class="command-panel-head"><h3>🍰 ${dashCopy.popular}</h3><span>${fmtMoney(planned)} ${dashCopy.orders}</span></div>${popularFlavours.length ? popularFlavours.map(([name, count]) => `<div class="command-bar-row"><span>${esc(name)}</span><b>${fmtMoney(count)}</b><i><em style="width:${Math.max(8, Math.round((count / maxFlavourCount) * 100))}%"></em></i></div>`).join('') : `<p class="command-empty">${dashCopy.noFlavours}</p>`}</section><section class="command-panel"><div class="command-panel-head"><h3>💰 ${dashCopy.sales}</h3><span>${curMonth}</span></div><div class="command-sales"><strong>৳${fmtMoney(earn)}</strong><span>${dashCopy.salesTotal}</span><small>${fmtMoney(planned)} ${dashCopy.orders} · ${fmtMoney(completed)} ${lang === 'bn' ? 'সম্পন্ন' : 'completed'} · ${completion}%</small></div></section></div>
-      <div class="rev-progress-card"><div class="rev-progress-head"><span>${dashCopy.progress}</span><strong>${completion}%</strong></div><div class="rev-progress-track"><i style="width:${completion}%"></i></div><small>${fmtMoney(completed)} / ${fmtMoney(planned)} ${lang === 'bn' ? 'টি অর্ডার সম্পন্ন' : 'orders completed'} · ${dashCopy.average}: ৳${fmtMoney(average)}</small></div>
-       <div class="rev-chart-card"><div class="rev-chart-heading"><div><h3>📊 ${dashCopy.chart}</h3><p>${lang === 'bn' ? 'অর্ডার নেওয়ার ধারাবাহিকতা' : 'Order volume over time'}</p></div><span class="chart-badge">5 ${lang === 'bn' ? 'মাস' : 'MONTHS'}</span></div>${buildMonthlyChart()}</div>
-       <div class="rev-grid rev-grid-finance">
-         <div class="rev-card"><div class="rev-icon">🧾</div><div class="rev-num red">৳${fmtMoney(expenses)}</div><div class="rev-lbl">${tr('monthExpense')}</div></div>
-         <div class="rev-card"><div class="rev-icon">📈</div><div class="rev-num ${net >= 0 ? 'green' : 'red'}">৳${fmtMoney(net)}</div><div class="rev-lbl">${tr('monthNet')}</div></div>
-       </div>
-       <div class="earn-note">💡 ${dashCopy.note}<br>${tr('monthExpenseNote')}</div>
+      <section id="dashboard-overview" class="dashboard-subview${overviewHidden}" role="tabpanel" aria-label="${tr('dashboardOverview')}">
+        <div class="insight-heading revenue-heading">
+          <div><span class="insight-eyebrow">${dashCopy.eyebrow}</span><h2>${dashCopy.title}</h2><p>${dashCopy.subtitle}</p></div>
+          <div class="revenue-period">${fmtMoney(active.length)} ${dashCopy.orders}</div>
+        </div>
+        <div class="rev-hero">
+          <div class="rev-hero-glow"></div><div class="rev-hero-content"><span class="rev-hero-label">💰 ${dashCopy.salesTotal}</span><strong class="rev-num blue">৳${fmtMoney(earn)}</strong><span class="rev-hero-sub">${fmtMoney(planned)} ${dashCopy.orders} · ${fmtMoney(completed)} ${lang === 'bn' ? 'টি সম্পন্ন' : 'completed'} · ${fmtMoney(todayOrders.length)} ${dashCopy.today}</span></div>
+          <div class="rev-hero-mark">৳</div>
+        </div>
+        <div class="rev-metrics">
+          <div class="rev-metric"><div class="rev-metric-top"><span class="rev-metric-icon orders-icon">💰</span><span class="rev-metric-trend">৳</span></div><strong>${fmtMoney(cakeDue)}</strong><span>${dashCopy.cakeDue}</span></div>
+          <div class="rev-metric"><div class="rev-metric-top"><span class="rev-metric-icon avg-icon">🚚</span><span class="rev-metric-trend">৳</span></div><strong>${fmtMoney(deliveryDue)}</strong><span>${dashCopy.deliveryDue}</span></div>
+          <div class="rev-metric"><div class="rev-metric-top"><span class="rev-metric-icon done-icon">⏳</span><span class="rev-metric-trend">!</span></div><strong>${fmtMoney(active.length)}</strong><span>${dashCopy.action}</span></div>
+        </div>
+        <div class="command-actions"><button type="button" class="command-action" onclick="App.switchTab('plan')">📅 ${dashCopy.today}<b>${fmtMoney(todayOrders.length)}</b></button><button type="button" class="command-action" onclick="App.switchTab('done')">✅ ${lang === 'bn' ? 'সম্পন্ন অর্ডার' : 'Completed orders'}<b>${fmtMoney(completed)}</b></button><button type="button" class="command-action" onclick="App.dashboardTab('rewards')">⭐ ${dashCopy.reviewDue}<b>${fmtMoney(pendingReviews)}</b></button></div>
+        <div class="command-panels"><section class="command-panel"><div class="command-panel-head"><h3>🍰 ${dashCopy.popular}</h3><span>${fmtMoney(planned)} ${dashCopy.orders}</span></div>${popularFlavours.length ? popularFlavours.map(([name, count]) => `<div class="command-bar-row"><span>${esc(name)}</span><b>${fmtMoney(count)}</b><i><em style="width:${Math.max(8, Math.round((count / maxFlavourCount) * 100))}%"></em></i></div>`).join('') : `<p class="command-empty">${dashCopy.noFlavours}</p>`}</section><section class="command-panel"><div class="command-panel-head"><h3>💰 ${dashCopy.sales}</h3><span>${curMonth}</span></div><div class="command-sales"><strong>৳${fmtMoney(earn)}</strong><span>${dashCopy.salesTotal}</span><small>${fmtMoney(planned)} ${dashCopy.orders} · ${fmtMoney(completed)} ${lang === 'bn' ? 'সম্পন্ন' : 'completed'} · ${completion}%</small></div></section></div>
+        <div class="rev-progress-card"><div class="rev-progress-head"><span>${dashCopy.progress}</span><strong>${completion}%</strong></div><div class="rev-progress-track"><i style="width:${completion}%"></i></div><small>${fmtMoney(completed)} / ${fmtMoney(planned)} ${lang === 'bn' ? 'টি অর্ডার সম্পন্ন' : 'orders completed'} · ${dashCopy.average}: ৳${fmtMoney(average)}</small></div>
+        <div class="rev-chart-card"><div class="rev-chart-heading"><div><h3>📊 ${dashCopy.chart}</h3><p>${lang === 'bn' ? 'অর্ডার নেওয়ার ধারাবাহিকতা' : 'Order volume over time'}</p></div><span class="chart-badge">5 ${lang === 'bn' ? 'মাস' : 'MONTHS'}</span></div>${buildMonthlyChart()}</div>
+        <div class="rev-grid rev-grid-finance">
+          <div class="rev-card"><div class="rev-icon">🧾</div><div class="rev-num red">৳${fmtMoney(expenses)}</div><div class="rev-lbl">${tr('monthExpense')}</div></div>
+          <div class="rev-card"><div class="rev-icon">📈</div><div class="rev-num ${net >= 0 ? 'green' : 'red'}">৳${fmtMoney(net)}</div><div class="rev-lbl">${tr('monthNet')}</div></div>
+        </div>
+        <div class="earn-note">💡 ${dashCopy.note}<br>${tr('monthExpenseNote')}</div>
         ${expenseBreakdown}
         ${costingPanel}
-      </div>`;
+      </section>
+      <section id="view-costing" class="dashboard-subview${costingHidden}" role="tabpanel" aria-label="${tr('tabCosting')}"></section>
+      <section id="view-rewards" class="dashboard-subview${rewardsHidden}" role="tabpanel" aria-label="${tr('tabReward')}"></section>
+    </div>`;
 
     document.getElementById('view-revenue').innerHTML = html;
+    if (dashboardSection === 'costing' && monthlyCosting) monthlyCosting.render();
+    if (dashboardSection === 'rewards') { reconcileReviewRewards(); renderRewards(); }
   };
 
   window.addEventListener('notepad-expenses-changed', event => {
@@ -3052,7 +3068,6 @@ T & C Applicable। ধন্যবাদ!`;
     try { if (activeTab === 'cdb')     renderCdb(); } catch (e) { console.error('[cdb] failed:', e); }
     try { if (activeTab === 'delivery-confirm') renderDeliveryConfirm(); } catch (e) { console.error('[delivery-confirm] failed:', e); }
     try { if (activeTab === 'revenue') renderRevenue(); } catch (e) { console.error('[revenue] failed:', e); }
-    try { if (activeTab === 'costing' && monthlyCosting) monthlyCosting.render(); } catch (e) { console.error('[costing] failed:', e); }
   };
 
   const QUOTE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -3320,13 +3335,21 @@ T & C Applicable। ধন্যবাদ!`;
     ]);
   });
 
+  const dashboardTab = section => {
+    dashboardSection = ['overview', 'costing', 'rewards'].includes(section) ? section : 'overview';
+    switchTab('revenue');
+  };
+
   // ─── Tab switcher ─────────────────────────────────────────────
   // 'all' is merged into 'plan' — old links/keys redirect automatically.
   const switchTab = t => {
     if (t === 'all') t = 'plan';
     if (t === 'quotes') t = 'plan';
+    if (t === 'costing') { dashboardSection = 'costing'; t = 'revenue'; }
+    if (t === 'rewards') { dashboardSection = 'rewards'; t = 'revenue'; }
+    if (t === 'revenue' && dashboardSection !== 'costing' && dashboardSection !== 'rewards') dashboardSection = 'overview';
     activeTab = t;
-    ['plan','done','cdb','delivery-confirm','revenue','costing','rewards'].forEach(n => {
+    ['plan','done','cdb','delivery-confirm','revenue'].forEach(n => {
       const view = document.getElementById(`view-${n}`);
       if (view) view.classList.toggle('hidden', n !== t);
       const btn = document.getElementById(`tab-${n === 'revenue' ? 'rev' : n}`);
@@ -3341,8 +3364,6 @@ T & C Applicable। ধন্যবাদ!`;
     if (t === 'cdb')     renderCdb();
     if (t === 'delivery-confirm') renderDeliveryConfirm();
     if (t === 'revenue') renderRevenue();
-    if (t === 'costing' && monthlyCosting) monthlyCosting.render();
-    if (t === 'rewards') { reconcileReviewRewards(); renderRewards(); }
   };
 
   // ─── Toggle card expand ──────────────────────────────────────
@@ -5745,6 +5766,7 @@ T & C Applicable। ধন্যবাদ!`;
 
   return {
     switchTab,
+    dashboardTab,
     filterRewards,
     updateReview,
     revokeReview,

@@ -493,12 +493,22 @@ test('SRS copy leaves the delivery charge blank when the agency has not provided
   assert.doesNotMatch(copied, /Delivery Charge -\s*0\/-/);
 });
 
-test('admin exposes the monthly costing tab alongside the existing dashboard', t => {
+test('admin keeps monthly costing and rewards inside dashboard sub-tabs', t => {
   const h = harness(t, order());
   h.w.App.switchTab('costing');
-  assert.equal(h.el('view-costing').classList.contains('hidden'), false);
-  assert.match(h.el('view-costing').textContent, /Costs & Net Income/);
-  h.w.App.switchTab('revenue');
   assert.equal(h.el('view-revenue').classList.contains('hidden'), false);
-  assert.match(h.el('view-revenue').textContent, /Monthly costing & net income/);
+  assert.equal(h.el('view-costing').classList.contains('hidden'), false);
+  assert.equal(h.el('view-rewards').classList.contains('hidden'), true);
+  assert.match(h.el('view-costing').textContent, /Costs & Net Income/);
+  h.w.App.dashboardTab('rewards');
+  assert.equal(h.el('view-revenue').classList.contains('hidden'), false);
+  assert.equal(h.el('view-costing').classList.contains('hidden'), true);
+  assert.equal(h.el('view-rewards').classList.contains('hidden'), false);
+  assert.match(h.el('view-rewards').textContent, /Review rewards/);
+  h.w.App.dashboardTab('overview');
+  assert.equal(h.el('dashboard-overview').classList.contains('hidden'), false);
+  assert.equal(h.el('view-costing').classList.contains('hidden'), true);
+  assert.equal(h.el('view-rewards').classList.contains('hidden'), true);
+  assert.equal(h.el('tab-costing'), null);
+  assert.equal(h.el('tab-rewards'), null);
 });
