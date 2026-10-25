@@ -43,6 +43,7 @@ window.App = (() => {
   // orders snapshot so customers can check a small per-day number instead of
   // downloading every order. { 'YYYY-MM-DD': { booked: N, limit: M|null } }
   const dayBooksRef = db.ref('dayBooks');
+  const costingRef  = db.ref('monthlyCosting');
   let dayBooks = {};
   let lastDayBooksFp = '';
   let dayBooksReady = false;
@@ -66,6 +67,7 @@ window.App = (() => {
   let notepad = null;
   let basicNotepad = null;
   let activeNotepadMode = 'basic';
+  let monthlyCosting = null;
   let notebookExpenseItems = [];
   let notebookExpensesReady = false;
   let offDays       = {};           // 'YYYY-MM-DD' → { reason, ... }
@@ -101,7 +103,7 @@ window.App = (() => {
       bakingItemExpenses: 'বেকিং আইটেমের দাম',
       noExpenses: 'এই মাসে কোনো বেকিং আইটেমের দাম যোগ করা হয়নি।',
       chartMonthlyOrders: '📊 মাসিক অর্ডার — শেষ ৫ মাস',
-      tabPlan: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'ড্যাশবোর্ড', tabCdb: 'ডেটাবেজ', tabReward: 'রিওয়ার্ড', tabDeliveryConfirm: 'ডেলিভারি কনফার্ম',
+      tabPlan: 'অর্ডার', tabDone: 'সম্পন্ন', tabRev: 'ড্যাশবোর্ড', tabCosting: 'মাসিক খরচ', tabCdb: 'ডেটাবেজ', tabReward: 'রিওয়ার্ড', tabDeliveryConfirm: 'ডেলিভারি কনফার্ম',
       sort_date: 'তারিখ', sort_name: 'নাম', sort_due: 'বকেয়া',
       secPayment: '💳 পেমেন্ট', fTotal: 'কেকের মূল্য (৳)', fPaid: 'অগ্রিম / প্রদান (৳)',
       live: 'লাইভ', offline: 'সংযোগ নেই', saving: 'সেভ হচ্ছে...', conn: 'সংযোগ...',
@@ -131,7 +133,7 @@ window.App = (() => {
       bakingItemExpenses: 'Baking-item prices',
       noExpenses: 'No baking-item prices added for this month.',
       chartMonthlyOrders: '📊 Orders per Month — Last 5',
-      tabPlan: 'Orders', tabDone: 'Done', tabRev: 'Dashboard', tabCdb: 'Database', tabReward: 'Rewards', tabDeliveryConfirm: 'Delivery Confirm',
+      tabPlan: 'Orders', tabDone: 'Done', tabRev: 'Dashboard', tabCosting: 'Monthly costing', tabCdb: 'Database', tabReward: 'Rewards', tabDeliveryConfirm: 'Delivery Confirm',
       sort_date: 'Date', sort_name: 'Name', sort_due: 'Due',
       secPayment: '💳 Payment', fTotal: 'Cake Price (৳)', fPaid: 'Advance / Paid (৳)',
       live: 'Live', offline: 'Offline', saving: 'Saving...', conn: 'Connecting...',
@@ -464,6 +466,7 @@ window.App = (() => {
     render();
     if (notepad) notepad.render();
     if (basicNotepad) basicNotepad.render();
+    if (monthlyCosting) monthlyCosting.render();
     syncTopbarHeight();  // labels change → re-measure the sticky offset
   };
 
@@ -886,7 +889,7 @@ window.App = (() => {
   const detachAuthListeners = () => {
     // Firebase listeners otherwise survive sign-out and can repaint the prior
     // account's orders when a different admin signs in in the same tab.
-    [ordersRef, reviewClaimsRef, quotesRef, pagesRef, offDaysRef, dayBooksRef].forEach(ref => {
+    [ordersRef, reviewClaimsRef, quotesRef, pagesRef, offDaysRef, dayBooksRef, costingRef].forEach(ref => {
       try { ref.off('value'); } catch (e) {}
     });
   };
@@ -909,6 +912,7 @@ window.App = (() => {
       lastDayBooksFp = '';
       if (notepad) notepad.reset();
       if (basicNotepad) basicNotepad.reset();
+      if (monthlyCosting) monthlyCosting.reset();
       currentPhoto = '';
       currentPhotos = [];
       adminExtraPhotos = {};
@@ -926,6 +930,7 @@ window.App = (() => {
     if (user) {
       if (notepad) notepad.activate(user.uid);
       if (basicNotepad) basicNotepad.activate(user.uid);
+      if (monthlyCosting) monthlyCosting.activate(user.uid);
       // User is signed in - show main app
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('last-sync-text').textContent = user.email;
@@ -1201,6 +1206,7 @@ window.App = (() => {
     } else {
       // User is signed out - show login screen
       document.getElementById('login-screen').classList.remove('hidden');
+      if (monthlyCosting) monthlyCosting.reset();
       orders = [];
       lastTodaysNotifyKey = '';  // allow the banner again next login/day
       render();
@@ -2549,6 +2555,8 @@ T & C Applicable। ধন্যবাদ!`;
     const expenseItems = monthlyExpenseItems(monthKey);
     const expenses = expenseItems.reduce((sum, item) => sum + item.amount, 0);
     const net = earn - expenses;
+    const costingMonthKey = `${y}-${String(m + 1).padStart(2, '0')}`;
+    const costingSummary = monthlyCosting ? monthlyCosting.summary(costingMonthKey) : null;
     const expenseRows = expenseItems.map(item => `
       <div class="expense-line">
         <span><strong>${esc(item.name)}</strong><small>${esc(tr('bakingItemExpenses'))} · ${esc(item.date)}</small></span>
@@ -2560,6 +2568,7 @@ T & C Applicable। ধন্যবাদ!`;
           ${expenseRows}
         </div>`
       : `<div class="expense-breakdown expense-breakdown-empty">${tr('noExpenses')}</div>`;
+    const costingPanel = costingSummary ? `<div class="costing-dashboard-card"><h3>🧾 ${lang === 'bn' ? 'মাসিক খরচ ও নেট আয়' : 'Monthly costing & net income'}</h3><p>${lang === 'bn' ? 'বেকারি, কারেন্ট, গ্রোসারি ও অন্যান্য খরচ আলাদা করে হিসাব করুন।' : 'Track bakery, electricity, grocery, and other costs separately.'}</p><div class="costing-dashboard-grid"><div class="costing-dashboard-stat"><span>${lang === 'bn' ? 'মোট আয়' : 'Total income'}</span><b>৳${fmtMoney(costingSummary.totalIncome)}</b></div><div class="costing-dashboard-stat"><span>${lang === 'bn' ? 'সব খরচ' : 'All expenses'}</span><b>৳${fmtMoney(costingSummary.totalExpenses)}</b></div><div class="costing-dashboard-stat"><span>${lang === 'bn' ? 'প্রজেক্টেড নেট' : 'Projected net'}</span><b>৳${fmtMoney(costingSummary.projectedNet)}</b></div></div><button type="button" onclick="App.switchTab('costing')">🧾 ${lang === 'bn' ? 'মাসিক খরচ খুলুন' : 'Open monthly costing'}</button></div>` : '';
 
     let html = `<div class="insight-shell revenue-shell">
       <div class="insight-heading revenue-heading">
@@ -2584,8 +2593,9 @@ T & C Applicable। ধন্যবাদ!`;
          <div class="rev-card"><div class="rev-icon">📈</div><div class="rev-num ${net >= 0 ? 'green' : 'red'}">৳${fmtMoney(net)}</div><div class="rev-lbl">${tr('monthNet')}</div></div>
        </div>
        <div class="earn-note">💡 ${dashCopy.note}<br>${tr('monthExpenseNote')}</div>
-       ${expenseBreakdown}
-     </div>`;
+        ${expenseBreakdown}
+        ${costingPanel}
+      </div>`;
 
     document.getElementById('view-revenue').innerHTML = html;
   };
@@ -2942,6 +2952,19 @@ T & C Applicable। ধন্যবাদ!`;
       openPhoto: src => openLightboxFor(src)
     });
   }
+  if (window.NituMonthlyCosting) {
+    const incomeForCostingMonth = key => orders
+      .filter(order => order.status !== 'cancelled' && deliveryDateOf(order).slice(0, 7) === String(key))
+      .reduce((sum, order) => sum + earnOf(order), 0);
+    monthlyCosting = window.NituMonthlyCosting.create({
+      costingRef,
+      getIncome: incomeForCostingMonth,
+      language: () => lang,
+      formatMoney: fmtMoney,
+      toast: showToast,
+      confirm: (...args) => showConfirm(...args)
+    });
+  }
   const renderNotepadMode = () => {
     if (window.NituNotebookModes) window.NituNotebookModes.show(activeNotepadMode);
   };
@@ -3029,6 +3052,7 @@ T & C Applicable। ধন্যবাদ!`;
     try { if (activeTab === 'cdb')     renderCdb(); } catch (e) { console.error('[cdb] failed:', e); }
     try { if (activeTab === 'delivery-confirm') renderDeliveryConfirm(); } catch (e) { console.error('[delivery-confirm] failed:', e); }
     try { if (activeTab === 'revenue') renderRevenue(); } catch (e) { console.error('[revenue] failed:', e); }
+    try { if (activeTab === 'costing' && monthlyCosting) monthlyCosting.render(); } catch (e) { console.error('[costing] failed:', e); }
   };
 
   const QUOTE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -3302,7 +3326,7 @@ T & C Applicable। ধন্যবাদ!`;
     if (t === 'all') t = 'plan';
     if (t === 'quotes') t = 'plan';
     activeTab = t;
-    ['plan','done','cdb','delivery-confirm','revenue','rewards'].forEach(n => {
+    ['plan','done','cdb','delivery-confirm','revenue','costing','rewards'].forEach(n => {
       const view = document.getElementById(`view-${n}`);
       if (view) view.classList.toggle('hidden', n !== t);
       const btn = document.getElementById(`tab-${n === 'revenue' ? 'rev' : n}`);
@@ -3317,6 +3341,7 @@ T & C Applicable। ধন্যবাদ!`;
     if (t === 'cdb')     renderCdb();
     if (t === 'delivery-confirm') renderDeliveryConfirm();
     if (t === 'revenue') renderRevenue();
+    if (t === 'costing' && monthlyCosting) monthlyCosting.render();
     if (t === 'rewards') { reconcileReviewRewards(); renderRewards(); }
   };
 
@@ -5321,6 +5346,7 @@ T & C Applicable। ধন্যবাদ!`;
     if (e.key === '2') switchTab('done');
     if (e.key === '3') switchTab('cdb');
     if (e.key === '4') switchTab('revenue');
+    if (e.key === '5') switchTab('costing');
   });
 
   // ─── Init skeleton + language ────────────────────────────────
@@ -5759,6 +5785,11 @@ T & C Applicable। ধন্যবাদ!`;
     clearSearch,
     selectMonth,
     clearMonthFilter,
+    costingSetMonth: value => monthlyCosting?.setMonth(value),
+    costingSaveIncome: value => monthlyCosting?.saveIncome(value),
+    costingAddEntry: () => monthlyCosting?.addEntry(),
+    costingDeleteEntry: key => monthlyCosting?.deleteEntry(key),
+    costingToggleStatus: key => monthlyCosting?.toggleStatus(key),
     calPrev: () => calShift(-1),
     calNext: () => calShift(1),
     openCalendar,

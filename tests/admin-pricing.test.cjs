@@ -86,6 +86,7 @@ function harness(t, initial, initialOrders) {
   w.fetch = () => Promise.reject(new Error('Network disabled in tests'));
   w.eval(fs.readFileSync(path.join(root, 'admin-app/basic-notepad.js'), 'utf8'));
   w.eval(fs.readFileSync(path.join(root, 'admin-app/notepad.js'), 'utf8'));
+  w.eval(fs.readFileSync(path.join(root, 'admin-app/monthly-costing.js'), 'utf8'));
   w.eval(fs.readFileSync(path.join(root, 'admin-app/app.js'), 'utf8'));
   authListener({ uid: 'test-admin', email: 'admin111@gmail.com' });
   const emit = () => {
@@ -490,4 +491,14 @@ test('SRS copy leaves the delivery charge blank when the agency has not provided
   h.w.App.copySrsMessage('test');
   assert.match(copied, /Delivery Charge -\s*\nPickup Time/);
   assert.doesNotMatch(copied, /Delivery Charge -\s*0\/-/);
+});
+
+test('admin exposes the monthly costing tab alongside the existing dashboard', t => {
+  const h = harness(t, order());
+  h.w.App.switchTab('costing');
+  assert.equal(h.el('view-costing').classList.contains('hidden'), false);
+  assert.match(h.el('view-costing').textContent, /Costs & Net Income/);
+  h.w.App.switchTab('revenue');
+  assert.equal(h.el('view-revenue').classList.contains('hidden'), false);
+  assert.match(h.el('view-revenue').textContent, /Monthly costing & net income/);
 });

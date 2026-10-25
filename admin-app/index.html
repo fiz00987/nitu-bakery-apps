@@ -2569,6 +2569,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
 }
 </style>
 <link rel="stylesheet" href="./notepad.css?v=2026-10-24-basic-advanced-notebook">
+<link rel="stylesheet" href="./monthly-costing.css?v=2026-10-25-monthly-costing">
 </head>
 <body>
 
@@ -2707,6 +2708,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
     <button class="action-btn" id="sort-btn" onclick="App.toggleSort()" aria-label="Change sort">⇅ <span id="sort-label">তারিখ</span></button>
     <button class="cal-btn" onclick="App.openCalendar()" aria-label="Order Calendar">📅 <span>ক্যালেন্ডার</span></button>
     <button class="cal-btn" onclick="App.openNotepad()" aria-label="বেকারি নোটবুক">📝 <span>বেকারি নোট</span></button>
+    <button class="cal-btn" onclick="App.switchTab('costing')" aria-label="Monthly costing">🧾 <span data-i18n="tabCosting">মাসিক খরচ</span></button>
     <button class="cal-btn" id="daily-log-btn" onclick="App.showDailyPopup()" aria-label="আজকের নতুন অর্ডার">🆕 <span data-i18n="dailyNewShort">নতুন</span> <span id="daily-count" style="background:var(--red);color:#fff;border-radius:999px;padding:0 6px;font-size:11px;font-weight:700">0</span></button>
   </div>
 </header>
@@ -2901,6 +2903,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
   <button class="tab"        id="tab-done" role="tab" aria-selected="false" aria-controls="view-done"    onclick="App.switchTab('done')"><span class="tab-icon">✅</span><span class="tab-label" data-i18n="tabDone">সম্পন্ন</span><span class="tab-count" id="tc-done">0</span></button>
   <button class="tab"        id="tab-cdb"  role="tab" aria-selected="false" aria-controls="view-cdb"     onclick="App.switchTab('cdb')"><span class="tab-icon">🗂️</span><span class="tab-label" data-i18n="tabCdb">ডেটাবেজ</span><span class="tab-count" id="tc-cdb">0</span></button>
   <button class="tab"        id="tab-rev"  role="tab" aria-selected="false" aria-controls="view-revenue" onclick="App.switchTab('revenue')"><span class="tab-icon">💰</span><span class="tab-label" data-i18n="tabRev">আয়</span><span class="tab-count tab-count-empty" aria-hidden="true"></span></button>
+  <button class="tab"        id="tab-costing" role="tab" aria-selected="false" aria-controls="view-costing" onclick="App.switchTab('costing')"><span class="tab-icon">🧾</span><span class="tab-label" data-i18n="tabCosting">মাসিক খরচ</span><span class="tab-count tab-count-empty" aria-hidden="true"></span></button>
   <button class="tab" id="tab-rewards" role="tab" aria-selected="false" aria-controls="view-rewards" onclick="App.switchTab('rewards')"><span class="tab-icon">⭐</span><span class="tab-label" data-i18n="tabReward">রিওয়ার্ড</span><span class="tab-count" id="tc-rewards">0</span></button>
 </nav>
 
@@ -2912,6 +2915,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
   <div id="view-delivery-confirm" role="tabpanel" aria-label="Delivery confirmation" class="section hidden"></div>
   <div id="view-rewards" role="tabpanel" aria-labelledby="tab-rewards" class="section hidden"></div>
   <div id="view-revenue" role="tabpanel" aria-labelledby="tab-rev"  class="revenue-section hidden"></div>
+  <div id="view-costing" role="tabpanel" aria-labelledby="tab-costing" class="revenue-section hidden"></div>
 </main>
 
 <!-- FAB -->
@@ -3245,7 +3249,8 @@ function isIosDevice() {
 
 <script src="./basic-notepad.js?v=2026-10-24-basic-advanced-notebook"></script>
 <script src="./notepad.js?v=2026-10-24-basic-advanced-notebook"></script>
-<script src="./app.js?v=2026-10-24-basic-advanced-notebook"></script>
+<script src="./monthly-costing.js?v=2026-10-25-monthly-costing"></script>
+<script src="./app.js?v=2026-10-25-monthly-costing"></script>
 
 <!-- PUSH NOTIFICATION SYSTEM (Firebase Cloud Messaging / Web Push) — deferred so
      it never competes with the first orders download on slow networks. -->
