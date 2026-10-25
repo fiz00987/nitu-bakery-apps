@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="admin-build" content="2026-10-25-dashboard-tabs">
+<meta name="admin-build" content="2026-10-25-dashboard-nav">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2250,7 +2250,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
 
 /* Every tab stays reachable without a sideways swipe on phones. */
 @media (max-width: 600px) {
-  .tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); overflow-x: hidden; max-width: 100%; }
+  .tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow-x: hidden; max-width: 100%; }
   .tab { min-width: 0; white-space: normal; overflow-wrap: anywhere; padding-inline: 4px; }
   .row2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .field { min-width: 0; }
@@ -2266,7 +2266,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
    ============================================= */
 .tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   padding: 7px 10px;
   background: rgba(255,255,255,.96);
@@ -2276,8 +2276,9 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
 }
 .tab {
   min-width: 0;
-  min-height: 60px;
-  padding: 7px 4px 6px;
+  width: 100%;
+  min-height: 68px;
+  padding: 9px 6px 8px;
   border: 1px solid transparent;
   border-bottom: 0;
   border-radius: 12px;
@@ -2285,26 +2286,26 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
   color: var(--text2);
-  font-size: 10.5px;
+  font-size: 11.5px;
   line-height: 1.1;
   white-space: nowrap;
   overflow: visible;
 }
 .tab:hover { background: var(--surface2); }
-.tab .tab-icon { font-size: 19px; line-height: 1; filter: saturate(.9); }
+.tab .tab-icon { font-size: 24px; line-height: 1.05; filter: saturate(.9); }
 .tab .tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .tab .tab-count {
-  min-width: 20px;
-  height: 17px;
+  min-width: 24px;
+  height: 19px;
   margin: 0;
   padding: 1px 5px;
   border-radius: 999px;
   background: #eef1f4;
   color: var(--text3);
-  font-size: 9px;
-  line-height: 15px;
+  font-size: 10px;
+  line-height: 17px;
   font-weight: 700;
 }
 .tab .tab-count-empty { visibility: hidden; }
@@ -2527,10 +2528,10 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
 .reward-empty p { color: var(--text3); font-size: 10px; margin-top: 4px; }
 
 @media (max-width: 600px) {
-  .tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 5px 5px 6px; }
-  .tab { min-height: 58px; padding: 6px 2px 5px; font-size: 9.5px; }
-  .tab .tab-icon { font-size: 17px; }
-  .tab .tab-count { min-width: 18px; height: 16px; line-height: 14px; font-size: 8px; }
+  .tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 5px 5px 6px; }
+  .tab { min-height: 62px; padding: 6px 3px 5px; font-size: 10px; }
+  .tab .tab-icon { font-size: 20px; }
+  .tab .tab-count { min-width: 21px; height: 17px; line-height: 15px; font-size: 8.5px; }
   .insight-shell { padding-top: 2px; }
   .insight-heading { padding: 10px 0 14px; }
   .insight-heading h2 { font-size: 18px; }
@@ -2568,8 +2569,8 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
   .dashboard-subtab > span { font-size: 13px; }
 }
 @media (max-width: 380px) {
-  .tab { font-size: 8.5px; }
-  .tab .tab-icon { font-size: 16px; }
+  .tab { font-size: 9px; }
+  .tab .tab-icon { font-size: 18px; }
   .cdb-grid { grid-template-columns: 1fr 1fr; }
   .insight-stats { grid-template-columns: 1fr 1fr 1fr; }
   .insight-stat { display: block; text-align: center; }
@@ -2579,7 +2580,7 @@ html.f-modern body[data-lang="en"],html.f-modern body{font-family:'Outfit','Anek
 }
 </style>
 <link rel="stylesheet" href="./notepad.css?v=2026-10-24-basic-advanced-notebook">
-<link rel="stylesheet" href="./monthly-costing.css?v=2026-10-25-dashboard-tabs">
+<link rel="stylesheet" href="./monthly-costing.css?v=2026-10-25-dashboard-nav">
 </head>
 <body>
 
@@ -3254,8 +3255,8 @@ function isIosDevice() {
 
 <script src="./basic-notepad.js?v=2026-10-24-basic-advanced-notebook"></script>
 <script src="./notepad.js?v=2026-10-24-basic-advanced-notebook"></script>
-<script src="./monthly-costing.js?v=2026-10-25-dashboard-tabs"></script>
-<script src="./app.js?v=2026-10-25-dashboard-tabs"></script>
+<script src="./monthly-costing.js?v=2026-10-25-dashboard-nav"></script>
+<script src="./app.js?v=2026-10-25-dashboard-nav"></script>
 
 <!-- PUSH NOTIFICATION SYSTEM (Firebase Cloud Messaging / Web Push) — deferred so
      it never competes with the first orders download on slow networks. -->

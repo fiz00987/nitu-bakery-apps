@@ -512,3 +512,12 @@ test('admin keeps monthly costing and rewards inside dashboard sub-tabs', t => {
   assert.equal(h.el('tab-costing'), null);
   assert.equal(h.el('tab-rewards'), null);
 });
+
+test('top navigation fills four equal tab columns after dashboard sub-tabs move inside Dashboard', t => {
+  const h = harness(t, order());
+  const html = fs.readFileSync(path.join(root, 'admin-app/index.html'), 'utf8');
+  assert.equal(h.w.document.querySelectorAll('.tabs .tab').length, 4);
+  assert.match(html, /\.tabs \{\s*display: grid;\s*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/);
+  assert.match(html, /\.tab \.tab-icon \{ font-size: 24px;/);
+  assert.match(html, /\.tab \{\s*min-width: 0;\s*width: 100%;\s*min-height: 68px;/);
+});
