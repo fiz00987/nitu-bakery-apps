@@ -83,6 +83,11 @@
     "shopNotepad": {
       ".read": "auth != null && (auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com')",
       ".write": "auth != null && (auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com')"
+    },
+
+    "monthlyCosting": {
+      ".read": "auth != null && (auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com')",
+      ".write": "auth != null && (auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com')"
     }
   }
 }

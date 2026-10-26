@@ -76,6 +76,14 @@ test('monthly costing parses Bengali digits and additive amount expressions', ()
   dom.window.close();
 });
 
+test('database rules authorize the admin costing ledger', () => {
+  const rules = JSON.parse(fs.readFileSync(path.join(root, 'database.rules.json'), 'utf8'));
+  const costingRules = rules.rules.monthlyCosting;
+  const adminOnly = "auth != null && (auth.token.email == 'admin111@gmail.com' || auth.token.email == 'fizutube2@gmail.com')";
+
+  assert.deepEqual(costingRules, { '.read': adminOnly, '.write': adminOnly });
+});
+
 test('monthly costing separates paid and pending expenses from net income', t => {
   const h = harness(t, {
     '2026-09': {
