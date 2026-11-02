@@ -180,3 +180,98 @@ test('multi-cake phone entry accepts Bengali and international formats canonical
   assert.equal(w.canonicalizeBangladeshPhone('8801712345678'), '01712345678');
   assert.equal(w.canonicalizeBangladeshPhone('01212345678'), '');
 });
+
+test('customer-app & customer-multi: surprise cake selection auto-locks 100% and grays out 50%', t => {
+  for (const app of ['customer-app', 'customer-multi']) {
+    const { w, el } = form(t, app);
+    el('f-cake-price').value = '1000';
+    if (app === 'customer-app') el('f-delivery-charge').value = '100';
+    w.chooseAdvanceMethod('bank');
+
+    assert.equal(el('opt-50').disabled, false);
+    assert.equal(el('opt-50').classList.contains('adv-locked'), false);
+
+    // Select surprise cake
+    el('f-surprise').value = 'yes';
+    el('f-surprise').dispatchEvent(new w.Event('change'));
+
+    // 50% must be disabled, grayed out and adv-locked
+    assert.equal(el('opt-50').disabled, true);
+    assert.equal(el('opt-50').classList.contains('adv-locked'), true);
+    assert.equal(el('opt-50').style.opacity, '0.4');
+
+    // Payment should be auto-locked to 100%
+    assert.equal(w.isFullOnlyPayment(), true);
+    assert.equal(el('opt-full').getAttribute('aria-pressed'), 'true');
+    assert.equal(el('opt-50').getAttribute('aria-pressed'), 'false');
+    assert.equal(el('surprise-note').classList.contains('show'), true);
+
+    // Deselect surprise cake
+    el('f-surprise').value = 'no';
+    el('f-surprise').dispatchEvent(new w.Event('change'));
+    assert.equal(el('opt-50').disabled, false);
+    assert.equal(el('opt-50').classList.contains('adv-locked'), false);
+    assert.equal(w.isFullOnlyPayment(), false);
+  }
+});
+
+test('customer-app & customer-multi: typing minicake converts weight, auto-locks 100% and grays out 50%', t => {
+  for (const app of ['customer-app', 'customer-multi']) {
+    const { w, el } = form(t, app);
+    el('f-cake-price').value = '1000';
+    w.chooseAdvanceMethod('bank');
+
+    const weightInput = el('f-weight') || el('f-weight-1');
+    weightInput.value = 'minicake';
+    weightInput.dispatchEvent(new w.Event('input'));
+
+    assert.equal(w.isFullOnlyPayment(), true);
+    assert.equal(el('opt-50').disabled, true);
+    assert.equal(el('opt-50').classList.contains('adv-locked'), true);
+    assert.equal(el('opt-full').getAttribute('aria-pressed'), 'true');
+  }
+});
+
+test('customer-app: full payment on minicake or surprise cake displays delivery charge as paid in summary', async t => {
+  const { w, el } = form(t, 'customer-app');
+  w.localStorage.setItem('nitu-cust-phone', '01712345678');
+  w.localStorage.setItem('nitu-cust-name', 'Test Customer');
+  el('f-name').value = 'Test Customer';
+  el('f-cake-price').value = '500';
+  el('f-delivery-charge').value = '100';
+  w.chooseAdvanceMethod('bank');
+
+  el('f-surprise').value = 'yes';
+  el('f-surprise').dispatchEvent(new w.Event('change'));
+  assert.equal(w.isFullOnlyPayment(), true);
+  assert.equal(el('f-advance').value, '600');
+
+  const mockOrder = {
+    orderId: 'TEST-1',
+    customerName: 'Test Customer',
+    customerPhone: '01712345678',
+    cakePrice: 500,
+    deliveryCharge: 100,
+    deliveryAmount: 100,
+    advance: 600,
+    advanceTotal: 600,
+    dueAmount: 0,
+    deliveryPaid: 'paid',
+    paymentCharges: 0,
+    weightLabel: '1 pound',
+    flavourName: 'Vanilla',
+    deliveryDate: '2026-11-10',
+    timeSlotLabel: '3:00 PM',
+    deliveryAddress: 'Chittagong'
+  };
+
+  assert.equal(w.dcIsApproxOrder(mockOrder), false);
+  assert.match(w.dcLineText(mockOrder), /পরিশোধিত/);
+  assert.doesNotMatch(w.dcLineText(mockOrder), /বাকি/);
+
+  w.showSuccess(mockOrder);
+  const summaryText = el('order-summary').textContent;
+  assert.match(summaryText, /পরিশোধিত/);
+  assert.doesNotMatch(summaryText, /বাকি ⏳/);
+  assert.match(summaryText, /পূর্ণ পেমেন্ট সম্পন্ন/);
+});

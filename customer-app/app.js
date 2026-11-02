@@ -1337,6 +1337,13 @@ let cakeKind = 'normal';   // 'normal' | 'mini' (auto only)
 let miniNoticeShown = false;
 let miniPending = false;
 
+const MINI_WEIGHT_ALIASES = ['মিনিকেক', 'মিনি', 'মিনিক্যাক', 'মিনিক্কেক', 'মিনিককেক', 'minicake', 'mini', 'minisizecake', 'minicakes'];
+
+function isMiniWeightText(raw) {
+  const norm = String(raw || '').toLowerCase().replace(/[\s\-_]+/g, '');
+  return MINI_WEIGHT_ALIASES.includes(norm);
+}
+
 const MINI_FILL_BN = '\u09ae\u09bf\u09a8\u09bf \u0995\u09c7\u0995';
 const MINI_FILL_EN = 'Mini cake';
 
@@ -1387,8 +1394,16 @@ function weightInGrams(parsed) {
 function maybeConvertToMini() {
   const wEl = document.getElementById('f-weight');
   if (!wEl) return false;
+  if (cakeKind === 'mini') return true;
   const raw = String(wEl.value || '').trim();
-  if (!raw || isPresetWeight(raw) || cakeKind === 'mini') return cakeKind === 'mini';
+  if (!raw) return false;
+  if (isMiniWeightText(raw)) {
+    miniPending = false;
+    setCakeKind('mini');
+    showMiniCakeInfo();
+    return true;
+  }
+  if (isPresetWeight(raw)) return false;
   const p = parseWeightText(raw);
   if (!p) return false;
   const grams = weightInGrams(p);
@@ -1441,6 +1456,7 @@ function confirmMiniCake() {
 // requesting full payment when the receiver is someone other than the
 // orderer; both the 50% and 100% options stay open.
 function isFullOnlyPayment() {
+  if (isSurprise) return true;
   if (getCakeKind() === 'mini') return true;
   if (miniPending) return true;   // ≤300 g detected, OK popup open → lock now
   return false;
@@ -1465,10 +1481,12 @@ function syncFullOnlyPayment() {
     opt50.style.opacity = lock ? '0.4' : '';
     opt50.style.pointerEvents = lock ? 'none' : '';
   }
-  if (lock && advanceType === '50') {
-    advanceType = 'full';
-    syncAdvanceChoices('full');
-    lastAutoSend = 0; lastAutoBase = 0;
+  if (lock) {
+    if (advanceType !== 'full') {
+      advanceType = 'full';
+      syncAdvanceChoices('full');
+      lastAutoSend = 0; lastAutoBase = 0;
+    }
   }
   return lock;
 }
@@ -1476,8 +1494,8 @@ function syncFullOnlyPayment() {
 function setAdvanceType(type) {
   if (type === '50' && isFullOnlyPayment()) {
     showToast(lang === 'en'
-      ? 'Only full payment for mini cake'
-      : 'মিনি কেকে শুধু ১০০% পেমেন্ট');
+      ? (isSurprise ? 'Only full payment for surprise cake' : 'Only full payment for mini cake')
+      : (isSurprise ? 'সারপ্রাইজ কেকে শুধু ১০০% পেমেন্ট' : 'মিনি কেকে শুধু ১০০% পেমেন্ট'));
     return;   // 50% stays locked
   }
   advanceType = type;
@@ -1758,8 +1776,9 @@ function dcIsAutoEstimate() {
 // Auto/blank charges show ৳0 on the card + the red ⚠️ footnote carrying the
 // area and the approx estimate; a charge typed by the shop is shown plainly.
 function dcIsApproxOrder(order) {
+  if (String(order.deliveryPaid) === 'paid' || order.deliveryPaid === 'na') return false;
   const amt = Math.round(Number(order.deliveryAmount != null ? order.deliveryAmount : order.deliveryCharge) || 0);
-  const pickup = (order.fulfilment || 'delivery') === 'pickup' || order.deliveryPaid === 'na';
+  const pickup = (order.fulfilment || 'delivery') === 'pickup';
   return !pickup && (!!order.dcAuto || amt <= 0);
 }
 // Red ⚠️ footnote for approx orders: "📍 এলাকা: X · → আনুমানিক ৳Y (…)".
@@ -1780,7 +1799,8 @@ function dcEstimateFootnoteText(order) {
 // ends with the paid / due status.
 function dcLineText(o) {
   const amt = Math.round(Number(o.deliveryAmount != null ? o.deliveryAmount : o.deliveryCharge) || 0);
-  const status = String(o.deliveryPaid) === 'paid' ? 'পরিশোধিত ✅' : 'বাকি ⏳';
+  const isPaid = String(o.deliveryPaid) === 'paid';
+  const status = isPaid ? (lang === 'en' ? 'Paid ✓' : 'পরিশোধিত ✓') : (lang === 'en' ? 'Pending ⏳' : 'বাকি ⏳');
   return dcIsApproxOrder(o) ? `৳0 — ${status}` : `৳${amt} — ${status}`;
 }
 
@@ -1899,12 +1919,21 @@ function isPresetWeight(raw) {
 function setWeightPreset(kind, btn) {
   const p = WEIGHT_PRESETS[kind];
   if (!p) return;
-  document.getElementById('f-weight').value = lang === 'en' ? p.fillEn : p.fill;
+  if (kind === 'mini') {
+    setCakeKind('mini');
+  } else {
+    setCakeKind('normal');
+    document.getElementById('f-weight').value = lang === 'en' ? p.fillEn : p.fill;
+  }
   updateWeightHint();
   recalcPrice();
   updateProgress();
   showTextPopup(p.file, lang === 'en' ? p.titleEn : p.title);
 }
+
+document.getElementById('f-weight').addEventListener('input', function() {
+  if (isMiniWeightText(this.value)) maybeConvertToMini();
+});
 
 document.getElementById('f-weight').addEventListener('change', function() {
   if (cakeKind === 'mini') return;   // locked mini name — no unit to check
@@ -2008,7 +2037,15 @@ function showSurprisePopup() {
 
 document.getElementById('f-surprise').addEventListener('change', function() {
   isSurprise = this.value === 'yes';
-  if (isSurprise) showSurprisePopup();
+  const note = document.getElementById('surprise-note');
+  if (note) note.classList.toggle('show', isSurprise);
+  if (isSurprise) {
+    showSurprisePopup();
+    setAdvanceType('full');
+  }
+  syncFullOnlyPayment();
+  recalcPrice();
+  updateProgress();
 });
 
 // Progress
@@ -2348,10 +2385,11 @@ async function submitOrder() {
   // Normal: due = cake-rest + full DC (paid later). Mini: all paid
   // now (cake + DC in the advance), so due = 0 and DC counts as settled.
   const fullNowOrder = isFullOnlyPayment();
-  const dueAmount = fullNowOrder ? 0 : Math.max(0, Math.round(cakePrice) - advance) + Math.round(delivery);
-  const deliverySettled = fullNowOrder && Math.round(delivery) > 0
-    ? advance >= (Math.round(cakePrice) + Math.round(delivery))
+  const isPickup = document.getElementById('f-fulfilment').value === 'pickup';
+  const deliverySettled = fullNowOrder && !isPickup
+    ? (Math.round(delivery) > 0 ? advance >= (Math.round(cakePrice) + Math.round(delivery)) : advance >= Math.round(cakePrice))
     : false;
+  const dueAmount = fullNowOrder ? 0 : Math.max(0, Math.round(cakePrice) - advance) + Math.round(delivery);
 
   const order = {
     orderId: currentOrderId || generateOrderId(),
@@ -2395,12 +2433,12 @@ async function submitOrder() {
     // Blank box = nobody typed a charge → the order is simply "charge not
     // confirmed yet". NO auto/estimated figure is stored or shown anywhere;
     // the admin types the agency-confirmed charge in the app later.
-    dcAuto: dcIsAutoEstimate(),
+    dcAuto: deliverySettled ? false : dcIsAutoEstimate(),
     dcEstimate: null,
     dcArea: null,
-    dcAutoNote: dcIsAutoEstimate() ? (lang === 'en' ? 'Charge not confirmed yet — the delivery agency has not provided the actual charge' : 'চার্জ নিশ্চিত হয়নি — ডেলিভারি এজেন্সি প্রকৃত চার্জ দেয়নি') : null,
+    dcAutoNote: (!deliverySettled && dcIsAutoEstimate()) ? (lang === 'en' ? 'Charge not confirmed yet — the delivery agency has not provided the actual charge' : 'চার্জ নিশ্চিত হয়নি — ডেলিভারি এজেন্সি প্রকৃত চার্জ দেয়নি') : null,
     // Delivery is always part of the total and collected online — never separate.
-    deliveryPaid: document.getElementById('f-fulfilment').value === 'pickup' ? 'na' : (deliverySettled ? 'paid' : 'unpaid'),
+    deliveryPaid: isPickup ? 'na' : (deliverySettled ? 'paid' : 'unpaid'),
     paymentCharges: charge,
     subtotal: subtotal,
     total: total,
@@ -2661,25 +2699,25 @@ function showSuccess(order) {
   const methodName = order.paymentMethodName || order.advanceMethodName || '';
   const dcApprox = dcIsApproxOrder(order);
   const dcTxt = isPickup
-    ? 'প্রযোজ্য নয় (সেলফ পিকআপ)'
+    ? (lang === 'en' ? 'Not applicable (self pickup)' : 'প্রযোজ্য নয় (সেলফ পিকআপ)')
     : dcLineText(order);
   const dcFootnote = (!isPickup && dcApprox)
     ? `<div class="dc-footnote">${esc(dcEstimateFootnoteText(order))}</div>`
     : '';
   summary.innerHTML = `
-    <div class="row"><span>অর্ডার আইডি</span><span>${esc(order.orderId)}</span></div>
-    <div class="row"><span>নাম</span><span>${esc(order.customerName)}</span></div>
-    <div class="row"><span>ফোন</span><span>${esc(order.customerPhone)}</span></div>
-    <div class="row"><span>কেক</span><span>${esc(order.weightLabel)} — ${esc(order.flavourName)}</span></div>
-    ${order.writing ? `<div class="row"><span>কেকের লেখা</span><span>${esc(order.writing)}</span></div>` : ''}
-    <div class="row"><span>তারিখ</span><span>${esc(fmtDate(order.deliveryDate))} · ${esc(order.timeSlotLabel)}</span></div>
-    <div class="row"><span>ঠিকানা</span><span>${esc(order.deliveryAddress)}</span></div>
-    ${order.notes ? `<div class="row"><span>📝 অতিরিক্ত তথ্য</span><span>${esc(order.notes)}</span></div>` : ''}
-    <div class="row"><span>কেকের মূল্য</span><span>৳${cakePrice}</span></div>
-    <div class="row"><span>ডেলিভারি চার্জ</span><span>${dcTxt}</span></div>
+    <div class="row"><span>${lang === 'en' ? 'Order ID' : 'অর্ডার আইডি'}</span><span>${esc(order.orderId)}</span></div>
+    <div class="row"><span>${lang === 'en' ? 'Name' : 'নাম'}</span><span>${esc(order.customerName)}</span></div>
+    <div class="row"><span>${lang === 'en' ? 'Phone' : 'ফোন'}</span><span>${esc(order.customerPhone)}</span></div>
+    <div class="row"><span>${lang === 'en' ? 'Cake' : 'কেক'}</span><span>${esc(order.weightLabel)} — ${esc(order.flavourName)}</span></div>
+    ${order.writing ? `<div class="row"><span>${lang === 'en' ? 'Cake writing' : 'কেকের লেখা'}</span><span>${esc(order.writing)}</span></div>` : ''}
+    <div class="row"><span>${lang === 'en' ? 'Date' : 'তারিখ'}</span><span>${esc(fmtDate(order.deliveryDate))} · ${esc(order.timeSlotLabel)}</span></div>
+    <div class="row"><span>${lang === 'en' ? 'Address' : 'ঠিকানা'}</span><span>${esc(order.deliveryAddress)}</span></div>
+    ${order.notes ? `<div class="row"><span>📝 ${lang === 'en' ? 'Additional Info' : 'অতিরিক্ত তথ্য'}</span><span>${esc(order.notes)}</span></div>` : ''}
+    <div class="row"><span>${lang === 'en' ? 'Cake price' : 'কেকের মূল্য'}</span><span>৳${cakePrice}</span></div>
+    <div class="row"><span>${lang === 'en' ? 'Delivery charge' : 'ডেলিভারি চার্জ'}</span><span>${dcTxt}</span></div>
     ${dcFootnote}
-    <div class="row"><span>অগ্রিম / প্রদান</span><span style="color:var(--green)">৳${advTowardCake}${methodName ? ` (${esc(methodName)})` : ''}</span></div>
-    ${cakeDue > 0 ? `<div class="due-alert">⚠️ বাকি: ৳${cakeDue} (ডেলিভারি চার্জ ছাড়া)</div>` : '<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ পূর্ণ পেমেন্ট সম্পন্ন</div>'}
+    <div class="row"><span>${lang === 'en' ? 'Advance / Paid' : 'অগ্রিম / প্রদান'}</span><span style="color:var(--green)">৳${advCake}${methodName ? ` (${esc(methodName)})` : ''}</span></div>
+    ${cakeDue > 0 ? `<div class="due-alert">⚠️ ${lang === 'en' ? `Due: ৳${cakeDue} (excluding delivery charge)` : `বাকি: ৳${cakeDue} (ডেলিভারি চার্জ ছাড়া)`}</div>` : `<div class="due-alert" style="background:var(--green-light);border-color:var(--green);color:var(--green)">✅ ${lang === 'en' ? 'Fully Paid' : 'পূর্ণ পেমেন্ট সম্পন্ন'}</div>`}
   `;
 
     // Manual flow: no auto-download, no auto-close popup. The customer takes a
@@ -2842,7 +2880,7 @@ function resetForm() {
   if (rdci) { rdci.readOnly = false; rdci.disabled = false; rdci.classList.remove('locked-field'); }
   dcLastEstimate = 0; dcLastArea = '';
   const rdn = document.getElementById('dc-note'); if (rdn) { rdn.style.display = 'none'; rdn.innerHTML = ''; }
-  currentPhotos = []; renderPhotos(); payShot = ''; renderPayShot(); advanceType = ''; lastAutoSend = 0; lastAutoBase = 0; isSurprise = false; cakeWritingNoticeShown = false;
+  currentPhotos = []; renderPhotos(); payShot = ''; renderPayShot(); advanceType = ''; lastAutoSend = 0; lastAutoBase = 0; isSurprise = false; const sn = document.getElementById('surprise-note'); if (sn) sn.classList.remove('show'); cakeWritingNoticeShown = false;
   advanceMethod = '';
   flavourNoticeShown = false; // show the "exact flavour" notice again on a new order
   syncPaymentChoices('');

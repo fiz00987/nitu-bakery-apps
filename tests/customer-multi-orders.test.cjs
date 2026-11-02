@@ -216,3 +216,18 @@ test('daily capacity checks count every separate cake on its delivery date', asy
   await h.w.submitOrder();
   assert.equal(h.orders().length, 3);
 });
+
+test('surprise cake in multi-cake form keeps payments full and marks delivery paid', async t => {
+  const h = multiForm(t, [1000, 2000]);
+  h.el('f-surprise').value = 'yes';
+  h.el('f-surprise').dispatchEvent(new h.w.Event('change'));
+  assert.equal(h.w.isFullOnlyPayment(), true);
+  assert.equal(h.el('opt-50').disabled, true);
+  const sent = Number(h.el('f-advance').value);
+  await h.w.submitOrder();
+  const records = h.orders();
+  assert.equal(records.length, 2);
+  assert.equal(sum(records, 'dueAmount'), 0);
+  assert.equal(records[0].deliveryPaid, 'paid');
+  assert.equal(records[1].deliveryPaid, 'paid');
+});

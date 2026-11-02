@@ -303,6 +303,10 @@ function wireWeightEvents(i) {
   if (!el) return;
   el.addEventListener('input', function () {
     document.querySelectorAll('.weight-preset' + (i === 1 ? '' : '-' + i)).forEach(b => b.classList.remove('active'));
+    if (isMiniWeightText(this.value)) {
+      maybeConvertToMini(i);
+      return;
+    }
     // A customer can correct a small weight while its information popup is open.
     if (miniPendingCakes[i]) { delete miniPendingCakes[i]; syncFullOnlyPayment(); }
   });
@@ -433,7 +437,14 @@ function hasMiniCake() {
   return false;
 }
 
-function isFullOnlyPayment() { return hasMiniCake(); }
+const MINI_WEIGHT_ALIASES = ['মিনিকেক', 'মিনি', 'মিনিক্যাক', 'মিনিক্কেক', 'মিনিককেক', 'minicake', 'mini', 'minisizecake', 'minicakes'];
+
+function isMiniWeightText(raw) {
+  const norm = String(raw || '').toLowerCase().replace(/[\s\-_]+/g, '');
+  return MINI_WEIGHT_ALIASES.includes(norm);
+}
+
+function isFullOnlyPayment() { return hasMiniCake() || isSurprise; }
 
 function applyCakeKindState(i) {
   const el = weightEl(i);
@@ -481,9 +492,16 @@ function maybeConvertToMini(i) {
   const el = weightEl(i);
   if (!el) return false;
   const raw = String(el.value || '').trim();
+  if (!raw) return false;
+  if (isMiniWeightText(raw)) {
+    delete miniPendingCakes[i];
+    setCakeKind(i, 'mini');
+    showMiniCakeInfo(i);
+    return true;
+  }
   // A bare number must ask for its unit first; it is not implicitly pounds
   // while the customer is deciding between pound, KG and gram.
-  if (!raw || isPresetWeight(raw) || isBareNumberWeight(raw)) return false;
+  if (isPresetWeight(raw) || isBareNumberWeight(raw)) return false;
   const parsed = parseWeightText(raw);
   if (!parsed) return false;
   const grams = weightInGrams(parsed);
@@ -1178,24 +1196,29 @@ function getCakeWritingError(text) {
 }
 
 function syncFullOnlyPayment() {
-  const lock = hasMiniCake();
+  const lock = isFullOnlyPayment();
   const opt50 = document.getElementById('opt-50');
   if (opt50) {
-    opt50.disabled = lock || isSurprise;
-    opt50.classList.toggle('adv-locked', lock || isSurprise);
-    opt50.style.pointerEvents = (lock || isSurprise) ? 'none' : '';
+    opt50.disabled = lock;
+    opt50.classList.toggle('adv-locked', lock);
+    opt50.style.opacity = lock ? '0.4' : '';
+    opt50.style.pointerEvents = lock ? 'none' : '';
   }
-  if (lock && advanceType === '50') {
-    advanceType = 'full';
-    syncAdvanceChoices('full');
-    lastAutoSend = 0; lastAutoBase = 0;
+  if (lock) {
+    if (advanceType !== 'full') {
+      advanceType = 'full';
+      syncAdvanceChoices('full');
+      lastAutoSend = 0; lastAutoBase = 0;
+    }
   }
   return lock;
 }
 
 function setAdvanceType(type) {
-  if (type === '50' && (isSurprise || isFullOnlyPayment())) {
-    showToast(lang === 'en' ? 'Only full payment for a mini cake' : 'মিনি কেকে শুধু ১০০% পেমেন্ট');
+  if (type === '50' && isFullOnlyPayment()) {
+    showToast(lang === 'en'
+      ? (isSurprise ? 'Only full payment for surprise cake' : 'Only full payment for a mini cake')
+      : (isSurprise ? 'সারপ্রাইজ কেকে শুধু ১০০% পেমেন্ট' : 'মিনি কেকে শুধু ১০০% পেমেন্ট'));
     return;
   }
   advanceType = type;
@@ -1529,6 +1552,8 @@ document.getElementById('f-surprise').addEventListener('change', function() {
   document.getElementById('surprise-note').classList.toggle('show', isSurprise);
   if (isSurprise) setAdvanceType('full');
   syncFullOnlyPayment();
+  recalcPrice();
+  updateProgress();
 });
 
 // Progress
@@ -1668,14 +1693,11 @@ function validate() {
     const base = advanceType && sent === lastAutoSend ? lastAutoBase : splitSend(sent, getGatewayRate()).base;
     const required = Math.round(getOrderTotal()) + (isPickup ? 0 : getTotalDeliveryCharge());
     if (base < required) {
-      showToast(lang === 'en' ? 'Mini cakes require full payment including delivery and gateway charges.' : 'মিনি কেকে ডেলিভারি ও পেমেন্ট চার্জসহ পুরো পেমেন্ট দিন।');
+      showToast(lang === 'en'
+        ? (isSurprise ? 'Surprise orders require full payment including delivery and gateway charges.' : 'Mini cakes require full payment including delivery and gateway charges.')
+        : (isSurprise ? 'সারপ্রাইজ অর্ডারে ডেলিভারি ও পেমেন্ট চার্জসহ পুরো পেমেন্ট দিন।' : 'মিনি কেকে ডেলিভারি ও পেমেন্ট চার্জসহ পুরো পেমেন্ট দিন।'));
       return false;
     }
-  }
-  if (isSurprise) {
-    const adv = parseFloat(document.getElementById('f-advance').value) || 0;
-    const total = getOrderTotal();
-    if (adv < total) { showToast('সারপ্রাইজের জন্য পূর্ণ পেমেন্ট দিন'); return false; }
   }
   return true;
 }
@@ -1772,6 +1794,9 @@ async function saveSubmittedOrder() {
   const advanceTotal = Math.round(sendAmount);
   // Mini cakes are paid in full, including the known delivery charge.
   const dueAmount = fullNow ? 0 : Math.max(0, Math.round(cakePrice) - advance) + paymentDelivery;
+  const deliverySettled = fullNow && !isPickup
+    ? (paymentDelivery > 0 ? advance >= (Math.round(cakePrice) + Math.round(paymentDelivery)) : advance >= Math.round(cakePrice))
+    : false;
 
   // Per-cake details (cakes 1..N). Delivery is stored INSIDE each cake with the
   // same field names the admin app reads (address/deliveryAddress, receiver,
@@ -1889,8 +1914,7 @@ async function saveSubmittedOrder() {
     weightPrice: 0,    cakePrice: cakePrice,
     deliveryCharge: delivery,
     deliveryAmount: delivery,
-    // Blank/0 delivery charge on a delivery order = NOT PAID (admin/agent collects later).
-    deliveryPaid: document.getElementById('f-fulfilment').value === 'pickup' ? 'na' : 'unpaid',
+    deliveryPaid: isPickup ? 'na' : (deliverySettled ? 'paid' : 'unpaid'),
     paymentCharges: charge,
     subtotal: subtotal,    total: total,
     advance: advance,
@@ -1983,7 +2007,7 @@ function buildSubmittedOrders(order, fullNow) {
       deliveryAmount: cake.deliveryCharge,
       deliveryAdvance: deliveryAdvances[i],
       deliveryPaid: order.fulfilment === 'pickup' ? 'na'
-        : cake.deliveryCharge > 0 && deliveryAdvances[i] >= cake.deliveryCharge ? 'paid' : 'unpaid',
+        : (fullNow || (cake.deliveryCharge > 0 && deliveryAdvances[i] >= cake.deliveryCharge)) ? 'paid' : 'unpaid',
       advance: advances[i],
       advanceCharge: fees[i],
       paymentCharges: fees[i],
